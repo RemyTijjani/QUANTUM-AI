@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-obsidian font-mono text-neon-300 antialiased overscroll-none select-none;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply relative rounded-xl border border-neon/25 bg-[#060f09]/85 backdrop-blur-sm;
+  }
+
+  .label {
+    @apply font-mono text-[11px] uppercase tracking-[0.22em] text-neon-500;
+  }
+
+  .title {
+    @apply font-display text-sm font-bold uppercase tracking-[0.16em] text-neon-400;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.16em] transition duration-200 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100;
+  }
+
+  .btn-primary {
+    @apply btn border-neon/70 bg-neon/15 text-neon-300 shadow-glow hover:bg-neon/25;
+  }
+
+  .btn-ghost {
+    @apply btn border-neon/30 bg-transparent text-neon-400 hover:border-neon/60 hover:bg-neon/10;
+  }
+
+  .btn-cyan {
+    @apply btn border-cyan-400/60 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20;
+  }
+
+  .bar {
+    @apply h-2 overflow-hidden rounded-full bg-neon/10;
+  }
+
+  .bar-fill {
+    @apply h-full rounded-full bg-neon transition-[width] duration-500;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
+  }
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.55);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.crt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.22) 3px,
+    rgba(0, 0, 0, 0) 4px
+  );
+  animation: crt-flicker 7s infinite;
+}
+
+.crt-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+@keyframes crt-flicker {
+  0%,
+  47%,
+  52%,
+  100% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 0.92;
+  }
+}
+
+.trace-live {
+  stroke-dasharray: 14 86;
+  animation: trace-flow 1.4s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(234, 179, 8, 0.9));
+}
+
+@keyframes trace-flow {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.scan-bars {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(34, 197, 94, 0.06) 0,
+    rgba(34, 197, 94, 0.06) 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}

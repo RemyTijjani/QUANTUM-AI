@@ -1,0 +1,51 @@
+import FaIcon from '@/components/FaIcon';
+
+export type TabId = 'missions' | 'blackmarket' | 'core' | 'network' | 'vault';
+
+const TABS: { id: TabId; label: string; icon: string }[] = [
+  { id: 'missions', label: 'Missions', icon: 'fa-bullseye' },
+  { id: 'blackmarket', label: 'Blackmarket', icon: 'fa-shield-halved' },
+  { id: 'core', label: 'Core', icon: 'fa-microchip' },
+  { id: 'network', label: 'Network', icon: 'fa-network-wired' },
+  { id: 'vault', label: 'Vault', icon: 'fa-vault' },
+];
+
+interface BottomNavProps {
+  active: TabId;
+  onChange: (tab: TabId) => void;
+}
+
+export default function BottomNav({ active, onChange }: BottomNavProps) {
+  return (
+    <nav className="relative z-20 grid grid-cols-5 border-t border-neon/20 bg-obsidian/95 px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 backdrop-blur">
+      {TABS.map(({ id, label, icon }) => {
+        const isActive = id === active;
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChange(id)}
+            aria-current={isActive ? 'page' : undefined}
+            className={`group relative flex flex-col items-center gap-1 rounded-lg py-1.5 transition duration-200 ${
+              isActive ? 'text-neon-400' : 'text-neon-600 hover:text-neon-500'
+            }`}
+          >
+            <span
+              className={`absolute -top-2 h-0.5 w-8 rounded-full bg-neon transition duration-300 ${
+                isActive ? 'opacity-100 shadow-glow' : 'opacity-0'
+              }`}
+            />
+            <span
+              className={`flex h-8 w-10 items-center justify-center rounded-lg border transition duration-200 ${
+                isActive ? 'border-neon/60 bg-neon/15 shadow-glow' : 'border-transparent group-hover:bg-neon/5'
+              }`}
+            >
+              <FaIcon name={icon} size={18} />
+            </span>
+            <span className="max-w-full truncate font-mono text-[10px] uppercase tracking-wider">{label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
