@@ -3,12 +3,12 @@ import { Check, X, ExternalLink, Clock, ShieldCheck, RefreshCw } from 'lucide-re
 import { supabase } from '@/lib/supabase';
 import type { CreatorOpsSubmission } from '@/lib/supabase';
 import { MISSIONS } from '@/lib/game/config';
-import { formatIq } from '@/lib/format';
+import { formatZp } from '@/lib/format';
 import Modal from '@/components/Modal';
 
 interface AdminReviewModalProps {
   onClose: () => void;
-  onApprove: (rewardIq: number) => void;
+  onApprove: (rewardZp: number) => void;
 }
 
 export default function AdminReviewModal({ onClose, onApprove }: AdminReviewModalProps) {
@@ -44,7 +44,7 @@ export default function AdminReviewModal({ onClose, onApprove }: AdminReviewModa
     setProcessing(null);
     if (error) return;
     if (decision === 'approved') {
-      onApprove(submission.reward_iq);
+      onApprove(submission.reward_zp);
     }
     setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
   };
@@ -94,7 +94,7 @@ export default function AdminReviewModal({ onClose, onApprove }: AdminReviewModa
                     </p>
                   </div>
                   <span className="shrink-0 rounded-md border border-neon/30 bg-neon/10 px-2 py-0.5 font-mono text-[10px] tabular-nums text-neon-400">
-                    +{formatIq(sub.reward_iq)} IQ
+                    +{formatZp(sub.reward_zp)} ZP
                   </span>
                 </div>
 

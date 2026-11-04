@@ -1,13 +1,13 @@
 import { Trophy, User, Zap } from 'lucide-react';
-import { formatIq } from '@/lib/format';
+import { formatZp } from '@/lib/format';
 
 interface HeaderProps {
-  iq: number;
+  zp: number;
   onOpenProfile: () => void;
   onOpenLeaderboard: () => void;
 }
 
-export default function Header({ iq, onOpenProfile, onOpenLeaderboard }: HeaderProps) {
+export default function Header({ zp, onOpenProfile, onOpenLeaderboard }: HeaderProps) {
   return (
     <header className="relative z-20 flex items-center justify-between gap-3 border-b border-neon/20 bg-obsidian/90 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur">
       <div className="flex min-w-0 items-center gap-3">
@@ -23,7 +23,7 @@ export default function Header({ iq, onOpenProfile, onOpenLeaderboard }: HeaderP
           <h1 className="title glow-text leading-none">ZORD</h1>
           <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-neon-500">
             <span className="h-1.5 w-1.5 shrink-0 animate-soft-pulse rounded-full bg-neon shadow-glow" />
-            <span className="truncate">AUTONOMOUS AGENT // IQ MINING ACTIVE</span>
+            <span className="truncate">AUTONOMOUS AGENT // ZP MINING ACTIVE</span>
           </p>
         </div>
       </div>
@@ -42,8 +42,8 @@ export default function Header({ iq, onOpenProfile, onOpenLeaderboard }: HeaderP
           aria-live="polite"
         >
           <Zap size={14} className="fill-neon/40" />
-          <span className="font-display text-sm font-bold tabular-nums">{formatIq(iq)}</span>
-          <span className="font-mono text-[10px] text-neon-500">IQ</span>
+          <span className="font-display text-sm font-bold tabular-nums">{formatZp(zp)}</span>
+          <span className="font-mono text-[10px] text-neon-500">ZP</span>
         </div>
       </div>
     </header>

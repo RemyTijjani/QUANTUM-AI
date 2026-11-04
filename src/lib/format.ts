@@ -1,6 +1,6 @@
 export const pad = (value: number) => String(value).padStart(2, '0');
 
-export const formatIq = (value: number) => Math.floor(value).toLocaleString('en-US');
+export const formatZp = (value: number) => Math.floor(value).toLocaleString('en-US');
 
 export const formatRate = (value: number) => value.toFixed(2);
 

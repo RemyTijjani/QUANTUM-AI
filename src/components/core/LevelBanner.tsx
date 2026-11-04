@@ -1,7 +1,7 @@
 import { Gauge } from 'lucide-react';
 import { TIER_SIZE } from '@/lib/game/config';
 import type { tierInfo } from '@/lib/game/state';
-import { formatIq, formatRate } from '@/lib/format';
+import { formatZp, formatRate } from '@/lib/format';
 
 interface LevelBannerProps {
   tier: ReturnType<typeof tierInfo>;
@@ -30,16 +30,16 @@ export default function LevelBanner({ tier, rate }: LevelBannerProps) {
         </div>
         <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-neon-500">
           <span>
-            {formatIq(tier.intoTier)} / {formatIq(TIER_SIZE)} IQ
+            {formatZp(tier.intoTier)} / {formatZp(TIER_SIZE)} ZP
           </span>
-          <span>{formatIq(tier.toNext)} IQ to Tier {String(tier.tier + 1).padStart(2, '0')}</span>
+          <span>{formatZp(tier.toNext)} ZP to Tier {String(tier.tier + 1).padStart(2, '0')}</span>
         </div>
       </div>
 
       <div className="mt-4 flex items-center gap-2 border-t border-neon/15 pt-4 font-mono text-[11px] uppercase tracking-wider text-neon-400">
         <Gauge size={14} />
         <span>Passive generation</span>
-        <span className="ml-auto tabular-nums text-neon-300">{formatRate(rate)} IQ/SEC</span>
+        <span className="ml-auto tabular-nums text-neon-300">{formatRate(rate)} ZP/SEC</span>
       </div>
     </section>
   );

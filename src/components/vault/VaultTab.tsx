@@ -2,7 +2,7 @@ import { Link2, Link2Off, Landmark, Coins, Cpu } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { TON_FAUCET_AMOUNT, VAULT_ADDRESS } from '@/lib/game/config';
 import type { GameState } from '@/lib/game/state';
-import { formatIq, formatTon, truncateAddress } from '@/lib/format';
+import { formatZp, formatTon, truncateAddress } from '@/lib/format';
 import type { GameActions } from '@/hooks/useGame';
 import type { Notify } from '@/hooks/useToast';
 
@@ -75,9 +75,9 @@ export default function VaultTab({ state, actions, notify }: VaultTabProps) {
         />
         <BalanceCard
           icon={Cpu}
-          label="IQ vault balance"
-          value={formatIq(state.iq)}
-          unit="IQ"
+          label="ZP vault balance"
+          value={formatZp(state.zp)}
+          unit="ZP"
           tone="neon"
         />
       </section>

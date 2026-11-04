@@ -2,7 +2,7 @@ import { FRAGMENT_IDS, FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game
 import type { FragmentId } from '@/lib/game/config';
 import { fixedCount, fragmentCooldownRemaining, passiveRate, tierInfo } from '@/lib/game/state';
 import type { GameState, FragmentStatus } from '@/lib/game/state';
-import { formatRate, formatIq, formatRemaining } from '@/lib/format';
+import { formatRate, formatZp, formatRemaining } from '@/lib/format';
 import type { GameActions } from '@/hooks/useGame';
 import type { Notify } from '@/hooks/useToast';
 import LevelBanner from '@/components/core/LevelBanner';
@@ -56,13 +56,13 @@ export default function CoreTab({ state, actions, notify, onWatchAd }: CoreTabPr
           : 'Core offline. Fix a fragment to restart mining.'}
       </p>
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
-        Watch a sponsor feed to unlock a fragment (+{FRAGMENT_UNLOCK_REWARD} IQ), wait for its cooldown, then fix it into the core (+0.02 IQ/sec).
+        Watch a sponsor feed to unlock a fragment (+{FRAGMENT_UNLOCK_REWARD} ZP), wait for its cooldown, then fix it into the core (+0.02 ZP/sec).
         {' '}
         {FRAGMENT_IDS.length - fixedCount(state)} of {FRAGMENT_IDS.length} fragments still missing.
       </p>
       <CharacterCard
         fixed={fixedCount(state)}
-        lifetimeIq={formatIq(state.lifetimeIq)}
+        lifetimeIq={formatZp(state.lifetimeIq)}
         rate={formatRate(rate)}
       />
     </div>

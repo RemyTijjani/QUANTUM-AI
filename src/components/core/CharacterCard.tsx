@@ -9,8 +9,8 @@ interface CharacterCardProps {
 export default function CharacterCard({ fixed, lifetimeIq, rate }: CharacterCardProps) {
   const stats = [
     { label: 'Fragments', value: `${fixed}/4` },
-    { label: 'Lifetime IQ', value: lifetimeIq },
-    { label: 'IQ / sec', value: rate },
+    { label: 'Lifetime ZP', value: lifetimeIq },
+    { label: 'ZP / sec', value: rate },
   ];
 
   return (
@@ -28,7 +28,7 @@ export default function CharacterCard({ fixed, lifetimeIq, rate }: CharacterCard
 
       <p className="mt-4 font-mono text-xs leading-relaxed text-neon-300/90">
         ZORD was scattered across the grid in four pieces. Every fragment you restore strengthens its signal and
-        pulls more IQ from the dormant nodes. Restore the full circuit to bring ZORD back online.
+        pulls more ZP from the dormant nodes. Restore the full circuit to bring ZORD back online.
       </p>
 
       <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-neon/15 pt-4">

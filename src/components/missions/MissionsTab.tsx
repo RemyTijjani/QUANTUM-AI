@@ -4,7 +4,7 @@ import { AD_QUOTA_TARGET, MISSIONS } from '@/lib/game/config';
 import type { MissionSpec } from '@/lib/game/config';
 import { adsWatchedToday, missionStatus } from '@/lib/game/state';
 import type { GameState } from '@/lib/game/state';
-import { formatClock, formatIq, msUntilNextDay } from '@/lib/format';
+import { formatClock, formatZp, msUntilNextDay } from '@/lib/format';
 import type { GameActions } from '@/hooks/useGame';
 import type { Notify } from '@/hooks/useToast';
 import { supabase } from '@/lib/supabase';
@@ -27,7 +27,7 @@ export default function MissionsTab({ state, actions, notify, onOpenAdmin }: Mis
 
   const claim = (mission: MissionSpec) => {
     actions.claimMission(mission.id);
-    notify(`${mission.title} complete. +${formatIq(mission.reward)} IQ`);
+    notify(`${mission.title} complete. +${formatZp(mission.reward)} ZP`);
   };
 
   return (
@@ -151,7 +151,7 @@ function MissionCard({ mission, status, progressLabel, verifiable, onClaim }: Mi
       : !started && mission.actionUrl
         ? 'Start Mission'
         : status === 'ready'
-          ? 'Claim IQ'
+          ? 'Claim ZP'
           : 'Locked';
 
   const buttonAction = () => {
@@ -183,7 +183,7 @@ function MissionCard({ mission, status, progressLabel, verifiable, onClaim }: Mi
         <h3 className="font-display text-xs font-bold uppercase tracking-wide text-neon-300">{mission.title}</h3>
         <p className="mt-1 font-mono text-[11px] leading-relaxed text-neon-500">{mission.description}</p>
         <div className="mt-2 flex items-center gap-3 font-mono text-[11px] tabular-nums">
-          <span className="text-neon-400">+{formatIq(mission.reward)} IQ</span>
+          <span className="text-neon-400">+{formatZp(mission.reward)} IQ</span>
           {progressLabel && <span className="text-cyan-300">{progressLabel}</span>}
         </div>
       </div>
@@ -264,7 +264,7 @@ function CreatorOpsCard({
         player_referral_code: state.referralCode,
         link_url: trimmed,
         platform: mission.platform ?? 'youtube',
-        reward_iq: mission.reward,
+        reward_zp: mission.reward,
         status: 'pending',
       })
       .select()
@@ -276,7 +276,7 @@ function CreatorOpsCard({
     }
     setSubmission(data as CreatorOpsSubmission);
     setLink('');
-    notify('Link submitted for admin review. IQ credited on approval.');
+    notify('Link submitted for admin review. ZP credited on approval.');
   };
 
   const Icon = mission.platform === 'tiktok' ? Video : Video;
@@ -291,7 +291,7 @@ function CreatorOpsCard({
           <h3 className="font-display text-xs font-bold uppercase tracking-wide text-neon-300">{mission.title}</h3>
           <p className="mt-1 font-mono text-[11px] leading-relaxed text-neon-500">{mission.description}</p>
           <div className="mt-2 font-mono text-[11px] tabular-nums">
-            <span className="text-neon-400">+{formatIq(mission.reward)} IQ on approval</span>
+            <span className="text-neon-400">+{formatZp(mission.reward)} ZP on approval</span>
           </div>
         </div>
       </div>
@@ -316,7 +316,7 @@ function CreatorOpsCard({
       ) : status === 'approved' ? (
         <div className="flex items-center gap-2 rounded-lg border border-neon/40 bg-neon/10 px-3 py-2.5 font-mono text-[11px] text-neon-300">
           <Check size={14} className="shrink-0" />
-          <span className="flex-1">Approved — +{formatIq(mission.reward)} IQ credited</span>
+          <span className="flex-1">Approved — +{formatZp(mission.reward)} ZP credited</span>
         </div>
       ) : status === 'rejected' ? (
         <div className="space-y-2">

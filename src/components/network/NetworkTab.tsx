@@ -1,6 +1,6 @@
 import { Copy, Share2, Users, Radar } from 'lucide-react';
 import { KICKBACK_RATE, MILESTONES, RECRUIT_POOL, SUB_NODE_RATE, TELEGRAM_BOT_USERNAME } from '@/lib/game/config';
-import { formatIq, formatRate } from '@/lib/format';
+import { formatZp, formatRate } from '@/lib/format';
 import type { GameState } from '@/lib/game/state';
 import type { GameActions } from '@/hooks/useGame';
 import type { Notify } from '@/hooks/useToast';
@@ -12,7 +12,7 @@ interface NetworkTabProps {
   notify: Notify;
 }
 
-const SHARE_TEXT = 'Mine IQ with me in ZORD Autonomous Agent — Total Group Dominion';
+const SHARE_TEXT = 'Mine ZP with me in ZORD Autonomous Agent — Total Group Dominion';
 
 export default function NetworkTab({ state, actions, notify }: NetworkTabProps) {
   const link = `https://t.me/${TELEGRAM_BOT_USERNAME}?startapp=${state.referralCode}`;
@@ -36,7 +36,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
   const claimKickback = () => {
     const amount = kickbackWhole;
     actions.claimKickback();
-    notify(`Kickback claimed. +${formatIq(amount)} IQ`);
+    notify(`Kickback claimed. +${formatZp(amount)} ZP`);
   };
 
   const simulateRecruit = () => {
@@ -54,7 +54,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
           <p className="label">Referral uplink</p>
           <h2 className="title mt-1">Recruit operatives</h2>
           <p className="mt-2 font-mono text-[11px] leading-relaxed text-neon-500">
-            Earn {Math.round(KICKBACK_RATE * 100)}% of every IQ your sub-nodes generate.
+            Earn {Math.round(KICKBACK_RATE * 100)}% of every ZP your sub-nodes generate.
           </p>
         </div>
 
@@ -80,7 +80,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
             <div>
               <p className="label">Pending kickback</p>
               <p className="mt-1 font-display text-xl font-bold tabular-nums text-neon-300">
-                {formatIq(state.kickbackPending)} <span className="text-xs text-neon-500">IQ</span>
+                {formatZp(state.kickbackPending)} <span className="text-xs text-neon-500">ZP</span>
               </p>
             </div>
             <button type="button" onClick={claimKickback} disabled={kickbackWhole < 1} className="btn-primary shrink-0">
@@ -101,7 +101,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
           onClaim={(threshold) => {
             const reward = MILESTONES.find((m) => m.threshold === threshold)?.reward ?? 0;
             actions.claimMilestone(threshold);
-            notify(`Milestone cleared. +${formatIq(reward)} IQ`);
+            notify(`Milestone cleared. +${formatZp(reward)} ZP`);
           }}
         />
       </section>
@@ -115,7 +115,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
             </h2>
           </div>
           <span className="font-mono text-[11px] tabular-nums text-neon-500">
-            {formatRate(SUB_NODE_RATE)} IQ/sec each
+            {formatRate(SUB_NODE_RATE)} ZP/sec each
           </span>
         </div>
 
@@ -135,7 +135,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
                     </p>
                   </div>
                   <span className="shrink-0 font-mono text-xs tabular-nums text-neon-400">
-                    {formatIq(node.generated)} IQ
+                    {formatZp(node.generated)} ZP
                   </span>
                 </li>
               ))}
@@ -143,7 +143,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
           )}
           <div className="flex items-center justify-between gap-3 border-t border-neon/15 px-4 py-3">
             <span className="font-mono text-[10px] uppercase tracking-wider text-neon-500">
-              Network total {formatIq(subNodeTotal)} IQ
+              Network total {formatZp(subNodeTotal)} ZP
             </span>
             <button type="button" onClick={simulateRecruit} className="btn-ghost px-3 py-2 text-[10px]">
               <Radar size={13} /> Simulate recruit

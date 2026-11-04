@@ -16,7 +16,7 @@ import { useGame } from '@/hooks/useGame';
 import { useToast } from '@/hooks/useToast';
 import { FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
-import { formatIq } from '@/lib/format';
+import { formatZp } from '@/lib/format';
 import { initTelegram } from '@/lib/telegram';
 
 type Overlay = 'profile' | 'leaderboard' | 'admin' | null;
@@ -35,7 +35,7 @@ export default function App() {
   const completeAd = () => {
     if (!adFragment) return;
     actions.unlockFragment(adFragment);
-    notify(`${FRAGMENT_NAMES[adFragment]} unlocked. +${formatIq(FRAGMENT_UNLOCK_REWARD)} IQ`);
+    notify(`${FRAGMENT_NAMES[adFragment]} unlocked. +${formatZp(FRAGMENT_UNLOCK_REWARD)} ZP`);
     setAdFragment(null);
   };
 
@@ -50,7 +50,7 @@ export default function App() {
       <div className="crt-overlay" aria-hidden />
 
       <Header
-        iq={state.iq}
+        zp={state.zp}
         onOpenProfile={() => setOverlay('profile')}
         onOpenLeaderboard={() => setOverlay('leaderboard')}
       />
@@ -76,14 +76,14 @@ export default function App() {
         <ProfileModal state={state} onReset={resetSystem} onClose={() => setOverlay(null)} />
       )}
       {overlay === 'leaderboard' && (
-        <LeaderboardModal lifetimeIq={state.lifetimeIq} onClose={() => setOverlay(null)} />
+        <LeaderboardModal lifetimeZp={state.lifetimeZp} onClose={() => setOverlay(null)} />
       )}
       {overlay === 'admin' && (
         <AdminReviewModal
           onClose={() => setOverlay(null)}
-          onApprove={(rewardIq) => {
-            actions.creditIq(rewardIq);
-            notify(`Submission approved. +${formatIq(rewardIq)} IQ credited to player`);
+          onApprove={(rewardZp) => {
+            actions.creditZp(rewardZp);
+            notify(`Submission approved. +${formatZp(rewardZp)} ZP credited to player`);
           }}
         />
       )}

@@ -3,7 +3,7 @@ import { RotateCcw, User } from 'lucide-react';
 import { AGENTS, FRAGMENT_IDS } from '@/lib/game/config';
 import { activeAgents, fixedCount, passiveRate, tierInfo } from '@/lib/game/state';
 import type { GameState } from '@/lib/game/state';
-import { formatIq, formatRate, formatRemaining } from '@/lib/format';
+import { formatZp, formatRate, formatRemaining } from '@/lib/format';
 import Modal from '@/components/Modal';
 
 interface ProfileModalProps {
@@ -15,7 +15,7 @@ interface ProfileModalProps {
 export default function ProfileModal({ state, onReset, onClose }: ProfileModalProps) {
   const [confirmingReset, setConfirmingReset] = useState(false);
   const now = Date.now();
-  const tier = tierInfo(state.lifetimeIq);
+  const tier = tierInfo(state.lifetimeZp);
   const rentals = activeAgents(state, now);
 
   return (
@@ -35,10 +35,10 @@ export default function ProfileModal({ state, onReset, onClose }: ProfileModalPr
         </div>
 
         <dl className="grid grid-cols-2 gap-2">
-          <Stat label="Total IQ balance" value={formatIq(state.iq)} />
-          <Stat label="Passive IQ/sec" value={formatRate(passiveRate(state, now))} />
+          <Stat label="Total ZP balance" value={formatZp(state.zp)} />
+          <Stat label="Passive ZP/sec" value={formatRate(passiveRate(state, now))} />
           <Stat label="Fragments connected" value={`${fixedCount(state)} / ${FRAGMENT_IDS.length}`} />
-          <Stat label="Lifetime IQ" value={formatIq(state.lifetimeIq)} />
+          <Stat label="Lifetime ZP" value={formatZp(state.lifetimeZp)} />
         </dl>
 
         <section className="space-y-2">
@@ -69,7 +69,7 @@ export default function ProfileModal({ state, onReset, onClose }: ProfileModalPr
         <section className="space-y-3 border-t border-red-500/25 pt-5">
           <p className="label !text-red-300/80">System utilities</p>
           <p className="font-mono text-[11px] leading-relaxed text-neon-500">
-            Wipes IQ, fragments, rentals, sub-nodes and vault link. This cannot be undone.
+            Wipes ZP, fragments, rentals, sub-nodes and vault link. This cannot be undone.
           </p>
           <button
             type="button"

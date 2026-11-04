@@ -1,6 +1,6 @@
 import { Check, Gift } from 'lucide-react';
 import { MILESTONES } from '@/lib/game/config';
-import { formatIq } from '@/lib/format';
+import { formatZp } from '@/lib/format';
 
 interface MilestonesListProps {
   subNodeCount: number;
@@ -29,7 +29,7 @@ export default function MilestonesList({ subNodeCount, claimed, onClaim }: Miles
                 <h3 className="font-display text-xs font-bold uppercase tracking-wide text-neon-300">
                   {milestone.threshold} Referrals
                 </h3>
-                <span className="font-mono text-[11px] tabular-nums text-neon-400">+{formatIq(milestone.reward)} IQ</span>
+                <span className="font-mono text-[11px] tabular-nums text-neon-400">+{formatZp(milestone.reward)} ZP</span>
               </div>
               <div className="bar mt-2.5">
                 <div className="bar-fill" style={{ width: `${progress}%` }} />

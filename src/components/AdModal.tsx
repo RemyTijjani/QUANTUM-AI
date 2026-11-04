@@ -60,7 +60,7 @@ export default function AdModal({ fragmentId, onComplete, onCancel }: AdModalPro
 
         {done ? (
           <button type="button" onClick={onComplete} className="btn-primary w-full">
-            Claim +{FRAGMENT_UNLOCK_REWARD} IQ
+            Claim +{FRAGMENT_UNLOCK_REWARD} ZP
           </button>
         ) : (
           <button type="button" onClick={onCancel} className="btn-ghost w-full">
