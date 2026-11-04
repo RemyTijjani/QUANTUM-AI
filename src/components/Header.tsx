@@ -42,7 +42,7 @@ export default function Header({ zp, onOpenProfile, onOpenLeaderboard }: HeaderP
           aria-live="polite"
         >
           <Zap size={14} className="fill-neon/40" />
-          <span className="font-display text-sm font-bold tabular-nums">{formatZp(zp)}</span>
+         <span className="font-display text-sm font-bold tabular-nums">{formatZp(Number(zp) || 0)}</span>
           <span className="font-mono text-[10px] text-neon-500">ZP</span>
         </div>
       </div>
