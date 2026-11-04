@@ -19,7 +19,7 @@ const RANK_TONE = ['text-amber-300', 'text-neon-300', 'text-cyan-300'];
 export default function LeaderboardModal({ lifetimeIq, onClose }: LeaderboardModalProps) {
   const entries: Entry[] = [
     ...RIVALS.map((rival) => ({ ...rival, isYou: false })),
-    { name: 'OPERATIVE-047 (YOU)', iq: lifetimeIq, isYou: true },
+    { name: 'OPERATIVE-047 (ZORD)', iq: lifetimeIq, isYou: true },
   ].sort((a, b) => b.iq - a.iq);
 
   return (

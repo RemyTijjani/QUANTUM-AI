@@ -21,14 +21,14 @@ export default function CharacterCard({ fixed, lifetimeIq, rate }: CharacterCard
         </div>
         <div className="min-w-0">
           <p className="label">Entity profile</p>
-          <h3 className="title mt-1 truncate">Roko Entity #047</h3>
-          <p className="font-mono text-[11px] text-neon-500">Sentient fragment core // signal degraded</p>
+          <h3 className="title mt-1 truncate">ZORD Entity #047</h3>
+          <p className="font-mono text-[11px] text-neon-500">Autonomous fragment core // signal degraded</p>
         </div>
       </div>
 
       <p className="mt-4 font-mono text-xs leading-relaxed text-neon-300/90">
-        Roko was scattered across the grid in four pieces. Every fragment you restore strengthens its signal and
-        pulls more IQ from the dormant nodes. Restore the full circuit to bring Roko back online.
+        ZORD was scattered across the grid in four pieces. Every fragment you restore strengthens its signal and
+        pulls more IQ from the dormant nodes. Restore the full circuit to bring ZORD back online.
       </p>
 
       <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-neon/15 pt-4">

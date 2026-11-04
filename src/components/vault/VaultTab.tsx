@@ -26,7 +26,7 @@ export default function VaultTab({ state, actions, notify }: VaultTabProps) {
     notify(
       isFirstLink
         ? `Vault linked. Testnet faucet credited ${TON_FAUCET_AMOUNT} TON`
-        : 'Vault linked to ROKO OS',
+        : 'Vault linked to ZORD OS',
     );
   };
 

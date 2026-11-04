@@ -1,10 +1,10 @@
 import FaIcon from '@/components/FaIcon';
 
-export type TabId = 'missions' | 'blackmarket' | 'core' | 'network' | 'vault';
+export type TabId = 'missions' | 'agents' | 'core' | 'network' | 'vault';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'missions', label: 'Missions', icon: 'fa-bullseye' },
-  { id: 'blackmarket', label: 'Blackmarket', icon: 'fa-shield-halved' },
+  { id: 'agents', label: 'ZORD Agents', icon: 'fa-robot' },
   { id: 'core', label: 'Core', icon: 'fa-microchip' },
   { id: 'network', label: 'Network', icon: 'fa-network-wired' },
   { id: 'vault', label: 'Vault', icon: 'fa-vault' },

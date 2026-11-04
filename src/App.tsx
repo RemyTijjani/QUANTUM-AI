@@ -7,10 +7,11 @@ import AdModal from '@/components/AdModal';
 import ProfileModal from '@/components/ProfileModal';
 import LeaderboardModal from '@/components/LeaderboardModal';
 import CoreTab from '@/components/core/CoreTab';
-import BlackmarketTab from '@/components/blackmarket/BlackmarketTab';
 import NetworkTab from '@/components/network/NetworkTab';
 import MissionsTab from '@/components/missions/MissionsTab';
 import VaultTab from '@/components/vault/VaultTab';
+import ZordAgentsTab from '@/components/agents/ZordAgentsTab';
+import AdminReviewModal from '@/components/admin/AdminReviewModal';
 import { useGame } from '@/hooks/useGame';
 import { useToast } from '@/hooks/useToast';
 import { FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
@@ -18,7 +19,7 @@ import type { FragmentId } from '@/lib/game/config';
 import { formatIq } from '@/lib/format';
 import { initTelegram } from '@/lib/telegram';
 
-type Overlay = 'profile' | 'leaderboard' | null;
+type Overlay = 'profile' | 'leaderboard' | 'admin' | null;
 
 export default function App() {
   const { state, actions } = useGame();
@@ -58,17 +59,11 @@ export default function App() {
         {tab === 'core' && (
           <CoreTab state={state} actions={actions} notify={notify} onWatchAd={setAdFragment} />
         )}
-        {tab === 'blackmarket' && (
-          <BlackmarketTab
-            state={state}
-            actions={actions}
-            notify={notify}
-            onWatchAd={setAdFragment}
-            onGoToVault={() => setTab('vault')}
-          />
-        )}
+        {tab === 'agents' && <ZordAgentsTab />}
         {tab === 'network' && <NetworkTab state={state} actions={actions} notify={notify} />}
-        {tab === 'missions' && <MissionsTab state={state} actions={actions} notify={notify} />}
+        {tab === 'missions' && (
+          <MissionsTab state={state} actions={actions} notify={notify} onOpenAdmin={() => setOverlay('admin')} />
+        )}
         {tab === 'vault' && <VaultTab state={state} actions={actions} notify={notify} />}
       </main>
 
@@ -82,6 +77,15 @@ export default function App() {
       )}
       {overlay === 'leaderboard' && (
         <LeaderboardModal lifetimeIq={state.lifetimeIq} onClose={() => setOverlay(null)} />
+      )}
+      {overlay === 'admin' && (
+        <AdminReviewModal
+          onClose={() => setOverlay(null)}
+          onApprove={(rewardIq) => {
+            actions.creditIq(rewardIq);
+            notify(`Submission approved. +${formatIq(rewardIq)} IQ credited to player`);
+          }}
+        />
       )}
 
       <Toast toast={toast} />

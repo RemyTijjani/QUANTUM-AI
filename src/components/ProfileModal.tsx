@@ -30,7 +30,7 @@ export default function ProfileModal({ state, onReset, onClose }: ProfileModalPr
             <h3 className="mt-1 font-display text-base font-bold uppercase tracking-wide text-neon-300">
               {tier.rank}
             </h3>
-            <p className="font-mono text-[11px] text-neon-500">OPERATIVE-047 // Tier {String(tier.tier).padStart(2, '0')}</p>
+            <p className="font-mono text-[11px] text-neon-500">OPERATIVE-047 // ZORD Tier {String(tier.tier).padStart(2, '0')}</p>
           </div>
         </div>
 
@@ -45,7 +45,7 @@ export default function ProfileModal({ state, onReset, onClose }: ProfileModalPr
           <p className="label">Active hash-agents</p>
           {rentals.length === 0 ? (
             <p className="rounded-lg border border-neon/15 bg-black/40 px-4 py-3 font-mono text-[11px] text-neon-500">
-              No agents online. Rent one in the Blackmarket.
+              No agents online. ZORD Agents are coming soon.
             </p>
           ) : (
             <ul className="space-y-2">

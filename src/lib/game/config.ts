@@ -1,3 +1,6 @@
+export const APP_NAME = 'ZORD Autonomous Agent';
+export const APP_TAGLINE = 'Autonomous Intellect. Total Group Dominion.';
+
 export const TIER_SIZE = 2500;
 
 export const RANKS = [
@@ -44,7 +47,7 @@ export interface AgentSpec {
 
 export const AGENTS: Record<AgentId, AgentSpec> = {
   alpha: {
-    name: 'Alpha Miner Agent',
+    name: 'ZORD Alpha Miner Agent',
     summary: 'Autonomous offline mining rig that keeps extracting IQ while you are away.',
     iqPerSec: 10,
     priceTon: 1.5,
@@ -52,7 +55,7 @@ export const AGENTS: Record<AgentId, AgentSpec> = {
     kickbackMultiplier: 1,
   },
   overclock: {
-    name: 'Overclocked Core Agent',
+    name: 'ZORD Overclocked Core Agent',
     summary: 'Max-clock hash core that triples the network kickback on every sub-node.',
     iqPerSec: 35,
     priceTon: 4.5,
@@ -74,7 +77,7 @@ export const MILESTONES = [
   { threshold: 25, reward: 5000 },
 ] as const;
 
-export type MissionKind = 'daily' | 'social';
+export type MissionKind = 'daily' | 'social' | 'creator';
 
 export interface MissionSpec {
   id: string;
@@ -82,6 +85,8 @@ export interface MissionSpec {
   title: string;
   description: string;
   reward: number;
+  platform?: 'tiktok' | 'youtube';
+  actionUrl?: string;
 }
 
 export const AD_QUOTA_TARGET = 3;
@@ -91,7 +96,7 @@ export const MISSIONS: MissionSpec[] = [
     id: 'daily-uplink',
     kind: 'daily',
     title: 'Daily Uplink',
-    description: 'Check in with ROKO OS for today.',
+    description: 'Check in with ZORD OS for today.',
     reward: 100,
   },
   {
@@ -105,15 +110,16 @@ export const MISSIONS: MissionSpec[] = [
     id: 'agent-uptime',
     kind: 'daily',
     title: 'Agent Uptime',
-    description: 'Keep a hash-agent rental running.',
+    description: 'Keep a ZORD agent running.',
     reward: 200,
   },
   {
     id: 'join-intel',
     kind: 'social',
-    title: 'Join the Roko Intel Channel',
+    title: 'Join the ZORD Intel Channel',
     description: 'Get field reports from the grid.',
     reward: 250,
+    actionUrl: 'https://t.me/zord_intel',
   },
   {
     id: 'follow-signal',
@@ -121,6 +127,7 @@ export const MISSIONS: MissionSpec[] = [
     title: 'Follow the Signal Feed',
     description: 'Catch every fragment drop as it breaks.',
     reward: 250,
+    actionUrl: 'https://x.com/zord_agent',
   },
   {
     id: 'share-uplink',
@@ -128,6 +135,22 @@ export const MISSIONS: MissionSpec[] = [
     title: 'Broadcast Your Uplink',
     description: 'Send your referral link to another operative.',
     reward: 300,
+  },
+  {
+    id: 'creator-tiktok',
+    kind: 'creator',
+    title: 'TikTok Content Drop',
+    description: 'Submit a TikTok link featuring ZORD Autonomous Agent.',
+    reward: 500,
+    platform: 'tiktok',
+  },
+  {
+    id: 'creator-youtube',
+    kind: 'creator',
+    title: 'YouTube Content Drop',
+    description: 'Submit a YouTube link featuring ZORD Autonomous Agent.',
+    reward: 500,
+    platform: 'youtube',
   },
 ];
 
@@ -154,4 +177,4 @@ export const RECRUIT_POOL = [
 
 export const TON_FAUCET_AMOUNT = 10;
 export const VAULT_ADDRESS = 'EQC1Z9kR4mW2pX7vN8qT3yL6hB5dJ0sF7x9W';
-export const TELEGRAM_BOT_USERNAME = 'roko_os_bot';
+export const TELEGRAM_BOT_USERNAME = 'zord_agent_bot';

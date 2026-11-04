@@ -12,7 +12,7 @@ interface NetworkTabProps {
   notify: Notify;
 }
 
-const SHARE_TEXT = 'Mine IQ with me in ROKO OS: Finding the Missing Piece';
+const SHARE_TEXT = 'Mine IQ with me in ZORD Autonomous Agent — Total Group Dominion';
 
 export default function NetworkTab({ state, actions, notify }: NetworkTabProps) {
   const link = `https://t.me/${TELEGRAM_BOT_USERNAME}?startapp=${state.referralCode}`;

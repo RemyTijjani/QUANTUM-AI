@@ -1,7 +1,7 @@
 import { advance, createInitialState } from './state';
 import type { GameState } from './state';
 
-const STORAGE_KEY = 'roko-os-state-v1';
+const STORAGE_KEY = 'zord-agent-state-v1';
 
 export function loadState(now: number): GameState {
   const fresh = createInitialState(now);

@@ -70,11 +70,12 @@ export type Command =
   | { type: 'claimKickback' }
   | { type: 'claimMilestone'; threshold: number }
   | { type: 'recruitSubNode'; id: string; name: string }
-  | { type: 'claimMission'; id: string };
+  | { type: 'claimMission'; id: string }
+  | { type: 'creditIq'; amount: number };
 
 export type GameAction = Command & { now: number };
 
-const makeReferralCode = () => `ROKO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+const makeReferralCode = () => `ZORD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
 export function createInitialState(now: number): GameState {
   return {
@@ -300,6 +301,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         { ...s, missionClaims: { ...s.missionClaims, [mission.id]: missionKey(mission, now) } },
         mission.reward,
       );
+    }
+
+    case 'creditIq': {
+      if (action.amount <= 0) return s;
+      return credit(s, action.amount);
     }
   }
 }

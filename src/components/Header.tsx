@@ -20,10 +20,10 @@ export default function Header({ iq, onOpenProfile, onOpenLeaderboard }: HeaderP
           <User size={20} />
         </button>
         <div className="min-w-0">
-          <h1 className="title glow-text leading-none">ROKO OS</h1>
+          <h1 className="title glow-text leading-none">ZORD</h1>
           <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-neon-500">
             <span className="h-1.5 w-1.5 shrink-0 animate-soft-pulse rounded-full bg-neon shadow-glow" />
-            <span className="truncate">STATUS: IQ MINING ACTIVE</span>
+            <span className="truncate">AUTONOMOUS AGENT // IQ MINING ACTIVE</span>
           </p>
         </div>
       </div>
