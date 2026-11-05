@@ -11,7 +11,7 @@ import NetworkTab from '@/components/network/NetworkTab';
 import MissionsTab from '@/components/missions/MissionsTab';
 import VaultTab from '@/components/vault/VaultTab';
 import ZordAgentsTab from '@/components/agents/ZordAgentsTab';
-import AdminReviewModal from '@/components/admin/AdminReviewModal';
+import { AdminDashboard } from '@/components/AdminDashboard'; 
 import { useGame } from '@/hooks/useGame';
 import { useToast } from '@/hooks/useToast';
 import { FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
@@ -80,10 +80,10 @@ export default function App() {
       {overlay === 'leaderboard' && (
         <LeaderboardModal lifetimeZp={state.lifetimeZp} onClose={() => setOverlay(null)} />
       )}
-      {overlay === 'admin' && (
-        <AdminReviewModal
+    {overlay === 'admin' && (
+        <AdminDashboard
           onClose={() => setOverlay(null)}
-          onApprove={(rewardZp) => {
+          onApproveSubmission={(rewardZp) => {
             actions.creditZp(rewardZp);
             notify(`Submission approved. +${formatZp(rewardZp)} ZP credited to player`);
           }}
