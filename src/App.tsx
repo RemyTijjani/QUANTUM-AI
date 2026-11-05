@@ -18,6 +18,7 @@ import { FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
 import { formatZp } from '@/lib/format';
 import { initTelegram } from '@/lib/telegram';
+import { registerReferral } from '@/lib/referral';
 
 type Overlay = 'profile' | 'leaderboard' | 'admin' | null;
 
@@ -30,7 +31,8 @@ export default function App() {
 
   useEffect(() => {
     initTelegram();
-  }, []);
+    registerReferral(state.referralCode);
+  }, [state.referralCode]);
 
   const completeAd = () => {
     if (!adFragment) return;

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { gameReducer } from '@/lib/game/state';
 import type { Command, GameState } from '@/lib/game/state';
 import { loadState, saveState } from '@/lib/game/storage';
 import type { AgentId, FragmentId } from '@/lib/game/config';
+import { fetchUnsyncedReferrals, markReferralsSynced } from '@/lib/referral';
 
 function createActions(send: (command: Command) => void) {
   return {
@@ -40,6 +41,39 @@ export function useGame(): { state: GameState; actions: GameActions } {
     () => createActions((command) => dispatch({ ...command, now: Date.now() })),
     [],
   );
+
+  const syncedReferralIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const poll = async () => {
+      const records = await fetchUnsyncedReferrals(state.referralCode);
+      if (cancelled || records.length === 0) return;
+
+      const newRecords = records.filter((r) => !syncedReferralIds.current.has(r.id));
+      if (newRecords.length === 0) return;
+
+      for (const record of newRecords) {
+        syncedReferralIds.current.add(record.id);
+        dispatch({
+          type: 'recruitSubNode',
+          id: record.recruit_code,
+          name: record.recruit_name,
+          now: Date.now(),
+        });
+      }
+
+      await markReferralsSynced(newRecords.map((r) => r.id));
+    };
+
+    poll();
+    const interval = window.setInterval(poll, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [state.referralCode]);
 
   return { state, actions };
 }
