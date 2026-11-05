@@ -68,7 +68,7 @@ export const MYSTERY_FRAGMENT_COST = 300;
 export const BOOSTER_COST = 200;
 export const BOOSTER_REWARD = 500;
 
-export const SUB_NODE_RATE = 2;
+export const SUB_NODE_RATE = 0.001;
 export const KICKBACK_RATE = 0.1;
 
 export const MILESTONES = [
