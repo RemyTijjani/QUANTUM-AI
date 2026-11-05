@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import FaIcon from '@/components/FaIcon';
-import { FRAGMENT_IDS, FRAGMENT_IQ_PER_SEC, FRAGMENT_NAMES } from '@/lib/game/config';
+import { FRAGMENT_IDS, FRAGMENT_ZP_PER_SEC, FRAGMENT_NAMES } from '@/lib/game/config';
 import { formatCooldown } from '@/lib/format';
 import type { FragmentId } from '@/lib/game/config';
 import type { FragmentStatus } from '@/lib/game/state';
@@ -73,7 +73,7 @@ function FragmentBay({
       <span className="font-mono text-[10px] uppercase tracking-wider opacity-90">{label}</span>
       {status === 'fixed' && (
         <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-yellow-500/90">
-          +{FRAGMENT_IQ_PER_SEC.toFixed(2)} ZP/sec
+          +{FRAGMENT_ZP_PER_SEC.toFixed(2)} ZP/sec
         </span>
       )}
     </button>

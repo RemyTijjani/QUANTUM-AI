@@ -183,7 +183,7 @@ function MissionCard({ mission, status, progressLabel, verifiable, onClaim }: Mi
         <h3 className="font-display text-xs font-bold uppercase tracking-wide text-neon-300">{mission.title}</h3>
         <p className="mt-1 font-mono text-[11px] leading-relaxed text-neon-500">{mission.description}</p>
         <div className="mt-2 flex items-center gap-3 font-mono text-[11px] tabular-nums">
-          <span className="text-neon-400">+{formatZp(mission.reward)} IQ</span>
+          <span className="text-neon-400">+{formatZp(mission.reward)} ZP</span>
           {progressLabel && <span className="text-cyan-300">{progressLabel}</span>}
         </div>
       </div>

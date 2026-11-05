@@ -17,7 +17,7 @@ function createActions(send: (command: Command) => void) {
     claimMilestone: (threshold: number) => send({ type: 'claimMilestone', threshold }),
     recruitSubNode: (id: string, name: string) => send({ type: 'recruitSubNode', id, name }),
     claimMission: (id: string) => send({ type: 'claimMission', id }),
-    creditIq: (amount: number) => send({ type: 'creditIq', amount }),
+    creditZp: (amount: number) => send({ type: 'creditZp', amount }),
     reset: () => send({ type: 'reset' }),
   };
 }

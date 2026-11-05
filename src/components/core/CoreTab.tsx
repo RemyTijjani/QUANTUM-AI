@@ -19,7 +19,7 @@ interface CoreTabProps {
 
 export default function CoreTab({ state, actions, notify, onWatchAd }: CoreTabProps) {
   const now = Date.now();
-  const tier = tierInfo(state.lifetimeIq);
+  const tier = tierInfo(state.lifetimeZp);
   const rate = passiveRate(state, now);
   const miningLeft = state.coreMiningUntil - now;
 
@@ -62,7 +62,7 @@ export default function CoreTab({ state, actions, notify, onWatchAd }: CoreTabPr
       </p>
       <CharacterCard
         fixed={fixedCount(state)}
-        lifetimeIq={formatZp(state.lifetimeIq)}
+        lifetimeZp={formatZp(state.lifetimeZp)}
         rate={formatRate(rate)}
       />
     </div>

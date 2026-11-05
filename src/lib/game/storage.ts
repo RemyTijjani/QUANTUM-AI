@@ -9,7 +9,7 @@ export function loadState(now: number): GameState {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return fresh;
     const parsed = JSON.parse(raw) as Partial<GameState>;
-    if (typeof parsed.iq !== 'number' || typeof parsed.lifetimeIq !== 'number' || typeof parsed.lastTick !== 'number') {
+    if (typeof parsed.zp !== 'number' || typeof parsed.lifetimeZp !== 'number' || typeof parsed.lastTick !== 'number') {
       return fresh;
     }
     const merged: GameState = {

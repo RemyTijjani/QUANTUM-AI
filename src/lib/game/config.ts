@@ -26,7 +26,7 @@ export const FRAGMENT_NAMES: Record<FragmentId, string> = {
 
 export const FRAGMENT_UNLOCK_REWARD = 50;
 export const CORE_BASE_RATE = 0.01;
-export const FRAGMENT_IQ_PER_SEC = 0.02;
+export const FRAGMENT_ZP_PER_SEC = 0.02;
 export const FRAGMENT_COOLDOWN_HOURS = 3;
 export const FRAGMENT_COOLDOWN_MS = FRAGMENT_COOLDOWN_HOURS * 60 * 60 * 1000;
 export const CORE_SESSION_HOURS = 4;
@@ -39,7 +39,7 @@ export type AgentId = (typeof AGENT_IDS)[number];
 export interface AgentSpec {
   name: string;
   summary: string;
-  iqPerSec: number;
+  zpPerSec: number;
   priceTon: number;
   durationDays: number;
   kickbackMultiplier: number;
@@ -48,8 +48,8 @@ export interface AgentSpec {
 export const AGENTS: Record<AgentId, AgentSpec> = {
   alpha: {
     name: 'ZORD Alpha Miner Agent',
-    summary: 'Autonomous offline mining rig that keeps extracting IQ while you are away.',
-    iqPerSec: 10,
+    summary: 'Autonomous offline mining rig that keeps extracting ZP while you are away.',
+    zpPerSec: 10,
     priceTon: 1.5,
     durationDays: 7,
     kickbackMultiplier: 1,
@@ -57,7 +57,7 @@ export const AGENTS: Record<AgentId, AgentSpec> = {
   overclock: {
     name: 'ZORD Overclocked Core Agent',
     summary: 'Max-clock hash core that triples the network kickback on every sub-node.',
-    iqPerSec: 35,
+    zpPerSec: 35,
     priceTon: 4.5,
     durationDays: 30,
     kickbackMultiplier: 3,
@@ -155,13 +155,13 @@ export const MISSIONS: MissionSpec[] = [
 ];
 
 export const RIVALS = [
-  { name: 'NEON_WRAITH', iq: 184200 },
-  { name: 'GHOST//KERNEL', iq: 142950 },
-  { name: 'VOID_SPLICER', iq: 97410 },
-  { name: 'PIXEL_MONK', iq: 61230 },
-  { name: 'CIPHER_OWL', iq: 38775 },
-  { name: 'BYTE_HERALD', iq: 21090 },
-  { name: 'SIGNAL_RAVEN', iq: 9640 },
+  { name: 'NEON_WRAITH', zp: 184200 },
+  { name: 'GHOST//KERNEL', zp: 142950 },
+  { name: 'VOID_SPLICER', zp: 97410 },
+  { name: 'PIXEL_MONK', zp: 61230 },
+  { name: 'CIPHER_OWL', zp: 38775 },
+  { name: 'BYTE_HERALD', zp: 21090 },
+  { name: 'SIGNAL_RAVEN', zp: 9640 },
 ];
 
 export const RECRUIT_POOL = [

@@ -2,14 +2,14 @@ import { Bot } from 'lucide-react';
 
 interface CharacterCardProps {
   fixed: number;
-  lifetimeIq: string;
+  lifetimeZp: string;
   rate: string;
 }
 
-export default function CharacterCard({ fixed, lifetimeIq, rate }: CharacterCardProps) {
+export default function CharacterCard({ fixed, lifetimeZp, rate }: CharacterCardProps) {
   const stats = [
     { label: 'Fragments', value: `${fixed}/4` },
-    { label: 'Lifetime ZP', value: lifetimeIq },
+    { label: 'Lifetime ZP', value: lifetimeZp },
     { label: 'ZP / sec', value: rate },
   ];
 

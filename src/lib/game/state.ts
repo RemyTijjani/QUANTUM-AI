@@ -6,7 +6,7 @@ import {
   BOOSTER_REWARD,
   CORE_BASE_RATE,
   FRAGMENT_COOLDOWN_MS,
-  FRAGMENT_IQ_PER_SEC,
+  FRAGMENT_ZP_PER_SEC,
   CORE_SESSION_HOURS,
   FRAGMENT_IDS,
   FRAGMENT_UNLOCK_REWARD,
@@ -41,8 +41,8 @@ export interface WalletState {
 }
 
 export interface GameState {
-  iq: number;
-  lifetimeIq: number;
+  zp: number;
+  lifetimeZp: number;
   fragments: Record<FragmentId, FragmentStatus>;
   fragmentCooldowns: Record<FragmentId, number>;
   agents: Record<AgentId, number>;
@@ -71,7 +71,7 @@ export type Command =
   | { type: 'claimMilestone'; threshold: number }
   | { type: 'recruitSubNode'; id: string; name: string }
   | { type: 'claimMission'; id: string }
-  | { type: 'creditIq'; amount: number };
+  | { type: 'creditZp'; amount: number };
 
 export type GameAction = Command & { now: number };
 
@@ -79,8 +79,8 @@ const makeReferralCode = () => `ZORD-${Math.random().toString(36).slice(2, 8).to
 
 export function createInitialState(now: number): GameState {
   return {
-    iq: 0,
-    lifetimeIq: 0,
+    zp: 0,
+    lifetimeZp: 0,
     fragments: { top: 'locked', bottom: 'locked', left: 'locked', right: 'locked' },
     fragmentCooldowns: { top: 0, bottom: 0, left: 0, right: 0 },
     agents: { alpha: 0, overclock: 0 },
@@ -107,8 +107,8 @@ export const fragmentCooldownRemaining = (s: GameState, id: FragmentId, now: num
 
 export function passiveRate(s: GameState, now: number) {
   const coreRate = now < s.coreMiningUntil ? CORE_BASE_RATE : 0;
-  const fragmentRate = fixedCount(s) * FRAGMENT_IQ_PER_SEC;
-  const agentRate = activeAgents(s, now).reduce((sum, id) => sum + AGENTS[id].iqPerSec, 0);
+  const fragmentRate = fixedCount(s) * FRAGMENT_ZP_PER_SEC;
+  const agentRate = activeAgents(s, now).reduce((sum, id) => sum + AGENTS[id].zpPerSec, 0);
   return coreRate + fragmentRate + agentRate;
 }
 
@@ -119,9 +119,9 @@ function kickbackMultiplier(s: GameState, now: number) {
 export const adsWatchedToday = (s: GameState, now: number) =>
   s.adsWatched.day === dayKey(now) ? s.adsWatched.count : 0;
 
-export function tierInfo(lifetimeIq: number) {
-  const tier = Math.floor(lifetimeIq / TIER_SIZE) + 1;
-  const intoTier = lifetimeIq % TIER_SIZE;
+export function tierInfo(lifetimeZp: number) {
+  const tier = Math.floor(lifetimeZp / TIER_SIZE) + 1;
+  const intoTier = lifetimeZp % TIER_SIZE;
   return {
     tier,
     rank: RANKS[Math.min(tier - 1, RANKS.length - 1)],
@@ -153,8 +153,8 @@ const roundTon = (value: number) => Math.round(value * 100) / 100;
 
 const credit = (s: GameState, amount: number): GameState => ({
   ...s,
-  iq: s.iq + amount,
-  lifetimeIq: s.lifetimeIq + amount,
+  zp: s.zp + amount,
+  lifetimeZp: s.lifetimeZp + amount,
 });
 
 function accrue(s: GameState, seconds: number): GameState {
@@ -166,8 +166,8 @@ function accrue(s: GameState, seconds: number): GameState {
     : 0;
   return {
     ...s,
-    iq: s.iq + passive,
-    lifetimeIq: s.lifetimeIq + passive,
+    zp: s.zp + passive,
+    lifetimeZp: s.lifetimeZp + passive,
     kickbackPending: s.kickbackPending + kickback,
     subNodes: hasSubNodes
       ? s.subNodes.map((node) => ({ ...node, generated: node.generated + SUB_NODE_RATE * seconds }))
@@ -235,19 +235,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (
         s.fragments[action.id] === 'fixed' ||
         fragmentCooldownRemaining(s, action.id, now) > 0 ||
-        s.iq < MYSTERY_FRAGMENT_COST
+        s.zp < MYSTERY_FRAGMENT_COST
       ) return s;
       return {
         ...s,
-        iq: s.iq - MYSTERY_FRAGMENT_COST,
+        zp: s.zp - MYSTERY_FRAGMENT_COST,
         fragments: { ...s.fragments, [action.id]: 'fixed' },
         fragmentCooldowns: { ...s.fragmentCooldowns, [action.id]: now + FRAGMENT_COOLDOWN_MS },
         coreMiningUntil: now + CORE_SESSION_MS,
       };
 
     case 'buyBooster':
-      if (s.iq < BOOSTER_COST) return s;
-      return credit({ ...s, iq: s.iq - BOOSTER_COST }, BOOSTER_REWARD);
+      if (s.zp < BOOSTER_COST) return s;
+      return credit({ ...s, zp: s.zp - BOOSTER_COST }, BOOSTER_REWARD);
 
     case 'rentAgent': {
       const spec = AGENTS[action.id];
@@ -303,7 +303,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       );
     }
 
-    case 'creditIq': {
+    case 'creditZp': {
       if (action.amount <= 0) return s;
       return credit(s, action.amount);
     }

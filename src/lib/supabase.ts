@@ -14,7 +14,7 @@ export interface CreatorOpsSubmission {
   link_url: string;
   platform: 'tiktok' | 'youtube';
   status: 'pending' | 'approved' | 'rejected';
-  reward_iq: number;
+  reward_zp: number;
   reviewed_at: string | null;
   created_at: string;
 }
