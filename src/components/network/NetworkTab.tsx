@@ -1,5 +1,5 @@
-import { Copy, Share2, Users, Radar } from 'lucide-react';
-import { KICKBACK_RATE, MILESTONES, RECRUIT_POOL, SUB_NODE_RATE, TELEGRAM_BOT_USERNAME } from '@/lib/game/config';
+import { Copy, Share2, Users } from 'lucide-react';
+import { KICKBACK_RATE, MILESTONES, SUB_NODE_RATE, TELEGRAM_BOT_USERNAME } from '@/lib/game/config';
 import { formatZp, formatRate } from '@/lib/format';
 import type { GameState } from '@/lib/game/state';
 import type { GameActions } from '@/hooks/useGame';
@@ -37,14 +37,6 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
     const amount = kickbackWhole;
     actions.claimKickback();
     notify(`Kickback claimed. +${formatZp(amount)} ZP`);
-  };
-
-  const simulateRecruit = () => {
-    const taken = new Set(state.subNodes.map((node) => node.name));
-    const available = RECRUIT_POOL.filter((name) => !taken.has(name));
-    const name = available[Math.floor(Math.random() * available.length)] ?? `OPERATIVE_${state.subNodes.length + 1}`;
-    actions.recruitSubNode(`${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name);
-    notify(`${name} joined your sub-node network`);
   };
 
   return (
@@ -145,9 +137,6 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
             <span className="font-mono text-[10px] uppercase tracking-wider text-neon-500">
               Network total {formatZp(subNodeTotal)} ZP
             </span>
-            <button type="button" onClick={simulateRecruit} className="btn-ghost px-3 py-2 text-[10px]">
-              <Radar size={13} /> Simulate recruit
-            </button>
           </div>
         </div>
       </section>
