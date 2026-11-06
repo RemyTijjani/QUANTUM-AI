@@ -1,10 +1,14 @@
 import { useEffect, useState, FormEvent } from 'react';
-import { Check, X, ExternalLink, Clock, ShieldCheck, RefreshCw, Terminal, Activity, Users, Database, Radio, Download, Zap, Cpu, ArrowLeft, Plus, Edit2, Trash2 } from 'lucide-react';
+import { Check, X, ExternalLink, Clock, ShieldCheck, RefreshCw, Terminal, Activity, Users, Database, Radio, Download, Zap, Cpu, ArrowLeft, Plus, Edit2, Trash2, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { CreatorOpsSubmission } from '@/lib/supabase';
 import { MISSIONS } from '@/lib/game/config';
 import { formatZp } from '@/lib/format';
 import Modal from '@/components/Modal';
+
+const ADMIN_USERNAME = 'Remytijjani';
+const ADMIN_PASSWORD = 'Remytijjani656';
+const ADMIN_AUTH_KEY = 'zord-admin-auth';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -12,6 +16,7 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardProps) {
+  const [authenticated, setAuthenticated] = useState(() => window.sessionStorage.getItem(ADMIN_AUTH_KEY) === '1');
   const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'operatives'>('queue');
   
   // Review Queue States
@@ -96,6 +101,10 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
   };
 
   const missionTitle = (id: string) => tasks.find((m) => m.id === id)?.title ?? id;
+
+  if (!authenticated) {
+    return <AdminLogin onSuccess={() => setAuthenticated(true)} onClose={onClose} />;
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-[#020503] text-neon-400 font-mono p-4 overflow-y-auto flex flex-col gap-6">
@@ -439,6 +448,80 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
         </Modal>
       )}
 
+    </div>
+  );
+}
+
+function AdminLogin({ onSuccess, onClose }: { onSuccess: () => void; onClose: () => void }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (username.trim() === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      window.sessionStorage.setItem(ADMIN_AUTH_KEY, '1');
+      onSuccess();
+    } else {
+      setError('Invalid credentials. Access denied.');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#020503] text-neon-400 font-mono flex items-center justify-center p-4">
+      <div className="panel w-full max-w-sm border border-neon/30 bg-[#020503]/95 p-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 border border-neon bg-neon/10 text-neon">
+            <Lock size={20} />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-neon-600">Autonomous Moderation Intelligence</p>
+            <h1 className="text-base font-display font-bold tracking-wider text-neon-300">ZORD OS // ADMIN ACCESS</h1>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-[11px] text-neon-500 uppercase">Operator ID</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setError(''); }}
+              autoFocus
+              required
+              className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 focus:outline-none focus:border-neon"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] text-neon-500 uppercase">Access Key</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(''); }}
+              required
+              className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 focus:outline-none focus:border-neon"
+            />
+          </div>
+
+          {error && (
+            <p className="text-[11px] text-red-400 border-l-2 border-red-500/50 pl-2">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            className="w-full py-2 bg-neon/20 hover:bg-neon/30 border border-neon text-xs uppercase tracking-wider font-bold transition"
+          >
+            Authenticate
+          </button>
+        </form>
+
+        <button
+          onClick={onClose}
+          className="w-full text-center text-[10px] uppercase tracking-wider text-neon-600 hover:text-neon-400 transition"
+        >
+          Return to App
+        </button>
+      </div>
     </div>
   );
 }

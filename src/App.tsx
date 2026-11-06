@@ -11,7 +11,7 @@ import NetworkTab from '@/components/network/NetworkTab';
 import MissionsTab from '@/components/missions/MissionsTab';
 import VaultTab from '@/components/vault/VaultTab';
 import ZordAgentsTab from '@/components/agents/ZordAgentsTab';
-import { AdminDashboard } from '@/components/AdminDashboard'; 
+import { AdminDashboard } from '@/components/admin/AdminReviewModal';
 import { useGame } from '@/hooks/useGame';
 import { useToast } from '@/hooks/useToast';
 import { FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
