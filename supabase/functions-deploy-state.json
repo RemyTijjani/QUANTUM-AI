@@ -3,11 +3,11 @@
   "functions": {
     "admin-api": {
       "hasChanged": false,
-      "hash": "54eb7daebae50a6e49473ae6c5abe54f545d7dc881c50a2c51e6af6748a2b54b"
+      "hash": "c05a50b6bb7c2cd61fc2dc8d020e12139cec8b3c7bc927e3fd46ec75fc52aba2"
     },
     "telegram-auth": {
       "hasChanged": false,
-      "hash": "90a628e4cae4e1e21cef590b2d55cf56b870e1f3f22fe2bb5839e4d26e1221d9"
+      "hash": "74da450b3396ce8e79952b043eeea67bee7846917d5327215a794bde90272ff4"
     }
   }
 }

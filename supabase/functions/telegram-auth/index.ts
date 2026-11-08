@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-// telegram-auth: verifies Telegram WebApp initData and creates/authenticates player sessions
+// telegram-auth: verifies Telegram WebApp initData and creates/authenticates player sessions (redeploy 2)
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
