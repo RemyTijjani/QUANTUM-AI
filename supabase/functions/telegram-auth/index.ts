@@ -77,12 +77,6 @@ function makeReferralCode(): string {
   return code;
 }
 
-/**
- * Derives a deterministic password for a Telegram user.
- * The password is HMAC-SHA256(telegram_id, BOT_TOKEN) hex-encoded.
- * This is never shown to the user; it's only used for server-side user creation
- * and the client uses it to sign in via signInWithPassword.
- */
 async function derivePassword(telegramId: number): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(BOT_TOKEN);
@@ -109,7 +103,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { initData } = await req.json();
+    // 1. Extract initData AND referrerCode from client payload
+    const { initData, referrerCode: clientReferrerCode } = await req.json();
     if (typeof initData !== "string" || initData.length === 0) {
       return new Response(JSON.stringify({ error: "initData is required" }), {
         status: 400,
@@ -142,6 +137,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     let referralCode: string;
+    let isNewUser = false;
 
     if (existing) {
       referralCode = existing.referral_code;
@@ -156,6 +152,7 @@ Deno.serve(async (req: Request) => {
           .eq("id", existing.id);
       }
     } else {
+      isNewUser = true;
       const { data: authUser, error: authError } = await admin.auth.admin.createUser({
         email,
         password,
@@ -193,6 +190,24 @@ Deno.serve(async (req: Request) => {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      // 2. Process Referral Reward if client passed a valid referrer code on first signup
+      if (clientReferrerCode && typeof clientReferrerCode === "string") {
+        // Find referrer by their referral_code in players table
+        const { data: referrerPlayer } = await admin
+          .from("players")
+          .select("telegram_id")
+          .eq("referral_code", clientReferrerCode.trim())
+          .maybeSingle();
+
+        if (referrerPlayer && referrerPlayer.telegram_id !== telegramId) {
+          // Call the atomic SQL RPC function to award kickbacks and bonuses
+          await admin.rpc("register_referral", {
+            p_referrer_tg_id: referrerPlayer.telegram_id,
+            p_referred_tg_id: telegramId,
+          });
+        }
       }
     }
 
