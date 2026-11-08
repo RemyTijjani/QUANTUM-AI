@@ -8,6 +8,7 @@ import type { AuthState, AuthPlayer } from '@/lib/auth';
 
 const REFERRER_KEY = 'zord-referrer-code';
 const AUTH_KEY = 'zord-auth-player';
+const LAST_TG_ID_KEY = 'zord_last_telegram_id';
 const AUTH_TIMEOUT_MS = 5000;
 const GUEST_OWNER_ID = 'guest';
 
@@ -27,11 +28,12 @@ const GUEST_PLAYER: AuthPlayer = {
   referralCode: null,
 };
 
-async function authenticateWithBackend(initData: string): Promise<AuthPlayer> {
+async function authenticateWithBackend(initData: string, referrerCode?: string | null): Promise<AuthPlayer> {
   const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-auth`;
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
   let response: Response;
+  
   try {
     response = await fetch(functionUrl, {
       method: 'POST',
@@ -39,7 +41,8 @@ async function authenticateWithBackend(initData: string): Promise<AuthPlayer> {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify({ initData }),
+      // Pass referrerCode to backend edge function so it can process referral bonuses securely
+      body: JSON.stringify({ initData, referrerCode }),
       signal: controller.signal,
     });
   } finally {
@@ -86,13 +89,37 @@ function playerFromTelegramUser(user: TelegramUser): AuthPlayer {
 
 async function authenticate(): Promise<{ player: AuthPlayer } | { error: string }> {
   const initData = getTelegramInitData();
+  
+  // Extract and clean start parameter for referrals (supports ZORD- codes or ref_ prefixes)
+  let rawStartParam = getTelegramStartParam();
+  let referrerCode: string | null = null;
+
+  if (rawStartParam) {
+    if (rawStartParam.startsWith('ref_')) {
+      referrerCode = rawStartParam.replace('ref_', '');
+    } else if (rawStartParam.startsWith('ZORD-')) {
+      referrerCode = rawStartParam;
+    }
+  }
+
+  // Fallback to stored referrer if not in current URL start_param
+  if (!referrerCode) {
+    referrerCode = getStoredReferrerCode();
+  } else {
+    try {
+      window.localStorage.setItem(REFERRER_KEY, referrerCode);
+    } catch {
+      // ignore
+    }
+  }
+
   if (!initData) {
     if (import.meta.env.DEV) return { player: DEV_MOCK_PLAYER };
     return { player: GUEST_PLAYER };
   }
 
   try {
-    return { player: await authenticateWithBackend(initData) };
+    return { player: await authenticateWithBackend(initData, referrerCode) };
   } catch (err) {
     console.warn('Backend Telegram sign-in unavailable, using Telegram identity.', err);
     const telegramUser = getTelegramUser();
@@ -119,17 +146,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const init = async () => {
       const telegramUser = getTelegramUser();
-      await claimLocalSession(telegramUser ? String(telegramUser.id) : GUEST_OWNER_ID);
-      if (cancelled) return;
+      const currentTgId = telegramUser ? String(telegramUser.id) : GUEST_OWNER_ID;
 
-      const referrerCode = getTelegramStartParam();
-      if (referrerCode && referrerCode.startsWith('ZORD-')) {
-        try {
-          window.localStorage.setItem(REFERRER_KEY, referrerCode);
-        } catch {
-          // ignore
+      // 1. Telegram Account Switch Detection:
+      // If the active Telegram account changed on the device, flush local storage cache
+      try {
+        const lastTgId = window.localStorage.getItem(LAST_TG_ID_KEY);
+        if (lastTgId && lastTgId !== currentTgId) {
+          window.localStorage.removeItem(AUTH_KEY);
+          window.localStorage.removeItem(REFERRER_KEY);
         }
+        window.localStorage.setItem(LAST_TG_ID_KEY, currentTgId);
+      } catch {
+        // ignore
       }
+
+      await claimLocalSession(currentTgId);
+      if (cancelled) return;
 
       let result: Awaited<ReturnType<typeof authenticate>>;
       try {
