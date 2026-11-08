@@ -7,11 +7,13 @@ import {
   reviewSubmission,
   saveTask,
   deleteTask,
+  saveVaultReserves,
 } from '@/lib/admin/adminApi';
-import type { AdminCredentials, AdminDashboardData, AdminSubmission, AdminTaskInput } from '@/lib/admin/adminApi';
+import type { AdminCredentials, AdminDashboardData, AdminSubmission, AdminTaskInput, AdminVaultReserves } from '@/lib/admin/adminApi';
 import AdminLogin from '@/components/admin/AdminLogin';
 import AdminTaskManager from '@/components/admin/AdminTaskManager';
-import { NeonSpinner } from '@/components/admin/NeonSpinner';
+import VaultReservesCard from '@/components/admin/VaultReservesCard';
+import { NeonSpinner } from '@/components/NeonSpinner';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -125,6 +127,12 @@ function AdminConsole({
       setActionError(errorMessage(err));
     }
     setBusyTaskId(null);
+  };
+
+  const handleSaveVaultReserves = async (reserves: AdminVaultReserves) => {
+    await saveVaultReserves(creds, reserves);
+    addLog(`[VAULT] Reserves updated: ${reserves.tonReserve} TON / ${formatZp(reserves.zpReserve)} ZP`);
+    await refresh();
   };
 
   const handleFlushCache = () => {
@@ -317,6 +325,14 @@ function AdminConsole({
               <p className="text-2xl font-display font-bold text-neon-300 tabular-nums">{statValue(data.stats.pendingSubmissions)}</p>
               <p className="text-[10px] text-neon-600 mt-1">Awaiting approval</p>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <VaultReservesCard
+              reserves={data.vaultReserves}
+              refreshing={refreshing}
+              onSave={handleSaveVaultReserves}
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

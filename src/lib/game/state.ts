@@ -12,7 +12,6 @@ import {
   FRAGMENT_UNLOCK_REWARD,
   KICKBACK_RATE,
   MILESTONES,
-  MISSIONS,
   MYSTERY_FRAGMENT_COST,
   RANKS,
   SUB_NODE_RATE,
@@ -71,7 +70,7 @@ export type Command =
   | { type: 'claimKickback' }
   | { type: 'claimMilestone'; threshold: number }
   | { type: 'recruitSubNode'; id: string; name: string }
-  | { type: 'claimMission'; id: string }
+  | { type: 'claimMission'; mission: MissionSpec }
   | { type: 'creditZp'; amount: number };
 
 export type GameAction = Command & { now: number };
@@ -297,8 +296,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       };
 
     case 'claimMission': {
-      const mission = MISSIONS.find((m) => m.id === action.id);
-      if (!mission || missionStatus(s, mission, now) !== 'ready') return s;
+      const { mission } = action;
+      if (missionStatus(s, mission, now) !== 'ready') return s;
       return credit(
         { ...s, missionClaims: { ...s.missionClaims, [mission.id]: missionKey(mission, now) } },
         mission.reward,

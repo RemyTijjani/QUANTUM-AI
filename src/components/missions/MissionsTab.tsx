@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock } from 'lucide-react';
-import { AD_QUOTA_TARGET, MISSIONS } from '@/lib/game/config';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock, AlertTriangle, RefreshCw } from 'lucide-react';
+import { AD_QUOTA_TARGET } from '@/lib/game/config';
 import type { MissionSpec } from '@/lib/game/config';
 import { adsWatchedToday, missionStatus } from '@/lib/game/state';
 import type { GameState } from '@/lib/game/state';
@@ -9,6 +9,8 @@ import type { GameActions } from '@/hooks/useGame';
 import type { Notify } from '@/hooks/useToast';
 import { supabase } from '@/lib/supabase';
 import type { CreatorOpsSubmission } from '@/lib/supabase';
+import { fetchMissions } from '@/lib/missions';
+import { NeonSpinner } from '@/components/NeonSpinner';
 
 const VERIFY_MS = 2000;
 
@@ -20,13 +22,48 @@ interface MissionsTabProps {
 }
 
 export default function MissionsTab({ state, actions, notify, onOpenAdmin }: MissionsTabProps) {
+  const [missions, setMissions] = useState<MissionSpec[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadMissions = useCallback(async () => {
+    setLoadError(null);
+    try {
+      setMissions(await fetchMissions());
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load missions.');
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMissions();
+  }, [loadMissions]);
+
   const now = Date.now();
-  const daily = MISSIONS.filter((m) => m.kind === 'daily');
-  const social = MISSIONS.filter((m) => m.kind === 'social');
-  const creator = MISSIONS.filter((m) => m.kind === 'creator');
+
+  if (!missions) {
+    return loadError ? (
+      <div role="alert" className="panel flex flex-col items-center gap-3 p-6 text-center font-mono">
+        <AlertTriangle size={24} className="text-red-400" />
+        <p className="text-[11px] text-red-300">{loadError}</p>
+        <button
+          type="button"
+          onClick={() => void loadMissions()}
+          className="flex items-center gap-1.5 border border-red-500/50 bg-red-500/10 px-3 py-1.5 text-[10px] uppercase tracking-wider text-red-300 transition hover:bg-red-500/20"
+        >
+          <RefreshCw size={12} /> Retry
+        </button>
+      </div>
+    ) : (
+      <NeonSpinner label="Syncing missions..." />
+    );
+  }
+
+  const daily = missions.filter((m) => m.kind === 'daily');
+  const social = missions.filter((m) => m.kind === 'social');
+  const creator = missions.filter((m) => m.kind === 'creator');
 
   const claim = (mission: MissionSpec) => {
-    actions.claimMission(mission.id);
+    actions.claimMission(mission);
     notify(`${mission.title} complete. +${formatZp(mission.reward)} ZP`);
   };
 

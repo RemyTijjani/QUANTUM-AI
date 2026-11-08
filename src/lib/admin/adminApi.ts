@@ -44,8 +44,14 @@ export interface AdminStats {
 
 export interface AdminDashboardData {
   stats: AdminStats;
+  vaultReserves: AdminVaultReserves;
   submissions: AdminSubmission[];
   tasks: AdminTask[];
+}
+
+export interface AdminVaultReserves {
+  tonReserve: number;
+  zpReserve: number;
 }
 
 export interface ReviewResult {
@@ -98,7 +104,7 @@ async function callAdminApi(
 function isDashboardData(value: unknown): value is AdminDashboardData {
   if (!value || typeof value !== 'object') return false;
   const v = value as Partial<AdminDashboardData>;
-  return !!v.stats && Array.isArray(v.submissions) && Array.isArray(v.tasks);
+  return !!v.stats && !!v.vaultReserves && Array.isArray(v.submissions) && Array.isArray(v.tasks);
 }
 
 export async function fetchDashboard(creds: AdminCredentials): Promise<AdminDashboardData> {
@@ -125,4 +131,8 @@ export async function saveTask(creds: AdminCredentials, task: AdminTaskInput): P
 
 export async function deleteTask(creds: AdminCredentials, taskId: string): Promise<void> {
   await callAdminApi(creds, { action: 'delete_task', taskId });
+}
+
+export async function saveVaultReserves(creds: AdminCredentials, reserves: AdminVaultReserves): Promise<void> {
+  await callAdminApi(creds, { action: 'save_vault_reserves', vaultReserves: reserves });
 }

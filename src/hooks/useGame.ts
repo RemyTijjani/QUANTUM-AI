@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { gameReducer } from '@/lib/game/state';
 import type { Command, GameState } from '@/lib/game/state';
 import { loadState, saveState } from '@/lib/game/storage';
-import type { AgentId, FragmentId } from '@/lib/game/config';
+import type { AgentId, FragmentId, MissionSpec } from '@/lib/game/config';
 import { fetchUnsyncedReferrals, markReferralsSynced, registerReferral } from '@/lib/referral';
 
 function createActions(send: (command: Command) => void) {
@@ -17,7 +17,7 @@ function createActions(send: (command: Command) => void) {
     claimKickback: () => send({ type: 'claimKickback' }),
     claimMilestone: (threshold: number) => send({ type: 'claimMilestone', threshold }),
     recruitSubNode: (id: string, name: string) => send({ type: 'recruitSubNode', id, name }),
-    claimMission: (id: string) => send({ type: 'claimMission', id }),
+    claimMission: (mission: MissionSpec) => send({ type: 'claimMission', mission }),
     creditZp: (amount: number) => send({ type: 'creditZp', amount }),
     reset: (referralCode: string) => send({ type: 'resetWithCode', referralCode }),
   };

@@ -91,69 +91,6 @@ export interface MissionSpec {
 
 export const AD_QUOTA_TARGET = 3;
 
-export const MISSIONS: MissionSpec[] = [
-  {
-    id: 'daily-uplink',
-    kind: 'daily',
-    title: 'Daily Uplink',
-    description: 'Check in with ZORD OS for today.',
-    reward: 100,
-  },
-  {
-    id: 'ad-quota',
-    kind: 'daily',
-    title: 'Ad Feed Quota',
-    description: `Watch ${AD_QUOTA_TARGET} interstitial feeds today.`,
-    reward: 150,
-  },
-  {
-    id: 'agent-uptime',
-    kind: 'daily',
-    title: 'Agent Uptime',
-    description: 'Keep a ZORD agent running.',
-    reward: 200,
-  },
-  {
-    id: 'join-intel',
-    kind: 'social',
-    title: 'Join the ZORD Intel Channel',
-    description: 'Get field reports from the grid.',
-    reward: 250,
-    actionUrl: 'https://t.me/zord_intel',
-  },
-  {
-    id: 'follow-signal',
-    kind: 'social',
-    title: 'Follow the Signal Feed',
-    description: 'Catch every fragment drop as it breaks.',
-    reward: 250,
-    actionUrl: 'https://x.com/zord_agent',
-  },
-  {
-    id: 'share-uplink',
-    kind: 'social',
-    title: 'Broadcast Your Uplink',
-    description: 'Send your referral link to another operative.',
-    reward: 300,
-  },
-  {
-    id: 'creator-tiktok',
-    kind: 'creator',
-    title: 'TikTok Content Drop',
-    description: 'Submit a TikTok link featuring ZORD Autonomous Agent.',
-    reward: 500,
-    platform: 'tiktok',
-  },
-  {
-    id: 'creator-youtube',
-    kind: 'creator',
-    title: 'YouTube Content Drop',
-    description: 'Submit a YouTube link featuring ZORD Autonomous Agent.',
-    reward: 500,
-    platform: 'youtube',
-  },
-];
-
 export const RIVALS = [
   { name: 'NEON_WRAITH', zp: 184200 },
   { name: 'GHOST//KERNEL', zp: 142950 },

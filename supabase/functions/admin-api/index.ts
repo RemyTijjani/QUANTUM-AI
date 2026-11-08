@@ -10,14 +10,14 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-const ADMIN_USERNAME = "Remytijjani";
-const ADMIN_PASSWORD = "Remytijjani656";
+const ADMIN_USERNAME = Deno.env.get("ADMIN_USERNAME") ?? "";
+const ADMIN_PASSWORD = Deno.env.get("ADMIN_PASSWORD") ?? "";
 
 const TASK_KINDS = ["daily", "social", "creator"];
 const TASK_PLATFORMS = ["tiktok", "youtube"];
 
 interface AdminRequestBody {
-  action: "review_submission" | "fetch_dashboard" | "save_task" | "delete_task";
+  action: "review_submission" | "fetch_dashboard" | "save_task" | "delete_task" | "save_vault_reserves";
   adminUsername?: string;
   adminPassword?: string;
   submissionId?: string;
@@ -32,6 +32,7 @@ interface AdminRequestBody {
     actionUrl?: string | null;
   };
   taskId?: string;
+  vaultReserves?: { tonReserve?: number; zpReserve?: number };
 }
 
 function json(body: unknown, status = 200) {
@@ -77,7 +78,10 @@ Deno.serve(async (req: Request) => {
     const body: AdminRequestBody = await req.json();
 
     const isAdmin =
-      body.adminUsername === ADMIN_USERNAME && body.adminPassword === ADMIN_PASSWORD;
+      ADMIN_USERNAME !== "" &&
+      ADMIN_PASSWORD !== "" &&
+      body.adminUsername === ADMIN_USERNAME &&
+      body.adminPassword === ADMIN_PASSWORD;
 
     if (!isAdmin) {
       return json({ error: "Unauthorized" }, 401);
@@ -88,7 +92,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (body.action === "fetch_dashboard") {
-      const [playersRes, submissionsRes, pendingRes, approvedRes, pendingListRes, tasksRes] =
+      const [playersRes, submissionsRes, pendingRes, approvedRes, pendingListRes, tasksRes, vaultRes] =
         await Promise.all([
           db.from("players").select("id", { count: "exact", head: true }),
           db.from("creator_ops_submissions").select("id", { count: "exact", head: true }),
@@ -103,9 +107,10 @@ Deno.serve(async (req: Request) => {
             .from("mission_tasks")
             .select("id, kind, title, description, reward, platform, action_url")
             .order("created_at", { ascending: true }),
+          db.from("vault_reserves").select("ton_reserve, zp_reserve").eq("id", "global").maybeSingle(),
         ]);
 
-      const failed = [playersRes, submissionsRes, pendingRes, approvedRes, pendingListRes, tasksRes].find((r) => r.error);
+      const failed = [playersRes, submissionsRes, pendingRes, approvedRes, pendingListRes, tasksRes, vaultRes].find((r) => r.error);
       if (failed) {
         return json({ error: "Failed to load dashboard data" }, 500);
       }
@@ -118,6 +123,10 @@ Deno.serve(async (req: Request) => {
           totalSubmissions: submissionsRes.count ?? 0,
           pendingSubmissions: pendingRes.count ?? 0,
           totalZp,
+        },
+        vaultReserves: {
+          tonReserve: Number(vaultRes.data?.ton_reserve ?? 0),
+          zpReserve: Number(vaultRes.data?.zp_reserve ?? 0),
         },
         submissions: pendingListRes.data ?? [],
         tasks: (tasksRes.data ?? []).map((t) => ({
@@ -196,6 +205,25 @@ Deno.serve(async (req: Request) => {
         .single();
       if (error || !data) return json({ error: "Failed to create task" }, 500);
       return json({ success: true, id: data.id });
+    }
+
+    if (body.action === "save_vault_reserves") {
+      const reserves = body.vaultReserves;
+      const ton = reserves?.tonReserve;
+      const zp = reserves?.zpReserve;
+      if (typeof ton !== "number" || !Number.isFinite(ton) || ton < 0) {
+        return json({ error: "TON reserve must be 0 or more" }, 400);
+      }
+      if (typeof zp !== "number" || !Number.isInteger(zp) || zp < 0) {
+        return json({ error: "ZP reserve must be a whole number of 0 or more" }, 400);
+      }
+
+      const { error } = await db
+        .from("vault_reserves")
+        .update({ ton_reserve: ton, zp_reserve: zp, updated_at: new Date().toISOString() })
+        .eq("id", "global");
+      if (error) return json({ error: "Failed to update vault reserves" }, 500);
+      return json({ success: true });
     }
 
     if (body.action === "delete_task") {
