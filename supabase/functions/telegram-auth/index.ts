@@ -207,6 +207,7 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
+    console.error("telegram-auth failed:", err);
     return new Response(
       JSON.stringify({ error: "Authentication failed" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
