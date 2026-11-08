@@ -176,33 +176,6 @@
   }
 }
 
-.zord-preloader-exit {
-  animation: zord-slide-glitch 0.8s cubic-bezier(0.7, 0, 0.3, 1) forwards;
-}
-
-@keyframes zord-slide-glitch {
-  0% {
-    transform: translateY(0);
-    opacity: 1;
-    filter: none;
-  }
-  20% {
-    transform: translate(-6px, 0) skewX(-2deg);
-    filter: hue-rotate(35deg);
-  }
-  40% {
-    transform: translate(5px, -4%) skewX(1deg);
-  }
-  70% {
-    transform: translateY(-45%);
-    opacity: 0.6;
-  }
-  100% {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .zord-radar-sweep,
   .zord-pulse-ring,

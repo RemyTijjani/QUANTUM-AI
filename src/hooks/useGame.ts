@@ -25,7 +25,7 @@ function createActions(send: (command: Command) => void) {
 
 export type GameActions = ReturnType<typeof createActions>;
 
-export function useGame(referralCode: string): { state: GameState; actions: GameActions } {
+export function useGame(referralCode: string | null): { state: GameState; actions: GameActions } {
   const [state, dispatch] = useReducer(gameReducer, referralCode, (code) => loadState(Date.now(), code));
 
   useEffect(() => {
@@ -45,6 +45,12 @@ export function useGame(referralCode: string): { state: GameState; actions: Game
   const syncedReferralIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!referralCode) return;
+    dispatch({ type: 'setReferralCode', referralCode, now: Date.now() });
+  }, [referralCode]);
+
+  useEffect(() => {
+    if (!referralCode) return;
     registerReferral(referralCode);
 
     let cancelled = false;

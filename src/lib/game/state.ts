@@ -60,6 +60,7 @@ export type Command =
   | { type: 'tick' }
   | { type: 'reset' }
   | { type: 'resetWithCode'; referralCode: string }
+  | { type: 'setReferralCode'; referralCode: string }
   | { type: 'unlockFragment'; id: FragmentId }
   | { type: 'fixFragment'; id: FragmentId }
   | { type: 'mysteryFragment'; id: FragmentId }
@@ -203,6 +204,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   const { now } = action;
   if (action.type === 'reset') return createInitialState(now);
   if (action.type === 'resetWithCode') return createInitialState(now, action.referralCode);
+  if (action.type === 'setReferralCode') return { ...state, referralCode: action.referralCode };
 
   const s = advance(state, now);
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import type { TabId } from '@/components/BottomNav';
@@ -22,55 +22,27 @@ import { FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
 import { formatZp } from '@/lib/format';
 import { initTelegram } from '@/lib/telegram';
-import { Lock, AlertTriangle } from 'lucide-react';
 
 type Overlay = 'profile' | 'leaderboard' | 'admin' | null;
 
-function AuthGate({
-  children,
-}: {
-  children: (referralCode: string, missions: MissionSpec[]) => React.ReactNode;
-}) {
+function AppShell() {
   const { auth } = useAuth();
   const missions = useMissions(auth.status === 'authenticated');
+  const [introDone, setIntroDone] = useState(false);
+  const handleIntroComplete = useCallback(() => setIntroDone(true), []);
 
   useEffect(() => {
     initTelegram();
   }, []);
 
-  if (auth.status === 'error') {
-    return (
-      <div className="relative mx-auto flex h-dvh max-w-md flex-col items-center justify-center gap-4 bg-obsidian px-6 text-center">
-        <div className="crt-overlay" aria-hidden />
-        <AlertTriangle size={32} className="text-red-400" />
-        <p className="font-mono text-[11px] uppercase tracking-widest text-red-300">
-          {auth.message}
-        </p>
-        <p className="font-mono text-[10px] text-neon-600">
-          Open this app from Telegram to authenticate.
-        </p>
-      </div>
-    );
-  }
+  if (!introDone) return <ZordPreloader onComplete={handleIntroComplete} />;
 
-  const missionsError = missions.resource.status === 'error' ? missions.resource.message : null;
-  const missionsReady = missions.resource.status === 'ready' ? missions.resource.data : null;
-  const authenticated = auth.status === 'authenticated';
-
-  return (
-    <>
-      {authenticated && missionsReady && children(auth.player.referralCode, missionsReady)}
-      <ZordPreloader
-        isAuthenticating={auth.status === 'loading'}
-        isLoading={authenticated && !missionsReady && !missionsError}
-        error={missionsError}
-        onRetry={missions.reload}
-      />
-    </>
-  );
+  const referralCode = auth.status === 'authenticated' ? auth.player.referralCode : null;
+  const missionList = missions.resource.status === 'ready' ? missions.resource.data : [];
+  return <GameApp referralCode={referralCode} missions={missionList} />;
 }
 
-function GameApp({ referralCode, missions }: { referralCode: string; missions: MissionSpec[] }) {
+function GameApp({ referralCode, missions }: { referralCode: string | null; missions: MissionSpec[] }) {
   const { state, actions } = useGame(referralCode);
   const { toast, notify } = useToast();
   const [tab, setTab] = useState<TabId>('core');
@@ -85,7 +57,7 @@ function GameApp({ referralCode, missions }: { referralCode: string; missions: M
   };
 
   const resetSystem = () => {
-    actions.reset(referralCode);
+    actions.reset(state.referralCode);
     setOverlay(null);
     notify('System memory wiped. Fresh operative online', 'info');
   };
@@ -147,9 +119,7 @@ function GameApp({ referralCode, missions }: { referralCode: string; missions: M
 export default function App() {
   return (
     <AuthProvider>
-      <AuthGate>
-        {(referralCode, missions) => <GameApp referralCode={referralCode} missions={missions} />}
-      </AuthGate>
+      <AppShell />
     </AuthProvider>
   );
 }
