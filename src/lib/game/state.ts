@@ -140,6 +140,8 @@ function isMissionReady(s: GameState, mission: MissionSpec, now: number) {
       return adsWatchedToday(s, now) >= AD_QUOTA_TARGET;
     case 'agent-uptime':
       return activeAgents(s, now).length > 0;
+    case 'daily-recruit-sync':
+      return s.subNodes.length > 0;
     default:
       return true;
   }
