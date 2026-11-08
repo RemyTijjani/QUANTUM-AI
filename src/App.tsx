@@ -15,32 +15,28 @@ import { AdminDashboard } from '@/components/admin/AdminReviewModal';
 import { useGame } from '@/hooks/useGame';
 import { useToast } from '@/hooks/useToast';
 import { AuthProvider, useAuth } from '@/hooks/useTelegramAuth';
+import { useMissions } from '@/hooks/useMissions';
+import { ZordPreloader } from '@/components/ZordPreloader';
+import type { MissionSpec } from '@/lib/game/config';
 import { FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
 import { formatZp } from '@/lib/format';
 import { initTelegram } from '@/lib/telegram';
-import { Lock, Loader2, AlertTriangle } from 'lucide-react';
+import { Lock, AlertTriangle } from 'lucide-react';
 
 type Overlay = 'profile' | 'leaderboard' | 'admin' | null;
 
-function AuthGate({ children }: { children: (referralCode: string) => React.ReactNode }) {
+function AuthGate({
+  children,
+}: {
+  children: (referralCode: string, missions: MissionSpec[]) => React.ReactNode;
+}) {
   const { auth } = useAuth();
+  const missions = useMissions(auth.status === 'authenticated');
 
   useEffect(() => {
     initTelegram();
   }, []);
-
-  if (auth.status === 'loading') {
-    return (
-      <div className="relative mx-auto flex h-dvh max-w-md flex-col items-center justify-center gap-4 bg-obsidian px-6 text-center">
-        <div className="crt-overlay" aria-hidden />
-        <Loader2 size={32} className="animate-spin text-neon" />
-        <p className="font-mono text-[11px] uppercase tracking-widest text-neon-500">
-          Establishing secure uplink...
-        </p>
-      </div>
-    );
-  }
 
   if (auth.status === 'error') {
     return (
@@ -57,10 +53,24 @@ function AuthGate({ children }: { children: (referralCode: string) => React.Reac
     );
   }
 
-  return <>{children(auth.player.referralCode)}</>;
+  const missionsError = missions.resource.status === 'error' ? missions.resource.message : null;
+  const missionsReady = missions.resource.status === 'ready' ? missions.resource.data : null;
+  const authenticated = auth.status === 'authenticated';
+
+  return (
+    <>
+      {authenticated && missionsReady && children(auth.player.referralCode, missionsReady)}
+      <ZordPreloader
+        isAuthenticating={auth.status === 'loading'}
+        isLoading={authenticated && !missionsReady && !missionsError}
+        error={missionsError}
+        onRetry={missions.reload}
+      />
+    </>
+  );
 }
 
-function GameApp({ referralCode }: { referralCode: string }) {
+function GameApp({ referralCode, missions }: { referralCode: string; missions: MissionSpec[] }) {
   const { state, actions } = useGame(referralCode);
   const { toast, notify } = useToast();
   const [tab, setTab] = useState<TabId>('core');
@@ -97,7 +107,13 @@ function GameApp({ referralCode }: { referralCode: string }) {
         {tab === 'agents' && <ZordAgentsTab />}
         {tab === 'network' && <NetworkTab state={state} actions={actions} notify={notify} />}
         {tab === 'missions' && (
-          <MissionsTab state={state} actions={actions} notify={notify} onOpenAdmin={() => setOverlay('admin')} />
+          <MissionsTab
+            state={state}
+            actions={actions}
+            notify={notify}
+            missions={missions}
+            onOpenAdmin={() => setOverlay('admin')}
+          />
         )}
         {tab === 'vault' && <VaultTab state={state} actions={actions} notify={notify} />}
       </main>
@@ -132,7 +148,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AuthGate>
-        {(referralCode) => <GameApp referralCode={referralCode} />}
+        {(referralCode, missions) => <GameApp referralCode={referralCode} missions={missions} />}
       </AuthGate>
     </AuthProvider>
   );
