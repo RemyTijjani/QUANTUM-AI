@@ -6,7 +6,7 @@ export interface AuthPlayer {
   telegramId: number;
   username: string | null;
   firstName: string | null;
-  referralCode: string;
+  referralCode: string | null;
 }
 
 export type AuthState =

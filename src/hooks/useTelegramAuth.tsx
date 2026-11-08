@@ -1,12 +1,13 @@
 import { useEffect, useState, useContext } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getTelegramInitData, getTelegramStartParam } from '@/lib/telegram';
+import { getTelegramInitData, getTelegramStartParam, getTelegramUser } from '@/lib/telegram';
+import type { TelegramUser } from '@/lib/telegram';
 import { AuthContext } from '@/lib/auth';
 import type { AuthState, AuthPlayer } from '@/lib/auth';
 
 const REFERRER_KEY = 'zord-referrer-code';
 const AUTH_KEY = 'zord-auth-player';
-const AUTH_TIMEOUT_MS = 15000;
+const AUTH_TIMEOUT_MS = 5000;
 
 const DEV_MOCK_PLAYER: AuthPlayer = {
   playerId: 'dev-999999',
@@ -16,13 +17,15 @@ const DEV_MOCK_PLAYER: AuthPlayer = {
   referralCode: 'ZORD-DEV000',
 };
 
-async function authenticate(): Promise<{ player: AuthPlayer } | { error: string }> {
-  const initData = getTelegramInitData();
-  if (!initData) {
-    if (import.meta.env.DEV) return { player: DEV_MOCK_PLAYER };
-    return { error: 'This app must be opened from Telegram.' };
-  }
+const GUEST_PLAYER: AuthPlayer = {
+  playerId: 'guest',
+  telegramId: 0,
+  username: null,
+  firstName: null,
+  referralCode: null,
+};
 
+async function authenticateWithBackend(initData: string): Promise<AuthPlayer> {
   const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-auth`;
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
@@ -41,10 +44,7 @@ async function authenticate(): Promise<{ player: AuthPlayer } | { error: string 
     window.clearTimeout(timer);
   }
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { error: body.error ?? 'Telegram verification failed.' };
-  }
+  if (!response.ok) throw new Error('Telegram verification failed.');
 
   const data = await response.json();
 
@@ -53,9 +53,7 @@ async function authenticate(): Promise<{ player: AuthPlayer } | { error: string 
     password: data.password,
   });
 
-  if (signInError || !sessionData.session) {
-    return { error: 'Failed to establish session.' };
-  }
+  if (signInError || !sessionData.session) throw new Error('Failed to establish session.');
 
   const player: AuthPlayer = {
     playerId: sessionData.user.id,
@@ -71,7 +69,34 @@ async function authenticate(): Promise<{ player: AuthPlayer } | { error: string 
     // ignore
   }
 
-  return { player };
+  return player;
+}
+
+function playerFromTelegramUser(user: TelegramUser): AuthPlayer {
+  return {
+    playerId: `telegram-${user.id}`,
+    telegramId: user.id,
+    username: user.username ?? null,
+    firstName: user.first_name ?? null,
+    referralCode: null,
+  };
+}
+
+async function authenticate(): Promise<{ player: AuthPlayer } | { error: string }> {
+  const initData = getTelegramInitData();
+  if (!initData) {
+    if (import.meta.env.DEV) return { player: DEV_MOCK_PLAYER };
+    return { player: GUEST_PLAYER };
+  }
+
+  try {
+    return { player: await authenticateWithBackend(initData) };
+  } catch (err) {
+    console.warn('Backend Telegram sign-in unavailable, using Telegram identity.', err);
+    const telegramUser = getTelegramUser();
+    if (telegramUser) return { player: playerFromTelegramUser(telegramUser) };
+    return { error: 'Could not verify your Telegram account.' };
+  }
 }
 
 function loadStoredPlayer(): AuthPlayer | null {
@@ -117,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         (async () => {
           try {
