@@ -5,6 +5,7 @@ import BottomNav from '@/components/BottomNav';
 import type { TabId } from '@/components/BottomNav';
 import Toast from '@/components/Toast';
 import { NeonSpinner } from '@/components/NeonSpinner';
+import ZordPreloader from '@/components/ZordPreloader';
 import AdModal from '@/components/AdModal';
 import ProfileModal from '@/components/ProfileModal';
 import type { ProfileIdentity } from '@/components/ProfileModal';
@@ -150,7 +151,9 @@ function GameApp({ referralCode, missions }: { referralCode: string | null; miss
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <ZordPreloader>
+        <AppShell />
+      </ZordPreloader>
     </AuthProvider>
   );
 }

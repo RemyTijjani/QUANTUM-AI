@@ -118,6 +118,82 @@
   }
 }
 
+.zord-radar {
+  animation: zord-radar-spin 2.4s linear infinite;
+}
+
+@keyframes zord-radar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.zord-ring-pulse {
+  animation: zord-ring-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes zord-ring-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.zord-glitch {
+  animation: zord-glitch 1.2s steps(2, end) infinite;
+}
+
+@keyframes zord-glitch {
+  0%,
+  88%,
+  100% {
+    transform: none;
+    text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+  }
+  90% {
+    transform: translateX(2px);
+    text-shadow: -2px 0 rgba(239, 68, 68, 0.6), 2px 0 rgba(34, 197, 94, 0.9);
+  }
+  94% {
+    transform: translateX(-2px);
+    text-shadow: 2px 0 rgba(239, 68, 68, 0.6), -2px 0 rgba(34, 197, 94, 0.9);
+  }
+}
+
+.zord-cursor {
+  animation: zord-cursor-blink 0.8s steps(2, end) infinite;
+}
+
+@keyframes zord-cursor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.zord-preloader-exit {
+  animation: zord-preloader-exit 0.6s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+@keyframes zord-preloader-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: none;
+  }
+  35% {
+    filter: brightness(1.6) hue-rotate(-12deg);
+    transform: translateY(-3%) skewY(-0.6deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100%);
+    filter: brightness(1);
+  }
+}
+
 .scan-bars {
   background: repeating-linear-gradient(
     to bottom,
