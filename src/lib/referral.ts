@@ -20,7 +20,7 @@ export function getReferrerCodeFromUrl(): string | null {
 
     if (!startParam) {
       const query = new URLSearchParams(window.location.search);
-      startParam = query.get('startapp') ?? query.get('tgWebAppStartParam') ?? undefined;
+      startParam = query.get('startapp') ?? query.get('tgWebAppStartParam');
     }
 
     if (!startParam) return null;
