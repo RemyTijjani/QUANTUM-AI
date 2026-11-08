@@ -3,7 +3,7 @@
   "functions": {
     "admin-api": {
       "hasChanged": false,
-      "hash": "804dd9895e39188ed8ae1f0c753c12a76ecbc74580b1e3893dd077ad2cc71704"
+      "hash": "54eb7daebae50a6e49473ae6c5abe54f545d7dc881c50a2c51e6af6748a2b54b"
     },
     "telegram-auth": {
       "hasChanged": false,

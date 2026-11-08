@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 // admin-api: privileged admin actions using service role key, credentials verified server-side
+// JWT verification is disabled in config.toml; admin username and password are the gate here
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",

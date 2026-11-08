@@ -6,17 +6,26 @@ import type { GameState } from '@/lib/game/state';
 import { formatZp, formatRate, formatRemaining } from '@/lib/format';
 import Modal from '@/components/Modal';
 
+export interface ProfileIdentity {
+  firstName: string | null;
+  username: string | null;
+}
+
 interface ProfileModalProps {
   state: GameState;
+  identity: ProfileIdentity | null;
   onReset: () => void;
   onClose: () => void;
 }
 
-export default function ProfileModal({ state, onReset, onClose }: ProfileModalProps) {
+export default function ProfileModal({ state, identity, onReset, onClose }: ProfileModalProps) {
   const [confirmingReset, setConfirmingReset] = useState(false);
   const now = Date.now();
   const tier = tierInfo(state.lifetimeZp);
   const rentals = activeAgents(state, now);
+  const displayName = identity?.username
+    ? `@${identity.username}`
+    : identity?.firstName ?? 'Unnamed operative';
 
   return (
     <Modal title="Operative Profile" onClose={onClose}>
@@ -30,7 +39,8 @@ export default function ProfileModal({ state, onReset, onClose }: ProfileModalPr
             <h3 className="mt-1 font-display text-base font-bold uppercase tracking-wide text-neon-300">
               {tier.rank}
             </h3>
-            <p className="font-mono text-[11px] text-neon-500">OPERATIVE-047 // ZORD Tier {String(tier.tier).padStart(2, '0')}</p>
+            <p className="mt-1 font-mono text-[11px] text-neon-300">{displayName}</p>
+            <p className="font-mono text-[11px] text-neon-500">ZORD Tier {String(tier.tier).padStart(2, '0')}</p>
           </div>
         </div>
 

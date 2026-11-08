@@ -35,6 +35,10 @@ export function getTelegramInitData(): string {
   return getWebApp()?.initData ?? "";
 }
 
+export function getTelegramUser(): TelegramUser | null {
+  return getWebApp()?.initDataUnsafe?.user ?? null;
+}
+
 export function getTelegramStartParam(): string | null {
   const webApp = getWebApp();
   if (webApp?.initDataUnsafe?.start_param) {

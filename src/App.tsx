@@ -5,6 +5,7 @@ import type { TabId } from '@/components/BottomNav';
 import Toast from '@/components/Toast';
 import AdModal from '@/components/AdModal';
 import ProfileModal from '@/components/ProfileModal';
+import type { ProfileIdentity } from '@/components/ProfileModal';
 import LeaderboardModal from '@/components/LeaderboardModal';
 import CoreTab from '@/components/core/CoreTab';
 import NetworkTab from '@/components/network/NetworkTab';
@@ -21,7 +22,9 @@ import type { MissionSpec } from '@/lib/game/config';
 import { FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
 import { formatZp } from '@/lib/format';
-import { initTelegram } from '@/lib/telegram';
+import { initTelegram, getTelegramUser } from '@/lib/telegram';
+import type { TelegramUser } from '@/lib/telegram';
+import type { AuthState } from '@/lib/auth';
 
 type Overlay = 'profile' | 'leaderboard' | 'admin' | null;
 
@@ -42,8 +45,20 @@ function AppShell() {
   return <GameApp referralCode={referralCode} missions={missionList} />;
 }
 
+function resolveIdentity(auth: AuthState, telegramUser: TelegramUser | null): ProfileIdentity | null {
+  if (auth.status === 'authenticated') {
+    return { firstName: auth.player.firstName, username: auth.player.username };
+  }
+  if (telegramUser) {
+    return { firstName: telegramUser.first_name ?? null, username: telegramUser.username ?? null };
+  }
+  return null;
+}
+
 function GameApp({ referralCode, missions }: { referralCode: string | null; missions: MissionSpec[] }) {
   const { state, actions } = useGame(referralCode);
+  const { auth } = useAuth();
+  const identity = resolveIdentity(auth, getTelegramUser());
   const { toast, notify } = useToast();
   const [tab, setTab] = useState<TabId>('core');
   const [overlay, setOverlay] = useState<Overlay>(null);
@@ -96,7 +111,7 @@ function GameApp({ referralCode, missions }: { referralCode: string | null; miss
         <AdModal fragmentId={adFragment} onComplete={completeAd} onCancel={() => setAdFragment(null)} />
       )}
       {overlay === 'profile' && (
-        <ProfileModal state={state} onReset={resetSystem} onClose={() => setOverlay(null)} />
+        <ProfileModal state={state} identity={identity} onReset={resetSystem} onClose={() => setOverlay(null)} />
       )}
       {overlay === 'leaderboard' && (
         <LeaderboardModal lifetimeZp={state.lifetimeZp} onClose={() => setOverlay(null)} />
