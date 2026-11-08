@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import type { TabId } from '@/components/BottomNav';
 import Toast from '@/components/Toast';
+import { NeonSpinner } from '@/components/NeonSpinner';
 import AdModal from '@/components/AdModal';
 import ProfileModal from '@/components/ProfileModal';
 import type { ProfileIdentity } from '@/components/ProfileModal';
@@ -35,6 +36,15 @@ function AppShell() {
   useEffect(() => {
     initTelegram();
   }, []);
+
+  if (auth.status === 'loading') {
+    return (
+      <div className="relative mx-auto flex h-dvh max-w-md items-center justify-center bg-obsidian">
+        <div className="crt-overlay" aria-hidden />
+        <NeonSpinner label="Establishing link" />
+      </div>
+    );
+  }
 
   if (auth.status === 'error') {
     return (

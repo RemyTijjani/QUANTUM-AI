@@ -3,11 +3,13 @@ import { supabase } from '@/lib/supabase';
 import { getTelegramInitData, getTelegramStartParam, getTelegramUser } from '@/lib/telegram';
 import type { TelegramUser } from '@/lib/telegram';
 import { AuthContext } from '@/lib/auth';
+import { claimLocalSession } from '@/lib/localSession';
 import type { AuthState, AuthPlayer } from '@/lib/auth';
 
 const REFERRER_KEY = 'zord-referrer-code';
 const AUTH_KEY = 'zord-auth-player';
 const AUTH_TIMEOUT_MS = 5000;
+const GUEST_OWNER_ID = 'guest';
 
 const DEV_MOCK_PLAYER: AuthPlayer = {
   playerId: 'dev-999999',
@@ -116,6 +118,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     const init = async () => {
+      const telegramUser = getTelegramUser();
+      await claimLocalSession(telegramUser ? String(telegramUser.id) : GUEST_OWNER_ID);
+      if (cancelled) return;
+
       const referrerCode = getTelegramStartParam();
       if (referrerCode && referrerCode.startsWith('ZORD-')) {
         try {
@@ -142,23 +148,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        (async () => {
-          try {
-            window.localStorage.removeItem(AUTH_KEY);
-          } catch {
-            // ignore
-          }
-          if (!cancelled) setAuth({ status: 'loading' });
-          await init();
-        })();
-      }
-    });
-
     return () => {
       cancelled = true;
-      listener.subscription.unsubscribe();
     };
   }, []);
 
