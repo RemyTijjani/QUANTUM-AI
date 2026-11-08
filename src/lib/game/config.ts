@@ -114,4 +114,5 @@ export const RECRUIT_POOL = [
 
 export const TON_FAUCET_AMOUNT = 10;
 export const VAULT_ADDRESS = 'EQC1Z9kR4mW2pX7vN8qT3yL6hB5dJ0sF7x9W';
-export const TELEGRAM_BOT_USERNAME = 'zord_agent_bot';
+export const TELEGRAM_BOT_USERNAME = 'Zord_op_bot';
+export const TELEGRAM_MINI_APP_SHORT_NAME = 'app';

@@ -9,6 +9,7 @@ interface TelegramWebApp {
   ready: () => void;
   expand: () => void;
   initData: string;
+  openTelegramLink?: (url: string) => void;
   initDataUnsafe: {
     user?: TelegramUser;
     start_param?: string;
@@ -29,6 +30,15 @@ export function initTelegram() {
   const webApp = getWebApp();
   webApp?.ready();
   webApp?.expand();
+}
+
+export function openTelegramLink(url: string) {
+  const webApp = getWebApp();
+  if (webApp?.openTelegramLink) {
+    webApp.openTelegramLink(url);
+    return;
+  }
+  window.open(url, '_blank', 'noopener');
 }
 
 export function getTelegramInitData(): string {

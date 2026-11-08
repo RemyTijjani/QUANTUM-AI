@@ -1,6 +1,8 @@
 import { Copy, Share2, Users } from 'lucide-react';
-import { KICKBACK_RATE, MILESTONES, SUB_NODE_RATE, TELEGRAM_BOT_USERNAME } from '@/lib/game/config';
+import { KICKBACK_RATE, MILESTONES, SUB_NODE_RATE } from '@/lib/game/config';
 import { formatZp, formatRate } from '@/lib/format';
+import { buildReferralLink } from '@/lib/referral';
+import { openTelegramLink } from '@/lib/telegram';
 import type { GameState } from '@/lib/game/state';
 import type { GameActions } from '@/hooks/useGame';
 import type { Notify } from '@/hooks/useToast';
@@ -15,7 +17,7 @@ interface NetworkTabProps {
 const SHARE_TEXT = 'Mine ZP with me in ZORD Autonomous Agent — Total Group Dominion';
 
 export default function NetworkTab({ state, actions, notify }: NetworkTabProps) {
-  const link = `https://t.me/${TELEGRAM_BOT_USERNAME}?startapp=${state.referralCode}`;
+  const link = buildReferralLink(state.referralCode);
   const kickbackWhole = Math.floor(state.kickbackPending);
   const subNodeTotal = state.subNodes.reduce((sum, node) => sum + node.generated, 0);
 
@@ -30,7 +32,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
 
   const shareLink = () => {
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(SHARE_TEXT)}`;
-    window.open(url, '_blank', 'noopener');
+    openTelegramLink(url);
   };
 
   const claimKickback = () => {

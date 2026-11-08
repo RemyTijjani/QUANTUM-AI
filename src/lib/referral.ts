@@ -1,4 +1,11 @@
 import { supabase } from './supabase';
+import { TELEGRAM_BOT_USERNAME, TELEGRAM_MINI_APP_SHORT_NAME } from './game/config';
+
+const REFERRAL_PARAM_PREFIX = 'ref_';
+
+export function buildReferralLink(referralCode: string): string {
+  return `https://t.me/${TELEGRAM_BOT_USERNAME}/${TELEGRAM_MINI_APP_SHORT_NAME}?startapp=${REFERRAL_PARAM_PREFIX}${referralCode}`;
+}
 
 export interface ReferralRecord {
   id: string;
@@ -24,7 +31,7 @@ export function getReferrerCodeFromUrl(): string | null {
     }
 
     if (!startParam) return null;
-    const code = startParam.trim().toUpperCase();
+    const code = startParam.trim().replace(/^ref_/i, '').toUpperCase();
     return code.startsWith('ZORD-') ? code : null;
   } catch {
     return null;
