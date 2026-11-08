@@ -15,15 +15,22 @@ async function authenticate(): Promise<{ player: AuthPlayer } | { error: string 
   }
 
   const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-auth`;
-  const response = await fetch(functionUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify({ initData }),
-    signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
-  });
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ initData }),
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timer);
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
