@@ -12,6 +12,8 @@
 - The existing authenticated SELECT policy is unchanged.
 */
 
+GRANT SELECT ON public.mission_tasks TO anon;
+
 DROP POLICY IF EXISTS "select_mission_tasks_public" ON public.mission_tasks;
 CREATE POLICY "select_mission_tasks_public" ON public.mission_tasks
   FOR SELECT
