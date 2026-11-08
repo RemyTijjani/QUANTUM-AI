@@ -30,7 +30,7 @@ type Overlay = 'profile' | 'leaderboard' | 'admin' | null;
 
 function AppShell() {
   const { auth } = useAuth();
-  const missions = useMissions(auth.status === 'authenticated');
+  const missions = useMissions();
 
   useEffect(() => {
     initTelegram();
@@ -48,8 +48,7 @@ function AppShell() {
   }
 
   const referralCode = auth.status === 'authenticated' ? auth.player.referralCode : null;
-  const missionList = missions.resource.status === 'ready' ? missions.resource.data : [];
-  return <GameApp referralCode={referralCode} missions={missionList} />;
+  return <GameApp referralCode={referralCode} missions={missions} />;
 }
 
 function resolveIdentity(auth: AuthState, telegramUser: TelegramUser | null): ProfileIdentity | null {
