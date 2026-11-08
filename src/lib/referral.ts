@@ -38,6 +38,9 @@ const REGISTERED_KEY = 'zord-referral-registered';
  * - there is a referrer code in the URL
  * - it differs from the player's own code (no self-referral)
  * - this device hasn't already registered a referral
+ *
+ * Now resolves the referrer's player ID from the database and links the
+ * referral record to both the referrer and the authenticated recruit.
  */
 export async function registerReferral(myCode: string): Promise<void> {
   const referrerCode = getReferrerCodeFromUrl();
@@ -47,8 +50,15 @@ export async function registerReferral(myCode: string): Promise<void> {
 
   const recruitName = generateRecruitName();
 
+  const { data: referrer } = await supabase
+    .from('player_referrals')
+    .select('id')
+    .eq('referral_code', referrerCode)
+    .maybeSingle();
+
   const { error } = await supabase.from('referral_sub_nodes').insert({
     referrer_code: referrerCode,
+    referrer_id: referrer?.id ?? null,
     recruit_code: myCode,
     recruit_name: recruitName,
     synced: false,

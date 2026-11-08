@@ -14,25 +14,58 @@ import ZordAgentsTab from '@/components/agents/ZordAgentsTab';
 import { AdminDashboard } from '@/components/admin/AdminReviewModal';
 import { useGame } from '@/hooks/useGame';
 import { useToast } from '@/hooks/useToast';
+import { AuthProvider, useAuth } from '@/hooks/useTelegramAuth';
 import { FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
 import { formatZp } from '@/lib/format';
 import { initTelegram } from '@/lib/telegram';
-import { registerReferral } from '@/lib/referral';
+import { Lock, Loader2, AlertTriangle } from 'lucide-react';
 
 type Overlay = 'profile' | 'leaderboard' | 'admin' | null;
 
-export default function App() {
-  const { state, actions } = useGame();
+function AuthGate({ children }: { children: (referralCode: string) => React.ReactNode }) {
+  const { auth } = useAuth();
+
+  useEffect(() => {
+    initTelegram();
+  }, []);
+
+  if (auth.status === 'loading') {
+    return (
+      <div className="relative mx-auto flex h-dvh max-w-md flex-col items-center justify-center gap-4 bg-obsidian px-6 text-center">
+        <div className="crt-overlay" aria-hidden />
+        <Loader2 size={32} className="animate-spin text-neon" />
+        <p className="font-mono text-[11px] uppercase tracking-widest text-neon-500">
+          Establishing secure uplink...
+        </p>
+      </div>
+    );
+  }
+
+  if (auth.status === 'error') {
+    return (
+      <div className="relative mx-auto flex h-dvh max-w-md flex-col items-center justify-center gap-4 bg-obsidian px-6 text-center">
+        <div className="crt-overlay" aria-hidden />
+        <AlertTriangle size={32} className="text-red-400" />
+        <p className="font-mono text-[11px] uppercase tracking-widest text-red-300">
+          {auth.message}
+        </p>
+        <p className="font-mono text-[10px] text-neon-600">
+          Open this app from Telegram to authenticate.
+        </p>
+      </div>
+    );
+  }
+
+  return <>{children(auth.player.referralCode)}</>;
+}
+
+function GameApp({ referralCode }: { referralCode: string }) {
+  const { state, actions } = useGame(referralCode);
   const { toast, notify } = useToast();
   const [tab, setTab] = useState<TabId>('core');
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [adFragment, setAdFragment] = useState<FragmentId | null>(null);
-
-  useEffect(() => {
-    initTelegram();
-    registerReferral(state.referralCode);
-  }, [state.referralCode]);
 
   const completeAd = () => {
     if (!adFragment) return;
@@ -42,7 +75,7 @@ export default function App() {
   };
 
   const resetSystem = () => {
-    actions.reset();
+    actions.reset(referralCode);
     setOverlay(null);
     notify('System memory wiped. Fresh operative online', 'info');
   };
@@ -80,7 +113,7 @@ export default function App() {
       {overlay === 'leaderboard' && (
         <LeaderboardModal lifetimeZp={state.lifetimeZp} onClose={() => setOverlay(null)} />
       )}
-    {overlay === 'admin' && (
+      {overlay === 'admin' && (
         <AdminDashboard
           onClose={() => setOverlay(null)}
           onApproveSubmission={(rewardZp) => {
@@ -92,5 +125,15 @@ export default function App() {
 
       <Toast toast={toast} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AuthGate>
+        {(referralCode) => <GameApp referralCode={referralCode} />}
+      </AuthGate>
+    </AuthProvider>
   );
 }

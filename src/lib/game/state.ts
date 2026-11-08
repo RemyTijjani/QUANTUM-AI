@@ -60,6 +60,7 @@ export interface GameState {
 export type Command =
   | { type: 'tick' }
   | { type: 'reset' }
+  | { type: 'resetWithCode'; referralCode: string }
   | { type: 'unlockFragment'; id: FragmentId }
   | { type: 'fixFragment'; id: FragmentId }
   | { type: 'mysteryFragment'; id: FragmentId }
@@ -77,7 +78,7 @@ export type GameAction = Command & { now: number };
 
 const makeReferralCode = () => `ZORD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
-export function createInitialState(now: number): GameState {
+export function createInitialState(now: number, referralCode?: string): GameState {
   return {
     zp: 0,
     lifetimeZp: 0,
@@ -90,7 +91,7 @@ export function createInitialState(now: number): GameState {
     missionClaims: {},
     adsWatched: { day: dayKey(now), count: 0 },
     wallet: { connected: false, faucetClaimed: false, tonBalance: 0 },
-    referralCode: makeReferralCode(),
+    referralCode: referralCode ?? makeReferralCode(),
     coreMiningUntil: 0,
     lastTick: now,
   };
@@ -202,6 +203,7 @@ export function advance(s: GameState, now: number): GameState {
 export function gameReducer(state: GameState, action: GameAction): GameState {
   const { now } = action;
   if (action.type === 'reset') return createInitialState(now);
+  if (action.type === 'resetWithCode') return createInitialState(now, action.referralCode);
 
   const s = advance(state, now);
 

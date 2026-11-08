@@ -3,7 +3,7 @@ import { gameReducer } from '@/lib/game/state';
 import type { Command, GameState } from '@/lib/game/state';
 import { loadState, saveState } from '@/lib/game/storage';
 import type { AgentId, FragmentId } from '@/lib/game/config';
-import { fetchUnsyncedReferrals, markReferralsSynced } from '@/lib/referral';
+import { fetchUnsyncedReferrals, markReferralsSynced, registerReferral } from '@/lib/referral';
 
 function createActions(send: (command: Command) => void) {
   return {
@@ -19,14 +19,14 @@ function createActions(send: (command: Command) => void) {
     recruitSubNode: (id: string, name: string) => send({ type: 'recruitSubNode', id, name }),
     claimMission: (id: string) => send({ type: 'claimMission', id }),
     creditZp: (amount: number) => send({ type: 'creditZp', amount }),
-    reset: () => send({ type: 'reset' }),
+    reset: (referralCode: string) => send({ type: 'resetWithCode', referralCode }),
   };
 }
 
 export type GameActions = ReturnType<typeof createActions>;
 
-export function useGame(): { state: GameState; actions: GameActions } {
-  const [state, dispatch] = useReducer(gameReducer, undefined, () => loadState(Date.now()));
+export function useGame(referralCode: string): { state: GameState; actions: GameActions } {
+  const [state, dispatch] = useReducer(gameReducer, referralCode, (code) => loadState(Date.now(), code));
 
   useEffect(() => {
     saveState(state);
@@ -45,10 +45,12 @@ export function useGame(): { state: GameState; actions: GameActions } {
   const syncedReferralIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    registerReferral(referralCode);
+
     let cancelled = false;
 
     const poll = async () => {
-      const records = await fetchUnsyncedReferrals(state.referralCode);
+      const records = await fetchUnsyncedReferrals(referralCode);
       if (cancelled || records.length === 0) return;
 
       const newRecords = records.filter((r) => !syncedReferralIds.current.has(r.id));
@@ -73,7 +75,7 @@ export function useGame(): { state: GameState; actions: GameActions } {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [state.referralCode]);
+  }, [referralCode]);
 
   return { state, actions };
 }

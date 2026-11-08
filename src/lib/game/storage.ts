@@ -3,8 +3,8 @@ import type { GameState } from './state';
 
 const STORAGE_KEY = 'zord-agent-state-v1';
 
-export function loadState(now: number): GameState {
-  const fresh = createInitialState(now);
+export function loadState(now: number, referralCode: string): GameState {
+  const fresh = createInitialState(now, referralCode);
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return fresh;
@@ -15,6 +15,7 @@ export function loadState(now: number): GameState {
     const merged: GameState = {
       ...fresh,
       ...parsed,
+      referralCode,
       fragments: { ...fresh.fragments, ...parsed.fragments },
       fragmentCooldowns: { ...fresh.fragmentCooldowns, ...parsed.fragmentCooldowns },
       agents: { ...fresh.agents, ...parsed.agents },

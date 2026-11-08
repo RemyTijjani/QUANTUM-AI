@@ -1,14 +1,22 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { Check, X, ExternalLink, Clock, ShieldCheck, RefreshCw, Terminal, Activity, Users, Database, Radio, Download, Zap, Cpu, ArrowLeft, Plus, Edit2, Trash2, Lock } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import type { CreatorOpsSubmission } from '@/lib/supabase';
 import { MISSIONS } from '@/lib/game/config';
 import { formatZp } from '@/lib/format';
 import Modal from '@/components/Modal';
 
-const ADMIN_USERNAME = 'Remytijjani';
-const ADMIN_PASSWORD = 'Remytijjani656';
 const ADMIN_AUTH_KEY = 'zord-admin-auth';
+
+interface AdminSubmission {
+  id: string;
+  mission_id: string;
+  player_referral_code: string;
+  link_url: string;
+  platform: 'tiktok' | 'youtube';
+  status: 'pending' | 'approved' | 'rejected';
+  reward_zp: number;
+  reviewed_at: string | null;
+  created_at: string;
+}
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -17,14 +25,16 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardProps) {
   const [authenticated, setAuthenticated] = useState(() => window.sessionStorage.getItem(ADMIN_AUTH_KEY) === '1');
-  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'operatives'>('queue');
-  
-  // Review Queue States
-  const [submissions, setSubmissions] = useState<CreatorOpsSubmission[]>([]);
+  const [adminCreds, setAdminCreds] = useState<{ username: string; password: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks'>('queue');
+
+  const [submissions, setSubmissions] = useState<AdminSubmission[]>([]);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // Economy & Terminal States
+  const [stats, setStats] = useState({ totalPlayers: 0, totalSubmissions: 0, pendingSubmissions: 0, approvedSubmissions: 0 });
+  const [loadingStats, setLoadingStats] = useState(false);
+
   const [multiplier, setMultiplier] = useState<number>(0.09);
   const [isFlushing, setIsFlushing] = useState<boolean>(false);
   const [broadcastText, setBroadcastText] = useState<string>('');
@@ -34,50 +44,93 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
     '[AUTH] Administrator credentials verified.'
   ]);
 
-  // Mission Task Management States (Add/Edit/Delete)
   const [tasks, setTasks] = useState(MISSIONS);
   const [editingTask, setEditingTask] = useState<any | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
-  // Fetch Pending Submissions
+  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api`;
+  const headers = () => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+  });
+
   const fetchPending = async () => {
+    if (!adminCreds) return;
     setLoadingQueue(true);
-    const { data, error } = await supabase
-      .from('creator_ops_submissions')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: true });
-    
-    if (!error && data) {
-      setSubmissions(data as CreatorOpsSubmission[]);
-    } else {
+    try {
+      const res = await fetch(functionUrl, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ action: 'fetch_pending', adminUsername: adminCreds.username, adminPassword: adminCreds.password }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setSubmissions((data.submissions ?? []) as AdminSubmission[]);
+    } catch {
       setSubmissions([]);
     }
     setLoadingQueue(false);
   };
 
-  useEffect(() => {
-    fetchPending();
-  }, []);
-
-  const reviewSubmission = async (submission: CreatorOpsSubmission, decision: 'approved' | 'rejected') => {
-    setProcessingId(submission.id);
-    const { error } = await supabase
-      .from('creator_ops_submissions')
-      .update({ status: decision, reviewed_at: new Date().toISOString() })
-      .eq('id', submission.id);
-    
-    setProcessingId(null);
-    if (error) return;
-
-    if (decision === 'approved') {
-      onApproveSubmission(submission.reward_zp);
-      setLogs(prev => [`[APPROVED] Mission reward +${formatZp(submission.reward_zp)} ZP granted to ${submission.player_referral_code}`, ...prev]);
-    } else {
-      setLogs(prev => [`[REJECTED] Submission from ${submission.player_referral_code} declined.`, ...prev]);
+  const fetchStats = async () => {
+    if (!adminCreds) return;
+    setLoadingStats(true);
+    try {
+      const res = await fetch(functionUrl, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ action: 'fetch_stats', adminUsername: adminCreds.username, adminPassword: adminCreds.password }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setStats(data);
+    } catch {
+      // ignore
     }
-    
-    setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
+    setLoadingStats(false);
+  };
+
+  useEffect(() => {
+    if (authenticated && adminCreds) {
+      fetchPending();
+      fetchStats();
+    }
+  }, [authenticated, adminCreds]);
+
+  const reviewSubmission = async (submission: AdminSubmission, decision: 'approved' | 'rejected') => {
+    if (!adminCreds) return;
+    setProcessingId(submission.id);
+    try {
+      const res = await fetch(functionUrl, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({
+          action: 'review_submission',
+          adminUsername: adminCreds.username,
+          adminPassword: adminCreds.password,
+          submissionId: submission.id,
+          decision,
+        }),
+      });
+      if (!res.ok) {
+        setProcessingId(null);
+        return;
+      }
+      const data = await res.json();
+
+      if (decision === 'approved') {
+        onApproveSubmission(data.rewardZp);
+        setLogs(prev => [`[APPROVED] Mission reward +${formatZp(data.rewardZp)} ZP granted to ${data.playerReferralCode}`, ...prev]);
+      } else {
+        setLogs(prev => [`[REJECTED] Submission from ${submission.player_referral_code} declined.`, ...prev]);
+      }
+
+      setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
+      setStats(prev => ({ ...prev, pendingSubmissions: prev.pendingSubmissions - 1 }));
+    } catch {
+      // ignore
+    }
+    setProcessingId(null);
   };
 
   const handleFlushCache = () => {
@@ -103,13 +156,21 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
   const missionTitle = (id: string) => tasks.find((m) => m.id === id)?.title ?? id;
 
   if (!authenticated) {
-    return <AdminLogin onSuccess={() => setAuthenticated(true)} onClose={onClose} />;
+    return (
+      <AdminLogin
+        onSuccess={(creds) => {
+          setAdminCreds(creds);
+          window.sessionStorage.setItem(ADMIN_AUTH_KEY, '1');
+          setAuthenticated(true);
+        }}
+        onClose={onClose}
+      />
+    );
   }
 
   return (
     <div className="fixed inset-0 z-50 bg-[#020503] text-neon-400 font-mono p-4 overflow-y-auto flex flex-col gap-6">
-      
-      {/* Header & System Status */}
+
       <div className="panel flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border border-neon/30 bg-[#020503]/90">
         <div className="flex items-center gap-3">
           <div className="p-2 border border-neon bg-neon/10 text-neon animate-pulse">
@@ -120,7 +181,7 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
             <h1 className="text-xl font-display font-bold tracking-wider text-neon-300">ZORD OS // COMMAND & CONTROL</h1>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
           <div className="text-right hidden sm:block">
             <p className="text-[10px] text-neon-600 uppercase">Server Health</p>
@@ -128,7 +189,7 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
               <span className="w-2 h-2 rounded-full bg-green-500 animate-ping"></span> 99.98% OPTIMAL
             </p>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="btn-primary flex items-center gap-2 text-xs py-2 px-4 border border-neon/50 bg-neon/10 hover:bg-neon/20 transition-all"
           >
@@ -137,21 +198,20 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
         </div>
       </div>
 
-      {/* Navigation Tabs */}
       <div className="flex gap-2 border-b border-neon/20 pb-2">
-        <button 
+        <button
           onClick={() => setActiveTab('queue')}
           className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${activeTab === 'queue' ? 'border-neon bg-neon/20 text-neon-300 font-bold' : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'}`}
         >
           Review Queue ({submissions.length})
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('stats')}
           className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${activeTab === 'stats' ? 'border-neon bg-neon/20 text-neon-300 font-bold' : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'}`}
         >
           System & Telemetry
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('tasks')}
           className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${activeTab === 'tasks' ? 'border-neon bg-neon/20 text-neon-300 font-bold' : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'}`}
         >
@@ -159,7 +219,6 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
         </button>
       </div>
 
-      {/* TAB 1: REVIEW QUEUE */}
       {activeTab === 'queue' && (
         <div className="panel p-4 border border-neon/20 space-y-4">
           <div className="flex items-center justify-between border-b border-neon/20 pb-2">
@@ -238,7 +297,6 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
         </div>
       )}
 
-      {/* TAB 2: SYSTEM & TELEMETRY STATS */}
       {activeTab === 'stats' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -247,26 +305,32 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
                 <span className="text-[11px] uppercase tracking-wider">Active Operatives</span>
                 <Users size={16} />
               </div>
-              <p className="text-2xl font-display font-bold text-neon-300">1,482</p>
-              <p className="text-[10px] text-neon-600 mt-1">+14% in last 24h</p>
+              <p className="text-2xl font-display font-bold text-neon-300 tabular-nums">
+                {loadingStats ? '...' : stats.totalPlayers.toLocaleString()}
+              </p>
+              <p className="text-[10px] text-neon-600 mt-1">Registered players</p>
             </div>
 
             <div className="panel p-4 border border-neon/20 bg-neon/5">
               <div className="flex items-center justify-between text-neon-500 mb-2">
-                <span className="text-[11px] uppercase tracking-wider">Ecosystem ZP Mined</span>
+                <span className="text-[11px] uppercase tracking-wider">Pending Reviews</span>
                 <Zap size={16} />
               </div>
-              <p className="text-2xl font-display font-bold text-neon-300">482,910 ZP</p>
-              <p className="text-[10px] text-neon-600 mt-1">Across all profiles</p>
+              <p className="text-2xl font-display font-bold text-neon-300 tabular-nums">
+                {loadingStats ? '...' : stats.pendingSubmissions.toLocaleString()}
+              </p>
+              <p className="text-[10px] text-neon-600 mt-1">Awaiting approval</p>
             </div>
 
             <div className="panel p-4 border border-neon/20 bg-neon/5">
               <div className="flex items-center justify-between text-neon-500 mb-2">
-                <span className="text-[11px] uppercase tracking-wider">TON Vault Reserves</span>
-                <Cpu size={16} />
+                <span className="text-[11px] uppercase tracking-wider">Approved Submissions</span>
+                <Check size={16} />
               </div>
-              <p className="text-2xl font-display font-bold text-neon-300">14.8 TON</p>
-              <p className="text-[10px] text-neon-600 mt-1">From agent rentals</p>
+              <p className="text-2xl font-display font-bold text-neon-300 tabular-nums">
+                {loadingStats ? '...' : stats.approvedSubmissions.toLocaleString()}
+              </p>
+              <p className="text-[10px] text-neon-600 mt-1">Total approved</p>
             </div>
 
             <div className="panel p-4 border border-neon/20 bg-neon/5">
@@ -292,8 +356,8 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
                 ))}
               </div>
               <form onSubmit={handleBroadcast} className="flex gap-2 mt-2">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={broadcastText}
                   onChange={(e) => setBroadcastText(e.target.value)}
                   placeholder="Broadcast alert to all active operatives..."
@@ -312,11 +376,11 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
               <div className="flex flex-col gap-2">
                 <label className="text-[11px] text-neon-500">Global Mining Multiplier (ZP/sec)</label>
                 <div className="flex items-center gap-3">
-                  <input 
-                    type="range" 
-                    min="0.01" 
-                    max="0.50" 
-                    step="0.01" 
+                  <input
+                    type="range"
+                    min="0.01"
+                    max="0.50"
+                    step="0.01"
                     value={multiplier}
                     onChange={(e) => setMultiplier(parseFloat(e.target.value))}
                     className="flex-1 accent-green-500 bg-black"
@@ -326,14 +390,14 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
               </div>
 
               <div className="mt-auto pt-4 border-t border-neon/20 grid grid-cols-2 gap-2">
-                <button 
+                <button
                   onClick={handleFlushCache}
                   disabled={isFlushing}
                   className="py-2 px-3 bg-red-950/40 border border-red-500/40 hover:bg-red-900/40 text-red-400 text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
                 >
                   <RefreshCw size={12} className={isFlushing ? "animate-spin" : ""} /> {isFlushing ? 'Flushing...' : 'Flush Cache'}
                 </button>
-                <button 
+                <button
                   onClick={() => setLogs(prev => [`[SYS] Exported system telemetry snapshot.`, ...prev])}
                   className="py-2 px-3 bg-neon/10 border border-neon/40 hover:bg-neon/20 text-neon-300 text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
                 >
@@ -345,14 +409,13 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
         </div>
       )}
 
-      {/* TAB 3: MISSION TASK MANAGEMENT (ADD, EDIT, DELETE) */}
       {activeTab === 'tasks' && (
         <div className="panel p-4 border border-neon/20 space-y-4">
           <div className="flex items-center justify-between border-b border-neon/20 pb-2">
             <h2 className="text-xs uppercase tracking-widest text-neon-400 font-bold flex items-center gap-2">
               <Database size={14} /> Mission Control & Task Registry
             </h2>
-            <button 
+            <button
               onClick={() => { setEditingTask(null); setIsTaskModalOpen(true); }}
               className="btn-primary flex items-center gap-1.5 text-xs py-1.5 px-3 border border-neon bg-neon/20"
             >
@@ -372,13 +435,13 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
                   <p className="text-[11px] text-neon-400 font-bold mt-2">Reward: +{formatZp(task.reward)} ZP</p>
                 </div>
                 <div className="flex gap-1.5">
-                  <button 
+                  <button
                     onClick={() => { setEditingTask(task); setIsTaskModalOpen(true); }}
                     className="p-1.5 bg-neon/10 hover:bg-neon/20 border border-neon/30 text-neon-300"
                   >
                     <Edit2 size={13} />
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleDeleteTask(task.id)}
                     className="p-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400"
                   >
@@ -391,7 +454,6 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
         </div>
       )}
 
-      {/* Task Creation / Edit Modal */}
       {isTaskModalOpen && (
         <Modal title={editingTask ? "Edit Mission Task" : "Create New Mission Task"} onClose={() => setIsTaskModalOpen(false)}>
           <form onSubmit={(e) => {
@@ -452,16 +514,15 @@ export function AdminDashboard({ onClose, onApproveSubmission }: AdminDashboardP
   );
 }
 
-function AdminLogin({ onSuccess, onClose }: { onSuccess: () => void; onClose: () => void }) {
+function AdminLogin({ onSuccess, onClose }: { onSuccess: (creds: { username: string; password: string }) => void; onClose: () => void }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (username.trim() === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      window.sessionStorage.setItem(ADMIN_AUTH_KEY, '1');
-      onSuccess();
+    if (username.trim() === 'Remytijjani' && password === 'Remytijjani656') {
+      onSuccess({ username: username.trim(), password });
     } else {
       setError('Invalid credentials. Access denied.');
     }

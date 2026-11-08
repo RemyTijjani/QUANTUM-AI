@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getTelegramInitData, getTelegramStartParam } from '@/lib/telegram';
 import { AuthContext } from '@/lib/auth';
