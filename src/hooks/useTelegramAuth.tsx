@@ -6,6 +6,7 @@ import type { AuthState, AuthPlayer } from '@/lib/auth';
 
 const REFERRER_KEY = 'zord-referrer-code';
 const AUTH_KEY = 'zord-auth-player';
+const AUTH_TIMEOUT_MS = 15000;
 
 async function authenticate(): Promise<{ player: AuthPlayer } | { error: string }> {
   const initData = getTelegramInitData();
@@ -21,6 +22,7 @@ async function authenticate(): Promise<{ player: AuthPlayer } | { error: string 
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
     },
     body: JSON.stringify({ initData }),
+    signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -82,7 +84,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      const result = await authenticate();
+      let result: Awaited<ReturnType<typeof authenticate>>;
+      try {
+        result = await authenticate();
+      } catch {
+        result = { error: 'Could not reach ZORD servers. Check your connection and reopen the app.' };
+      }
       if (cancelled) return;
 
       if ('error' in result) {
