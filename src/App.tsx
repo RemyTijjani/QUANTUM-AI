@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import type { TabId } from '@/components/BottomNav';
@@ -17,7 +18,6 @@ import { useGame } from '@/hooks/useGame';
 import { useToast } from '@/hooks/useToast';
 import { AuthProvider, useAuth } from '@/hooks/useTelegramAuth';
 import { useMissions } from '@/hooks/useMissions';
-import { ZordPreloader } from '@/components/ZordPreloader';
 import type { MissionSpec } from '@/lib/game/config';
 import { FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
@@ -31,14 +31,21 @@ type Overlay = 'profile' | 'leaderboard' | 'admin' | null;
 function AppShell() {
   const { auth } = useAuth();
   const missions = useMissions(auth.status === 'authenticated');
-  const [introDone, setIntroDone] = useState(false);
-  const handleIntroComplete = useCallback(() => setIntroDone(true), []);
 
   useEffect(() => {
     initTelegram();
   }, []);
 
-  if (!introDone) return <ZordPreloader onComplete={handleIntroComplete} />;
+  if (auth.status === 'error') {
+    return (
+      <div className="relative mx-auto flex h-dvh max-w-md flex-col items-center justify-center gap-4 bg-obsidian px-6 text-center">
+        <div className="crt-overlay" aria-hidden />
+        <AlertTriangle size={32} className="text-red-400" />
+        <p className="font-mono text-[11px] uppercase tracking-widest text-red-300">{auth.message}</p>
+        <p className="font-mono text-[10px] text-neon-600">Open this app from Telegram to authenticate.</p>
+      </div>
+    );
+  }
 
   const referralCode = auth.status === 'authenticated' ? auth.player.referralCode : null;
   const missionList = missions.resource.status === 'ready' ? missions.resource.data : [];
