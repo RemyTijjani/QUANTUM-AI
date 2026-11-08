@@ -8,9 +8,18 @@ const REFERRER_KEY = 'zord-referrer-code';
 const AUTH_KEY = 'zord-auth-player';
 const AUTH_TIMEOUT_MS = 15000;
 
+const DEV_MOCK_PLAYER: AuthPlayer = {
+  playerId: 'dev-999999',
+  telegramId: 999999,
+  username: 'dev_operative',
+  firstName: 'Dev',
+  referralCode: 'ZORD-DEV000',
+};
+
 async function authenticate(): Promise<{ player: AuthPlayer } | { error: string }> {
   const initData = getTelegramInitData();
   if (!initData) {
+    if (import.meta.env.DEV) return { player: DEV_MOCK_PLAYER };
     return { error: 'This app must be opened from Telegram.' };
   }
 
