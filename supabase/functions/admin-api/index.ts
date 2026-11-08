@@ -13,12 +13,59 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ADMIN_USERNAME = "Remytijjani";
 const ADMIN_PASSWORD = "Remytijjani656";
 
+const TASK_KINDS = ["daily", "social", "creator"];
+const TASK_PLATFORMS = ["tiktok", "youtube"];
+
 interface AdminRequestBody {
-  action: "review_submission" | "fetch_pending" | "fetch_stats";
+  action: "review_submission" | "fetch_dashboard" | "save_task" | "delete_task";
   adminUsername?: string;
   adminPassword?: string;
   submissionId?: string;
   decision?: "approved" | "rejected";
+  task?: {
+    id?: string;
+    kind?: string;
+    title?: string;
+    description?: string;
+    reward?: number;
+    platform?: string | null;
+    actionUrl?: string | null;
+  };
+  taskId?: string;
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+function validateTask(task: NonNullable<AdminRequestBody["task"]>): string | null {
+  if (!task.title?.trim()) return "Task name is required";
+  if (!task.description?.trim()) return "Description is required";
+  if (!task.kind || !TASK_KINDS.includes(task.kind)) return "Invalid task kind";
+  if (typeof task.reward !== "number" || !Number.isInteger(task.reward) || task.reward < 0) {
+    return "Reward must be a whole number of 0 or more";
+  }
+  if (task.platform && !TASK_PLATFORMS.includes(task.platform)) return "Invalid platform";
+  if (task.actionUrl) {
+    try {
+      const parsed = new URL(task.actionUrl);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return "Action URL must be http or https";
+    } catch {
+      return "Action URL is not a valid link";
+    }
+  }
+  return null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -32,60 +79,69 @@ Deno.serve(async (req: Request) => {
     const isAdmin =
       body.adminUsername === ADMIN_USERNAME && body.adminPassword === ADMIN_PASSWORD;
 
-    const serviceRole = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    if (!isAdmin) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+
+    const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
     });
 
-    if (body.action === "fetch_pending") {
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    if (body.action === "fetch_dashboard") {
+      const [playersRes, submissionsRes, pendingRes, approvedRes, pendingListRes, tasksRes] =
+        await Promise.all([
+          db.from("players").select("id", { count: "exact", head: true }),
+          db.from("creator_ops_submissions").select("id", { count: "exact", head: true }),
+          db.from("creator_ops_submissions").select("id", { count: "exact", head: true }).eq("status", "pending"),
+          db.from("creator_ops_submissions").select("reward_zp").eq("status", "approved"),
+          db
+            .from("creator_ops_submissions")
+            .select("id, mission_id, player_referral_code, link_url, platform, status, reward_zp, reviewed_at, created_at")
+            .eq("status", "pending")
+            .order("created_at", { ascending: true }),
+          db
+            .from("mission_tasks")
+            .select("id, kind, title, description, reward, platform, action_url")
+            .order("created_at", { ascending: true }),
+        ]);
+
+      const failed = [playersRes, submissionsRes, pendingRes, approvedRes, pendingListRes, tasksRes].find((r) => r.error);
+      if (failed) {
+        return json({ error: "Failed to load dashboard data" }, 500);
       }
 
-      const { data, error } = await serviceRole
-        .from("creator_ops_submissions")
-        .select("*")
-        .eq("status", "pending")
-        .order("created_at", { ascending: true });
+      const totalZp = (approvedRes.data ?? []).reduce((sum, row) => sum + (row.reward_zp ?? 0), 0);
 
-      if (error) {
-        return new Response(JSON.stringify({ error: "Failed to fetch submissions" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      return new Response(JSON.stringify({ submissions: data }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return json({
+        stats: {
+          totalPlayers: playersRes.count ?? 0,
+          totalSubmissions: submissionsRes.count ?? 0,
+          pendingSubmissions: pendingRes.count ?? 0,
+          totalZp,
+        },
+        submissions: pendingListRes.data ?? [],
+        tasks: (tasksRes.data ?? []).map((t) => ({
+          id: t.id,
+          kind: t.kind,
+          title: t.title,
+          description: t.description,
+          reward: t.reward,
+          platform: t.platform,
+          actionUrl: t.action_url,
+        })),
       });
     }
 
     if (body.action === "review_submission") {
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
       if (!body.submissionId || !body.decision) {
-        return new Response(JSON.stringify({ error: "submissionId and decision required" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "submissionId and decision required" }, 400);
       }
 
       if (body.decision !== "approved" && body.decision !== "rejected") {
-        return new Response(JSON.stringify({ error: "Invalid decision" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Invalid decision" }, 400);
       }
 
-      const { data, error } = await serviceRole
+      const { data, error } = await db
         .from("creator_ops_submissions")
         .update({ status: body.decision, reviewed_at: new Date().toISOString() })
         .eq("id", body.submissionId)
@@ -93,63 +149,65 @@ Deno.serve(async (req: Request) => {
         .single();
 
       if (error || !data) {
-        return new Response(JSON.stringify({ error: "Failed to update submission" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Failed to update submission" }, 500);
       }
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          rewardZp: data.reward_zp,
-          playerId: data.player_id,
-          playerReferralCode: data.player_referral_code,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return json({
+        success: true,
+        rewardZp: data.reward_zp,
+        playerId: data.player_id,
+        playerReferralCode: data.player_referral_code,
+      });
     }
 
-    if (body.action === "fetch_stats") {
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    if (body.action === "save_task") {
+      const task = body.task;
+      if (!task) return json({ error: "task is required" }, 400);
+
+      const validationError = validateTask(task);
+      if (validationError) return json({ error: validationError }, 400);
+
+      const row = {
+        kind: task.kind,
+        title: task.title!.trim(),
+        description: task.description!.trim(),
+        reward: task.reward,
+        platform: task.kind === "creator" ? task.platform || null : null,
+        action_url: task.actionUrl?.trim() || null,
+      };
+
+      if (task.id) {
+        const { data, error } = await db
+          .from("mission_tasks")
+          .update(row)
+          .eq("id", task.id)
+          .select("id")
+          .maybeSingle();
+        if (error) return json({ error: "Failed to update task" }, 500);
+        if (!data) return json({ error: "Task not found" }, 404);
+        return json({ success: true, id: data.id });
       }
 
-      const [playersRes, subsRes, pendingRes, approvedRes] = await Promise.all([
-        serviceRole.from("players").select("id", { count: "exact", head: true }),
-        serviceRole.from("creator_ops_submissions").select("id", { count: "exact", head: true }),
-        serviceRole
-          .from("creator_ops_submissions")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "pending"),
-        serviceRole
-          .from("creator_ops_submissions")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "approved"),
-      ]);
-
-      return new Response(
-        JSON.stringify({
-          totalPlayers: playersRes.count ?? 0,
-          totalSubmissions: subsRes.count ?? 0,
-          pendingSubmissions: pendingRes.count ?? 0,
-          approvedSubmissions: approvedRes.count ?? 0,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      const id = `${slugify(row.title)}-${Date.now().toString(36)}`;
+      const { data, error } = await db
+        .from("mission_tasks")
+        .insert({ id, ...row })
+        .select("id")
+        .single();
+      if (error || !data) return json({ error: "Failed to create task" }, 500);
+      return json({ success: true, id: data.id });
     }
 
-    return new Response(JSON.stringify({ error: "Unknown action" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: "Request failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    if (body.action === "delete_task") {
+      if (!body.taskId) return json({ error: "taskId required" }, 400);
+
+      const { error } = await db.from("mission_tasks").delete().eq("id", body.taskId);
+      if (error) return json({ error: "Failed to delete task" }, 500);
+      return json({ success: true });
+    }
+
+    return json({ error: "Unknown action" }, 400);
+  } catch {
+    return json({ error: "Request failed" }, 500);
   }
 });
