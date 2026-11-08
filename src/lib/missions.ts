@@ -14,6 +14,11 @@ interface MissionTaskRow {
 const MISSION_KINDS: MissionKind[] = ['daily', 'social', 'creator'];
 
 export async function fetchMissions(): Promise<MissionSpec[]> {
+  if (import.meta.env.DEV) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) return [];
+  }
+
   const { data, error } = await supabase
     .from('mission_tasks')
     .select('id, kind, title, description, reward, platform, action_url')
