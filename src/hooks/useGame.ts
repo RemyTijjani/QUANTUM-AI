@@ -2,11 +2,12 @@ import { useEffect, useMemo, useReducer } from 'react';
 import { gameReducer } from '@/lib/game/state';
 import type { Command, GameState } from '@/lib/game/state';
 import { loadState, saveState } from '@/lib/game/storage';
-import type { AgentId, FragmentId, MissionSpec } from '@/lib/game/config';
-import {
-  fetchUnsyncedReferrals,
-  markReferralsSynced,
-} from '@/lib/referral';
+import type {
+  AgentId,
+  FragmentId,
+  MissionSpec,
+} from '@/lib/game/config';
+import { fetchUnsyncedReferrals } from '@/lib/referral';
 
 function createActions(send: (command: Command) => void) {
   return {
@@ -60,11 +61,12 @@ export function useGame(
       loadState(Date.now(), code, id),
   );
 
-  // Save this player's state under this player's unique storage key.
+  // Save this player's game state under their unique storage key.
   useEffect(() => {
     saveState(state, playerId);
   }, [state, playerId]);
 
+  // Update game time every second.
   useEffect(() => {
     const id = window.setInterval(() => {
       dispatch({ type: 'tick', now: Date.now() });
@@ -81,6 +83,7 @@ export function useGame(
     [],
   );
 
+  // Keep the current referral code in the game state.
   useEffect(() => {
     if (!referralCode) return;
 
@@ -91,6 +94,7 @@ export function useGame(
     });
   }, [referralCode]);
 
+  // Fetch all referrals, including previously synced records.
   useEffect(() => {
     if (!referralCode) return;
 
@@ -98,7 +102,8 @@ export function useGame(
 
     const poll = async () => {
       try {
-        const records = await fetchUnsyncedReferrals(referralCode);
+        const records =
+          await fetchUnsyncedReferrals(referralCode);
 
         if (cancelled || records.length === 0) return;
 
@@ -111,10 +116,6 @@ export function useGame(
             name: record.recruit_name,
             now: Date.now(),
           });
-        }
-
-        if (!cancelled) {
-          await markReferralsSynced(records.map((r) => r.id));
         }
       } catch (error) {
         console.error('Referral polling failed:', error);
