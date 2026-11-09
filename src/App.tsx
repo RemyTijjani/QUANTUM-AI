@@ -1,4 +1,3 @@
-```tsx
 import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import Header from '@/components/Header';
@@ -238,4 +237,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-```
