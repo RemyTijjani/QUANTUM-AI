@@ -3,7 +3,10 @@ import { gameReducer } from '@/lib/game/state';
 import type { Command, GameState } from '@/lib/game/state';
 import { loadState, saveState } from '@/lib/game/storage';
 import type { AgentId, FragmentId, MissionSpec } from '@/lib/game/config';
-import { fetchUnsyncedReferrals, markReferralsSynced, registerReferral } from '@/lib/referral';
+import {
+  fetchUnsyncedReferrals,
+  markReferralsSynced,
+} from '@/lib/referral';
 
 function createActions(send: (command: Command) => void) {
   return {
@@ -49,11 +52,10 @@ export function useGame(referralCode: string | null): { state: GameState; action
     dispatch({ type: 'setReferralCode', referralCode, now: Date.now() });
   }, [referralCode]);
 
-  useEffect(() => {
-    if (!referralCode) return;
-    registerReferral(referralCode);
+ useEffect(() => {
+  if (!referralCode) return;
 
-    let cancelled = false;
+  let cancelled = false;
 
     const poll = async () => {
       const records = await fetchUnsyncedReferrals(referralCode);
