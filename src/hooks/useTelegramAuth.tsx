@@ -9,7 +9,7 @@ import type { AuthState, AuthPlayer } from '@/lib/auth';
 const REFERRER_KEY = 'zord-referrer-code';
 const AUTH_KEY = 'zord-auth-player';
 const LAST_TG_ID_KEY = 'zord_last_telegram_id';
-const AUTH_TIMEOUT_MS = 5000;
+const AUTH_TIMEOUT_MS = 20000;
 const GUEST_OWNER_ID = 'guest';
 
 const DEV_MOCK_PLAYER: AuthPlayer = {
@@ -167,17 +167,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let result: Awaited<ReturnType<typeof authenticate>>;
       try {
         result = await authenticate();
-      } catch {
-        result = { error: 'Could not reach ZORD servers. Check your connection and reopen the app.' };
-      }
-      if (cancelled) return;
+      } catch (err) {
+  console.error('Telegram backend authentication failed:', err);
 
-      if ('error' in result) {
-        setAuth({ status: 'error', message: result.error });
-      } else {
-        setAuth({ status: 'authenticated', player: result.player });
-      }
-    };
+  return {
+    error:
+      'Could not register your account with ZORD servers. Please check your connection and try again.',
+  };
+}
 
     init();
 
