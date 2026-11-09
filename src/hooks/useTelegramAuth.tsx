@@ -1,7 +1,10 @@
+
 import { useEffect, useState, useContext } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getTelegramInitData, getTelegramStartParam, getTelegramUser } from '@/lib/telegram';
-import type { TelegramUser } from '@/lib/telegram';
+import {
+  getTelegramInitData,
+  getTelegramStartParam,
+} from '@/lib/telegram';
 import { AuthContext } from '@/lib/auth';
 import { claimLocalSession } from '@/lib/localSession';
 import type { AuthState, AuthPlayer } from '@/lib/auth';
@@ -12,36 +15,35 @@ const LAST_TG_ID_KEY = 'zord_last_telegram_id';
 const AUTH_TIMEOUT_MS = 20000;
 const GUEST_OWNER_ID = 'guest';
 
-const DEV_MOCK_PLAYER: AuthPlayer = {
-  playerId: 'dev-999999',
-  telegramId: 999999,
-  username: 'dev_operative',
-  firstName: 'Dev',
-  referralCode: 'ZORD-DEV000',
-};
+async function authenticateWithBackend(
+  initData: string,
+  referrerCode?: string | null,
+): Promise<AuthPlayer> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const GUEST_PLAYER: AuthPlayer = {
-  playerId: 'guest',
-  telegramId: 0,
-  username: null,
-  firstName: null,
-  referralCode: null,
-};
+  if (!supabaseUrl || !anonKey) {
+    throw new Error('Supabase environment variables are missing.');
+  }
 
-async function authenticateWithBackend(initData: string, referrerCode?: string | null): Promise<AuthPlayer> {
-  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-auth`;
+  const functionUrl = `${supabaseUrl}/functions/v1/telegram-auth`;
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+  const timer = window.setTimeout(
+    () => controller.abort(),
+    AUTH_TIMEOUT_MS,
+  );
+
   let response: Response;
-  
+
   try {
     response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${anonKey}`,
+        apikey: anonKey,
       },
-      // Pass referrerCode to backend edge function so it can process referral bonuses securely
       body: JSON.stringify({ initData, referrerCode }),
       signal: controller.signal,
     });
@@ -49,16 +51,29 @@ async function authenticateWithBackend(initData: string, referrerCode?: string |
     window.clearTimeout(timer);
   }
 
-  if (!response.ok) throw new Error('Telegram verification failed.');
+  const data = await response.json().catch(() => ({}));
 
-  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      data.error || `Telegram authentication failed (${response.status}).`,
+    );
+  }
 
-  const { data: sessionData, error: signInError } = await supabase.auth.signInWithPassword({
-    email: data.email,
-    password: data.password,
-  });
+  if (!data.email || !data.password || !data.referralCode) {
+    throw new Error('Backend returned incomplete player information.');
+  }
 
-  if (signInError || !sessionData.session) throw new Error('Failed to establish session.');
+  const { data: sessionData, error: signInError } =
+    await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+
+  if (signInError || !sessionData.session) {
+    throw new Error(
+      signInError?.message || 'Failed to establish Supabase session.',
+    );
+  }
 
   const player: AuthPlayer = {
     playerId: sessionData.user.id,
@@ -69,126 +84,209 @@ async function authenticateWithBackend(initData: string, referrerCode?: string |
   };
 
   try {
-    window.localStorage.setItem(AUTH_KEY, JSON.stringify(player));
+    window.localStorage.setItem(
+      AUTH_KEY,
+      JSON.stringify(player),
+    );
   } catch {
-    // ignore
+    // Local cache is optional.
   }
 
   return player;
 }
 
-function playerFromTelegramUser(user: TelegramUser): AuthPlayer {
-  return {
-    playerId: `telegram-${user.id}`,
-    telegramId: user.id,
-    username: user.username ?? null,
-    firstName: user.first_name ?? null,
-    referralCode: null,
-  };
-}
-
-async function authenticate(): Promise<{ player: AuthPlayer } | { error: string }> {
+async function authenticate(): Promise<
+  { player: AuthPlayer } | { error: string }
+> {
   const initData = getTelegramInitData();
-  
-  // Extract and clean start parameter for referrals (supports ZORD- codes or ref_ prefixes)
-  let rawStartParam = getTelegramStartParam();
-  let referrerCode: string | null = null;
-
-  if (rawStartParam) {
-    if (rawStartParam.startsWith('ref_')) {
-      referrerCode = rawStartParam.replace('ref_', '');
-    } else if (rawStartParam.startsWith('ZORD-')) {
-      referrerCode = rawStartParam;
-    }
-  }
-
-  // Fallback to stored referrer if not in current URL start_param
-  if (!referrerCode) {
-    referrerCode = getStoredReferrerCode();
-  } else {
-    try {
-      window.localStorage.setItem(REFERRER_KEY, referrerCode);
-    } catch {
-      // ignore
-    }
-  }
 
   if (!initData) {
-    if (import.meta.env.DEV) return { player: DEV_MOCK_PLAYER };
-    return { player: GUEST_PLAYER };
+    return {
+      error: 'Open ZORD through the official Telegram Mini App.',
+    };
+  }
+
+  let referrerCode: string | null = null;
+
+  const rawStartParam = getTelegramStartParam();
+
+  if (rawStartParam) {
+    const normalized = rawStartParam
+      .trim()
+      .replace(/^ref_/i, '')
+      .toUpperCase();
+
+    if (normalized.startsWith('ZORD-')) {
+      referrerCode = normalized;
+
+      try {
+        window.localStorage.setItem(
+          REFERRER_KEY,
+          referrerCode,
+        );
+      } catch {
+        // Ignore storage errors.
+      }
+    }
+  }
+
+  if (!referrerCode) {
+    referrerCode = getStoredReferrerCode();
   }
 
   try {
-    return { player: await authenticateWithBackend(initData, referrerCode) };
+    const player = await authenticateWithBackend(
+      initData,
+      referrerCode,
+    );
+
+    return { player };
   } catch (err) {
-    console.warn('Backend Telegram sign-in unavailable, using Telegram identity.', err);
-    const telegramUser = getTelegramUser();
-    if (telegramUser) return { player: playerFromTelegramUser(telegramUser) };
-    return { error: 'Could not verify your Telegram account.' };
+    console.error('Telegram authentication failed:', err);
+
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'Could not register your account with ZORD servers.',
+    };
   }
 }
 
 function loadStoredPlayer(): AuthPlayer | null {
   try {
     const raw = window.localStorage.getItem(AUTH_KEY);
+
     if (!raw) return null;
+
     return JSON.parse(raw) as AuthPlayer;
   } catch {
     return null;
   }
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [auth, setAuth] = useState<AuthState>({ status: 'loading' });
+export function AuthProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [auth, setAuth] = useState<AuthState>({
+    status: 'loading',
+  });
 
   useEffect(() => {
     let cancelled = false;
 
     const init = async () => {
-      const telegramUser = getTelegramUser();
-      const currentTgId = telegramUser ? String(telegramUser.id) : GUEST_OWNER_ID;
+      const currentStartParam = getTelegramStartParam();
+      const currentTgId = (() => {
+        const initData = getTelegramInitData();
 
-      // 1. Telegram Account Switch Detection:
-      // If the active Telegram account changed on the device, flush local storage cache
+        if (!initData) return GUEST_OWNER_ID;
+
+        try {
+          const params = new URLSearchParams(initData);
+          const user = JSON.parse(params.get('user') || '{}');
+
+          return user.id ? String(user.id) : GUEST_OWNER_ID;
+        } catch {
+          return GUEST_OWNER_ID;
+        }
+      })();
+
       try {
-        const lastTgId = window.localStorage.getItem(LAST_TG_ID_KEY);
+        const lastTgId = window.localStorage.getItem(
+          LAST_TG_ID_KEY,
+        );
+
         if (lastTgId && lastTgId !== currentTgId) {
           window.localStorage.removeItem(AUTH_KEY);
           window.localStorage.removeItem(REFERRER_KEY);
         }
-        window.localStorage.setItem(LAST_TG_ID_KEY, currentTgId);
+
+        window.localStorage.setItem(
+          LAST_TG_ID_KEY,
+          currentTgId,
+        );
+
+        // Preserve an incoming referral code.
+        if (currentStartParam) {
+          const normalized = currentStartParam
+            .trim()
+            .replace(/^ref_/i, '')
+            .toUpperCase();
+
+          if (normalized.startsWith('ZORD-')) {
+            window.localStorage.setItem(
+              REFERRER_KEY,
+              normalized,
+            );
+          }
+        }
       } catch {
-        // ignore
+        // Ignore local storage errors.
       }
 
-      await claimLocalSession(currentTgId);
-      if (cancelled) return;
-
-      let result: Awaited<ReturnType<typeof authenticate>>;
       try {
-        result = await authenticate();
+        await claimLocalSession(currentTgId);
+
+        if (cancelled) return;
+
+        const result = await authenticate();
+
+        if (cancelled) return;
+
+        if ('error' in result) {
+          setAuth({
+            status: 'error',
+            error: result.error,
+          } as AuthState);
+
+          return;
+        }
+
+        setAuth({
+          status: 'authenticated',
+          player: result.player,
+        } as AuthState);
       } catch (err) {
-  console.error('Telegram backend authentication failed:', err);
+        console.error('Authentication initialization failed:', err);
 
-  return {
-    error:
-      'Could not register your account with ZORD servers. Please check your connection and try again.',
-  };
-}
+        if (!cancelled) {
+          setAuth({
+            status: 'error',
+            error:
+              err instanceof Error
+                ? err.message
+                : 'Authentication failed.',
+          } as AuthState);
+        }
+      }
+    };
 
-    init();
+    void init();
 
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return <AuthContext.Provider value={{ auth }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ auth }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+
+  if (!ctx) {
+    throw new Error(
+      'useAuth must be used within AuthProvider',
+    );
+  }
+
   return ctx;
 }
 
