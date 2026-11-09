@@ -1,3 +1,4 @@
+
 import {
   AD_QUOTA_TARGET,
   AGENT_IDS,
@@ -18,6 +19,7 @@ import {
   TIER_SIZE,
   TON_FAUCET_AMOUNT,
 } from './config';
+
 import type { AgentId, FragmentId, MissionSpec } from './config';
 import { dayKey } from '@/lib/format';
 
@@ -76,45 +78,80 @@ export type Command =
 
 export type GameAction = Command & { now: number };
 
-const makeReferralCode = () => `ZORD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+const makeReferralCode = () =>
+  `ZORD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
-export function createInitialState(now: number, referralCode?: string): GameState {
+export function createInitialState(
+  now: number,
+  referralCode?: string
+): GameState {
   return {
     zp: 0,
     lifetimeZp: 0,
-    fragments: { top: 'locked', bottom: 'locked', left: 'locked', right: 'locked' },
-    fragmentCooldowns: { top: 0, bottom: 0, left: 0, right: 0 },
+    fragments: {
+      top: 'locked',
+      bottom: 'locked',
+      left: 'locked',
+      right: 'locked',
+    },
+    fragmentCooldowns: {
+      top: 0,
+      bottom: 0,
+      left: 0,
+      right: 0,
+    },
     agents: { alpha: 0, overclock: 0 },
     kickbackPending: 0,
     subNodes: [],
     claimedMilestones: [],
     missionClaims: {},
     adsWatched: { day: dayKey(now), count: 0 },
-    wallet: { connected: false, faucetClaimed: false, tonBalance: 0 },
+    wallet: {
+      connected: false,
+      faucetClaimed: false,
+      tonBalance: 0,
+    },
     referralCode: referralCode ?? makeReferralCode(),
     coreMiningUntil: 0,
     lastTick: now,
   };
 }
 
-export const fixedCount = (s: GameState) => FRAGMENT_IDS.filter((id) => s.fragments[id] === 'fixed').length;
+export const fixedCount = (s: GameState) =>
+  FRAGMENT_IDS.filter((id) => s.fragments[id] === 'fixed').length;
 
-export const activeAgents = (s: GameState, now: number) => AGENT_IDS.filter((id) => s.agents[id] > now);
+export const activeAgents = (s: GameState, now: number) =>
+  AGENT_IDS.filter((id) => s.agents[id] > now);
 
-export const isAgentActive = (s: GameState, id: AgentId, now: number) => s.agents[id] > now;
+export const isAgentActive = (
+  s: GameState,
+  id: AgentId,
+  now: number
+) => s.agents[id] > now;
 
-export const fragmentCooldownRemaining = (s: GameState, id: FragmentId, now: number) =>
-  Math.max(0, s.fragmentCooldowns[id] - now);
+export const fragmentCooldownRemaining = (
+  s: GameState,
+  id: FragmentId,
+  now: number
+) => Math.max(0, s.fragmentCooldowns[id] - now);
 
 export function passiveRate(s: GameState, now: number) {
   const coreRate = now < s.coreMiningUntil ? CORE_BASE_RATE : 0;
   const fragmentRate = fixedCount(s) * FRAGMENT_ZP_PER_SEC;
-  const agentRate = activeAgents(s, now).reduce((sum, id) => sum + AGENTS[id].zpPerSec, 0);
+  const agentRate = activeAgents(s, now).reduce(
+    (sum, id) => sum + AGENTS[id].zpPerSec,
+    0
+  );
+
   return coreRate + fragmentRate + agentRate;
 }
 
 function kickbackMultiplier(s: GameState, now: number) {
-  return activeAgents(s, now).reduce((multiplier, id) => Math.max(multiplier, AGENTS[id].kickbackMultiplier), 1);
+  return activeAgents(s, now).reduce(
+    (multiplier, id) =>
+      Math.max(multiplier, AGENTS[id].kickbackMultiplier),
+    1
+  );
 }
 
 export const adsWatchedToday = (s: GameState, now: number) =>
@@ -123,6 +160,7 @@ export const adsWatchedToday = (s: GameState, now: number) =>
 export function tierInfo(lifetimeZp: number) {
   const tier = Math.floor(lifetimeZp / TIER_SIZE) + 1;
   const intoTier = lifetimeZp % TIER_SIZE;
+
   return {
     tier,
     rank: RANKS[Math.min(tier - 1, RANKS.length - 1)],
@@ -132,27 +170,43 @@ export function tierInfo(lifetimeZp: number) {
   };
 }
 
-const missionKey = (mission: MissionSpec, now: number) => (mission.kind === 'daily' ? dayKey(now) : 'done');
+const missionKey = (mission: MissionSpec, now: number) =>
+  mission.kind === 'daily' ? dayKey(now) : 'done';
 
-function isMissionReady(s: GameState, mission: MissionSpec, now: number) {
+function isMissionReady(
+  s: GameState,
+  mission: MissionSpec,
+  now: number
+) {
   switch (mission.id) {
     case 'ad-quota':
       return adsWatchedToday(s, now) >= AD_QUOTA_TARGET;
+
     case 'agent-uptime':
       return activeAgents(s, now).length > 0;
+
     case 'daily-recruit-sync':
       return s.subNodes.length > 0;
+
     default:
       return true;
   }
 }
 
-export function missionStatus(s: GameState, mission: MissionSpec, now: number): 'claimed' | 'ready' | 'locked' {
-  if (s.missionClaims[mission.id] === missionKey(mission, now)) return 'claimed';
+export function missionStatus(
+  s: GameState,
+  mission: MissionSpec,
+  now: number
+): 'claimed' | 'ready' | 'locked' {
+  if (s.missionClaims[mission.id] === missionKey(mission, now)) {
+    return 'claimed';
+  }
+
   return isMissionReady(s, mission, now) ? 'ready' : 'locked';
 }
 
-const roundTon = (value: number) => Math.round(value * 100) / 100;
+const roundTon = (value: number) =>
+  Math.round(value * 100) / 100;
 
 const credit = (s: GameState, amount: number): GameState => ({
   ...s,
@@ -162,51 +216,85 @@ const credit = (s: GameState, amount: number): GameState => ({
 
 function accrue(s: GameState, seconds: number): GameState {
   if (seconds <= 0) return s;
+
   const passive = passiveRate(s, s.lastTick) * seconds;
   const hasSubNodes = s.subNodes.length > 0;
+
   const kickback = hasSubNodes
-    ? s.subNodes.length * SUB_NODE_RATE * seconds * KICKBACK_RATE * kickbackMultiplier(s, s.lastTick)
+    ? s.subNodes.length *
+      SUB_NODE_RATE *
+      seconds *
+      KICKBACK_RATE *
+      kickbackMultiplier(s, s.lastTick)
     : 0;
+
   return {
     ...s,
     zp: s.zp + passive,
     lifetimeZp: s.lifetimeZp + passive,
     kickbackPending: s.kickbackPending + kickback,
     subNodes: hasSubNodes
-      ? s.subNodes.map((node) => ({ ...node, generated: node.generated + SUB_NODE_RATE * seconds }))
+      ? s.subNodes.map((node) => ({
+          ...node,
+          generated: node.generated + SUB_NODE_RATE * seconds,
+        }))
       : s.subNodes,
   };
 }
 
-// Splits the elapsed time at agent and core session expiries so each segment uses the state that was active during it.
+// Splits elapsed time at agent and core session expiries.
 export function advance(s: GameState, now: number): GameState {
   if (now <= s.lastTick) return s;
-  const expiries = [...AGENT_IDS.map((id) => s.agents[id]), s.coreMiningUntil].filter(
-    (end) => end > s.lastTick && end < now,
-  );
-  const boundaries = [...expiries, now].sort((a, b) => a - b);
-  let next = s;
-  for (const end of boundaries) {
-    next = { ...accrue(next, (end - next.lastTick) / 1000), lastTick: end };
 
+  const expiries = [
+    ...AGENT_IDS.map((id) => s.agents[id]),
+    s.coreMiningUntil,
+  ].filter((end) => end > s.lastTick && end < now);
+
+  const boundaries = [...expiries, now].sort((a, b) => a - b);
+
+  let next = s;
+
+  for (const end of boundaries) {
+    next = {
+      ...accrue(next, (end - next.lastTick) / 1000),
+      lastTick: end,
+    };
   }
+
   return {
     ...next,
     fragments: FRAGMENT_IDS.reduce(
       (fragments, id) => ({
         ...fragments,
-        [id]: fragments[id] === 'fixed' && next.fragmentCooldowns[id] <= now ? 'locked' : fragments[id],
+        [id]:
+          fragments[id] === 'fixed' &&
+          next.fragmentCooldowns[id] <= now
+            ? 'locked'
+            : fragments[id],
       }),
-      next.fragments,
+      next.fragments
     ),
   };
 }
 
-export function gameReducer(state: GameState, action: GameAction): GameState {
+export function gameReducer(
+  state: GameState,
+  action: GameAction
+): GameState {
   const { now } = action;
-  if (action.type === 'reset') return createInitialState(now);
-  if (action.type === 'resetWithCode') return createInitialState(now, action.referralCode);
-  if (action.type === 'setReferralCode') return { ...state, referralCode: action.referralCode };
+
+  if (action.type === 'reset') {
+    return createInitialState(now);
+  }
+
+  if (action.type === 'resetWithCode') {
+    return createInitialState(now, action.referralCode);
+  }
+
+  if (action.type === 'setReferralCode') {
+    return { ...state, referralCode: action.referralCode };
+  }
 
   const s = advance(state, now);
 
@@ -216,23 +304,45 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'unlockFragment': {
       if (s.fragments[action.id] !== 'locked') return s;
+
       return credit(
         {
           ...s,
-          fragments: { ...s.fragments, [action.id]: 'unlocked' },
-          fragmentCooldowns: { ...s.fragmentCooldowns, [action.id]: 0 },
-          adsWatched: { day: dayKey(now), count: adsWatchedToday(s, now) + 1 },
+          fragments: {
+            ...s.fragments,
+            [action.id]: 'unlocked',
+          },
+          fragmentCooldowns: {
+            ...s.fragmentCooldowns,
+            [action.id]: 0,
+          },
+          adsWatched: {
+            day: dayKey(now),
+            count: adsWatchedToday(s, now) + 1,
+          },
         },
-        FRAGMENT_UNLOCK_REWARD,
+        FRAGMENT_UNLOCK_REWARD
       );
     }
 
     case 'fixFragment':
-      if (s.fragments[action.id] !== 'unlocked' || fragmentCooldownRemaining(s, action.id, now) > 0) return s;
+      if (
+        s.fragments[action.id] !== 'unlocked' ||
+        fragmentCooldownRemaining(s, action.id, now) > 0
+      ) {
+        return s;
+      }
+
       return {
         ...s,
-        fragments: { ...s.fragments, [action.id]: 'fixed' },
-        fragmentCooldowns: { ...s.fragmentCooldowns, [action.id]: now + FRAGMENT_COOLDOWN_MS },
+        fragments: {
+          ...s.fragments,
+          [action.id]: 'fixed',
+        },
+        fragmentCooldowns: {
+          ...s.fragmentCooldowns,
+          [action.id]: now + FRAGMENT_COOLDOWN_MS,
+        },
         coreMiningUntil: now + CORE_SESSION_MS,
       };
 
@@ -241,98 +351,156 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         s.fragments[action.id] === 'fixed' ||
         fragmentCooldownRemaining(s, action.id, now) > 0 ||
         s.zp < MYSTERY_FRAGMENT_COST
-      ) return s;
+      ) {
+        return s;
+      }
+
       return {
         ...s,
         zp: s.zp - MYSTERY_FRAGMENT_COST,
-        fragments: { ...s.fragments, [action.id]: 'fixed' },
-        fragmentCooldowns: { ...s.fragmentCooldowns, [action.id]: now + FRAGMENT_COOLDOWN_MS },
+        fragments: {
+          ...s.fragments,
+          [action.id]: 'fixed',
+        },
+        fragmentCooldowns: {
+          ...s.fragmentCooldowns,
+          [action.id]: now + FRAGMENT_COOLDOWN_MS,
+        },
         coreMiningUntil: now + CORE_SESSION_MS,
       };
 
     case 'buyBooster':
       if (s.zp < BOOSTER_COST) return s;
-      return credit({ ...s, zp: s.zp - BOOSTER_COST }, BOOSTER_REWARD);
+
+      return credit(
+        { ...s, zp: s.zp - BOOSTER_COST },
+        BOOSTER_REWARD
+      );
 
     case 'rentAgent': {
       const spec = AGENTS[action.id];
-      if (!s.wallet.connected || s.wallet.tonBalance < spec.priceTon) return s;
+
+      if (!s.wallet.connected || s.wallet.tonBalance < spec.priceTon) {
+        return s;
+      }
+
       const start = Math.max(now, s.agents[action.id]);
+
       return {
         ...s,
-        wallet: { ...s.wallet, tonBalance: roundTon(s.wallet.tonBalance - spec.priceTon) },
-        agents: { ...s.agents, [action.id]: start + spec.durationDays * DAY_MS },
+        wallet: {
+          ...s.wallet,
+          tonBalance: roundTon(
+            s.wallet.tonBalance - spec.priceTon
+          ),
+        },
+        agents: {
+          ...s.agents,
+          [action.id]: start + spec.durationDays * DAY_MS,
+        },
       };
     }
 
     case 'connectWallet':
       if (s.wallet.connected) return s;
+
       return {
         ...s,
         wallet: {
           connected: true,
           faucetClaimed: true,
-          tonBalance: s.wallet.faucetClaimed ? s.wallet.tonBalance : s.wallet.tonBalance + TON_FAUCET_AMOUNT,
+          tonBalance: s.wallet.faucetClaimed
+            ? s.wallet.tonBalance
+            : s.wallet.tonBalance + TON_FAUCET_AMOUNT,
         },
       };
 
     case 'disconnectWallet':
-      return { ...s, wallet: { ...s.wallet, connected: false } };
+      return {
+        ...s,
+        wallet: {
+          ...s.wallet,
+          connected: false,
+        },
+      };
 
     case 'claimKickback':
       if (s.kickbackPending <= 0) return s;
-      return credit({ ...s, kickbackPending: 0 }, s.kickbackPending);
+
+      return credit(
+        { ...s, kickbackPending: 0 },
+        s.kickbackPending
+      );
 
     case 'claimMilestone': {
-      const milestone = MILESTONES.find((m) => m.threshold === action.threshold);
-      if (!milestone || s.claimedMilestones.includes(milestone.threshold)) return s;
-      if (s.subNodes.length < milestone.threshold) return s;
+      const milestone = MILESTONES.find(
+        (m) => m.threshold === action.threshold
+      );
+
+      if (
+        !milestone ||
+        s.claimedMilestones.includes(milestone.threshold) ||
+        s.subNodes.length < milestone.threshold
+      ) {
+        return s;
+      }
+
       return credit(
-        { ...s, claimedMilestones: [...s.claimedMilestones, milestone.threshold] },
-        milestone.reward,
+        {
+          ...s,
+          claimedMilestones: [
+            ...s.claimedMilestones,
+            milestone.threshold,
+          ],
+        },
+        milestone.reward
       );
     }
 
-   
-case 'recruitSubNode': {
-  // A recruit must only be counted once
-  const alreadyExists = s.subNodes.some(
-    (node) => node.id === action.id
-  );
+    case 'recruitSubNode': {
+      // Prevent the same recruit from being counted more than once.
+      const alreadyExists = s.subNodes.some(
+        (node) => node.id === action.id
+      );
 
-  if (alreadyExists) return s;
-
-  return {
-    ...s,
-    subNodes: [
-      ...s.subNodes,
-      {
-        id: action.id,
-        name: action.name,
-        joinedAt: now,
-        generated: 0,
-      },
-    ],
-  };
-}
+      if (alreadyExists) return s;
 
       return {
         ...s,
-        subNodes: [...s.subNodes, { id: action.id, name: action.name, joinedAt: now, generated: 0 }],
+        subNodes: [
+          ...s.subNodes,
+          {
+            id: action.id,
+            name: action.name,
+            joinedAt: now,
+            generated: 0,
+          },
+        ],
       };
+    }
 
     case 'claimMission': {
       const { mission } = action;
-      if (missionStatus(s, mission, now) !== 'ready') return s;
+
+      if (missionStatus(s, mission, now) !== 'ready') {
+        return s;
+      }
+
       return credit(
-        { ...s, missionClaims: { ...s.missionClaims, [mission.id]: missionKey(mission, now) } },
-        mission.reward,
+        {
+          ...s,
+          missionClaims: {
+            ...s.missionClaims,
+            [mission.id]: missionKey(mission, now),
+          },
+        },
+        mission.reward
       );
     }
 
-    case 'creditZp': {
+    case 'creditZp':
       if (action.amount <= 0) return s;
+
       return credit(s, action.amount);
-    }
   }
 }
