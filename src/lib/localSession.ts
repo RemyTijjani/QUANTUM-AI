@@ -1,23 +1,30 @@
 import { supabase } from '@/lib/supabase';
 
 const OWNER_KEY = 'zord-owner-id';
-const OWNED_KEY_PREFIXES = ['zord-', 'sb-'];
 
-export async function claimLocalSession(ownerId: string): Promise<void> {
+export async function claimLocalSession(
+  ownerId: string,
+): Promise<void> {
   let switched = false;
+
   try {
-    if (window.localStorage.getItem(OWNER_KEY) !== ownerId) {
+    const previousOwner = window.localStorage.getItem(OWNER_KEY);
+
+    if (previousOwner !== ownerId) {
       switched = true;
-      Object.keys(window.localStorage)
-        .filter((key) => OWNED_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)))
-        .forEach((key) => window.localStorage.removeItem(key));
+
+      // Preserve each Telegram account's separately stored game data.
       window.localStorage.setItem(OWNER_KEY, ownerId);
     }
   } catch {
-    // Storage can be unavailable; nothing persisted means nothing to leak.
+    // Storage can be unavailable.
   }
 
   if (switched) {
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+    // Clear the previous Supabase login session before authenticating
+    // the Telegram account that is currently opening the app.
+    await supabase.auth
+      .signOut({ scope: 'local' })
+      .catch(() => undefined);
   }
 }
