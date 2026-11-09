@@ -193,23 +193,55 @@ Deno.serve(async (req: Request) => {
       }
 
       // 2. Process Referral Reward if client passed a valid referrer code on first signup
-      if (clientReferrerCode && typeof clientReferrerCode === "string") {
-        // Find referrer by their referral_code in players table
-        const { data: referrerPlayer } = await admin
-          .from("players")
-          .select("telegram_id")
-          .eq("referral_code", clientReferrerCode.trim())
-          .maybeSingle();
+    
+// Process referral after the new player has been created
+if (
+  isNewUser &&
+  typeof clientReferrerCode === "string" &&
+  clientReferrerCode.trim()
+) {
+  const normalizedCode = clientReferrerCode
+    .trim()
+    .replace(/^ref_/i, "")
+    .toUpperCase();
 
-        if (referrerPlayer && referrerPlayer.telegram_id !== telegramId) {
-          // Call the atomic SQL RPC function to award kickbacks and bonuses
-          await admin.rpc("register_referral", {
-            p_referrer_tg_id: referrerPlayer.telegram_id,
-            p_referred_tg_id: telegramId,
-          });
-        }
+  // Find the referrer
+  const { data: referrerPlayer, error: referrerError } = await admin
+    .from("players")
+    .select("telegram_id")
+    .eq("referral_code", normalizedCode)
+    .maybeSingle();
+
+  if (referrerError) {
+    console.error("Referrer lookup failed:", referrerError);
+    throw new Error("Could not find referrer");
+  }
+
+  // Prevent self-referrals
+  if (
+    referrerPlayer &&
+    Number(referrerPlayer.telegram_id) !== Number(telegramId)
+  ) {
+    const { error: referralError } = await admin.rpc(
+      "register_referral",
+      {
+        p_referrer_tg_id: referrerPlayer.telegram_id,
+        p_referred_tg_id: telegramId,
       }
+    );
+
+    if (referralError) {
+      console.error("Referral registration failed:", referralError);
+      throw new Error("Could not register referral");
     }
+
+    console.log("Referral successfully registered:", {
+      referrer: referrerPlayer.telegram_id,
+      recruit: telegramId,
+    });
+  }
+}
+
 
     return new Response(
       JSON.stringify({
