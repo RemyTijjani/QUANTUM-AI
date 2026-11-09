@@ -7,7 +7,7 @@ export interface AdminCredentials {
 export interface AdminSubmission {
   id: string;
   mission_id: string;
-  player_referral_code: string;
+  player_referral_code: string | null;
   link_url: string;
   platform: 'tiktok' | 'youtube';
   status: 'pending' | 'approved' | 'rejected';
@@ -59,7 +59,7 @@ export interface ReviewResult {
   success: true;
   decision: 'approved' | 'rejected';
   rewardZp: number;
-  playerReferralCode: string | null;
+  playerReferralCode?: string | null;
   playerId?: string | null;
 }
 
@@ -159,24 +159,23 @@ export async function reviewSubmission(
 
   if (!body || typeof body !== 'object') {
     throw new AdminApiError(
-      'Received an unexpected response from the admin service.',
+      'The submission review response could not be verified. Refresh the dashboard and check its status.',
     );
   }
 
   const result = body as Partial<ReviewResult>;
 
+  // Verify the actual database review result.
+  // Referral code and player ID are optional display information.
   if (
     result.success !== true ||
     result.decision !== decision ||
     typeof result.rewardZp !== 'number' ||
     !Number.isFinite(result.rewardZp) ||
-    !(
-      typeof result.playerReferralCode === 'string' ||
-      result.playerReferralCode === null
-    )
+    result.rewardZp < 0
   ) {
     throw new AdminApiError(
-      'The submission review could not be verified. Please refresh the dashboard and check its status.',
+      'The submission review could not be verified. Refresh the dashboard and check its status.',
     );
   }
 
@@ -184,8 +183,14 @@ export async function reviewSubmission(
     success: true,
     decision: result.decision,
     rewardZp: result.rewardZp,
-    playerReferralCode: result.playerReferralCode,
-    playerId: result.playerId,
+    playerReferralCode:
+      typeof result.playerReferralCode === 'string'
+        ? result.playerReferralCode
+        : null,
+    playerId:
+      typeof result.playerId === 'string'
+        ? result.playerId
+        : null,
   };
 }
 
