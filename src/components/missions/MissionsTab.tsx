@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock } from 'lucide-react';
 import { AD_QUOTA_TARGET } from '@/lib/game/config';
@@ -200,9 +201,7 @@ function MissionCard({ mission, status, progressLabel, verifiable, onClaim }: Mi
           onClick={buttonAction}
           disabled={buttonDisabled}
           className={`shrink-0 px-3 py-2 transition duration-200 ${
-            started && verifiable
-              ? 'btn-ghost'
-              : 'btn-primary'
+            started && verifiable ? 'btn-ghost' : 'btn-primary'
           }`}
         >
           {buttonLabel}
@@ -228,8 +227,9 @@ function CreatorOpsCard({
 
   useEffect(() => {
     let cancelled = false;
+
     const fetchSubmission = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('creator_ops_submissions')
         .select('*')
         .eq('mission_id', mission.id)
@@ -237,51 +237,67 @@ function CreatorOpsCard({
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+
       if (!cancelled) {
-        setSubmission(data as CreatorOpsSubmission | null);
+        if (error) {
+          notify('Could not check your submission status.', 'error');
+        } else {
+          setSubmission(data as CreatorOpsSubmission | null);
+        }
         setLoading(false);
       }
     };
+
     fetchSubmission();
-    return () => { cancelled = true; };
-  }, [mission.id, state.referralCode]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mission.id, state.referralCode, notify]);
 
   const status = submission?.status;
 
   const submit = async () => {
     const trimmed = link.trim();
+
     if (!trimmed) {
       notify('Enter a valid link first', 'error');
       return;
     }
-    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-      notify('Link must start with http:// or https://', 'error');
+
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        notify('Link must use http:// or https://', 'error');
+        return;
+      }
+    } catch {
+      notify('Enter a valid link first', 'error');
       return;
     }
+
     setSubmitting(true);
+
     const { data, error } = await supabase
-      .from('creator_ops_submissions')
-      .insert({
-        mission_id: mission.id,
-        player_referral_code: state.referralCode,
-        link_url: trimmed,
-        platform: mission.platform ?? 'youtube',
-        reward_zp: mission.reward,
-        status: 'pending',
+      .rpc('submit_creator_ops_submission', {
+        p_mission_id: mission.id,
+        p_link_url: trimmed,
       })
-      .select()
       .single();
+
     setSubmitting(false);
+
     if (error || !data) {
-      notify('Submission failed. Try again.', 'error');
+      notify(error?.message || 'Submission failed. Try again.', 'error');
       return;
     }
+
     setSubmission(data as CreatorOpsSubmission);
     setLink('');
     notify('Link submitted for admin review. ZP credited on approval.');
   };
 
-  const Icon = mission.platform === 'tiktok' ? Video : Video;
+  const Icon = Video;
 
   return (
     <div className="panel space-y-3 p-4">
@@ -318,7 +334,7 @@ function CreatorOpsCard({
       ) : status === 'approved' ? (
         <div className="flex items-center gap-2 rounded-lg border border-neon/40 bg-neon/10 px-3 py-2.5 font-mono text-[11px] text-neon-300">
           <Check size={14} className="shrink-0" />
-          <span className="flex-1">Approved — +{formatZp(mission.reward)} ZP credited</span>
+          <span className="flex-1">Approved — +{formatZp(submission?.reward_zp ?? mission.reward)} ZP credited</span>
         </div>
       ) : status === 'rejected' ? (
         <div className="space-y-2">
