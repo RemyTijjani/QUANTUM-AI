@@ -42,7 +42,13 @@ export function openTelegramLink(url: string) {
 }
 
 export function getTelegramInitData(): string {
-  return getWebApp()?.initData ?? "";
+  const webApp = getWebApp();
+
+  console.log("Telegram WebApp:", webApp);
+  console.log("Telegram initData exists:", Boolean(webApp?.initData));
+  console.log("Telegram user:", webApp?.initDataUnsafe?.user);
+
+  return webApp?.initData ?? "";
 }
 
 export function getTelegramUser(): TelegramUser | null {
