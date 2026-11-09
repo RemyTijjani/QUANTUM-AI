@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useReducer } from 'react';
 import { gameReducer } from '@/lib/game/state';
 import type { Command, GameState } from '@/lib/game/state';
@@ -51,17 +50,20 @@ function createActions(send: (command: Command) => void) {
 export type GameActions = ReturnType<typeof createActions>;
 
 export function useGame(
-  referralCode: string | null
+  referralCode: string | null,
+  playerId: string,
 ): { state: GameState; actions: GameActions } {
   const [state, dispatch] = useReducer(
     gameReducer,
-    referralCode,
-    (code) => loadState(Date.now(), code)
+    { referralCode, playerId },
+    ({ referralCode: code, playerId: id }) =>
+      loadState(Date.now(), code, id),
   );
 
+  // Save this player's state under this player's unique storage key.
   useEffect(() => {
-    saveState(state);
-  }, [state]);
+    saveState(state, playerId);
+  }, [state, playerId]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -74,9 +76,9 @@ export function useGame(
   const actions = useMemo(
     () =>
       createActions((command) =>
-        dispatch({ ...command, now: Date.now() })
+        dispatch({ ...command, now: Date.now() }),
       ),
-    []
+    [],
   );
 
   useEffect(() => {
@@ -119,9 +121,11 @@ export function useGame(
       }
     };
 
-    poll();
+    void poll();
 
-    const interval = window.setInterval(poll, 15000);
+    const interval = window.setInterval(() => {
+      void poll();
+    }, 15000);
 
     return () => {
       cancelled = true;
