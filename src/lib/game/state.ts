@@ -293,7 +293,29 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       );
     }
 
-    case 'recruitSubNode':
+   
+case 'recruitSubNode': {
+  // A recruit must only be counted once
+  const alreadyExists = s.subNodes.some(
+    (node) => node.id === action.id
+  );
+
+  if (alreadyExists) return s;
+
+  return {
+    ...s,
+    subNodes: [
+      ...s.subNodes,
+      {
+        id: action.id,
+        name: action.name,
+        joinedAt: now,
+        generated: 0,
+      },
+    ],
+  };
+}
+
       return {
         ...s,
         subNodes: [...s.subNodes, { id: action.id, name: action.name, joinedAt: now, generated: 0 }],
