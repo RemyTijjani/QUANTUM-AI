@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
@@ -294,10 +295,8 @@ function GameApp({
         <AdminDashboard
           onClose={() => setOverlay(null)}
           onApproveSubmission={(rewardZp) => {
-            actions.creditZp(rewardZp);
-
             notify(
-              `Submission approved. +${formatZp(rewardZp)} ZP credited to player`,
+              `Submission approved. +${formatZp(rewardZp)} ZP credited to submitting player`,
             );
           }}
         />
