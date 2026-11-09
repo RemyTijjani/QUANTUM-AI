@@ -1,15 +1,17 @@
+
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-// telegram-auth: verifies Telegram WebApp initData and creates/authenticates player sessions (redeploy 2)
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const SERVICE_ROLE_KEY =
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 interface TelegramUser {
   id: number;
@@ -18,78 +20,150 @@ interface TelegramUser {
   last_name?: string;
 }
 
-async function validateInitData(initData: string): Promise<TelegramUser | null> {
-  if (!BOT_TOKEN) return null;
+function jsonResponse(
+  body: Record<string, unknown>,
+  status = 200,
+) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+    },
+  });
+}
 
-  const params = new URLSearchParams(initData);
-  const hash = params.get("hash");
-  if (!hash) return null;
-
-  params.delete("hash");
-  params.delete("signature");
-
-  const dataCheckString = Array.from(params.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${value}`)
-    .join("\n");
-
-  const encoder = new TextEncoder();
-
-  const secretKeyData = encoder.encode("WebAppData");
-  const secretKey = await crypto.subtle.importKey(
-    "raw",
-    secretKeyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const secretBuf = await crypto.subtle.sign("HMAC", secretKey, encoder.encode(BOT_TOKEN));
-  const derivedKey = await crypto.subtle.importKey(
-    "raw",
-    secretBuf,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const calcBuf = await crypto.subtle.sign("HMAC", derivedKey, encoder.encode(dataCheckString));
-  const calcHash = Array.from(new Uint8Array(calcBuf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  if (calcHash !== hash) return null;
-
-  const userJson = params.get("user");
-  if (!userJson) return null;
+async function validateInitData(
+  initData: string,
+): Promise<TelegramUser | null> {
+  if (!BOT_TOKEN) {
+    console.error("BOT_TOKEN is missing");
+    return null;
+  }
 
   try {
-    return JSON.parse(userJson) as TelegramUser;
-  } catch {
+    const params = new URLSearchParams(initData);
+    const hash = params.get("hash");
+
+    if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) {
+      return null;
+    }
+
+    params.delete("hash");
+    params.delete("signature");
+
+    const dataCheckString = Array.from(params.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => `${key}=${value}`)
+      .join("\n");
+
+    const encoder = new TextEncoder();
+
+    const secretKey = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode("WebAppData"),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+
+    const secret = await crypto.subtle.sign(
+      "HMAC",
+      secretKey,
+      encoder.encode(BOT_TOKEN),
+    );
+
+    const derivedKey = await crypto.subtle.importKey(
+      "raw",
+      secret,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+
+    const calculatedHash = await crypto.subtle.sign(
+      "HMAC",
+      derivedKey,
+      encoder.encode(dataCheckString),
+    );
+
+    const calculatedHex = Array.from(
+      new Uint8Array(calculatedHash),
+    )
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+
+    if (calculatedHex !== hash.toLowerCase()) {
+      return null;
+    }
+
+    const authDate = Number(params.get("auth_date"));
+
+    // Reject missing or expired Telegram authentication data.
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    if (
+      !Number.isFinite(authDate) ||
+      authDate <= 0 ||
+      nowSeconds - authDate > 86400 ||
+      authDate > nowSeconds + 60
+    ) {
+      return null;
+    }
+
+    const userJson = params.get("user");
+    if (!userJson) return null;
+
+    const user = JSON.parse(userJson) as TelegramUser;
+
+    if (
+      !Number.isSafeInteger(user.id) ||
+      user.id <= 0
+    ) {
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    console.error("Telegram validation failed:", error);
     return null;
   }
 }
 
 function makeReferralCode(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let code = "ZORD-";
-  for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
+  const random = new Uint8Array(6);
+  crypto.getRandomValues(random);
+
+  return (
+    "ZORD-" +
+    Array.from(random)
+      .map((byte) => chars[byte % chars.length])
+      .join("")
+  );
 }
 
-async function derivePassword(telegramId: number): Promise<string> {
+async function derivePassword(
+  telegramId: number,
+): Promise<string> {
   const encoder = new TextEncoder();
-  const keyData = encoder.encode(BOT_TOKEN);
+
   const key = await crypto.subtle.importKey(
     "raw",
-    keyData,
+    encoder.encode(BOT_TOKEN),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
-  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(String(telegramId)));
-  return Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, "0"))
+
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(String(telegramId)),
+  );
+
+  return Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 }
 
@@ -99,42 +173,88 @@ function emailForTelegram(telegramId: number): string {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse(
+      { error: "Method not allowed" },
+      405,
+    );
+  }
+
+  if (!BOT_TOKEN || !SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    console.error("Required environment variables are missing");
+
+    return jsonResponse(
+      { error: "Server configuration error" },
+      500,
+    );
   }
 
   try {
-    // 1. Extract initData AND referrerCode from client payload
-    const { initData, referrerCode: clientReferrerCode } = await req.json();
-    if (typeof initData !== "string" || initData.length === 0) {
-      return new Response(JSON.stringify({ error: "initData is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const body = await req.json();
+
+    const initData = body?.initData;
+    const clientReferrerCode = body?.referrerCode;
+
+    if (
+      typeof initData !== "string" ||
+      initData.length === 0
+    ) {
+      return jsonResponse(
+        { error: "initData is required" },
+        400,
+      );
     }
 
     const tgUser = await validateInitData(initData);
+
     if (!tgUser) {
-      return new Response(JSON.stringify({ error: "Invalid Telegram signature" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse(
+        { error: "Invalid or expired Telegram authentication" },
+        401,
+      );
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-      auth: { persistSession: false },
-    });
+    const admin = createClient(
+      SUPABASE_URL,
+      SERVICE_ROLE_KEY,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      },
+    );
 
     const telegramId = tgUser.id;
     const username = tgUser.username ?? null;
     const firstName = tgUser.first_name ?? null;
+
     const email = emailForTelegram(telegramId);
     const password = await derivePassword(telegramId);
 
-    const { data: existing } = await admin
+    // Find an existing player.
+    const {
+      data: existing,
+      error: lookupError,
+    } = await admin
       .from("players")
       .select("id, referral_code")
       .eq("telegram_id", telegramId)
       .maybeSingle();
+
+    if (lookupError) {
+      console.error("Player lookup failed:", lookupError);
+      return jsonResponse(
+        { error: "Could not retrieve player" },
+        500,
+      );
+    }
 
     let referralCode: string;
     let isNewUser = false;
@@ -142,123 +262,196 @@ Deno.serve(async (req: Request) => {
     if (existing) {
       referralCode = existing.referral_code;
 
-      if (username || firstName) {
-        await admin
-          .from("players")
-          .update({
-            username: username ?? undefined,
-            first_name: firstName ?? undefined,
-          })
-          .eq("id", existing.id);
+      const { error: updateError } = await admin
+        .from("players")
+        .update({
+          username,
+          first_name: firstName,
+        })
+        .eq("id", existing.id);
+
+      if (updateError) {
+        console.error("Player update failed:", updateError);
       }
     } else {
       isNewUser = true;
-      const { data: authUser, error: authError } = await admin.auth.admin.createUser({
+
+      // Create the Supabase Auth user.
+      const {
+        data: authResult,
+        error: authError,
+      } = await admin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
-        user_metadata: { telegram_id: telegramId },
+        user_metadata: {
+          telegram_id: telegramId,
+        },
       });
-      if (authError || !authUser.user) {
-        return new Response(JSON.stringify({ error: "Failed to create auth user" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+      let authUserId: string;
+
+      if (authError || !authResult.user) {
+        // Recover from an existing Auth user if player creation
+        // was interrupted during a previous attempt.
+        const {
+          data: existingAuth,
+          error: authLookupError,
+        } = await admin.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000,
         });
+
+        if (authLookupError) {
+          console.error("Auth lookup failed:", authLookupError);
+          return jsonResponse(
+            { error: "Could not create or retrieve auth user" },
+            500,
+          );
+        }
+
+        const recoveredUser = existingAuth.users.find(
+          (user) => user.email === email,
+        );
+
+        if (!recoveredUser) {
+          console.error("Auth user creation failed:", authError);
+          return jsonResponse(
+            { error: "Failed to create auth user" },
+            500,
+          );
+        }
+
+        authUserId = recoveredUser.id;
+      } else {
+        authUserId = authResult.user.id;
       }
 
-      let code = makeReferralCode();
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const { data: conflict } = await admin
-          .from("players")
-          .select("id")
-          .eq("referral_code", code)
-          .maybeSingle();
-        if (!conflict) break;
-        code = makeReferralCode();
+      // Generate a unique referral code.
+      let code = "";
+      let uniqueCodeFound = false;
+
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const candidate = makeReferralCode();
+
+        const { data: conflict, error: conflictError } =
+          await admin
+            .from("players")
+            .select("id")
+            .eq("referral_code", candidate)
+            .maybeSingle();
+
+        if (conflictError) {
+          console.error("Referral code lookup failed:", conflictError);
+          return jsonResponse(
+            { error: "Could not generate referral code" },
+            500,
+          );
+        }
+
+        if (!conflict) {
+          code = candidate;
+          uniqueCodeFound = true;
+          break;
+        }
       }
+
+      if (!uniqueCodeFound) {
+        return jsonResponse(
+          { error: "Could not generate unique referral code" },
+          500,
+        );
+      }
+
       referralCode = code;
 
-      const { error: playerError } = await admin.from("players").insert({
-        id: authUser.user.id,
-        telegram_id: telegramId,
-        username,
-        first_name: firstName,
-        referral_code: referralCode,
-      });
-      if (playerError) {
-        return new Response(JSON.stringify({ error: "Failed to create player record" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+      // Create the player record.
+      const { error: playerError } = await admin
+        .from("players")
+        .insert({
+          id: authUserId,
+          telegram_id: telegramId,
+          username,
+          first_name: firstName,
+          referral_code: referralCode,
         });
+
+      if (playerError) {
+        console.error("Player creation failed:", playerError);
+
+        return jsonResponse(
+          { error: "Failed to create player record" },
+          500,
+        );
       }
-
-      // 2. Process Referral Reward if client passed a valid referrer code on first signup
-    
-// Process referral after the new player has been created
-if (
-  isNewUser &&
-  typeof clientReferrerCode === "string" &&
-  clientReferrerCode.trim()
-) {
-  const normalizedCode = clientReferrerCode
-    .trim()
-    .replace(/^ref_/i, "")
-    .toUpperCase();
-
-  // Find the referrer
-  const { data: referrerPlayer, error: referrerError } = await admin
-    .from("players")
-    .select("telegram_id")
-    .eq("referral_code", normalizedCode)
-    .maybeSingle();
-
-  if (referrerError) {
-    console.error("Referrer lookup failed:", referrerError);
-    throw new Error("Could not find referrer");
-  }
-
-  // Prevent self-referrals
-  if (
-    referrerPlayer &&
-    Number(referrerPlayer.telegram_id) !== Number(telegramId)
-  ) {
-    const { error: referralError } = await admin.rpc(
-      "register_referral",
-      {
-        p_referrer_tg_id: referrerPlayer.telegram_id,
-        p_referred_tg_id: telegramId,
-      }
-    );
-
-    if (referralError) {
-      console.error("Referral registration failed:", referralError);
-      throw new Error("Could not register referral");
     }
 
-    console.log("Referral successfully registered:", {
-      referrer: referrerPlayer.telegram_id,
-      recruit: telegramId,
+    // Process referral for a newly registered player.
+    if (
+      isNewUser &&
+      typeof clientReferrerCode === "string" &&
+      clientReferrerCode.trim()
+    ) {
+      const normalizedCode = clientReferrerCode
+        .trim()
+        .replace(/^ref_/i, "")
+        .toUpperCase();
+
+      const {
+        data: referrerPlayer,
+        error: referrerError,
+      } = await admin
+        .from("players")
+        .select("telegram_id")
+        .eq("referral_code", normalizedCode)
+        .maybeSingle();
+
+      if (referrerError) {
+        console.error("Referrer lookup failed:", referrerError);
+      } else if (
+        referrerPlayer &&
+        Number(referrerPlayer.telegram_id) !== telegramId
+      ) {
+        const { error: referralError } = await admin.rpc(
+          "register_referral",
+          {
+            p_referrer_tg_id: referrerPlayer.telegram_id,
+            p_referred_tg_id: telegramId,
+          },
+        );
+
+        if (referralError) {
+          console.error(
+            "Referral registration failed:",
+            referralError,
+          );
+        } else {
+          console.log("Referral successfully registered:", {
+            referrer: referrerPlayer.telegram_id,
+            recruit: telegramId,
+          });
+        }
+      } else {
+        console.log(
+          "Referral skipped: invalid code or self-referral",
+        );
+      }
+    }
+
+    return jsonResponse({
+      email,
+      password,
+      telegramId,
+      username,
+      firstName,
+      referralCode,
     });
-  }
-}
+  } catch (error) {
+    console.error("telegram-auth failed:", error);
 
-
-    return new Response(
-      JSON.stringify({
-        email,
-        password,
-        telegramId,
-        username,
-        firstName,
-        referralCode,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  } catch (err) {
-    console.error("telegram-auth failed:", err);
-    return new Response(
-      JSON.stringify({ error: "Authentication failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    return jsonResponse(
+      { error: "Authentication failed" },
+      500,
     );
   }
 });
