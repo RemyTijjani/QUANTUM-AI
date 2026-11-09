@@ -1,3 +1,4 @@
+
 export interface AdminCredentials {
   username: string;
   password: string;
@@ -55,8 +56,11 @@ export interface AdminVaultReserves {
 }
 
 export interface ReviewResult {
+  success: true;
+  decision: 'approved' | 'rejected';
   rewardZp: number;
-  playerReferralCode: string;
+  playerReferralCode: string | null;
+  playerId?: string | null;
 }
 
 const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api`;
@@ -68,6 +72,7 @@ async function callAdminApi(
   payload: Record<string, unknown>,
 ): Promise<unknown> {
   let res: Response;
+
   try {
     res = await fetch(functionUrl, {
       method: 'POST',
@@ -82,10 +87,13 @@ async function callAdminApi(
       }),
     });
   } catch {
-    throw new AdminApiError('Could not reach the admin service. Check your connection and try again.');
+    throw new AdminApiError(
+      'Could not reach the admin service. Check your connection and try again.',
+    );
   }
 
   let body: unknown = null;
+
   try {
     body = await res.json();
   } catch {
@@ -94,8 +102,16 @@ async function callAdminApi(
 
   if (!res.ok) {
     const serverError = (body as { error?: unknown } | null)?.error;
-    if (res.status === 401) throw new AdminApiError('Invalid credentials. Access denied.');
-    throw new AdminApiError(typeof serverError === 'string' ? serverError : `Request failed (${res.status}).`);
+
+    if (res.status === 401) {
+      throw new AdminApiError('Invalid credentials. Access denied.');
+    }
+
+    throw new AdminApiError(
+      typeof serverError === 'string'
+        ? serverError
+        : `Request failed (${res.status}).`,
+    );
   }
 
   return body;
@@ -103,13 +119,30 @@ async function callAdminApi(
 
 function isDashboardData(value: unknown): value is AdminDashboardData {
   if (!value || typeof value !== 'object') return false;
+
   const v = value as Partial<AdminDashboardData>;
-  return !!v.stats && !!v.vaultReserves && Array.isArray(v.submissions) && Array.isArray(v.tasks);
+
+  return (
+    !!v.stats &&
+    !!v.vaultReserves &&
+    Array.isArray(v.submissions) &&
+    Array.isArray(v.tasks)
+  );
 }
 
-export async function fetchDashboard(creds: AdminCredentials): Promise<AdminDashboardData> {
-  const body = await callAdminApi(creds, { action: 'fetch_dashboard' });
-  if (!isDashboardData(body)) throw new AdminApiError('Received an unexpected response from the admin service.');
+export async function fetchDashboard(
+  creds: AdminCredentials,
+): Promise<AdminDashboardData> {
+  const body = await callAdminApi(creds, {
+    action: 'fetch_dashboard',
+  });
+
+  if (!isDashboardData(body)) {
+    throw new AdminApiError(
+      'Received an unexpected response from the admin service.',
+    );
+  }
+
   return body;
 }
 
@@ -118,21 +151,70 @@ export async function reviewSubmission(
   submissionId: string,
   decision: 'approved' | 'rejected',
 ): Promise<ReviewResult> {
-  const body = (await callAdminApi(creds, { action: 'review_submission', submissionId, decision })) as Partial<ReviewResult> | null;
-  if (typeof body?.rewardZp !== 'number' || typeof body?.playerReferralCode !== 'string') {
-    throw new AdminApiError('Received an unexpected response from the admin service.');
+  const body = await callAdminApi(creds, {
+    action: 'review_submission',
+    submissionId,
+    decision,
+  });
+
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError(
+      'Received an unexpected response from the admin service.',
+    );
   }
-  return { rewardZp: body.rewardZp, playerReferralCode: body.playerReferralCode };
+
+  const result = body as Partial<ReviewResult>;
+
+  if (
+    result.success !== true ||
+    result.decision !== decision ||
+    typeof result.rewardZp !== 'number' ||
+    !Number.isFinite(result.rewardZp) ||
+    !(
+      typeof result.playerReferralCode === 'string' ||
+      result.playerReferralCode === null
+    )
+  ) {
+    throw new AdminApiError(
+      'The submission review could not be verified. Please refresh the dashboard and check its status.',
+    );
+  }
+
+  return {
+    success: true,
+    decision: result.decision,
+    rewardZp: result.rewardZp,
+    playerReferralCode: result.playerReferralCode,
+    playerId: result.playerId,
+  };
 }
 
-export async function saveTask(creds: AdminCredentials, task: AdminTaskInput): Promise<void> {
-  await callAdminApi(creds, { action: 'save_task', task });
+export async function saveTask(
+  creds: AdminCredentials,
+  task: AdminTaskInput,
+): Promise<void> {
+  await callAdminApi(creds, {
+    action: 'save_task',
+    task,
+  });
 }
 
-export async function deleteTask(creds: AdminCredentials, taskId: string): Promise<void> {
-  await callAdminApi(creds, { action: 'delete_task', taskId });
+export async function deleteTask(
+  creds: AdminCredentials,
+  taskId: string,
+): Promise<void> {
+  await callAdminApi(creds, {
+    action: 'delete_task',
+    taskId,
+  });
 }
 
-export async function saveVaultReserves(creds: AdminCredentials, reserves: AdminVaultReserves): Promise<void> {
-  await callAdminApi(creds, { action: 'save_vault_reserves', vaultReserves: reserves });
+export async function saveVaultReserves(
+  creds: AdminCredentials,
+  reserves: AdminVaultReserves,
+): Promise<void> {
+  await callAdminApi(creds, {
+    action: 'save_vault_reserves',
+    vaultReserves: reserves,
+  });
 }
