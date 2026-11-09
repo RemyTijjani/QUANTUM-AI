@@ -1,20 +1,12 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-
-import { supabase } from '@/lib/supabase';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { gameReducer } from '@/lib/game/state';
 import type { Command, GameState } from '@/lib/game/state';
 
 import {
   loadState,
-  saveState,
   restoreGameState,
+  saveState,
 } from '@/lib/game/storage';
 
 import type {
@@ -24,6 +16,7 @@ import type {
 } from '@/lib/game/config';
 
 import { fetchUnsyncedReferrals } from '@/lib/referral';
+import { supabase } from '@/lib/supabase';
 
 function createActions(send: (command: Command) => void) {
   return {
@@ -70,11 +63,6 @@ function createActions(send: (command: Command) => void) {
 
 export type GameActions = ReturnType<typeof createActions>;
 
-interface CloudSave {
-  game_state: unknown;
-  version: number;
-}
-
 export function useGame(
   referralCode: string | null,
   playerId: string,
@@ -95,23 +83,21 @@ export function useGame(
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
 
+  const stateRef = useRef(state);
   const versionRef = useRef(0);
+  const dirtyRef = useRef(false);
   const savingRef = useRef(false);
+  const skipNextDirtyRef = useRef(false);
 
-  const dispatch = useCallback((command: Command) => {
-    setState((current) =>
-      gameReducer(current, {
-        ...command,
-        now: Date.now(),
-      }),
-    );
-  }, []);
+  // Always keep the latest game state available to the cloud saver.
+  stateRef.current = state;
 
-  const retryLoad = useCallback(() => {
-    setLoadAttempt((current) => current + 1);
-  }, []);
+  const retryLoad = () => {
+    setLoadAttempt((attempt) => attempt + 1);
+  };
 
-  // Load the cloud save before allowing the game to operate.
+  // Load the player's game from Supabase.
+  // If no cloud save exists, migrate their existing local save.
   useEffect(() => {
     let cancelled = false;
 
@@ -120,6 +106,10 @@ export function useGame(
       setLoadError(null);
       setSyncError(null);
 
+      versionRef.current = 0;
+      dirtyRef.current = false;
+      savingRef.current = false;
+
       try {
         const { data, error } = await supabase
           .from('player_game_states')
@@ -127,36 +117,35 @@ export function useGame(
           .eq('player_id', playerId)
           .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
+
         if (cancelled) return;
 
         // A cloud save already exists.
         if (data) {
-          const cloudSave = data as CloudSave;
-
           const restored = restoreGameState(
-            cloudSave.game_state,
+            data.game_state,
             Date.now(),
             referralCode,
           );
 
-          versionRef.current = Number(cloudSave.version);
+          versionRef.current = Number(data.version);
 
+          skipNextDirtyRef.current = true;
           setState(restored);
-          setIsLoading(false);
 
           return;
         }
 
-        // No cloud save exists.
-        // Migrate this player's existing local progress.
+        // No cloud save exists yet.
+        // Use the player's existing device save for the first upload.
         const localState = loadState(
           Date.now(),
           referralCode,
           playerId,
         );
-
-        if (cancelled) return;
 
         const { data: newVersion, error: saveError } =
           await supabase.rpc('save_player_game_state', {
@@ -168,50 +157,66 @@ export function useGame(
 
         if (!saveError) {
           versionRef.current = Number(newVersion);
+
+          skipNextDirtyRef.current = true;
           setState(localState);
-          setIsLoading(false);
+
           return;
         }
 
-        // Another device may have created the first save
-        // at the same time. Load that save instead.
-        const { data: latest, error: latestError } =
-          await supabase
-            .from('player_game_states')
-            .select('game_state, version')
-            .eq('player_id', playerId)
-            .maybeSingle();
+        // Another device may have created the first cloud save
+        // at the same time. Load that existing save instead.
+        if (
+          saveError.message?.includes(
+            'GAME_STATE_VERSION_CONFLICT',
+          )
+        ) {
+          const { data: latest, error: latestError } =
+            await supabase
+              .from('player_game_states')
+              .select('game_state, version')
+              .eq('player_id', playerId)
+              .maybeSingle();
 
-        if (latestError) throw latestError;
+          if (cancelled) return;
 
-        if (latest) {
-          const cloudSave = latest as CloudSave;
+          if (latestError) {
+            throw latestError;
+          }
 
-          versionRef.current = Number(cloudSave.version);
+          if (!latest) {
+            throw new Error(
+              'The cloud save could not be found after a version conflict.',
+            );
+          }
 
+          versionRef.current = Number(latest.version);
+
+          skipNextDirtyRef.current = true;
           setState(
             restoreGameState(
-              cloudSave.game_state,
+              latest.game_state,
               Date.now(),
               referralCode,
             ),
           );
 
-          setIsLoading(false);
           return;
         }
 
         throw saveError;
       } catch (error) {
+        if (cancelled) return;
+
         console.error('Cloud game loading failed:', error);
 
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : 'Could not load your cloud game.',
+        );
+      } finally {
         if (!cancelled) {
-          setLoadError(
-            error instanceof Error
-              ? error.message
-              : 'Could not load your cloud game save.',
-          );
-
           setIsLoading(false);
         }
       }
@@ -222,35 +227,58 @@ export function useGame(
     return () => {
       cancelled = true;
     };
-  }, [playerId, loadAttempt]);
+  }, [playerId, referralCode, loadAttempt]);
 
-  // Keep a local backup and save changes to the cloud.
-  // The delay prevents a network request every second.
+  // Save locally immediately whenever the game changes.
+  // Mark the game as needing a cloud save.
   useEffect(() => {
     if (isLoading || loadError) return;
 
     saveState(state, playerId);
 
-    const timeout = window.setTimeout(async () => {
-      if (savingRef.current) return;
+    if (skipNextDirtyRef.current) {
+      skipNextDirtyRef.current = false;
+      return;
+    }
+
+    dirtyRef.current = true;
+  }, [state, playerId, isLoading, loadError]);
+
+  // Upload changed game state to Supabase every 5 seconds.
+  // This interval does not restart when the game ticks every second.
+  useEffect(() => {
+    if (isLoading || loadError) return;
+
+    let cancelled = false;
+
+    async function syncToCloud() {
+      if (cancelled || savingRef.current || !dirtyRef.current) {
+        return;
+      }
 
       savingRef.current = true;
+
+      const snapshot = stateRef.current;
+      dirtyRef.current = false;
 
       try {
         const { data, error } = await supabase.rpc(
           'save_player_game_state',
           {
-            p_state: state,
+            p_state: snapshot,
             p_expected_version: versionRef.current,
           },
         );
 
+        if (cancelled) return;
+
         if (error) {
+          // A different device saved a newer version.
           if (
-            error.message.includes('GAME_STATE_VERSION_CONFLICT')
+            error.message?.includes(
+              'GAME_STATE_VERSION_CONFLICT',
+            )
           ) {
-            // Another device saved a newer version.
-            // Load that version rather than overwriting it.
             const { data: latest, error: latestError } =
               await supabase
                 .from('player_game_states')
@@ -258,77 +286,119 @@ export function useGame(
                 .eq('player_id', playerId)
                 .maybeSingle();
 
-            if (latestError) throw latestError;
+            if (cancelled) return;
 
-            if (latest) {
-              const cloudSave = latest as CloudSave;
-
-              versionRef.current = Number(cloudSave.version);
-
-              setState(
-                restoreGameState(
-                  cloudSave.game_state,
-                  Date.now(),
-                  referralCode,
-                ),
-              );
-
-              setSyncError(
-                'Your game was updated on another device. The latest cloud save has been loaded.',
-              );
-
-              return;
+            if (latestError) {
+              throw latestError;
             }
+
+            if (!latest) {
+              throw new Error(
+                'Could not retrieve the latest cloud save.',
+              );
+            }
+
+            versionRef.current = Number(latest.version);
+
+            // Use the newer cloud version rather than overwriting it.
+            skipNextDirtyRef.current = true;
+
+            setState(
+              restoreGameState(
+                latest.game_state,
+                Date.now(),
+                referralCode,
+              ),
+            );
+
+            setSyncError(
+              'Your game was updated on another device. The latest cloud save has been loaded.',
+            );
+
+            return;
           }
 
           throw error;
         }
 
         versionRef.current = Number(data);
+
+        // If the game changed while the upload was running,
+        // another upload will still be needed.
+        if (stateRef.current !== snapshot) {
+          dirtyRef.current = true;
+        }
+
         setSyncError(null);
       } catch (error) {
-        console.error('Cloud game saving failed:', error);
+        if (cancelled) return;
+
+        console.error('Cloud game sync failed:', error);
+
+        dirtyRef.current = true;
 
         setSyncError(
           error instanceof Error
             ? error.message
-            : 'Could not synchronize your game progress.',
+            : 'Could not sync your game to the cloud.',
         );
       } finally {
         savingRef.current = false;
       }
-    }, 3000);
+    }
+
+    const interval = window.setInterval(() => {
+      void syncToCloud();
+    }, 5000);
 
     return () => {
-      window.clearTimeout(timeout);
+      cancelled = true;
+      window.clearInterval(interval);
     };
-  }, [state, playerId, referralCode, isLoading, loadError]);
+  }, [playerId, referralCode, isLoading, loadError]);
 
-  // Update game time every second.
+  // Game timer.
   useEffect(() => {
-    const id = window.setInterval(() => {
-      dispatch({ type: 'tick' });
+    const interval = window.setInterval(() => {
+      setState((previous) =>
+        gameReducer(previous, {
+          type: 'tick',
+          now: Date.now(),
+        }),
+      );
     }, 1000);
 
-    return () => window.clearInterval(id);
-  }, [dispatch]);
+    return () => window.clearInterval(interval);
+  }, []);
 
+  // Game actions.
   const actions = useMemo(
-    () => createActions(dispatch),
-    [dispatch],
+    () =>
+      createActions((command) => {
+        setState((previous) =>
+          gameReducer(previous, {
+            ...command,
+            now: Date.now(),
+          }),
+        );
+      }),
+    [],
   );
 
-  // Keep the current referral code in the game state.
+  // Keep the player's referral code updated.
   useEffect(() => {
     if (!referralCode || isLoading || loadError) return;
 
-    dispatch({
-      type: 'setReferralCode',
-      referralCode,
-    });
-  }, [referralCode, isLoading, loadError, dispatch]);
+    setState((previous) =>
+      gameReducer(previous, {
+        type: 'setReferralCode',
+        referralCode,
+        now: Date.now(),
+      }),
+    );
+  }, [referralCode, isLoading, loadError]);
 
-  // Fetch all referrals, including previously synced records.
+  // Keep referral recruits synchronized.
   useEffect(() => {
     if (!referralCode || isLoading || loadError) return;
 
@@ -336,19 +406,21 @@ export function useGame(
 
     const poll = async () => {
       try {
-        const records =
-          await fetchUnsyncedReferrals(referralCode);
+        const records = await fetchUnsyncedReferrals(referralCode);
 
         if (cancelled || records.length === 0) return;
 
         for (const record of records) {
           if (cancelled) return;
 
-          dispatch({
-            type: 'recruitSubNode',
-            id: record.recruit_code,
-            name: record.recruit_name,
-          });
+          setState((previous) =>
+            gameReducer(previous, {
+              type: 'recruitSubNode',
+              id: record.recruit_code,
+              name: record.recruit_name,
+              now: Date.now(),
+            }),
+          );
         }
       } catch (error) {
         console.error('Referral polling failed:', error);
@@ -365,7 +437,7 @@ export function useGame(
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [referralCode, isLoading, loadError, dispatch]);
+  }, [referralCode, isLoading, loadError]);
 
   return {
     state,
