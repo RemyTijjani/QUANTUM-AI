@@ -46,6 +46,7 @@ async function validateInitData(
     const hash = params.get("hash");
 
     if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) {
+      console.error("Telegram hash is missing or invalid");
       return null;
     }
 
@@ -53,15 +54,18 @@ async function validateInitData(
     params.delete("signature");
 
     const dataCheckString = Array.from(params.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
       .map(([key, value]) => `${key}=${value}`)
       .join("\n");
 
     const encoder = new TextEncoder();
 
+    // Correct Telegram WebApp HMAC key derivation:
+    // Key = bot token
+    // Message = WebAppData
     const secretKey = await crypto.subtle.importKey(
       "raw",
-      encoder.encode("WebAppData"),
+      encoder.encode(BOT_TOKEN),
       { name: "HMAC", hash: "SHA-256" },
       false,
       ["sign"],
@@ -70,7 +74,7 @@ async function validateInitData(
     const secret = await crypto.subtle.sign(
       "HMAC",
       secretKey,
-      encoder.encode(BOT_TOKEN),
+      encoder.encode("WebAppData"),
     );
 
     const derivedKey = await crypto.subtle.importKey(
@@ -94,12 +98,11 @@ async function validateInitData(
       .join("");
 
     if (calculatedHex !== hash.toLowerCase()) {
+      console.error("Telegram signature verification failed");
       return null;
     }
 
     const authDate = Number(params.get("auth_date"));
-
-    // Reject missing or expired Telegram authentication data.
     const nowSeconds = Math.floor(Date.now() / 1000);
 
     if (
@@ -108,18 +111,21 @@ async function validateInitData(
       nowSeconds - authDate > 86400 ||
       authDate > nowSeconds + 60
     ) {
+      console.error("Telegram authentication data expired");
       return null;
     }
 
     const userJson = params.get("user");
-    if (!userJson) return null;
+
+    if (!userJson) {
+      console.error("Telegram user data missing");
+      return null;
+    }
 
     const user = JSON.parse(userJson) as TelegramUser;
 
-    if (
-      !Number.isSafeInteger(user.id) ||
-      user.id <= 0
-    ) {
+    if (!Number.isSafeInteger(user.id) || user.id <= 0) {
+      console.error("Invalid Telegram user ID");
       return null;
     }
 
@@ -250,6 +256,7 @@ Deno.serve(async (req: Request) => {
 
     if (lookupError) {
       console.error("Player lookup failed:", lookupError);
+
       return jsonResponse(
         { error: "Could not retrieve player" },
         500,
@@ -292,8 +299,8 @@ Deno.serve(async (req: Request) => {
       let authUserId: string;
 
       if (authError || !authResult.user) {
-        // Recover from an existing Auth user if player creation
-        // was interrupted during a previous attempt.
+        // Recover an existing Auth user if registration
+        // was interrupted before player creation.
         const {
           data: existingAuth,
           error: authLookupError,
@@ -304,6 +311,7 @@ Deno.serve(async (req: Request) => {
 
         if (authLookupError) {
           console.error("Auth lookup failed:", authLookupError);
+
           return jsonResponse(
             { error: "Could not create or retrieve auth user" },
             500,
@@ -316,6 +324,7 @@ Deno.serve(async (req: Request) => {
 
         if (!recoveredUser) {
           console.error("Auth user creation failed:", authError);
+
           return jsonResponse(
             { error: "Failed to create auth user" },
             500,
@@ -334,15 +343,21 @@ Deno.serve(async (req: Request) => {
       for (let attempt = 0; attempt < 10; attempt++) {
         const candidate = makeReferralCode();
 
-        const { data: conflict, error: conflictError } =
-          await admin
-            .from("players")
-            .select("id")
-            .eq("referral_code", candidate)
-            .maybeSingle();
+        const {
+          data: conflict,
+          error: conflictError,
+        } = await admin
+          .from("players")
+          .select("id")
+          .eq("referral_code", candidate)
+          .maybeSingle();
 
         if (conflictError) {
-          console.error("Referral code lookup failed:", conflictError);
+          console.error(
+            "Referral code lookup failed:",
+            conflictError,
+          );
+
           return jsonResponse(
             { error: "Could not generate referral code" },
             500,
