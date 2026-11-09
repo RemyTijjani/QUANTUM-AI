@@ -60,9 +60,7 @@ async function validateInitData(
 
     const encoder = new TextEncoder();
 
-    // Correct Telegram WebApp HMAC key derivation:
-    // Key = bot token
-    // Message = WebAppData
+    // Telegram WebApp HMAC key derivation.
     const secretKey = await crypto.subtle.importKey(
       "raw",
       encoder.encode(BOT_TOKEN),
@@ -178,6 +176,7 @@ function emailForTelegram(telegramId: number): string {
 }
 
 Deno.serve(async (req: Request) => {
+  // Handle browser and frontend CORS preflight requests.
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -185,13 +184,15 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // Only POST requests are allowed for authentication.
   if (req.method !== "POST") {
     return jsonResponse(
-      { error: "Method not allowed" },
+      { error: "Method not allowed. Use POST." },
       405,
     );
   }
 
+  // Verify required Supabase and Telegram configuration.
   if (!BOT_TOKEN || !SUPABASE_URL || !SERVICE_ROLE_KEY) {
     console.error("Required environment variables are missing");
 
@@ -202,7 +203,17 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const body = await req.json();
+    // Safely read JSON instead of allowing an empty body to crash.
+    let body: Record<string, unknown>;
+
+    try {
+      body = await req.json();
+    } catch {
+      return jsonResponse(
+        { error: "Invalid or empty JSON request body" },
+        400,
+      );
+    }
 
     const initData = body?.initData;
     const clientReferrerCode = body?.referrerCode;
@@ -217,6 +228,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Verify Telegram authentication data.
     const tgUser = await validateInitData(initData);
 
     if (!tgUser) {
@@ -226,6 +238,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Create Supabase admin client.
     const admin = createClient(
       SUPABASE_URL,
       SERVICE_ROLE_KEY,
@@ -299,7 +312,7 @@ Deno.serve(async (req: Request) => {
       let authUserId: string;
 
       if (authError || !authResult.user) {
-        // Recover an existing Auth user if registration
+        // Recover an Auth user if an earlier registration
         // was interrupted before player creation.
         const {
           data: existingAuth,
@@ -401,7 +414,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Process referral for a newly registered player.
+    // Register referral for a newly registered player.
     if (
       isNewUser &&
       typeof clientReferrerCode === "string" &&
@@ -453,6 +466,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Return credentials to the frontend.
     return jsonResponse({
       email,
       password,
