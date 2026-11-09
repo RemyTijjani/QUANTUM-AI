@@ -1,3 +1,4 @@
+```tsx
 import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import Header from '@/components/Header';
@@ -52,39 +53,81 @@ function AppShell() {
       <div className="relative mx-auto flex h-dvh max-w-md flex-col items-center justify-center gap-4 bg-obsidian px-6 text-center">
         <div className="crt-overlay" aria-hidden />
         <AlertTriangle size={32} className="text-red-400" />
-        <p className="font-mono text-[11px] uppercase tracking-widest text-red-300">{auth.message}</p>
-        <p className="font-mono text-[10px] text-neon-600">Open this app from Telegram to authenticate.</p>
+        <p className="font-mono text-[11px] uppercase tracking-widest text-red-300">
+          {auth.message}
+        </p>
+        <p className="font-mono text-[10px] text-neon-600">
+          Open this app from Telegram to authenticate.
+        </p>
       </div>
     );
   }
 
-  const referralCode = auth.status === 'authenticated' ? auth.player.referralCode : null;
-  return <GameApp referralCode={referralCode} missions={missions} />;
+  if (auth.status !== 'authenticated') {
+    return null;
+  }
+
+  const referralCode = auth.player.referralCode;
+  const playerId = auth.player.playerId;
+
+  return (
+    <GameApp
+      key={playerId}
+      playerId={playerId}
+      referralCode={referralCode}
+      missions={missions}
+    />
+  );
 }
 
-function resolveIdentity(auth: AuthState, telegramUser: TelegramUser | null): ProfileIdentity | null {
+function resolveIdentity(
+  auth: AuthState,
+  telegramUser: TelegramUser | null,
+): ProfileIdentity | null {
   if (auth.status === 'authenticated') {
-    return { firstName: auth.player.firstName, username: auth.player.username };
+    return {
+      firstName: auth.player.firstName,
+      username: auth.player.username,
+    };
   }
+
   if (telegramUser) {
-    return { firstName: telegramUser.first_name ?? null, username: telegramUser.username ?? null };
+    return {
+      firstName: telegramUser.first_name ?? null,
+      username: telegramUser.username ?? null,
+    };
   }
+
   return null;
 }
 
-function GameApp({ referralCode, missions }: { referralCode: string | null; missions: MissionSpec[] }) {
-  const { state, actions } = useGame(referralCode);
+function GameApp({
+  playerId,
+  referralCode,
+  missions,
+}: {
+  playerId: string;
+  referralCode: string | null;
+  missions: MissionSpec[];
+}) {
+  const { state, actions } = useGame(referralCode, playerId);
   const { auth } = useAuth();
   const identity = resolveIdentity(auth, getTelegramUser());
   const { toast, notify } = useToast();
+
   const [tab, setTab] = useState<TabId>('core');
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [adFragment, setAdFragment] = useState<FragmentId | null>(null);
 
   const completeAd = () => {
     if (!adFragment) return;
+
     actions.unlockFragment(adFragment);
-    notify(`${FRAGMENT_NAMES[adFragment]} unlocked. +${formatZp(FRAGMENT_UNLOCK_REWARD)} ZP`);
+
+    notify(
+      `${FRAGMENT_NAMES[adFragment]} unlocked. +${formatZp(FRAGMENT_UNLOCK_REWARD)} ZP`,
+    );
+
     setAdFragment(null);
   };
 
@@ -106,10 +149,24 @@ function GameApp({ referralCode, missions }: { referralCode: string | null; miss
 
       <main className="no-scrollbar relative flex-1 overflow-y-auto px-4 pt-4">
         {tab === 'core' && (
-          <CoreTab state={state} actions={actions} notify={notify} onWatchAd={setAdFragment} />
+          <CoreTab
+            state={state}
+            actions={actions}
+            notify={notify}
+            onWatchAd={setAdFragment}
+          />
         )}
+
         {tab === 'agents' && <ZordAgentsTab />}
-        {tab === 'network' && <NetworkTab state={state} actions={actions} notify={notify} />}
+
+        {tab === 'network' && (
+          <NetworkTab
+            state={state}
+            actions={actions}
+            notify={notify}
+          />
+        )}
+
         {tab === 'missions' && (
           <MissionsTab
             state={state}
@@ -119,26 +176,50 @@ function GameApp({ referralCode, missions }: { referralCode: string | null; miss
             onOpenAdmin={() => setOverlay('admin')}
           />
         )}
-        {tab === 'vault' && <VaultTab state={state} actions={actions} notify={notify} />}
+
+        {tab === 'vault' && (
+          <VaultTab
+            state={state}
+            actions={actions}
+            notify={notify}
+          />
+        )}
       </main>
 
       <BottomNav active={tab} onChange={setTab} />
 
       {adFragment && (
-        <AdModal fragmentId={adFragment} onComplete={completeAd} onCancel={() => setAdFragment(null)} />
+        <AdModal
+          fragmentId={adFragment}
+          onComplete={completeAd}
+          onCancel={() => setAdFragment(null)}
+        />
       )}
+
       {overlay === 'profile' && (
-        <ProfileModal state={state} identity={identity} onReset={resetSystem} onClose={() => setOverlay(null)} />
+        <ProfileModal
+          state={state}
+          identity={identity}
+          onReset={resetSystem}
+          onClose={() => setOverlay(null)}
+        />
       )}
+
       {overlay === 'leaderboard' && (
-        <LeaderboardModal lifetimeZp={state.lifetimeZp} onClose={() => setOverlay(null)} />
+        <LeaderboardModal
+          lifetimeZp={state.lifetimeZp}
+          onClose={() => setOverlay(null)}
+        />
       )}
+
       {overlay === 'admin' && (
         <AdminDashboard
           onClose={() => setOverlay(null)}
           onApproveSubmission={(rewardZp) => {
             actions.creditZp(rewardZp);
-            notify(`Submission approved. +${formatZp(rewardZp)} ZP credited to player`);
+            notify(
+              `Submission approved. +${formatZp(rewardZp)} ZP credited to player`,
+            );
           }}
         />
       )}
@@ -157,3 +238,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+```
