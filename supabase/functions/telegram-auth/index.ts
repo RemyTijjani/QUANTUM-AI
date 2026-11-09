@@ -50,8 +50,9 @@ async function validateInitData(
       return null;
     }
 
+    // Exclude hash from the data-check string.
+    // Keep signature because it is not part of HMAC exclusion.
     params.delete("hash");
-    params.delete("signature");
 
     const dataCheckString = Array.from(params.entries())
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -60,10 +61,11 @@ async function validateInitData(
 
     const encoder = new TextEncoder();
 
-    // Telegram WebApp HMAC key derivation.
+    // Telegram HMAC validation:
+    // Secret key = HMAC-SHA256(key: WebAppData, message: BOT_TOKEN)
     const secretKey = await crypto.subtle.importKey(
       "raw",
-      encoder.encode(BOT_TOKEN),
+      encoder.encode("WebAppData"),
       { name: "HMAC", hash: "SHA-256" },
       false,
       ["sign"],
@@ -72,9 +74,10 @@ async function validateInitData(
     const secret = await crypto.subtle.sign(
       "HMAC",
       secretKey,
-      encoder.encode("WebAppData"),
+      encoder.encode(BOT_TOKEN),
     );
 
+    // Calculate HMAC of the data-check string.
     const derivedKey = await crypto.subtle.importKey(
       "raw",
       secret,
@@ -100,6 +103,7 @@ async function validateInitData(
       return null;
     }
 
+    // Validate authentication timestamp.
     const authDate = Number(params.get("auth_date"));
     const nowSeconds = Math.floor(Date.now() / 1000);
 
@@ -113,6 +117,7 @@ async function validateInitData(
       return null;
     }
 
+    // Read verified Telegram user.
     const userJson = params.get("user");
 
     if (!userJson) {
@@ -176,7 +181,7 @@ function emailForTelegram(telegramId: number): string {
 }
 
 Deno.serve(async (req: Request) => {
-  // Handle browser and frontend CORS preflight requests.
+  // Handle CORS preflight.
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -184,7 +189,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Only POST requests are allowed for authentication.
+  // Authentication only accepts POST.
   if (req.method !== "POST") {
     return jsonResponse(
       { error: "Method not allowed. Use POST." },
@@ -192,7 +197,7 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Verify required Supabase and Telegram configuration.
+  // Check environment configuration.
   if (!BOT_TOKEN || !SUPABASE_URL || !SERVICE_ROLE_KEY) {
     console.error("Required environment variables are missing");
 
@@ -203,7 +208,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Safely read JSON instead of allowing an empty body to crash.
+    // Safely parse the request body.
     let body: Record<string, unknown>;
 
     try {
@@ -228,7 +233,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify Telegram authentication data.
+    // Verify Telegram signature.
     const tgUser = await validateInitData(initData);
 
     if (!tgUser) {
@@ -296,7 +301,7 @@ Deno.serve(async (req: Request) => {
     } else {
       isNewUser = true;
 
-      // Create the Supabase Auth user.
+      // Create Supabase Auth user.
       const {
         data: authResult,
         error: authError,
@@ -312,8 +317,8 @@ Deno.serve(async (req: Request) => {
       let authUserId: string;
 
       if (authError || !authResult.user) {
-        // Recover an Auth user if an earlier registration
-        // was interrupted before player creation.
+        // Recover an Auth user if previous registration
+        // stopped before the player record was created.
         const {
           data: existingAuth,
           error: authLookupError,
@@ -349,7 +354,7 @@ Deno.serve(async (req: Request) => {
         authUserId = authResult.user.id;
       }
 
-      // Generate a unique referral code.
+      // Generate unique referral code.
       let code = "";
       let uniqueCodeFound = false;
 
@@ -393,7 +398,7 @@ Deno.serve(async (req: Request) => {
 
       referralCode = code;
 
-      // Create the player record.
+      // Create player record.
       const { error: playerError } = await admin
         .from("players")
         .insert({
@@ -466,7 +471,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Return credentials to the frontend.
+    // Return authentication credentials to frontend.
     return jsonResponse({
       email,
       password,
