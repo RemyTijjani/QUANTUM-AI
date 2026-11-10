@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.admin-api]
 verify_jwt = false
+
+[functions.telegram-bot]
+verify_jwt = false
