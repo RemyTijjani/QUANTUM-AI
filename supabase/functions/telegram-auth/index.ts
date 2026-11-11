@@ -20,6 +20,11 @@ interface TelegramUser {
   last_name?: string;
 }
 
+interface ValidatedTelegramData {
+  user: TelegramUser;
+  startParam: string | null;
+}
+
 function jsonResponse(
   body: Record<string, unknown>,
   status = 200,
@@ -35,7 +40,7 @@ function jsonResponse(
 
 async function validateInitData(
   initData: string,
-): Promise<TelegramUser | null> {
+): Promise<ValidatedTelegramData | null> {
   if (!BOT_TOKEN) {
     console.error("BOT_TOKEN is missing");
     return null;
@@ -132,7 +137,12 @@ async function validateInitData(
       return null;
     }
 
-    return user;
+    // start_param is read only after successful signature validation.
+    // It is part of the signed Telegram initData when provided.
+    return {
+      user,
+      startParam: params.get("start_param"),
+    };
   } catch (error) {
     console.error("Telegram validation failed:", error);
     return null;
@@ -221,7 +231,6 @@ Deno.serve(async (req: Request) => {
     }
 
     const initData = body?.initData;
-    const clientReferrerCode = body?.referrerCode;
 
     if (
       typeof initData !== "string" ||
@@ -233,15 +242,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify Telegram signature.
-    const tgUser = await validateInitData(initData);
+    // Verify Telegram signature before trusting any launch data.
+    const tgData = await validateInitData(initData);
 
-    if (!tgUser) {
+    if (!tgData) {
       return jsonResponse(
         { error: "Invalid or expired Telegram authentication" },
         401,
       );
     }
+
+    const tgUser = tgData.user;
 
     // Create Supabase admin client.
     const admin = createClient(
@@ -282,7 +293,6 @@ Deno.serve(async (req: Request) => {
     }
 
     let referralCode: string;
-    let isNewUser = false;
 
     if (existing) {
       referralCode = existing.referral_code;
@@ -299,8 +309,6 @@ Deno.serve(async (req: Request) => {
         console.error("Player update failed:", updateError);
       }
     } else {
-      isNewUser = true;
-
       // Create Supabase Auth user.
       const {
         data: authResult,
@@ -419,17 +427,18 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Register referral for a newly registered player.
-    if (
-      isNewUser &&
-      typeof clientReferrerCode === "string" &&
-      clientReferrerCode.trim()
-    ) {
-      const normalizedCode = clientReferrerCode
-        .trim()
-        .replace(/^ref_/i, "")
-        .toUpperCase();
+    // Register referrals using ONLY the signed Telegram start_param.
+    // This also retries for existing players without a referral record.
+    // The database function prevents duplicate attribution and never
+    // replaces an existing referral.
 
+    const signedStartParam = tgData.startParam?.trim() ?? "";
+
+    const normalizedCode = signedStartParam
+      .replace(/^ref_/i, "")
+      .toUpperCase();
+
+    if (/^ZORD-[A-Z0-9]{6}$/.test(normalizedCode)) {
       const {
         data: referrerPlayer,
         error: referrerError,
@@ -454,24 +463,29 @@ Deno.serve(async (req: Request) => {
         );
 
         if (referralError) {
+          // Do not block authentication.
+          // A later authenticated launch can retry registration.
           console.error(
             "Referral registration failed:",
             referralError,
           );
         } else {
-          console.log("Referral successfully registered:", {
+          console.log("Referral registration attempted successfully:", {
             referrer: referrerPlayer.telegram_id,
             recruit: telegramId,
           });
         }
       } else {
         console.log(
-          "Referral skipped: invalid code or self-referral",
+          "Referral skipped: referrer not found or self-referral",
         );
       }
+    } else if (signedStartParam) {
+      console.log("Referral skipped: invalid signed start parameter");
     }
 
     // Return authentication credentials to frontend.
+    // Response shape is unchanged.
     return jsonResponse({
       email,
       password,
