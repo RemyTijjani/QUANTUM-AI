@@ -446,19 +446,51 @@ Deno.serve(async (req: Request) => {
       if (event.status === "published" && (!startsAt || !endsAt)) {
         return json({ error: "Add both start and end dates before publishing an event" }, 400);
       }
+      const description = typeof event.description === "string" ? event.description.trim() : "";
+      if (description.length > 2000) {
+        return json({ error: "Event description must be 2,000 characters or fewer" }, 400);
+      }
+      const timezone = typeof event.timezone === "string" && event.timezone.trim()
+        ? event.timezone.trim()
+        : "UTC";
+      if (timezone.length > 100) {
+        return json({ error: "Timezone must be a valid IANA timezone" }, 400);
+      }
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone: timezone });
+      } catch {
+        return json({ error: "Timezone must be a valid IANA timezone" }, 400);
+      }
+      const objectives = event.objectives ?? [];
+      const requirements = event.requirements ?? [];
+      if (objectives.length > 50 || objectives.some((item: unknown) => typeof item !== "string" || item.length > 300)) {
+        return json({ error: "Provide up to 50 objectives, each 300 characters or fewer" }, 400);
+      }
+      if (requirements.length > 50 || requirements.some((item: unknown) => typeof item !== "string" || item.length > 300)) {
+        return json({ error: "Provide up to 50 requirements, each 300 characters or fewer" }, 400);
+      }
+      let participationRulesJson = "";
+      try {
+        participationRulesJson = JSON.stringify(event.participationRules ?? {});
+      } catch {
+        return json({ error: "Participation rules must be valid JSON" }, 400);
+      }
+      if (participationRulesJson.length > 10000) {
+        return json({ error: "Participation rules must be 10,000 characters or fewer" }, 400);
+      }
 
       const row = {
         title: event.title.trim(),
-        description: event.description?.trim() ?? "",
+        description,
         category: event.category,
         status: event.status,
         starts_at: startsAt?.toISOString() ?? null,
         ends_at: endsAt?.toISOString() ?? null,
-        timezone: event.timezone?.trim() || "UTC",
+        timezone,
         reward_zp: event.rewardZp,
         reward_zap: rewardZap,
-        objectives: event.objectives ?? [],
-        requirements: event.requirements ?? [],
+        objectives,
+        requirements,
         participation_rules: event.participationRules ?? {},
         updated_at: new Date().toISOString(),
         published_at: event.status === "published" ? new Date().toISOString() : null,
