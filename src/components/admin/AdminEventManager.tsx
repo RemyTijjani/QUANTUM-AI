@@ -1,13 +1,14 @@
 import { useState, FormEvent } from 'react';
 import { CalendarDays, Plus, Edit2, Trash2, Loader2, Save, X, Users } from 'lucide-react';
 import { AdminApiError } from '@/lib/admin/adminApi';
-import type { AdminEvent, AdminEventInput, AdminEventParticipant } from '@/lib/admin/adminApi';
+import type { AdminEvent, AdminEventInput, AdminEventParticipant, AdminEventParticipantStatus } from '@/lib/admin/adminApi';
 
 interface Props {
   events: AdminEvent[];
   onSave: (event: AdminEventInput) => Promise<void>;
   onDelete: (eventId: string) => Promise<void>;
   onListParticipants: (eventId: string) => Promise<AdminEventParticipant[]>;
+  onUpdateParticipantStatus: (participationId: string, status: AdminEventParticipantStatus) => Promise<void>;
 }
 
 type Draft = {
@@ -68,7 +69,7 @@ const toDraft = (event: AdminEvent): Draft => ({
 const dateLabel = (value: string | null) =>
   value ? new Date(value).toLocaleString() : 'Not scheduled';
 
-export default function AdminEventManager({ events, onSave, onDelete, onListParticipants }: Props) {
+export default function AdminEventManager({ events, onSave, onDelete, onListParticipants, onUpdateParticipantStatus }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -76,6 +77,8 @@ export default function AdminEventManager({ events, onSave, onDelete, onListPart
   const [participantsForEvent, setParticipantsForEvent] = useState<string | null>(null);
   const [participants, setParticipants] = useState<AdminEventParticipant[]>([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
+  const [participantStatusDrafts, setParticipantStatusDrafts] = useState<Record<string, AdminEventParticipantStatus>>({});
+  const [updatingParticipantId, setUpdatingParticipantId] = useState<string | null>(null);
 
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => current ? { ...current, [key]: value } : current);
@@ -135,6 +138,27 @@ export default function AdminEventManager({ events, onSave, onDelete, onListPart
       setParticipants([]);
     } finally {
       setLoadingParticipants(false);
+    }
+  };
+
+  const handleUpdateParticipantStatus = async (participant: AdminEventParticipant) => {
+    const status = participantStatusDrafts[participant.id] ?? participant.status;
+    setUpdatingParticipantId(participant.id);
+    setError('');
+    try {
+      await onUpdateParticipantStatus(participant.id, status);
+      if (participantsForEvent) {
+        setParticipants(await onListParticipants(participantsForEvent));
+      }
+      setParticipantStatusDrafts((current) => {
+        const next = { ...current };
+        delete next[participant.id];
+        return next;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update participant status.');
+    } finally {
+      setUpdatingParticipantId(null);
     }
   };
 
@@ -276,12 +300,33 @@ export default function AdminEventManager({ events, onSave, onDelete, onListPart
                     <p className="text-[9px] text-neon-700">{participant.players.referral_code} · Telegram {participant.players.telegram_id}</p>
                     <p className="text-[9px] text-neon-700">Registered {new Date(participant.registered_at).toLocaleString()}</p>
                   </div>
-                  <span className="border border-neon/20 px-2 py-1 text-[9px] uppercase text-neon-400">{participant.status.replace('_', ' ')}</span>
+                  <div className="flex items-center gap-2">
+                    <select
+                      aria-label={`Status for ${participant.players.username ?? participant.players.first_name ?? 'participant'}`}
+                      value={participantStatusDrafts[participant.id] ?? participant.status}
+                      onChange={(e) => setParticipantStatusDrafts((current) => ({ ...current, [participant.id]: e.target.value as AdminEventParticipantStatus }))}
+                      className="border border-neon/20 bg-black px-2 py-1 text-[9px] uppercase text-neon-300"
+                    >
+                      <option value="registered">Registered</option>
+                      <option value="in_progress">In progress</option>
+                      <option value="submitted">Submitted</option>
+                      <option value="completed">Completed</option>
+                      <option value="withdrawn">Withdrawn</option>
+                    </select>
+                    <button
+                      type="button"
+                      disabled={updatingParticipantId === participant.id || (participantStatusDrafts[participant.id] ?? participant.status) === participant.status}
+                      onClick={() => void handleUpdateParticipantStatus(participant)}
+                      className="border border-cyan-500/30 px-2 py-1 text-[9px] text-cyan-300 disabled:opacity-40"
+                    >
+                      {updatingParticipantId === participant.id ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
           )}
-          <p className="text-[9px] text-neon-700">Participant progress is currently registration-only; objective completion tracking is a later implementation step.</p>
+          <p className="text-[9px] text-neon-700">Statuses are administrator-reviewed only. No objective telemetry or ZP/ZAP rewards are issued by this control.</p>
         </section>
       )}
     </section>
