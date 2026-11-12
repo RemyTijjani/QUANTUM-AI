@@ -121,8 +121,8 @@ function TaskFormModal({
       rewardCurrency,
       unlockCostZp: Number(form.get('unlockCostZp') ?? 0),
       status,
-      objectives: String(form.get('objectives') ?? '').split('\\n').map((v) => v.trim()).filter(Boolean),
-      requirements: String(form.get('requirements') ?? '').split('\\n').map((v) => v.trim()).filter(Boolean),
+      objectives: String(form.get('objectives') ?? '').split('\n').map((v) => v.trim()).filter(Boolean),
+      requirements: String(form.get('requirements') ?? '').split('\n').map((v) => v.trim()).filter(Boolean),
     };
     if (!Number.isSafeInteger(input.unlockCostZp) || input.unlockCostZp < 0) {
       setError('ZP unlock cost must be a whole number of 0 or more.');
@@ -197,11 +197,11 @@ function TaskFormModal({
         )}
         <div>
           <label className="text-[11px] text-neon-500 uppercase">Objectives (one per line)</label>
-          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\\n') ?? ''} disabled={saving} placeholder="Submit an approved creator link" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\n') ?? ''} disabled={saving} placeholder="Submit an approved creator link" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
         </div>
         <div>
           <label className="text-[11px] text-neon-500 uppercase">Requirements (one per line)</label>
-          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\\n') ?? ''} disabled={saving} placeholder="Telegram account required" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\n') ?? ''} disabled={saving} placeholder="Telegram account required" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
         </div>
         <p className="text-[10px] text-amber-300">ZAP rewards are saved as configuration only; payouts are unavailable until Stage 7. Paid unlocks are not charged until secure backend unlock processing is implemented.</p>
         <div>
