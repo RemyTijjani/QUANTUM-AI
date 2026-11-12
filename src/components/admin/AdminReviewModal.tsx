@@ -264,7 +264,7 @@ function AdminConsole({
     refreshing ? '...' : value.toLocaleString();
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#020503] text-neon-400 font-mono p-4 overflow-y-auto flex flex-col gap-6">
+    <div className="fixed inset-0 z-50 box-border w-full min-w-0 max-w-full bg-[#020503] text-neon-400 font-mono p-3 sm:p-4 overflow-y-auto overflow-x-hidden flex flex-col gap-4 sm:gap-6">
       <div className="panel flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border border-neon/30 bg-[#020503]/90">
         <div className="flex items-center gap-3">
           <div className="p-2 border border-neon bg-neon/10 text-neon animate-pulse">
@@ -333,11 +333,11 @@ function AdminConsole({
         </div>
       )}
 
-      <div className="flex gap-2 border-b border-neon/20 pb-2">
+      <div className="flex w-full min-w-0 flex-wrap gap-2 border-b border-neon/20 pb-2">
         <button
           type="button"
           onClick={() => setActiveTab('queue')}
-          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
+          className={`min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:flex-none sm:basis-auto px-3 sm:px-4 py-2 text-[10px] sm:text-xs uppercase tracking-wider transition-all border ${
             activeTab === 'queue'
               ? 'border-neon bg-neon/20 text-neon-300 font-bold'
               : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
