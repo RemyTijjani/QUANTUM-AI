@@ -1,0 +1,39 @@
+name: Deploy admin-api to Supabase Preview
+
+on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - 'supabase/functions/admin-api/**'
+      - '.github/workflows/deploy-admin-api-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/security/trusted-gameplay-migration'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: security/trusted-gameplay-migration
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy admin-api to Supabase Preview
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_PROJECT_REF" ]; then
+            echo "Required Supabase GitHub secret or variable is missing."
+            exit 1
+          fi
+          supabase functions deploy admin-api --project-ref "$SUPABASE_PROJECT_REF" --yes
