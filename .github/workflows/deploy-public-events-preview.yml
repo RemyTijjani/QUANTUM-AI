@@ -1,6 +1,12 @@
 name: Deploy public-events to Supabase Preview
 
 on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - 'supabase/functions/public-events/**'
+      - '.github/workflows/deploy-public-events-preview.yml'
   workflow_dispatch:
 
 permissions:
