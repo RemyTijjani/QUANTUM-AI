@@ -17,6 +17,7 @@ import NetworkTab from '@/components/network/NetworkTab';
 import MissionsTab from '@/components/missions/MissionsTab';
 import VaultTab from '@/components/vault/VaultTab';
 import ZordAgentsTab from '@/components/agents/ZordAgentsTab';
+import EventsTab from '@/components/events/EventsTab';
 import { AdminDashboard } from '@/components/admin/AdminReviewModal';
 
 import { useGame } from '@/hooks/useGame';
@@ -252,6 +253,8 @@ function GameApp({
             onOpenAdmin={() => setOverlay('admin')}
           />
         )}
+
+        {tab === 'events' && <EventsTab />}
 
         {tab === 'vault' && (
           <VaultTab
