@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
     const now = new Date().toISOString();
     const { data, error } = await db
       .from("game_events")
-      .select("id, title, description, category, starts_at, ends_at, timezone, reward_zp, reward_zap, objectives, requirements")
+      .select("id, title, description, category, starts_at, ends_at, timezone, reward_zp, reward_zap, objectives, requirements, participation_rules")
       .eq("status", "published")
       .not("starts_at", "is", null)
       .not("ends_at", "is", null)
