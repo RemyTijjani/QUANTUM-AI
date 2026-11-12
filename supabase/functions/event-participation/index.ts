@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
@@ -19,7 +19,7 @@ function json(body: unknown, status = 200) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "Method not allowed. Use POST." }, 405);
+  if (req.method !== "POST" && req.method !== "GET") return json({ error: "Method not allowed. Use GET or POST." }, 405);
   if (!SUPABASE_URL || !ANON_KEY || !SERVICE_ROLE_KEY) {
     console.error("Event participation service configuration is incomplete");
     return json({ error: "Event participation service is not configured" }, 500);
@@ -54,6 +54,20 @@ Deno.serve(async (req: Request) => {
     const { data: player, error: playerError } = await admin
       .from("players").select("id").eq("id", authData.user.id).maybeSingle();
     if (playerError || !player) return json({ error: "Player profile was not found." }, 403);
+
+    if (req.method === "GET") {
+      const { data: registrations, error: registrationsError } = await admin
+        .from("game_event_participations")
+        .select("id, event_id, status, registered_at, updated_at, completed_at, game_events(id, title, category, starts_at, ends_at, timezone)")
+        .eq("player_id", player.id)
+        .order("registered_at", { ascending: false })
+        .limit(100);
+      if (registrationsError) {
+        console.error("Event history lookup failed:", registrationsError);
+        return json({ error: "Could not load your event history." }, 500);
+      }
+      return json({ registrations: registrations ?? [] });
+    }
 
     const { data: event, error: eventError } = await admin
       .from("game_events")
