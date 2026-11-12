@@ -165,7 +165,8 @@ export default function EventsTab() {
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [historyError, setHistoryError] = useState('');
-  const [registeringId, setRegisteringId] = useState<string | null>(null);\n  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [registeringId, setRegisteringId] = useState<string | null>(null);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
