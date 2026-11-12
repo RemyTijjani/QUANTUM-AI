@@ -110,6 +110,7 @@ function validateTask(
   }
 
   if (task.rewardCurrency && !['ZP', 'ZAP'].includes(task.rewardCurrency)) return "Invalid reward currency";
+  if (task.kind === "creator" && task.rewardCurrency === "ZAP") return "Creator Ops submissions can only pay ZP until the Stage 7 ZAP reward backend is implemented.";
   if (task.unlockCostZp !== undefined && (!Number.isSafeInteger(task.unlockCostZp) || task.unlockCostZp < 0)) return "Unlock cost must be a whole number of 0 or more";
   if (task.status && !['draft', 'published', 'paused', 'archived'].includes(task.status)) return "Invalid mission status";
   if (task.objectives !== undefined && (!Array.isArray(task.objectives) || task.objectives.length > 50 || task.objectives.some((v) => typeof v !== 'string' || v.length > 300))) return "Invalid mission objectives";
