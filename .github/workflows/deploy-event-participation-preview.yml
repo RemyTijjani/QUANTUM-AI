@@ -1,4 +1,5 @@
 name: Deploy event-participation to Supabase Preview
+# Preview-only deployment; the job checks out the current Preview branch head.
 
 on:
   push:
