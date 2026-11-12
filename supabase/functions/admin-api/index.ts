@@ -148,6 +148,7 @@ Deno.serve(async (req: Request) => {
         pendingListRes,
         tasksRes,
         vaultRes,
+        eventsRes,
       ] = await Promise.all([
         db.from("players").select("id", {
           count: "exact",
