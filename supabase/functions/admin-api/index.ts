@@ -496,9 +496,8 @@ Deno.serve(async (req: Request) => {
       if (event.requirements !== undefined && !Array.isArray(event.requirements)) {
         return json({ error: "Requirements must be a JSON array" }, 400);
       }
-      if (event.participationRules !== undefined &&
-          (!event.participationRules || typeof event.participationRules !== "object" || Array.isArray(event.participationRules))) {
-        return json({ error: "Participation rules must be a JSON object" }, 400);
+      if (event.participationRules !== undefined && typeof event.participationRules !== "string") {
+        return json({ error: "Participation rules must be plain text" }, 400);
       }
 
       const startsAt = event.startsAt ? new Date(event.startsAt) : null;
@@ -536,13 +535,8 @@ Deno.serve(async (req: Request) => {
       if (requirements.length > 50 || requirements.some((item: unknown) => typeof item !== "string" || item.length > 300)) {
         return json({ error: "Provide up to 50 requirements, each 300 characters or fewer" }, 400);
       }
-      let participationRulesJson = "";
-      try {
-        participationRulesJson = JSON.stringify(event.participationRules ?? {});
-      } catch {
-        return json({ error: "Participation rules must be valid JSON" }, 400);
-      }
-      if (participationRulesJson.length > 10000) {
+      const participationRulesText = event.participationRules ?? "";
+      if (participationRulesText.length > 10000) {
         return json({ error: "Participation rules must be 10,000 characters or fewer" }, 400);
       }
 
@@ -558,7 +552,7 @@ Deno.serve(async (req: Request) => {
         reward_zap: rewardZap,
         objectives,
         requirements,
-        participation_rules: event.participationRules ?? {},
+        participation_rules: participationRulesText,
         updated_at: new Date().toISOString(),
         published_at: event.status === "published" ? new Date().toISOString() : null,
         cancelled_at: event.status === "cancelled" ? new Date().toISOString() : null,
