@@ -269,7 +269,7 @@ Deno.serve(async (req: Request) => {
         .limit(50);
 
       if (term) {
-        if (/^\\d+$/.test(term)) {
+        if (/^\d+$/.test(term)) {
           query = query.or(`telegram_id.eq.${term},referral_code.ilike.%${term}%,username.ilike.%${term}%,first_name.ilike.%${term}%`);
         } else {
           query = query.or(`referral_code.ilike.%${term}%,username.ilike.%${term}%,first_name.ilike.%${term}%`);
