@@ -24,7 +24,9 @@ interface AdminRequestBody {
     | "fetch_dashboard"
     | "save_task"
     | "delete_task"
-    | "save_vault_reserves";
+    | "save_vault_reserves"
+    | "save_event"
+    | "delete_event";
   adminUsername?: string;
   adminPassword?: string;
   submissionId?: string;
@@ -40,6 +42,21 @@ interface AdminRequestBody {
   };
   taskId?: string;
   vaultReserves?: { tonReserve?: number; zpReserve?: number };
+  event?: {
+    id?: string;
+    title?: string;
+    description?: string;
+    category?: string;
+    status?: string;
+    startsAt?: string | null;
+    endsAt?: string | null;
+    timezone?: string;
+    rewardZp?: number;
+    objectives?: unknown;
+    requirements?: unknown;
+    participationRules?: unknown;
+  };
+  eventId?: string;
 }
 
 function json(body: unknown, status = 200) {
@@ -171,6 +188,11 @@ Deno.serve(async (req: Request) => {
           .select("ton_reserve, zp_reserve")
           .eq("id", "global")
           .maybeSingle(),
+
+        db
+          .from("game_events")
+          .select("id, title, description, category, status, starts_at, ends_at, timezone, reward_zp, objectives, requirements, participation_rules, created_at, updated_at")
+          .order("created_at", { ascending: false }),
       ]);
 
       const failed = [
@@ -181,6 +203,7 @@ Deno.serve(async (req: Request) => {
         pendingListRes,
         tasksRes,
         vaultRes,
+        eventsRes,
       ].find((r) => r.error);
 
       if (failed) {
@@ -219,6 +242,8 @@ Deno.serve(async (req: Request) => {
           platform: t.platform,
           actionUrl: t.action_url,
         })),
+
+        events: eventsRes.data ?? [],
       });
     }
 
@@ -370,6 +395,86 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      return json({ success: true });
+    }
+
+    // CREATE OR UPDATE EVENT
+    if (body.action === "save_event") {
+      const event = body.event;
+      if (!event) return json({ error: "event is required" }, 400);
+
+      const categories = ["daily", "weekly", "monthly", "special"];
+      const statuses = ["draft", "published", "cancelled"];
+      if (!event.title?.trim() || event.title.trim().length > 120) {
+        return json({ error: "Event title must be between 1 and 120 characters" }, 400);
+      }
+      if (!event.category || !categories.includes(event.category)) {
+        return json({ error: "Invalid event category" }, 400);
+      }
+      if (!event.status || !statuses.includes(event.status)) {
+        return json({ error: "Invalid event status" }, 400);
+      }
+      if (typeof event.rewardZp !== "number" || !Number.isSafeInteger(event.rewardZp) || event.rewardZp < 0) {
+        return json({ error: "Event ZP reward must be a whole number of 0 or more" }, 400);
+      }
+      if (event.objectives !== undefined && !Array.isArray(event.objectives)) {
+        return json({ error: "Objectives must be a JSON array" }, 400);
+      }
+      if (event.requirements !== undefined && !Array.isArray(event.requirements)) {
+        return json({ error: "Requirements must be a JSON array" }, 400);
+      }
+      if (event.participationRules !== undefined &&
+          (!event.participationRules || typeof event.participationRules !== "object" || Array.isArray(event.participationRules))) {
+        return json({ error: "Participation rules must be a JSON object" }, 400);
+      }
+
+      const startsAt = event.startsAt ? new Date(event.startsAt) : null;
+      const endsAt = event.endsAt ? new Date(event.endsAt) : null;
+      if ((event.startsAt && (!startsAt || Number.isNaN(startsAt.getTime()))) ||
+          (event.endsAt && (!endsAt || Number.isNaN(endsAt.getTime())))) {
+        return json({ error: "Event dates must be valid timestamps" }, 400);
+      }
+      if (startsAt && endsAt && startsAt >= endsAt) {
+        return json({ error: "Event end must be after its start" }, 400);
+      }
+      if (event.status === "published" && (!startsAt || !endsAt)) {
+        return json({ error: "Add both start and end dates before publishing an event" }, 400);
+      }
+
+      const row = {
+        title: event.title.trim(),
+        description: event.description?.trim() ?? "",
+        category: event.category,
+        status: event.status,
+        starts_at: startsAt?.toISOString() ?? null,
+        ends_at: endsAt?.toISOString() ?? null,
+        timezone: event.timezone?.trim() || "UTC",
+        reward_zp: event.rewardZp,
+        objectives: event.objectives ?? [],
+        requirements: event.requirements ?? [],
+        participation_rules: event.participationRules ?? {},
+        updated_at: new Date().toISOString(),
+        published_at: event.status === "published" ? new Date().toISOString() : null,
+        cancelled_at: event.status === "cancelled" ? new Date().toISOString() : null,
+      };
+
+      if (event.id) {
+        const { data, error } = await db.from("game_events").update(row).eq("id", event.id).select("id").maybeSingle();
+        if (error) return json({ error: "Failed to update event" }, 500);
+        if (!data) return json({ error: "Event not found" }, 404);
+        return json({ success: true, id: data.id });
+      }
+
+      const { data, error } = await db.from("game_events").insert(row).select("id").single();
+      if (error || !data) return json({ error: "Failed to create event" }, 500);
+      return json({ success: true, id: data.id });
+    }
+
+    // DELETE EVENT
+    if (body.action === "delete_event") {
+      if (!body.eventId) return json({ error: "eventId required" }, 400);
+      const { error } = await db.from("game_events").delete().eq("id", body.eventId);
+      if (error) return json({ error: "Failed to delete event" }, 500);
       return json({ success: true });
     }
 
