@@ -10,6 +10,7 @@ export interface PublicGameEvent {
   reward_zap: number;
   objectives: unknown[];
   requirements: unknown[];
+  participation_rules: string;
 }
 
 export class EventsApiError extends Error {}
@@ -67,7 +68,8 @@ export async function fetchPublishedEvents(): Promise<PublicGameEvent[]> {
       typeof event.reward_zp !== 'number' ||
       typeof event.reward_zap !== 'number' ||
       !Array.isArray(event.objectives) ||
-      !Array.isArray(event.requirements)
+      !Array.isArray(event.requirements) ||
+      typeof event.participation_rules !== 'string'
     ) {
       throw new EventsApiError('The events service returned an invalid event record.');
     }
