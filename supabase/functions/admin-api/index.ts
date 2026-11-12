@@ -45,6 +45,11 @@ interface AdminRequestBody {
     reward?: number;
     platform?: string | null;
     actionUrl?: string | null;
+    rewardCurrency?: string;
+    unlockCostZp?: number;
+    status?: string;
+    objectives?: unknown;
+    requirements?: unknown;
   };
   taskId?: string;
   vaultReserves?: { tonReserve?: number; zpReserve?: number };
@@ -103,6 +108,12 @@ function validateTask(
   if (task.platform && !TASK_PLATFORMS.includes(task.platform)) {
     return "Invalid platform";
   }
+
+  if (task.rewardCurrency && !['ZP', 'ZAP'].includes(task.rewardCurrency)) return "Invalid reward currency";
+  if (task.unlockCostZp !== undefined && (!Number.isSafeInteger(task.unlockCostZp) || task.unlockCostZp < 0)) return "Unlock cost must be a whole number of 0 or more";
+  if (task.status && !['draft', 'published', 'paused', 'archived'].includes(task.status)) return "Invalid mission status";
+  if (task.objectives !== undefined && (!Array.isArray(task.objectives) || task.objectives.length > 50 || task.objectives.some((v) => typeof v !== 'string' || v.length > 300))) return "Invalid mission objectives";
+  if (task.requirements !== undefined && (!Array.isArray(task.requirements) || task.requirements.length > 50 || task.requirements.some((v) => typeof v !== 'string' || v.length > 300))) return "Invalid mission requirements";
 
   if (task.actionUrl) {
     try {
@@ -189,7 +200,7 @@ Deno.serve(async (req: Request) => {
         db
           .from("mission_tasks")
           .select(
-            "id, kind, title, description, reward, platform, action_url"
+            "id, kind, title, description, reward, platform, action_url, reward_currency, unlock_cost_zp, status, objectives, requirements"
           )
           .order("created_at", { ascending: true }),
 
@@ -251,6 +262,11 @@ Deno.serve(async (req: Request) => {
           reward: t.reward,
           platform: t.platform,
           actionUrl: t.action_url,
+          rewardCurrency: t.reward_currency ?? "ZP",
+          unlockCostZp: t.unlock_cost_zp ?? 0,
+          status: t.status ?? "published",
+          objectives: Array.isArray(t.objectives) ? t.objectives : [],
+          requirements: Array.isArray(t.requirements) ? t.requirements : [],
         })),
 
         events: eventsRes.data ?? [],
@@ -425,6 +441,12 @@ Deno.serve(async (req: Request) => {
             ? task.platform || null
             : null,
         action_url: task.actionUrl?.trim() || null,
+        reward_currency: task.rewardCurrency ?? "ZP",
+        unlock_cost_zp: task.unlockCostZp ?? 0,
+        status: task.status ?? "draft",
+        objectives: task.objectives ?? [],
+        requirements: task.requirements ?? [],
+        updated_at: new Date().toISOString(),
       };
 
       if (task.id) {
