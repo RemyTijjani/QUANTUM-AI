@@ -68,7 +68,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === "GET") {
       const { data: registrations, error: registrationsError } = await admin
         .from("game_event_participations")
-        .select("id, event_id, status, registered_at, updated_at, completed_at, game_events(id, title, category, starts_at, ends_at, timezone)")
+        .select("id, event_id, status, progress, registered_at, updated_at, completed_at, game_events(id, title, category, starts_at, ends_at, timezone, objectives, requirements)")
         .eq("player_id", player.id)
         .order("registered_at", { ascending: false })
         .limit(100);
@@ -76,7 +76,36 @@ Deno.serve(async (req: Request) => {
         console.error("Event history lookup failed:", registrationsError);
         return json({ error: "Could not load your event history." }, 500);
       }
-      return json({ registrations: registrations ?? [] });
+
+      const verifiedRegistrations = await Promise.all((registrations ?? []).map(async (registration) => {
+        const event = registration.game_events;
+        const evidence = event ? registrationEvidence(event) : null;
+        if (!evidence || registration.status === "withdrawn") return registration;
+
+        const previousProgress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
+          ? registration.progress as Record<string, unknown>
+          : {};
+        const { data: updated, error: updateError } = await admin
+          .from("game_event_participations")
+          .update({
+            status: evidence.completesEvent ? "completed" : registration.status,
+            progress: { ...previousProgress, ...evidence.progress },
+            completed_at: evidence.completesEvent ? (registration.completed_at ?? new Date().toISOString()) : registration.completed_at,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", registration.id)
+          .eq("player_id", player.id)
+          .select("id, event_id, status, progress, registered_at, updated_at, completed_at, game_events(id, title, category, starts_at, ends_at, timezone, objectives, requirements)")
+          .single();
+
+        if (updateError) {
+          console.error("Event registration progress verification failed:", updateError);
+          throw new Error("Could not verify event registration progress.");
+        }
+        return updated;
+      }));
+
+      return json({ registrations: verifiedRegistrations });
     }
 
     let body: { eventId?: unknown };
