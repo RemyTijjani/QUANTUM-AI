@@ -28,7 +28,8 @@ interface AdminRequestBody {
     | "save_event"
     | "delete_event"
     | "list_players"
-    | "get_player_economy";
+    | "get_player_economy"
+    | "list_event_participants";
   adminUsername?: string;
   search?: string;
   playerId?: string;
@@ -281,6 +282,25 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await query;
       if (error) return json({ error: "Failed to load player records" }, 500);
       return json({ players: data ?? [] });
+    }
+
+    // READ-ONLY EVENT PARTICIPANT DIRECTORY for the selected event.
+    if (body.action === "list_event_participants") {
+      const eventId = typeof body.eventId === "string" ? body.eventId : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId)) {
+        return json({ error: "A valid event ID is required" }, 400);
+      }
+      const { data, error } = await db
+        .from("game_event_participations")
+        .select("id, event_id, status, registered_at, updated_at, completed_at, players!inner(telegram_id, username, first_name, referral_code)")
+        .eq("event_id", eventId)
+        .order("registered_at", { ascending: false })
+        .limit(500);
+      if (error) {
+        console.error("Event participant lookup failed:", error);
+        return json({ error: "Failed to load event participants" }, 500);
+      }
+      return json({ participants: data ?? [], participantLimit: 500 });
     }
 
     // READ-ONLY PLAYER ECONOMY AND LEDGER DETAIL.
