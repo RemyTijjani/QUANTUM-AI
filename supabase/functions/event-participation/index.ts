@@ -26,7 +26,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const authorization = req.headers.get("Authorization") ?? "";
-  const tokenMatch = authorization.match(/^Bearer\s+(.+)$/i);
+  const tokenMatch = authorization.match(/^Bearer\\s+(.+)$/i);
   if (!tokenMatch) return json({ error: "Sign in to register for an event." }, 401);
 
   try {
@@ -36,16 +36,6 @@ Deno.serve(async (req: Request) => {
     });
     const { data: authData, error: authError } = await authClient.auth.getUser(tokenMatch[1]);
     if (authError || !authData.user) return json({ error: "Your session is invalid or expired. Reopen the Mini App." }, 401);
-
-    let body: { eventId?: unknown };
-    try {
-      body = await req.json();
-    } catch {
-      return json({ error: "A valid JSON request body is required." }, 400);
-    }
-    if (typeof body.eventId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.eventId)) {
-      return json({ error: "A valid event ID is required." }, 400);
-    }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -67,6 +57,16 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Could not load your event history." }, 500);
       }
       return json({ registrations: registrations ?? [] });
+    }
+
+    let body: { eventId?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return json({ error: "A valid JSON request body is required." }, 400);
+    }
+    if (!body || typeof body.eventId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.eventId)) {
+      return json({ error: "A valid event ID is required." }, 400);
     }
 
     const { data: event, error: eventError } = await admin
