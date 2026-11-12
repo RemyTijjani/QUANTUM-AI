@@ -1,12 +1,13 @@
 import { useState, FormEvent } from 'react';
-import { CalendarDays, Plus, Edit2, Trash2, Loader2, Save, X } from 'lucide-react';
+import { CalendarDays, Plus, Edit2, Trash2, Loader2, Save, X, Users } from 'lucide-react';
 import { AdminApiError } from '@/lib/admin/adminApi';
-import type { AdminEvent, AdminEventInput } from '@/lib/admin/adminApi';
+import type { AdminEvent, AdminEventInput, AdminEventParticipant } from '@/lib/admin/adminApi';
 
 interface Props {
   events: AdminEvent[];
   onSave: (event: AdminEventInput) => Promise<void>;
   onDelete: (eventId: string) => Promise<void>;
+  onListParticipants: (eventId: string) => Promise<AdminEventParticipant[]>;
 }
 
 type Draft = {
@@ -67,11 +68,14 @@ const toDraft = (event: AdminEvent): Draft => ({
 const dateLabel = (value: string | null) =>
   value ? new Date(value).toLocaleString() : 'Not scheduled';
 
-export default function AdminEventManager({ events, onSave, onDelete }: Props) {
+export default function AdminEventManager({ events, onSave, onDelete, onListParticipants }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [participantsForEvent, setParticipantsForEvent] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<AdminEventParticipant[]>([]);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => current ? { ...current, [key]: value } : current);
@@ -117,6 +121,20 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
       setError(err instanceof AdminApiError || err instanceof Error ? err.message : 'Could not save the event.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleViewParticipants = async (eventId: string) => {
+    setParticipantsForEvent(eventId);
+    setLoadingParticipants(true);
+    setError('');
+    try {
+      setParticipants(await onListParticipants(eventId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load event participants.');
+      setParticipants([]);
+    } finally {
+      setLoadingParticipants(false);
     }
   };
 
@@ -229,13 +247,42 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
               {event.description && <p className="text-[11px] text-neon-500">{event.description}</p>}
               <p className="text-[10px] text-neon-600">{dateLabel(event.starts_at)} → {dateLabel(event.ends_at)}</p>
               <p className="text-[10px] text-neon-400">Rewards: {event.reward_zp.toLocaleString()} ZP + {event.reward_zap.toLocaleString()} ZAP · {event.objectives.length} objectives · {event.requirements.length} requirements</p>
-              <div className="flex justify-end gap-2 pt-1">
+              <div className="flex flex-wrap justify-end gap-2 pt-1">
+                <button type="button" onClick={() => void handleViewParticipants(event.id)} className="flex items-center gap-1 border border-cyan-500/30 px-2 py-1 text-[10px] text-cyan-300"><Users size={12} /> Participants</button>
                 <button type="button" onClick={() => { setDraft(toDraft(event)); setError(''); }} className="flex items-center gap-1 border border-neon/30 px-2 py-1 text-[10px] text-neon-300"><Edit2 size={12} /> Edit</button>
                 <button type="button" disabled={deletingId === event.id} onClick={() => void handleDelete(event)} className="flex items-center gap-1 border border-red-500/30 px-2 py-1 text-[10px] text-red-300 disabled:opacity-50">{deletingId === event.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete</button>
               </div>
             </article>
           ))}
         </div>
+      )}
+
+      {participantsForEvent && (
+        <section className="border border-cyan-500/30 bg-black/50 p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-300">Event participants · {events.find((event) => event.id === participantsForEvent)?.title ?? 'Selected event'}</h3>
+            <button type="button" onClick={() => setParticipantsForEvent(null)} className="text-[10px] text-neon-500">Close</button>
+          </div>
+          {loadingParticipants ? (
+            <p className="py-4 text-center text-[10px] text-neon-500">Loading participant records…</p>
+          ) : participants.length === 0 ? (
+            <p className="py-4 text-center text-[10px] text-neon-600">No players have registered for this event yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {participants.map((participant) => (
+                <article key={participant.id} className="flex flex-wrap items-center justify-between gap-2 border border-neon/15 p-2">
+                  <div>
+                    <p className="text-[10px] text-neon-300">{participant.players.first_name ?? participant.players.username ?? 'Player'} {participant.players.username ? `(@${participant.players.username})` : ''}</p>
+                    <p className="text-[9px] text-neon-700">{participant.players.referral_code} · Telegram {participant.players.telegram_id}</p>
+                    <p className="text-[9px] text-neon-700">Registered {new Date(participant.registered_at).toLocaleString()}</p>
+                  </div>
+                  <span className="border border-neon/20 px-2 py-1 text-[9px] uppercase text-neon-400">{participant.status.replace('_', ' ')}</span>
+                </article>
+              ))}
+            </div>
+          )}
+          <p className="text-[9px] text-neon-700">Participant progress is currently registration-only; objective completion tracking is a later implementation step.</p>
+        </section>
       )}
     </section>
   );
