@@ -24,6 +24,11 @@ export interface AdminTask {
   reward: number;
   platform: 'tiktok' | 'youtube' | null;
   actionUrl: string | null;
+  rewardCurrency: 'ZP' | 'ZAP';
+  unlockCostZp: number;
+  status: 'draft' | 'published' | 'paused' | 'archived';
+  objectives: string[];
+  requirements: string[];
 }
 
 export interface AdminTaskInput {
@@ -34,6 +39,11 @@ export interface AdminTaskInput {
   reward: number;
   platform: AdminTask['platform'];
   actionUrl: string | null;
+  rewardCurrency: 'ZP' | 'ZAP';
+  unlockCostZp: number;
+  status: 'draft' | 'published' | 'paused' | 'archived';
+  objectives: string[];
+  requirements: string[];
 }
 
 export interface AdminStats {
