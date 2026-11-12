@@ -27,9 +27,11 @@ interface AdminRequestBody {
     | "save_vault_reserves"
     | "save_event"
     | "delete_event"
-    | "list_players";
+    | "list_players"
+    | "get_player_economy";
   adminUsername?: string;
   search?: string;
+  playerId?: string;
   adminPassword?: string;
   submissionId?: string;
   decision?: "approved" | "rejected";
@@ -279,6 +281,39 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await query;
       if (error) return json({ error: "Failed to load player records" }, 500);
       return json({ players: data ?? [] });
+    }
+
+    // READ-ONLY PLAYER ECONOMY AND LEDGER DETAIL.
+    if (body.action === "get_player_economy") {
+      const playerId = typeof body.playerId === "string" ? body.playerId : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(playerId)) {
+        return json({ error: "A valid player ID is required" }, 400);
+      }
+
+      const [economyRes, ledgerRes] = await Promise.all([
+        db
+          .from("player_economy")
+          .select("player_id, zp_balance, lifetime_zp, pending_kickback, created_at, updated_at, last_accrued_at")
+          .eq("player_id", playerId)
+          .maybeSingle(),
+        db
+          .from("economy_ledger")
+          .select("id, player_id, transaction_type, amount, balance_after, reference_id, description, created_at")
+          .eq("player_id", playerId)
+          .order("created_at", { ascending: false })
+          .limit(50),
+      ]);
+
+      if (economyRes.error || ledgerRes.error) {
+        return json({ error: "Failed to load player economy history" }, 500);
+      }
+
+      return json({
+        economy: economyRes.data ?? null,
+        ledger: ledgerRes.data ?? [],
+        ledgerLimit: 50,
+        zapBalanceAvailable: false,
+      });
     }
 
     // REVIEW SUBMISSION AND CREDIT THE ACTUAL PLAYER
