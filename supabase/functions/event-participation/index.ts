@@ -195,7 +195,62 @@ Deno.serve(async (req: Request) => {
         );
       }));
 
-      return json({ registrations: verifiedRegistrations });
+      const registeredEventIds = verifiedRegistrations
+        .filter((registration) => registration.status !== "withdrawn")
+        .map((registration) => registration.event_id);
+      const activitiesByEvent = new Map<string, Array<Record<string, unknown>>>();
+      if (registeredEventIds.length > 0) {
+        const { data: activities, error: activitiesError } = await admin
+          .from("game_event_activities")
+          .select("id, event_id, mission_id, activity_type, title, description, instructions, is_required, sort_order")
+          .in("event_id", registeredEventIds)
+          .order("sort_order", { ascending: true });
+        if (activitiesError) {
+          console.error("Event activity lookup failed:", activitiesError);
+          return json({ error: "Could not load your event activities." }, 500);
+        }
+
+        const missionIds = [...new Set((activities ?? [])
+          .map((activity) => activity.mission_id)
+          .filter((id): id is string => typeof id === "string"))];
+        const missionById = new Map<string, Record<string, unknown>>();
+        if (missionIds.length > 0) {
+          const { data: missions, error: missionsError } = await admin
+            .from("mission_tasks")
+            .select("id, title, description, action_url, kind, platform, status")
+            .in("id", missionIds)
+            .eq("status", "published");
+          if (missionsError) {
+            console.error("Linked event mission lookup failed:", missionsError);
+            return json({ error: "Could not load event mission details." }, 500);
+          }
+          for (const mission of missions ?? []) missionById.set(mission.id, mission);
+        }
+
+        for (const activity of activities ?? []) {
+          const eventActivities = activitiesByEvent.get(activity.event_id) ?? [];
+          const linkedMission = activity.mission_id ? missionById.get(activity.mission_id) ?? null : null;
+          eventActivities.push({
+            id: activity.id,
+            activity_type: activity.activity_type,
+            title: activity.title,
+            description: activity.description,
+            instructions: activity.instructions,
+            is_required: activity.is_required,
+            sort_order: activity.sort_order,
+            mission: linkedMission,
+            verification: "not_verified",
+          });
+          activitiesByEvent.set(activity.event_id, eventActivities);
+        }
+      }
+
+      const registrationsWithActivities = verifiedRegistrations.map((registration) => ({
+        ...registration,
+        activities: activitiesByEvent.get(registration.event_id) ?? [],
+      }));
+
+      return json({ registrations: registrationsWithActivities });
     }
 
     let body: { eventId?: unknown };
