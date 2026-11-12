@@ -87,6 +87,42 @@ export interface AdminEventInput {
   participationRules: string;
 }
 
+export type AdminEventActivityType =
+  | 'mission'
+  | 'creator_submission_approved'
+  | 'referral_registration'
+  | 'telegram_membership'
+  | 'gameplay_verification'
+  | 'admin_review';
+
+export interface AdminEventActivity {
+  id: string;
+  event_id: string;
+  mission_id: string | null;
+  activity_type: AdminEventActivityType;
+  title: string;
+  description: string;
+  instructions: string;
+  config: Record<string, unknown>;
+  is_required: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminEventActivityInput {
+  id?: string;
+  eventId: string;
+  missionId: string | null;
+  activityType: AdminEventActivityType;
+  title: string;
+  description: string;
+  instructions: string;
+  config: Record<string, unknown>;
+  isRequired: boolean;
+  sortOrder: number;
+}
+
 export type AdminEventParticipantStatus = 'registered' | 'in_progress' | 'completed' | 'submitted' | 'withdrawn';
 
 export interface AdminEventParticipant {
@@ -396,6 +432,32 @@ export async function listEventParticipants(
   return (body as { participants: AdminEventParticipant[] }).participants;
 }
 
+
+export async function listEventActivities(
+  creds: AdminCredentials,
+  eventId: string,
+): Promise<AdminEventActivity[]> {
+  const body = await callAdminApi(creds, { action: 'list_event_activities', eventId });
+  if (!body || typeof body !== 'object' || !Array.isArray((body as { activities?: unknown }).activities)) {
+    throw new AdminApiError('Received an unexpected event activities response.');
+  }
+  return (body as { activities: AdminEventActivity[] }).activities;
+}
+
+export async function saveEventActivity(
+  creds: AdminCredentials,
+  activity: AdminEventActivityInput,
+): Promise<void> {
+  await callAdminApi(creds, { action: 'save_event_activity', activity });
+}
+
+export async function deleteEventActivity(
+  creds: AdminCredentials,
+  eventId: string,
+  activityId: string,
+): Promise<void> {
+  await callAdminApi(creds, { action: 'delete_event_activity', eventId, activityId });
+}
 
 export async function updateEventParticipantStatus(
   creds: AdminCredentials,
