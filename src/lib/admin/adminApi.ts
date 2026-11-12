@@ -56,7 +56,7 @@ export interface AdminEvent {
   reward_zap: number;
   objectives: unknown[];
   requirements: unknown[];
-  participation_rules: Record<string, unknown>;
+  participation_rules: string;
   created_at: string;
   updated_at: string;
 }
@@ -74,7 +74,7 @@ export interface AdminEventInput {
   rewardZap: number;
   objectives: unknown[];
   requirements: unknown[];
-  participationRules: Record<string, unknown>;
+  participationRules: string;
 }
 
 export interface AdminPlayerEconomy {
