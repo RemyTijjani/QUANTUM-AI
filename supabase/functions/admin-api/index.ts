@@ -26,8 +26,10 @@ interface AdminRequestBody {
     | "delete_task"
     | "save_vault_reserves"
     | "save_event"
-    | "delete_event";
+    | "delete_event"
+    | "list_players";
   adminUsername?: string;
+  search?: string;
   adminPassword?: string;
   submissionId?: string;
   decision?: "approved" | "rejected";
@@ -247,6 +249,36 @@ Deno.serve(async (req: Request) => {
 
         events: eventsRes.data ?? [],
       });
+    }
+
+    // SEARCH PLAYERS: read-only, bounded admin lookup.
+    if (body.action === "list_players") {
+      const rawSearch = typeof body.search === "string" ? body.search.trim() : "";
+      if (rawSearch.length > 64) {
+        return json({ error: "Player search must be 64 characters or fewer" }, 400);
+      }
+      const term = rawSearch.replace(/^@/, "");
+      if (term && !/^[a-zA-Z0-9_-]+$/.test(term)) {
+        return json({ error: "Search using a username, referral code, or Telegram ID" }, 400);
+      }
+
+      let query = db
+        .from("players")
+        .select("id, telegram_id, username, first_name, referral_code, created_at")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (term) {
+        if (/^\\d+$/.test(term)) {
+          query = query.or(`telegram_id.eq.${term},referral_code.ilike.%${term}%,username.ilike.%${term}%,first_name.ilike.%${term}%`);
+        } else {
+          query = query.or(`referral_code.ilike.%${term}%,username.ilike.%${term}%,first_name.ilike.%${term}%`);
+        }
+      }
+
+      const { data, error } = await query;
+      if (error) return json({ error: "Failed to load player records" }, 500);
+      return json({ players: data ?? [] });
     }
 
     // REVIEW SUBMISSION AND CREDIT THE ACTUAL PLAYER
