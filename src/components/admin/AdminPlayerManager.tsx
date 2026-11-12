@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { Search, RefreshCw, Users, CalendarDays, UserRound } from 'lucide-react';
+import { Search, RefreshCw, Users, CalendarDays, UserRound, Wallet } from 'lucide-react';
+import AdminPlayerEconomyDetail from '@/components/admin/AdminPlayerEconomyDetail';
 import { AdminApiError, listPlayers } from '@/lib/admin/adminApi';
 import type { AdminCredentials, AdminPlayer } from '@/lib/admin/adminApi';
 
@@ -20,6 +21,7 @@ export default function AdminPlayerManager({ creds }: Props) {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedPlayer, setSelectedPlayer] = useState<AdminPlayer | null>(null);
 
   const loadPlayers = useCallback(async (term: string) => {
     setLoading(true);
@@ -108,6 +110,7 @@ export default function AdminPlayerManager({ creds }: Props) {
                 <th className="px-3 py-3 font-medium">Referral code</th>
                 <th className="px-3 py-3 font-medium">Telegram ID</th>
                 <th className="px-3 py-3 font-medium">Joined</th>
+                <th className="px-3 py-3 font-medium">Economy</th>
               </tr>
             </thead>
             <tbody>
@@ -126,11 +129,23 @@ export default function AdminPlayerManager({ creds }: Props) {
                       <CalendarDays size={12} /> {dateLabel(player.created_at)}
                     </span>
                   </td>
+                  <td className="px-3 py-3">
+                    <button type="button" onClick={() => setSelectedPlayer(player)} className="inline-flex items-center gap-1.5 border border-neon/30 px-2 py-1.5 text-[9px] uppercase tracking-wider text-neon-300 hover:bg-neon/10">
+                      <Wallet size={11} /> View
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+      {selectedPlayer && (
+        <AdminPlayerEconomyDetail
+          creds={creds}
+          playerId={selectedPlayer.id}
+          playerLabel={selectedPlayer.first_name || selectedPlayer.username || selectedPlayer.referral_code}
+        />
       )}
       <p className="text-[10px] text-neon-700">
         Player records are not modified from this directory. Account restrictions and economy adjustments are not enabled here.
