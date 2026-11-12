@@ -28,7 +28,6 @@ const emptyDraft = (eventId: string): AdminEventActivityInput => ({
 export default function AdminEventActivityManager({ eventId, missions, onList, onSave, onDelete }: Props) {
   const [activities, setActivities] = useState<AdminEventActivity[]>([]);
   const [draft, setDraft] = useState<AdminEventActivityInput | null>(null);
-  const [configText, setConfigText] = useState('{}');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -47,7 +46,6 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
   const edit = (activity?: AdminEventActivity) => {
     if (!activity) {
       setDraft(emptyDraft(eventId));
-      setConfigText('{}');
       return;
     }
     setDraft({
@@ -57,7 +55,6 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
       config: activity.config ?? {}, isRequired: activity.is_required,
       sortOrder: activity.sort_order,
     });
-    setConfigText(JSON.stringify(activity.config ?? {}, null, 2));
   };
 
   const update = <K extends keyof AdminEventActivityInput>(key: K, value: AdminEventActivityInput[K]) => {
@@ -67,15 +64,6 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!draft) return;
-    let config: Record<string, unknown>;
-    try {
-      const parsed: unknown = JSON.parse(configText || '{}');
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
-      config = parsed as Record<string, unknown>;
-    } catch {
-      setError('Configuration must be a valid JSON object, for example: {}');
-      return;
-    }
     if (draft.activityType === 'mission' && !draft.missionId) {
       setError('Choose a mission for this activity.');
       return;
@@ -83,7 +71,7 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
     setSaving(true);
     setError('');
     try {
-      await onSave({ ...draft, config });
+      await onSave({ ...draft, config: {} });
       setDraft(null);
       await refresh();
     } catch (err) {
@@ -126,16 +114,15 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
         <form onSubmit={submit} className="border border-cyan-500/25 bg-black/60 p-3 space-y-2">
           <div className="flex justify-between items-center"><p className="text-[11px] text-cyan-300 font-bold">{draft.id ? 'Edit activity' : 'New activity'}</p><button type="button" onClick={() => setDraft(null)} aria-label="Close"><X size={14} /></button></div>
           <label className="block text-[10px] text-neon-500">Activity title<input required maxLength={120} value={draft.title} onChange={e => update('title', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
-          <label className="block text-[10px] text-neon-500">Activity type<select value={draft.activityType} onChange={e => update('activityType', e.target.value as AdminEventActivityType)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200">{TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
+          <label className="block text-[10px] text-neon-500">Activity type<select value={draft.activityType} onChange={e => { const nextType = e.target.value as AdminEventActivityType; update('activityType', nextType); if (nextType !== 'mission') update('missionId', null); }} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200">{TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
           {draft.activityType === 'mission' && <label className="block text-[10px] text-neon-500">Mission<select required value={draft.missionId ?? ''} onChange={e => update('missionId', e.target.value || null)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200"><option value="">Select a mission</option>{missions.map(m => <option key={m.id} value={m.id}>{m.title} ({m.status})</option>)}</select></label>}
           <label className="block text-[10px] text-neon-500">Description<textarea rows={2} maxLength={2000} value={draft.description} onChange={e => update('description', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
           <label className="block text-[10px] text-neon-500">Player instructions<textarea rows={3} maxLength={5000} value={draft.instructions} onChange={e => update('instructions', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
-          <label className="block text-[10px] text-neon-500">Verifier configuration (JSON object)<textarea rows={3} value={configText} onChange={e => setConfigText(e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200 font-mono" /></label>
           <div className="grid grid-cols-2 gap-2">
             <label className="text-[10px] text-neon-500">Display order<input type="number" min={0} step={1} value={draft.sortOrder} onChange={e => update('sortOrder', Number(e.target.value))} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
             <label className="flex items-center gap-2 text-[10px] text-neon-500"><input type="checkbox" checked={draft.isRequired} onChange={e => update('isRequired', e.target.checked)} /> Required activity</label>
           </div>
-          <p className="text-[9px] text-amber-300">Saving an activity configures it for the event; it does not verify completion or issue rewards. Some verifier types still require backend implementation.</p>
+          <div className="border border-cyan-500/20 bg-cyan-500/5 p-2 space-y-1"><p className="text-[10px] font-semibold text-cyan-200">No technical setup needed</p><p className="text-[9px] text-neon-500">Just enter the activity title, description and player instructions. ZORD saves the technical settings automatically.</p><p className="text-[9px] text-amber-300">Important: adding an activity does not by itself enable automatic completion checks or reward payouts. Those checks must be connected and tested for each activity type first.</p></div>
           <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-2 border border-cyan-500/50 bg-cyan-500/10 py-2 text-xs text-cyan-200 disabled:opacity-50">{saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}{saving ? 'Saving…' : 'Save activity'}</button>
         </form>
       )}
