@@ -10,6 +10,7 @@ create table if not exists public.game_events (
   ends_at timestamptz,
   timezone text not null default 'UTC',
   reward_zp bigint not null default 0 check (reward_zp >= 0),
+  reward_zap bigint not null default 0 check (reward_zap >= 0),
   objectives jsonb not null default '[]'::jsonb check (jsonb_typeof(objectives) = 'array'),
   requirements jsonb not null default '[]'::jsonb check (jsonb_typeof(requirements) = 'array'),
   participation_rules jsonb not null default '{}'::jsonb check (jsonb_typeof(participation_rules) = 'object'),
@@ -21,6 +22,8 @@ create table if not exists public.game_events (
     starts_at is null or ends_at is null or starts_at < ends_at
   )
 );
+
+alter table public.game_events add column if not exists reward_zap bigint not null default 0 check (reward_zap >= 0);
 
 create index if not exists game_events_status_schedule_idx
   on public.game_events (status, starts_at, ends_at);
