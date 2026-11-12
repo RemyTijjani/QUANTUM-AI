@@ -10,6 +10,26 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+function registrationEvidence(event: { objectives?: unknown; requirements?: unknown }) {
+  const objectives = Array.isArray(event.objectives) ? event.objectives : [];
+  const requirements = Array.isArray(event.requirements) ? event.requirements : [];
+  if (!objectives.includes("register") || !requirements.includes("authenticated_player")) return null;
+
+  return {
+    progress: {
+      register: {
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+        method: "server_authenticated_registration",
+      },
+    },
+    completesEvent: objectives.length === 1
+      && objectives[0] === "register"
+      && requirements.length === 1
+      && requirements[0] === "authenticated_player",
+  };
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -71,7 +91,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: event, error: eventError } = await admin
       .from("game_events")
-      .select("id, status, starts_at, ends_at")
+      .select("id, status, starts_at, ends_at, objectives, requirements")
       .eq("id", body.eventId)
       .maybeSingle();
     if (eventError) return json({ error: "Could not verify this event." }, 500);
@@ -84,17 +104,52 @@ Deno.serve(async (req: Request) => {
 
     const { data: existing, error: existingError } = await admin
       .from("game_event_participations")
-      .select("id, status, registered_at")
+      .select("id, status, registered_at, progress, completed_at")
       .eq("event_id", event.id)
       .eq("player_id", player.id)
       .maybeSingle();
     if (existingError) return json({ error: "Could not check your existing registration." }, 500);
-    if (existing) return json({ success: true, alreadyRegistered: true, participation: existing });
+    const evidence = registrationEvidence(event);
+    if (existing) {
+      if (evidence && existing.status !== "withdrawn") {
+        const previousProgress = existing.progress && typeof existing.progress === "object" && !Array.isArray(existing.progress)
+          ? existing.progress as Record<string, unknown>
+          : {};
+        const { data: verifiedParticipation, error: verifyError } = await admin
+          .from("game_event_participations")
+          .update({
+            status: evidence.completesEvent ? "completed" : existing.status,
+            progress: { ...previousProgress, ...evidence.progress },
+            completed_at: evidence.completesEvent ? (existing.completed_at ?? new Date().toISOString()) : existing.completed_at,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id)
+          .select("id, status, registered_at, updated_at, completed_at, progress")
+          .single();
+        if (verifyError) {
+          console.error("Existing event registration verification failed:", verifyError);
+          return json({ error: "Could not verify your event registration." }, 500);
+        }
+        return json({ success: true, alreadyRegistered: true, participation: verifiedParticipation });
+      }
+      return json({ success: true, alreadyRegistered: true, participation: existing });
+    }
 
+    const registration = {
+      event_id: event.id,
+      player_id: player.id,
+      ...(evidence ? {
+        progress: evidence.progress,
+        ...(evidence.completesEvent ? {
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        } : {}),
+      } : {}),
+    };
     const { data: participation, error: insertError } = await admin
       .from("game_event_participations")
-      .insert({ event_id: event.id, player_id: player.id })
-      .select("id, status, registered_at")
+      .insert(registration)
+      .select("id, status, registered_at, updated_at, completed_at, progress")
       .single();
 
     if (insertError) {
