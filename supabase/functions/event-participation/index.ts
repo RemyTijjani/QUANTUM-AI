@@ -230,6 +230,14 @@ Deno.serve(async (req: Request) => {
         for (const activity of activities ?? []) {
           const eventActivities = activitiesByEvent.get(activity.event_id) ?? [];
           const linkedMission = activity.mission_id ? missionById.get(activity.mission_id) ?? null : null;
+          const progress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
+            ? registration.progress as Record<string, unknown>
+            : {};
+          const evidenceKey = activity.activity_type === "mission" && linkedMission?.kind === "creator"
+            ? "creator_submission_approved"
+            : activity.activity_type;
+          const evidence = progress[evidenceKey];
+          const isVerified = !!evidence && typeof evidence === "object" && (evidence as Record<string, unknown>).verified === true;
           eventActivities.push({
             id: activity.id,
             activity_type: activity.activity_type,
@@ -239,7 +247,7 @@ Deno.serve(async (req: Request) => {
             is_required: activity.is_required,
             sort_order: activity.sort_order,
             mission: linkedMission,
-            verification: "not_verified",
+            verification: isVerified ? "verified" : "awaiting_verification",
           });
           activitiesByEvent.set(activity.event_id, eventActivities);
         }
