@@ -23,10 +23,6 @@ function registrationEvidence(event: { objectives?: unknown; requirements?: unkn
         method: "server_authenticated_registration",
       },
     },
-    completesEvent: objectives.length === 1
-      && objectives[0] === "register"
-      && requirements.length === 1
-      && requirements[0] === "authenticated_player",
   };
 }
 
@@ -87,9 +83,7 @@ Deno.serve(async (req: Request) => {
         const currentRegisterEvidence = currentProgress.register && typeof currentProgress.register === "object"
           ? currentProgress.register as Record<string, unknown>
           : null;
-        if (evidence.completesEvent && registration.status === "completed" && currentRegisterEvidence?.verified === true) {
-          return registration;
-        }
+        if (currentRegisterEvidence?.verified === true) return registration;
 
         const previousProgress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
           ? registration.progress as Record<string, unknown>
@@ -97,9 +91,7 @@ Deno.serve(async (req: Request) => {
         const { data: updated, error: updateError } = await admin
           .from("game_event_participations")
           .update({
-            status: evidence.completesEvent ? "completed" : registration.status,
             progress: { ...previousProgress, ...evidence.progress },
-            completed_at: evidence.completesEvent ? (registration.completed_at ?? new Date().toISOString()) : registration.completed_at,
             updated_at: new Date().toISOString(),
           })
           .eq("id", registration.id)
@@ -156,9 +148,7 @@ Deno.serve(async (req: Request) => {
         const { data: verifiedParticipation, error: verifyError } = await admin
           .from("game_event_participations")
           .update({
-            status: evidence.completesEvent ? "completed" : existing.status,
             progress: { ...previousProgress, ...evidence.progress },
-            completed_at: evidence.completesEvent ? (existing.completed_at ?? new Date().toISOString()) : existing.completed_at,
             updated_at: new Date().toISOString(),
           })
           .eq("id", existing.id)
@@ -178,10 +168,6 @@ Deno.serve(async (req: Request) => {
       player_id: player.id,
       ...(evidence ? {
         progress: evidence.progress,
-        ...(evidence.completesEvent ? {
-          status: "completed",
-          completed_at: new Date().toISOString(),
-        } : {}),
       } : {}),
     };
     const { data: participation, error: insertError } = await admin
