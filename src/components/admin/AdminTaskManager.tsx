@@ -47,7 +47,8 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
                 </span>
                 <h3 className="text-xs font-bold text-neon-300 mt-1.5">{task.title}</h3>
                 <p className="text-[11px] text-neon-600 mt-0.5">{task.description}</p>
-                <p className="text-[11px] text-neon-400 font-bold mt-2">Reward: +{formatZp(task.reward)} ZP</p>
+                <p className="text-[11px] text-neon-400 font-bold mt-2">Reward: +{formatZp(task.reward)} {task.rewardCurrency}</p>
+                <p className="text-[10px] text-neon-600">Unlock: {task.unlockCostZp.toLocaleString()} ZP · {task.status}</p>
               </div>
               <div className="flex gap-1.5">
                 <button
@@ -98,6 +99,8 @@ function TaskFormModal({
   onSave: (input: AdminTaskInput) => Promise<void>;
 }) {
   const [kind, setKind] = useState<AdminTask['kind']>(task?.kind ?? 'daily');
+  const [rewardCurrency, setRewardCurrency] = useState<'ZP' | 'ZAP'>(task?.rewardCurrency ?? 'ZP');
+  const [status, setStatus] = useState<AdminTask['status']>(task?.status ?? 'draft');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -115,7 +118,20 @@ function TaskFormModal({
       reward: Number(form.get('reward')),
       platform: kind === 'creator' && (platform === 'tiktok' || platform === 'youtube') ? platform : null,
       actionUrl: actionUrl || null,
+      rewardCurrency,
+      unlockCostZp: Number(form.get('unlockCostZp') ?? 0),
+      status,
+      objectives: String(form.get('objectives') ?? '').split('\\n').map((v) => v.trim()).filter(Boolean),
+      requirements: String(form.get('requirements') ?? '').split('\\n').map((v) => v.trim()).filter(Boolean),
     };
+    if (!Number.isSafeInteger(input.unlockCostZp) || input.unlockCostZp < 0) {
+      setError('ZP unlock cost must be a whole number of 0 or more.');
+      return;
+    }
+    if (input.objectives.length > 50 || input.requirements.length > 50 || [...input.objectives, ...input.requirements].some((v) => v.length > 300)) {
+      setError('Use up to 50 objectives and 50 requirements, each 300 characters or fewer.');
+      return;
+    }
 
     setSaving(true);
     setError('');
@@ -154,8 +170,20 @@ function TaskFormModal({
             </select>
           </div>
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Reward ZP</label>
+            <label className="text-[11px] text-neon-500 uppercase">Reward amount</label>
             <input type="number" name="reward" min={0} step={1} defaultValue={task?.reward ?? 100} required disabled={saving} className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          </div>
+          <div>
+            <label className="text-[11px] text-neon-500 uppercase">Reward currency</label>
+            <select value={rewardCurrency} onChange={(e) => setRewardCurrency(e.target.value as 'ZP' | 'ZAP')} disabled={saving} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-300"><option value="ZP">ZP</option><option value="ZAP">ZAP (configuration only)</option></select>
+          </div>
+          <div>
+            <label className="text-[11px] text-neon-500 uppercase">ZP unlock cost</label>
+            <input type="number" name="unlockCostZp" min={0} step={1} defaultValue={task?.unlockCostZp ?? 0} required disabled={saving} className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          </div>
+          <div>
+            <label className="text-[11px] text-neon-500 uppercase">Publication status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value as AdminTask['status'])} disabled={saving} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-300"><option value="draft">Draft</option><option value="published">Published</option><option value="paused">Paused</option><option value="archived">Archived</option></select>
           </div>
         </div>
         {kind === 'creator' && (
@@ -167,6 +195,15 @@ function TaskFormModal({
             </select>
           </div>
         )}
+        <div>
+          <label className="text-[11px] text-neon-500 uppercase">Objectives (one per line)</label>
+          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\\n') ?? ''} disabled={saving} placeholder="Submit an approved creator link" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+        </div>
+        <div>
+          <label className="text-[11px] text-neon-500 uppercase">Requirements (one per line)</label>
+          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\\n') ?? ''} disabled={saving} placeholder="Telegram account required" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+        </div>
+        <p className="text-[10px] text-amber-300">ZAP rewards are saved as configuration only; payouts are unavailable until Stage 7. Paid unlocks are not charged until secure backend unlock processing is implemented.</p>
         <div>
           <label className="text-[11px] text-neon-500 uppercase">Action URL (Optional)</label>
           <input name="actionUrl" type="url" defaultValue={task?.actionUrl ?? ''} disabled={saving} placeholder="https://t.me/..." className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
