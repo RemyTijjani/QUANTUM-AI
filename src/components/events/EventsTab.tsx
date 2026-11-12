@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarDays, Clock3, Trophy, Sparkles, RefreshCw, UserPlus, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, Clock3, Trophy, Sparkles, RefreshCw, UserPlus, CheckCircle2, ListChecks, ExternalLink } from 'lucide-react';
 import { EventsApiError, fetchPublishedEvents } from '@/lib/events/eventsApi';
 import type { PublicGameEvent, EventRegistration } from '@/lib/events/eventsApi';
 import { fetchMyEventRegistrations, registerForEvent } from '@/lib/events/eventsApi';
@@ -34,7 +34,8 @@ function eventDate(value: string, timezone: string): string {
   }
 }
 
-function EventCard({ event, now, registered, registering, onRegister }: { event: PublicGameEvent; now: number; registered: boolean; registering: boolean; onRegister: (eventId: string) => void }) {
+function EventCard({ event, now, registration, registering, expanded, onRegister, onToggle }: { event: PublicGameEvent; now: number; registration?: EventRegistration; registering: boolean; expanded: boolean; onRegister: (eventId: string) => void; onToggle: (eventId: string) => void }) {
+  const registered = !!registration;
   const startsAt = new Date(event.starts_at).getTime();
   const isActive = startsAt <= now;
   const dateRange = `${eventDate(event.starts_at, event.timezone)} – ${eventDate(event.ends_at, event.timezone)}`;
@@ -102,15 +103,57 @@ function EventCard({ event, now, registered, registering, onRegister }: { event:
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => onRegister(event.id)}
-        disabled={registered || registering || new Date(event.ends_at).getTime() <= now}
-        className="inline-flex w-full items-center justify-center gap-2 border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-neon-300 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {registered ? <CheckCircle2 size={13} /> : <UserPlus size={13} />}
-        {registered ? 'Registered' : registering ? 'Registering…' : 'Join event'}
-      </button>
+      {registered ? (
+        <button
+          type="button"
+          onClick={() => onToggle(event.id)}
+          className="inline-flex w-full items-center justify-center gap-2 border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-cyan-300"
+        >
+          <ListChecks size={13} /> {expanded ? 'Hide activities' : 'Continue event'}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onRegister(event.id)}
+          disabled={registering || new Date(event.ends_at).getTime() <= now}
+          className="inline-flex w-full items-center justify-center gap-2 border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-neon-300 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <UserPlus size={13} /> {registering ? 'Registering…' : 'Join event'}
+        </button>
+      )}
+
+      {registered && expanded && registration && (
+        <div className="space-y-2 border-t border-neon/20 pt-3">
+          <h4 className="font-mono text-[10px] font-bold uppercase tracking-wider text-cyan-300">Your event activities</h4>
+          {registration.activities.length === 0 ? (
+            <p className="font-mono text-[10px] text-neon-600">The event organizer has not added any activities yet.</p>
+          ) : registration.activities.map((activity) => (
+            <div key={activity.id} className="space-y-2 border border-neon/15 bg-black/30 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-mono text-[10px] font-bold text-neon-300">{activity.title}</p>
+                <span className={`shrink-0 border px-2 py-1 font-mono text-[8px] uppercase ${activity.verification === 'verified' ? 'border-green-500/40 text-green-300' : 'border-amber-500/30 text-amber-300'}`}>
+                  {activity.verification === 'verified' ? 'Verified' : 'Awaiting verification'}
+                </span>
+              </div>
+              <p className="font-mono text-[9px] text-neon-600">{activity.is_required ? 'Required activity' : 'Optional activity'}</p>
+              {activity.description && <p className="font-mono text-[10px] leading-relaxed text-neon-500">{activity.description}</p>}
+              {activity.instructions && <p className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-neon-500">{activity.instructions}</p>}
+              {activity.mission && (
+                <div className="border-l border-cyan-500/30 pl-2">
+                  <p className="font-mono text-[10px] text-cyan-300">Mission: {activity.mission.title}</p>
+                  {activity.mission.description && <p className="font-mono text-[9px] text-neon-600">{activity.mission.description}</p>}
+                  {activity.mission.action_url && (
+                    <a href={activity.mission.action_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 font-mono text-[9px] text-cyan-300 underline">
+                      Open mission link <ExternalLink size={10} />
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+          <p className="font-mono text-[9px] leading-relaxed text-neon-700">Joining an event does not complete its activities. ZORD updates verification only when qualifying evidence is confirmed.</p>
+        </div>
+      )}
     </article>
   );
 }
@@ -122,7 +165,7 @@ export default function EventsTab() {
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [historyError, setHistoryError] = useState('');
-  const [registeringId, setRegisteringId] = useState<string | null>(null);
+  const [registeringId, setRegisteringId] = useState<string | null>(null);\n  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
@@ -226,7 +269,19 @@ export default function EventsTab() {
           </div>
         ) : (
           <div className="space-y-3">
-            {activeAndUpcoming.map((event) => <EventCard key={event.id} event={event} now={now} registered={registrations.some((item) => item.event_id === event.id && item.status !== 'withdrawn')} registering={registeringId === event.id} onRegister={handleRegister} />)}
+            {activeAndUpcoming.map((event) => {
+              const registration = registrations.find((item) => item.event_id === event.id && item.status !== 'withdrawn');
+              return <EventCard
+                key={event.id}
+                event={event}
+                now={now}
+                registration={registration}
+                registering={registeringId === event.id}
+                expanded={expandedEventId === event.id}
+                onRegister={handleRegister}
+                onToggle={(eventId) => setExpandedEventId((current) => current === eventId ? null : eventId)}
+              />;
+            })}
           </div>
         )}
       </section>
