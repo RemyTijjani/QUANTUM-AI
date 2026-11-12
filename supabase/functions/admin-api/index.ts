@@ -306,7 +306,7 @@ Deno.serve(async (req: Request) => {
       return json({ participants: data ?? [], participantLimit: 500 });
     }
 
-    // ADMIN-REVIEWED EVENT PARTICIPANT STATUS. This does not issue rewards.
+    // ADMIN-REVIEWED EVENT PARTICIPANT STATUS. Update and audit are one database transaction.
     if (body.action === "update_event_participant_status") {
       const participationId = typeof body.participationId === "string" ? body.participationId : "";
       const status = body.participationStatus;
@@ -317,22 +317,17 @@ Deno.serve(async (req: Request) => {
       if (typeof status !== "string" || !allowedStatuses.includes(status)) {
         return json({ error: "Invalid participant status" }, 400);
       }
-      const { data, error } = await db
-        .from("game_event_participations")
-        .update({
-          status,
-          completed_at: status === "completed" ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", participationId)
-        .select("id, status, updated_at, completed_at")
-        .maybeSingle();
+      const { data, error } = await db.rpc("admin_update_event_participant_status", {
+        p_participation_id: participationId,
+        p_status: status,
+        p_admin_actor: ADMIN_USERNAME,
+      });
       if (error) {
-        console.error("Event participant status update failed:", error);
-        return json({ error: "Failed to update participant status" }, 500);
+        console.error("Event participant status review failed:", error);
+        return json({ error: "Failed to update and audit participant status" }, 500);
       }
       if (!data) return json({ error: "Event participant record not found" }, 404);
-      return json({ success: true, participation: data, rewardsIssued: false });
+      return json({ success: true, participation: data, auditRecorded: true, rewardsIssued: false });
     }
 
     // READ-ONLY PLAYER ECONOMY AND LEDGER DETAIL.
