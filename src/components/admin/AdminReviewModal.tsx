@@ -25,6 +25,8 @@ import {
   saveTask,
   deleteTask,
   saveVaultReserves,
+  saveEvent,
+  deleteEvent,
 } from '@/lib/admin/adminApi';
 
 import type {
@@ -33,10 +35,12 @@ import type {
   AdminSubmission,
   AdminTaskInput,
   AdminVaultReserves,
+  AdminEventInput,
 } from '@/lib/admin/adminApi';
 
 import AdminLogin from '@/components/admin/AdminLogin';
 import AdminTaskManager from '@/components/admin/AdminTaskManager';
+import AdminEventManager from '@/components/admin/AdminEventManager';
 import VaultReservesCard from '@/components/admin/VaultReservesCard';
 import { NeonSpinner } from '@/components/NeonSpinner';
 
@@ -92,7 +96,7 @@ function AdminConsole({
   onApproveSubmission: (rewardZp: number) => void;
 }) {
   const [data, setData] = useState<AdminDashboardData>(initialData);
-  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'events'>('queue');
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -201,6 +205,18 @@ function AdminConsole({
       `[VAULT] Reserves updated: ${reserves.tonReserve} TON / ${formatZp(reserves.zpReserve)} ZP`,
     );
 
+    await refresh();
+  };
+
+  const handleSaveEvent = async (event: AdminEventInput) => {
+    await saveEvent(creds, event);
+    addLog(`[EVENT] ${event.status === 'published' ? 'Saved/published' : 'Saved'} event: ${event.title}`);
+    await refresh();
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    await deleteEvent(creds, eventId);
+    addLog(`[EVENT] Deleted event: ${eventId}`);
     await refresh();
   };
 
@@ -337,6 +353,18 @@ function AdminConsole({
           }`}
         >
           Mission Control ({data.tasks.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('events')}
+          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
+            activeTab === 'events'
+              ? 'border-neon bg-neon/20 text-neon-300 font-bold'
+              : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
+          }`}
+        >
+          Events ({data.events.length})
         </button>
       </div>
 
@@ -607,6 +635,14 @@ function AdminConsole({
           busyTaskId={busyTaskId}
           onSave={handleSaveTask}
           onDelete={handleDeleteTask}
+        />
+      )}
+
+      {activeTab === 'events' && (
+        <AdminEventManager
+          events={data.events}
+          onSave={handleSaveEvent}
+          onDelete={handleDeleteEvent}
         />
       )}
     </div>
