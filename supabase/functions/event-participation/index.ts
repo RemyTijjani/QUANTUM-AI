@@ -81,6 +81,15 @@ Deno.serve(async (req: Request) => {
         const event = registration.game_events;
         const evidence = event ? registrationEvidence(event) : null;
         if (!evidence || registration.status === "withdrawn") return registration;
+        const currentProgress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
+          ? registration.progress as Record<string, unknown>
+          : {};
+        const currentRegisterEvidence = currentProgress.register && typeof currentProgress.register === "object"
+          ? currentProgress.register as Record<string, unknown>
+          : null;
+        if (evidence.completesEvent && registration.status === "completed" && currentRegisterEvidence?.verified === true) {
+          return registration;
+        }
 
         const previousProgress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
           ? registration.progress as Record<string, unknown>
