@@ -1,4 +1,7 @@
-import { CalendarDays, Clock3, Trophy, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { CalendarDays, Clock3, Trophy, Sparkles, RefreshCw } from 'lucide-react';
+import { EventsApiError, fetchPublishedEvents } from '@/lib/events/eventsApi';
+import type { PublicGameEvent } from '@/lib/events/eventsApi';
 
 type EventCategory = 'Daily' | 'Weekly' | 'Monthly' | 'Special';
 
@@ -9,7 +12,117 @@ const categories: { label: EventCategory; description: string; icon: typeof Cale
   { label: 'Special', description: 'Limited-time events announced by the team.', icon: Sparkles },
 ];
 
+const categoryLabel: Record<PublicGameEvent['category'], EventCategory> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  special: 'Special',
+};
+
+function eventDate(value: string, timezone: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Schedule unavailable';
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: timezone,
+    }).format(date);
+  } catch {
+    return date.toLocaleString();
+  }
+}
+
+function EventCard({ event, now }: { event: PublicGameEvent; now: number }) {
+  const startsAt = new Date(event.starts_at).getTime();
+  const isActive = startsAt <= now;
+  const dateRange = `${eventDate(event.starts_at, event.timezone)} – ${eventDate(event.ends_at, event.timezone)}`;
+
+  return (
+    <article className="panel space-y-3 border border-neon/25 bg-black/50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-neon-600">
+            {categoryLabel[event.category]} event
+          </span>
+          <h3 className="mt-1 break-words font-display text-sm font-bold text-neon-300">{event.title}</h3>
+        </div>
+        <span className={`shrink-0 border px-2 py-1 font-mono text-[9px] uppercase tracking-wider ${isActive ? 'border-green-500/40 bg-green-500/10 text-green-300' : 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300'}`}>
+          {isActive ? 'Active' : 'Upcoming'}
+        </span>
+      </div>
+
+      {event.description && (
+        <p className="font-mono text-[10px] leading-relaxed text-neon-600">{event.description}</p>
+      )}
+
+      <div className="flex items-start gap-2 font-mono text-[10px] text-neon-500">
+        <CalendarDays size={13} className="mt-0.5 shrink-0" />
+        <span>{dateRange} ({event.timezone})</span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <span className="border border-neon/20 bg-neon/5 px-2 py-1 font-mono text-[10px] text-neon-300">
+          {event.reward_zp.toLocaleString()} ZP configured
+        </span>
+        {event.reward_zap > 0 && (
+          <span className="border border-cyan-500/20 bg-cyan-500/5 px-2 py-1 font-mono text-[10px] text-cyan-300">
+            {event.reward_zap.toLocaleString()} ZAP configured
+          </span>
+        )}
+      </div>
+
+      {event.objectives.length > 0 && (
+        <div>
+          <h4 className="font-mono text-[9px] uppercase tracking-widest text-neon-500">Objectives</h4>
+          <ul className="mt-1 list-disc space-y-1 pl-4 font-mono text-[10px] text-neon-600">
+            {event.objectives.map((objective, index) => (
+              <li key={index}>{String(objective)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {event.requirements.length > 0 && (
+        <div>
+          <h4 className="font-mono text-[9px] uppercase tracking-widest text-neon-500">Requirements</h4>
+          <ul className="mt-1 list-disc space-y-1 pl-4 font-mono text-[10px] text-neon-600">
+            {event.requirements.map((requirement, index) => (
+              <li key={index}>{String(requirement)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </article>
+  );
+}
+
 export default function EventsTab() {
+  const [events, setEvents] = useState<PublicGameEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+
+  const loadEvents = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setEvents(await fetchPublishedEvents());
+      setFetchedAt(Date.now());
+    } catch (err) {
+      setError(err instanceof EventsApiError ? err.message : 'Could not load events. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadEvents();
+  }, [loadEvents]);
+
+  const now = fetchedAt ?? Date.now();
+  const activeAndUpcoming = events.filter((event) => new Date(event.ends_at).getTime() > now);
+
   return (
     <div className="space-y-5 pb-4">
       <header className="panel border border-neon/30 bg-neon/5 p-4">
@@ -19,43 +132,66 @@ export default function EventsTab() {
         </div>
         <h1 className="mt-2 font-display text-xl font-bold tracking-wider text-neon-300">Events Hub</h1>
         <p className="mt-2 font-mono text-[11px] leading-relaxed text-neon-600">
-          Discover platform events, follow participation and track your event rewards.
+          Discover published events, review their objectives and track their schedules and configured rewards.
         </p>
       </header>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-neon-400">Event channels</h2>
-          <span className="border border-neon/20 px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-neon-600">Coming online</span>
+          <button type="button" onClick={() => void loadEvents()} disabled={loading} className="inline-flex items-center gap-1.5 border border-neon/30 px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-neon-400 disabled:opacity-50">
+            <RefreshCw size={11} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {categories.map(({ label, description, icon: Icon }) => (
-            <article key={label} className="panel min-h-28 border border-neon/20 bg-black/40 p-3">
-              <Icon size={17} className="text-neon-400" />
-              <h3 className="mt-2 font-mono text-[11px] font-bold uppercase tracking-wider text-neon-300">{label} Events</h3>
-              <p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-700">{description}</p>
-            </article>
-          ))}
+          {categories.map(({ label, description, icon: Icon }) => {
+            const count = activeAndUpcoming.filter((event) => categoryLabel[event.category] === label).length;
+            return (
+              <article key={label} className="panel min-h-28 border border-neon/20 bg-black/40 p-3">
+                <Icon size={17} className="text-neon-400" />
+                <h3 className="mt-2 font-mono text-[11px] font-bold uppercase tracking-wider text-neon-300">{label} Events</h3>
+                <p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-700">{description}</p>
+                <p className="mt-2 font-mono text-[10px] text-neon-500">{count} published</p>
+              </article>
+            );
+          })}
         </div>
       </section>
 
-      <section className="panel border border-neon/20 bg-black/40 p-4">
+      {error && (
+        <div role="alert" className="border-l-2 border-red-500/60 bg-red-500/10 px-3 py-2 font-mono text-[10px] text-red-300">
+          {error}
+          <button type="button" onClick={() => void loadEvents()} className="ml-2 underline">Try again</button>
+        </div>
+      )}
+
+      <section className="panel space-y-3 border border-neon/20 bg-black/40 p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-neon-400">Active & upcoming</h2>
-          <span className="font-mono text-[9px] uppercase text-neon-700">Live feed</span>
+          <span className="font-mono text-[9px] uppercase text-neon-700">Published feed</span>
         </div>
-        <div className="flex flex-col items-center py-9 text-center">
-          <CalendarDays size={28} className="text-neon-700" />
-          <p className="mt-3 font-mono text-[11px] text-neon-500">No events have been published yet.</p>
-          <p className="mt-1 max-w-xs font-mono text-[10px] leading-relaxed text-neon-700">
-            Published events will appear here with their schedule, objectives, participation rules and eligible rewards.
-          </p>
-        </div>
+        {loading ? (
+          <div className="py-8 text-center font-mono text-[10px] text-neon-500">Loading published events…</div>
+        ) : activeAndUpcoming.length === 0 ? (
+          <div className="flex flex-col items-center py-9 text-center">
+            <CalendarDays size={28} className="text-neon-700" />
+            <p className="mt-3 font-mono text-[11px] text-neon-500">No active or upcoming events.</p>
+            <p className="mt-1 max-w-xs font-mono text-[10px] leading-relaxed text-neon-700">
+              Published events will appear here when the events service is connected and an event has been scheduled.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {activeAndUpcoming.map((event) => <EventCard key={event.id} event={event} now={now} />)}
+          </div>
+        )}
       </section>
 
       <section className="panel border border-neon/20 bg-black/40 p-4">
         <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-neon-400">Your event history</h2>
-        <p className="py-6 text-center font-mono text-[10px] text-neon-700">Your joined and completed events will appear here.</p>
+        <p className="py-6 text-center font-mono text-[10px] leading-relaxed text-neon-700">
+          Participation history will appear here after event registration and participation tracking are implemented.
+        </p>
       </section>
     </div>
   );
