@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarDays, Clock3, Trophy, Sparkles, RefreshCw } from 'lucide-react';
+import { CalendarDays, Clock3, Trophy, Sparkles, RefreshCw, UserPlus, CheckCircle2 } from 'lucide-react';
 import { EventsApiError, fetchPublishedEvents } from '@/lib/events/eventsApi';
-import type { PublicGameEvent } from '@/lib/events/eventsApi';
+import type { PublicGameEvent, EventRegistration } from '@/lib/events/eventsApi';
+import { fetchMyEventRegistrations, registerForEvent } from '@/lib/events/eventsApi';
 
 type EventCategory = 'Daily' | 'Weekly' | 'Monthly' | 'Special';
 
@@ -33,7 +34,7 @@ function eventDate(value: string, timezone: string): string {
   }
 }
 
-function EventCard({ event, now }: { event: PublicGameEvent; now: number }) {
+function EventCard({ event, now, registered, registering, onRegister }: { event: PublicGameEvent; now: number; registered: boolean; registering: boolean; onRegister: (eventId: string) => void }) {
   const startsAt = new Date(event.starts_at).getTime();
   const isActive = startsAt <= now;
   const dateRange = `${eventDate(event.starts_at, event.timezone)} – ${eventDate(event.ends_at, event.timezone)}`;
@@ -93,6 +94,16 @@ function EventCard({ event, now }: { event: PublicGameEvent; now: number }) {
           </ul>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => onRegister(event.id)}
+        disabled={registered || registering || new Date(event.ends_at).getTime() <= now}
+        className="inline-flex w-full items-center justify-center gap-2 border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-neon-300 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {registered ? <CheckCircle2 size={13} /> : <UserPlus size={13} />}
+        {registered ? 'Registered' : registering ? 'Registering…' : 'Join event'}
+      </button>
     </article>
   );
 }
@@ -102,6 +113,9 @@ export default function EventsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+  const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
+  const [historyError, setHistoryError] = useState('');
+  const [registeringId, setRegisteringId] = useState<string | null>(null);
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
@@ -116,9 +130,32 @@ export default function EventsTab() {
     }
   }, []);
 
+  const loadRegistrations = useCallback(async () => {
+    setHistoryError('');
+    try {
+      setRegistrations(await fetchMyEventRegistrations());
+    } catch (err) {
+      setHistoryError(err instanceof Error ? err.message : 'Could not load your event history.');
+    }
+  }, []);
+
+  const handleRegister = useCallback(async (eventId: string) => {
+    setRegisteringId(eventId);
+    setError('');
+    try {
+      await registerForEvent(eventId);
+      await loadRegistrations();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not register for this event.');
+    } finally {
+      setRegisteringId(null);
+    }
+  }, [loadRegistrations]);
+
   useEffect(() => {
     void loadEvents();
-  }, [loadEvents]);
+    void loadRegistrations();
+  }, [loadEvents, loadRegistrations]);
 
   const now = fetchedAt ?? Date.now();
   const activeAndUpcoming = events.filter((event) => new Date(event.ends_at).getTime() > now);
@@ -139,7 +176,7 @@ export default function EventsTab() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-neon-400">Event channels</h2>
-          <button type="button" onClick={() => void loadEvents()} disabled={loading} className="inline-flex items-center gap-1.5 border border-neon/30 px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-neon-400 disabled:opacity-50">
+          <button type="button" onClick={() => { void loadEvents(); void loadRegistrations(); }} disabled={loading} className="inline-flex items-center gap-1.5 border border-neon/30 px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-neon-400 disabled:opacity-50">
             <RefreshCw size={11} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
         </div>
@@ -182,16 +219,32 @@ export default function EventsTab() {
           </div>
         ) : (
           <div className="space-y-3">
-            {activeAndUpcoming.map((event) => <EventCard key={event.id} event={event} now={now} />)}
+            {activeAndUpcoming.map((event) => <EventCard key={event.id} event={event} now={now} registered={registrations.some((item) => item.event_id === event.id && item.status !== 'withdrawn')} registering={registeringId === event.id} onRegister={handleRegister} />)}
           </div>
         )}
       </section>
 
-      <section className="panel border border-neon/20 bg-black/40 p-4">
+      <section className="panel space-y-3 border border-neon/20 bg-black/40 p-4">
         <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-neon-400">Your event history</h2>
-        <p className="py-6 text-center font-mono text-[10px] leading-relaxed text-neon-700">
-          Participation history will appear here after event registration and participation tracking are implemented.
-        </p>
+        {historyError ? (
+          <p role="alert" className="font-mono text-[10px] text-red-300">{historyError}</p>
+        ) : registrations.length === 0 ? (
+          <p className="py-5 text-center font-mono text-[10px] leading-relaxed text-neon-700">
+            You have not registered for any events yet.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {registrations.map((registration) => (
+              <article key={registration.id} className="flex items-center justify-between gap-3 border border-neon/15 bg-black/30 p-3">
+                <div className="min-w-0">
+                  <p className="break-words font-mono text-[10px] text-neon-300">{registration.game_events?.title ?? 'Event'}</p>
+                  <p className="mt-1 font-mono text-[9px] text-neon-700">Joined {eventDate(registration.registered_at, registration.game_events?.timezone ?? 'UTC')}</p>
+                </div>
+                <span className="shrink-0 border border-neon/20 px-2 py-1 font-mono text-[9px] uppercase text-neon-500">{registration.status.replace('_', ' ')}</span>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
