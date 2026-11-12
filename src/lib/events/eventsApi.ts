@@ -75,3 +75,71 @@ export async function fetchPublishedEvents(): Promise<PublicGameEvent[]> {
     return event as PublicGameEvent;
   });
 }
+
+export interface EventRegistration {
+  id: string;
+  event_id: string;
+  status: 'registered' | 'in_progress' | 'completed' | 'submitted' | 'withdrawn';
+  registered_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  game_events: {
+    id: string;
+    title: string;
+    category: PublicGameEvent['category'];
+    starts_at: string | null;
+    ends_at: string | null;
+    timezone: string;
+  } | null;
+}
+
+async function eventParticipationRequest(
+  method: 'GET' | 'POST',
+  eventId?: string,
+): Promise<unknown> {
+  const { data: sessionData, error: sessionError } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (sessionError || !token) {
+    throw new EventsApiError('Your session has expired. Reopen the Mini App and try again.');
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${functionUrl.replace('/public-events', '/event-participation')}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+      },
+      ...(method === 'POST' ? { body: JSON.stringify({ eventId }) } : {}),
+    });
+  } catch {
+    throw new EventsApiError('Could not reach the event participation service. Check your connection and try again.');
+  }
+
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = body && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
+      ? (body as { error: string }).error
+      : `Event participation request failed (${response.status}).`;
+    throw new EventsApiError(message);
+  }
+  return body;
+}
+
+export async function fetchMyEventRegistrations(): Promise<EventRegistration[]> {
+  const body = await eventParticipationRequest('GET');
+  if (!body || typeof body !== 'object' || !Array.isArray((body as { registrations?: unknown }).registrations)) {
+    throw new EventsApiError('The event history service returned an unexpected response.');
+  }
+  return (body as { registrations: EventRegistration[] }).registrations;
+}
+
+export async function registerForEvent(eventId: string): Promise<{ alreadyRegistered: boolean }> {
+  const body = await eventParticipationRequest('POST', eventId);
+  if (!body || typeof body !== 'object' || (body as { success?: unknown }).success !== true) {
+    throw new EventsApiError('The event registration service returned an unexpected response.');
+  }
+  return { alreadyRegistered: (body as { alreadyRegistered?: boolean }).alreadyRegistered === true };
+}
