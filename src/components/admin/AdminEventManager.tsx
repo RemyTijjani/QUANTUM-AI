@@ -74,6 +74,39 @@ const toDraft = (event: AdminEvent): Draft => ({
 const dateLabel = (value: string | null) =>
   value ? new Date(value).toLocaleString() : 'Not scheduled';
 
+const PARTICIPATION_RULE_TEMPLATES = [
+  {
+    value: 'standard',
+    label: 'Standard event',
+    text: 'Register for the event before it ends. Follow the activity instructions and complete all activities marked Required. Only activity completion confirmed by ZORD or reviewed by an administrator will count. Event rewards are issued only after completion is verified.',
+  },
+  {
+    value: 'missions',
+    label: 'Complete event missions',
+    text: 'Register for this event, then complete the required missions listed in the Activities section. Follow each mission instruction. Your progress will count after the required activity has been verified.',
+  },
+  {
+    value: 'creator',
+    label: 'Creator content challenge',
+    text: 'Create and submit original content featuring ZORD using the instructions in this event. Submit your content through the designated Creator Ops mission. Your submission must be reviewed and approved before it can count toward event completion.',
+  },
+  {
+    value: 'referral',
+    label: 'Referral challenge',
+    text: 'Register for this event and invite others using your ZORD referral link. Only referral registrations recorded by ZORD during the event period can count. Sharing a link alone does not count as a completed referral.',
+  },
+  {
+    value: 'community',
+    label: 'Community activity',
+    text: 'Join the community or channel named in the event instructions and complete the listed required activities. Follow the event instructions. Membership or activity will count only when it can be confirmed by ZORD or reviewed by an administrator.',
+  },
+  {
+    value: 'custom',
+    label: 'Write my own rules',
+    text: '',
+  },
+] as const;
+
 export default function AdminEventManager({ events, missions, onListActivities, onSaveActivity, onDeleteActivity, onSave, onDelete, onListParticipants, onUpdateParticipantStatus }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
@@ -249,10 +282,26 @@ export default function AdminEventManager({ events, missions, onListActivities, 
               <textarea maxLength={15049} rows={3} value={draft.requirementsText} onChange={(e) => update('requirementsText', e.target.value)} placeholder="Telegram account required" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
             </label>
           </div>
-          <label className="block text-[10px] uppercase text-neon-500">Participation rules (plain text)
-            <textarea maxLength={10000} rows={3} value={draft.participationRulesText} onChange={(e) => update('participationRulesText', e.target.value)} placeholder="Explain how players can participate, in normal language." className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
-            <span className="block mt-1 normal-case text-neon-600">Write normal instructions. No JSON formatting is required.</span>
-          </label>
+          <div className="space-y-2">
+            <label className="block text-[10px] uppercase text-neon-500">Participation rules template
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  const selected = PARTICIPATION_RULE_TEMPLATES.find((template) => template.value === e.target.value);
+                  if (selected) update('participationRulesText', selected.text);
+                  e.target.value = '';
+                }}
+                className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200"
+              >
+                <option value="">Choose a ready-made rules template…</option>
+                {PARTICIPATION_RULE_TEMPLATES.map((template) => <option key={template.value} value={template.value}>{template.label}</option>)}
+              </select>
+            </label>
+            <label className="block text-[10px] uppercase text-neon-500">Rules shown to players
+              <textarea maxLength={10000} rows={4} value={draft.participationRulesText} onChange={(e) => update('participationRulesText', e.target.value)} placeholder="Choose a template above, or write the event rules in normal language." className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+              <span className="block mt-1 normal-case text-neon-600">Choose a ready-made template, then edit the wording if needed. No coding or JSON is required.</span>
+            </label>
+          </div>
           <p className="text-[10px] text-neon-600">Publishing requires both start and end times. Dates entered above are converted to UTC for storage; the timezone label is retained for display.</p>
           <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-2 py-2 bg-neon/20 border border-neon text-xs uppercase tracking-wider text-neon-200 disabled:opacity-50">
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
