@@ -1,0 +1,31 @@
+name: Deploy Supabase Preview Function
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-public-events:
+    if: github.ref == 'refs/heads/security/trusted-gameplay-migration'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Preview branch
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy public-events to Supabase Preview
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$PREVIEW_PROJECT_REF" ]; then
+            echo "Missing SUPABASE_ACCESS_TOKEN or SUPABASE_PREVIEW_PROJECT_REF GitHub Actions secret."
+            exit 1
+          fi
+          supabase functions deploy public-events --project-ref "$PREVIEW_PROJECT_REF"
