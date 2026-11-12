@@ -53,6 +53,7 @@ export interface AdminEvent {
   ends_at: string | null;
   timezone: string;
   reward_zp: number;
+  reward_zap: number;
   objectives: unknown[];
   requirements: unknown[];
   participation_rules: Record<string, unknown>;
@@ -70,6 +71,7 @@ export interface AdminEventInput {
   endsAt: string | null;
   timezone: string;
   rewardZp: number;
+  rewardZap: number;
   objectives: unknown[];
   requirements: unknown[];
   participationRules: Record<string, unknown>;
