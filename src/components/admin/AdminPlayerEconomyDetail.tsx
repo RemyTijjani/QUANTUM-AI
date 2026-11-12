@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { History, Wallet, RefreshCw } from 'lucide-react';
 import { AdminApiError, getPlayerEconomy } from '@/lib/admin/adminApi';
 import type { AdminCredentials, AdminPlayerEconomyDetail } from '@/lib/admin/adminApi';
@@ -26,7 +26,7 @@ export default function AdminPlayerEconomyDetail({ creds, playerId, playerLabel 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -36,11 +36,11 @@ export default function AdminPlayerEconomyDetail({ creds, playerId, playerLabel 
     } finally {
       setLoading(false);
     }
-  };
+  }, [creds, playerId]);
 
   useEffect(() => {
     void load();
-  }, [creds, playerId]);
+  }, [load]);
 
   return (
     <section className="mt-4 space-y-4 border border-neon/30 bg-black/30 p-4" aria-label={`Economy details for ${playerLabel}`}>
