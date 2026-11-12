@@ -82,6 +82,7 @@ export interface EventRegistration {
   id: string;
   event_id: string;
   status: 'registered' | 'in_progress' | 'completed' | 'submitted' | 'withdrawn';
+  progress?: Record<string, unknown>;
   registered_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -92,6 +93,27 @@ export interface EventRegistration {
     starts_at: string | null;
     ends_at: string | null;
     timezone: string;
+  } | null;
+  activities: EventParticipationActivity[];
+}
+
+export interface EventParticipationActivity {
+  id: string;
+  activity_type: string;
+  title: string;
+  description: string;
+  instructions: string;
+  is_required: boolean;
+  sort_order: number;
+  verification: 'verified' | 'awaiting_verification';
+  mission: {
+    id: string;
+    title: string;
+    description: string;
+    action_url: string | null;
+    kind: string;
+    platform: string | null;
+    status: string;
   } | null;
 }
 
