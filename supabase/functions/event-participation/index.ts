@@ -26,6 +26,91 @@ function registrationEvidence(event: { objectives?: unknown; requirements?: unkn
   };
 }
 
+async function verifyCreatorSubmissionObjective(
+  admin: ReturnType<typeof createClient>,
+  playerId: string,
+  event: { id: string; starts_at: string | null; ends_at: string | null; objectives?: unknown },
+  registration: Record<string, unknown>,
+) {
+  const objectives = Array.isArray(event.objectives)
+    ? event.objectives.filter((item): item is string => typeof item === "string")
+    : [];
+  if (!objectives.includes("creator_submission_approved") || !event.starts_at || !event.ends_at) {
+    return registration;
+  }
+
+  const currentProgress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
+    ? registration.progress as Record<string, unknown>
+    : {};
+  const currentEvidence = currentProgress.creator_submission_approved && typeof currentProgress.creator_submission_approved === "object"
+    ? currentProgress.creator_submission_approved as Record<string, unknown>
+    : null;
+  if (currentEvidence?.verified === true) return registration;
+
+  const { data: submission, error } = await admin
+    .from("creator_ops_submissions")
+    .select("id, mission_id, created_at, reviewed_at")
+    .eq("player_id", playerId)
+    .eq("status", "approved")
+    .gte("created_at", event.starts_at)
+    .lte("created_at", event.ends_at)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Creator submission event verification failed:", error);
+    throw new Error("Could not verify creator submission activity.");
+  }
+  if (!submission) return registration;
+
+  const nextProgress = {
+    ...currentProgress,
+    creator_submission_approved: {
+      verified: true,
+      verifiedAt: new Date().toISOString(),
+      method: "admin_approved_creator_ops_submission",
+      submissionId: submission.id,
+      missionId: submission.mission_id,
+      submittedAt: submission.created_at,
+      approvedAt: submission.reviewed_at,
+    },
+  };
+
+  const verifiedObjectives = objectives.filter((objective) => objective !== "register")
+    .every((objective) => {
+      const evidence = nextProgress[objective];
+      return !!evidence && typeof evidence === "object" && (evidence as Record<string, unknown>).verified === true;
+    });
+  const hasParticipationObjective = objectives.some((objective) => objective !== "register");
+  const completesEvent = hasParticipationObjective && verifiedObjectives;
+
+  const update: Record<string, unknown> = {
+    progress: nextProgress,
+    updated_at: new Date().toISOString(),
+  };
+  if (completesEvent) {
+    update.status = "completed";
+    update.completed_at = registration.completed_at ?? new Date().toISOString();
+  } else if (registration.status === "registered") {
+    update.status = "in_progress";
+  }
+
+  const { data: updated, error: updateError } = await admin
+    .from("game_event_participations")
+    .update(update)
+    .eq("id", registration.id)
+    .eq("player_id", playerId)
+    .select("id, event_id, status, progress, registered_at, updated_at, completed_at, game_events(id, title, category, starts_at, ends_at, timezone, objectives, requirements)")
+    .single();
+
+  if (updateError) {
+    console.error("Creator submission progress update failed:", updateError);
+    throw new Error("Could not save verified event progress.");
+  }
+  return updated;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -75,35 +160,39 @@ Deno.serve(async (req: Request) => {
 
       const verifiedRegistrations = await Promise.all((registrations ?? []).map(async (registration) => {
         const event = registration.game_events;
-        const evidence = event ? registrationEvidence(event) : null;
-        if (!evidence || registration.status === "withdrawn") return registration;
-        const currentProgress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
-          ? registration.progress as Record<string, unknown>
-          : {};
-        const currentRegisterEvidence = currentProgress.register && typeof currentProgress.register === "object"
-          ? currentProgress.register as Record<string, unknown>
-          : null;
-        if (currentRegisterEvidence?.verified === true) return registration;
+        if (!event || registration.status === "withdrawn") return registration;
 
-        const previousProgress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
-          ? registration.progress as Record<string, unknown>
-          : {};
-        const { data: updated, error: updateError } = await admin
-          .from("game_event_participations")
-          .update({
-            progress: { ...previousProgress, ...evidence.progress },
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", registration.id)
-          .eq("player_id", player.id)
-          .select("id, event_id, status, progress, registered_at, updated_at, completed_at, game_events(id, title, category, starts_at, ends_at, timezone, objectives, requirements)")
-          .single();
-
-        if (updateError) {
-          console.error("Event registration progress verification failed:", updateError);
-          throw new Error("Could not verify event registration progress.");
+        let current = registration as unknown as Record<string, unknown>;
+        const registrationProof = registrationEvidence(event);
+        if (registrationProof) {
+          const progress = current.progress && typeof current.progress === "object" && !Array.isArray(current.progress)
+            ? current.progress as Record<string, unknown>
+            : {};
+          const existingRegisterProof = progress.register && typeof progress.register === "object"
+            ? progress.register as Record<string, unknown>
+            : null;
+          if (existingRegisterProof?.verified !== true) {
+            const { data: updated, error: updateError } = await admin
+              .from("game_event_participations")
+              .update({
+                progress: { ...progress, ...registrationProof.progress },
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", registration.id)
+              .eq("player_id", player.id)
+              .select("id, event_id, status, progress, registered_at, updated_at, completed_at, game_events(id, title, category, starts_at, ends_at, timezone, objectives, requirements)")
+              .single();
+            if (updateError) throw new Error("Could not verify event registration evidence.");
+            current = updated as unknown as Record<string, unknown>;
+          }
         }
-        return updated;
+
+        return await verifyCreatorSubmissionObjective(
+          admin,
+          player.id,
+          event,
+          current,
+        );
       }));
 
       return json({ registrations: verifiedRegistrations });
