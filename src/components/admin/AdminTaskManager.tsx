@@ -25,18 +25,18 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
     <div className="panel p-4 border border-neon/20 space-y-4">
       <div className="flex items-center justify-between border-b border-neon/20 pb-2">
         <h2 className="text-xs uppercase tracking-widest text-neon-400 font-bold flex items-center gap-2">
-          <Database size={14} /> Mission Control & Task Registry
+          <Database size={14} /> Mission Manager
         </h2>
         <button
           onClick={() => openModal(null)}
           className="btn-primary flex items-center gap-1.5 text-xs py-1.5 px-3 border border-neon bg-neon/20"
         >
-          <Plus size={14} /> Add New Task
+          <Plus size={14} /> Add Mission
         </button>
       </div>
 
       {tasks.length === 0 ? (
-        <p className="py-12 text-center font-mono text-[11px] text-neon-500">No mission tasks yet. Deploy one to get started.</p>
+        <p className="py-12 text-center font-mono text-[11px] text-neon-500">No missions yet. Add a mission when you're ready.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {tasks.map((task) => (
@@ -48,7 +48,7 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
                 <h3 className="text-xs font-bold text-neon-300 mt-1.5">{task.title}</h3>
                 <p className="text-[11px] text-neon-600 mt-0.5">{task.description}</p>
                 <p className="text-[11px] text-neon-400 font-bold mt-2">Reward: +{formatZp(task.reward)} {task.rewardCurrency}</p>
-                <p className="text-[10px] text-neon-600">Unlock: {task.unlockCostZp.toLocaleString()} ZP · {task.status}</p>
+                <p className="text-[10px] text-neon-600">Access cost: {task.unlockCostZp.toLocaleString()} ZP · {task.status}</p>
               </div>
               <div className="flex gap-1.5">
                 <button
@@ -145,19 +145,19 @@ function TaskFormModal({
   };
 
   return (
-    <Modal title={task ? 'Edit Mission Task' : 'Create New Mission Task'} onClose={onClose}>
+    <Modal title={task ? 'Edit Mission' : 'Create New Mission'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-[11px] text-neon-500 uppercase">Task Name</label>
+          <label className="text-[11px] text-neon-500 uppercase">Mission name</label>
           <input name="title" defaultValue={task?.title ?? ''} required disabled={saving} placeholder="e.g. Join Telegram Channel" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
         </div>
         <div>
-          <label className="text-[11px] text-neon-500 uppercase">Description</label>
+          <label className="text-[11px] text-neon-500 uppercase">What should players know?</label>
           <input name="description" defaultValue={task?.description ?? ''} required disabled={saving} placeholder="Subscribe to our official channel" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Task Kind</label>
+            <label className="text-[11px] text-neon-500 uppercase">Mission category</label>
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value as AdminTask['kind'])}
@@ -174,21 +174,21 @@ function TaskFormModal({
             <input type="number" name="reward" min={0} step={1} defaultValue={task?.reward ?? 100} required disabled={saving} className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
           </div>
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Reward currency</label>
+            <label className="text-[11px] text-neon-500 uppercase">Reward type</label>
             <select value={rewardCurrency} onChange={(e) => setRewardCurrency(e.target.value as 'ZP' | 'ZAP')} disabled={saving} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-300"><option value="ZP">ZP</option><option value="ZAP">ZAP (configuration only)</option></select>
           </div>
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">ZP unlock cost</label>
+            <label className="text-[11px] text-neon-500 uppercase">ZP cost to unlock</label>
             <input type="number" name="unlockCostZp" min={0} step={1} defaultValue={task?.unlockCostZp ?? 0} required disabled={saving} className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
           </div>
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Publication status</label>
+            <label className="text-[11px] text-neon-500 uppercase">Mission visibility</label>
             <select value={status} onChange={(e) => setStatus(e.target.value as AdminTask['status'])} disabled={saving} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-300"><option value="draft">Draft</option><option value="published">Published</option><option value="paused">Paused</option><option value="archived">Archived</option></select>
           </div>
         </div>
         {kind === 'creator' && (
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Platform</label>
+            <label className="text-[11px] text-neon-500 uppercase">Content platform</label>
             <select name="platform" defaultValue={task?.platform ?? 'tiktok'} disabled={saving} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50">
               <option value="tiktok">TikTok</option>
               <option value="youtube">YouTube</option>
@@ -196,16 +196,16 @@ function TaskFormModal({
           </div>
         )}
         <div>
-          <label className="text-[11px] text-neon-500 uppercase">Objectives (one per line)</label>
-          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\n') ?? ''} disabled={saving} placeholder="Submit an approved creator link" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <label className="text-[11px] text-neon-500 uppercase">What must the player do?</label>
+          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\n') ?? ''} disabled={saving} placeholder="Example: Submit an approved creator link" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
         </div>
         <div>
-          <label className="text-[11px] text-neon-500 uppercase">Requirements (one per line)</label>
-          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\n') ?? ''} disabled={saving} placeholder="Telegram account required" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <label className="text-[11px] text-neon-500 uppercase">What does the player need before starting?</label>
+          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\n') ?? ''} disabled={saving} placeholder="Example: A Telegram account" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
         </div>
-        <p className="text-[10px] text-amber-300">ZAP rewards are saved as configuration only; payouts are unavailable until Stage 7. Paid unlocks are not charged until secure backend unlock processing is implemented.</p>
+        <p className="text-[10px] text-amber-300">Important: ZP rewards are configured here. ZAP rewards are saved for later and cannot be paid yet. A ZP unlock cost is displayed as a setting only; players are not charged until secure unlock processing is added.</p>
         <div>
-          <label className="text-[11px] text-neon-500 uppercase">Action URL (Optional)</label>
+          <label className="text-[11px] text-neon-500 uppercase">Link for the player (optional)</label>
           <input name="actionUrl" type="url" defaultValue={task?.actionUrl ?? ''} disabled={saving} placeholder="https://t.me/..." className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
         </div>
 
@@ -215,7 +215,7 @@ function TaskFormModal({
 
         <button type="submit" disabled={saving} className="w-full py-2 flex items-center justify-center gap-2 bg-neon/20 hover:bg-neon/30 border border-neon text-xs uppercase tracking-wider font-bold disabled:opacity-60">
           {saving && <Loader2 size={14} className="animate-spin" />}
-          {saving ? 'Saving...' : task ? 'Save Changes' : 'Deploy Task'}
+          {saving ? 'Saving...' : task ? 'Save Changes' : 'Create Mission'}
         </button>
       </form>
     </Modal>
