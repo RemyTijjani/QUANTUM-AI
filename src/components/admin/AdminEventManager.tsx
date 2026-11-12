@@ -19,6 +19,7 @@ type Draft = {
   endsAt: string;
   timezone: string;
   rewardZp: string;
+  rewardZap: string;
   objectivesText: string;
   requirementsText: string;
   participationRulesText: string;
@@ -41,6 +42,7 @@ const emptyDraft = (): Draft => ({
   endsAt: '',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   rewardZp: '0',
+  rewardZap: '0',
   objectivesText: '',
   requirementsText: '',
   participationRulesText: '{}',
@@ -56,6 +58,7 @@ const toDraft = (event: AdminEvent): Draft => ({
   endsAt: localDateInput(event.ends_at),
   timezone: event.timezone,
   rewardZp: String(event.reward_zp),
+  rewardZap: String(event.reward_zap ?? 0),
   objectivesText: event.objectives.map(String).join('\n'),
   requirementsText: event.requirements.map(String).join('\n'),
   participationRulesText: JSON.stringify(event.participation_rules, null, 2),
@@ -92,8 +95,12 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
       }
 
       const rewardZp = Number(draft.rewardZp);
+      const rewardZap = Number(draft.rewardZap);
       if (!Number.isSafeInteger(rewardZp) || rewardZp < 0) {
-        throw new Error('Reward must be a whole number of 0 or more.');
+        throw new Error('ZP reward must be a whole number of 0 or more.');
+      }
+      if (!Number.isSafeInteger(rewardZap) || rewardZap < 0) {
+        throw new Error('ZAP reward must be a whole number of 0 or more.');
       }
 
       await onSave({
@@ -106,6 +113,7 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
         endsAt: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
         timezone: draft.timezone.trim() || 'UTC',
         rewardZp,
+        rewardZap,
         objectives: draft.objectivesText.split('\n').map((v) => v.trim()).filter(Boolean),
         requirements: draft.requirementsText.split('\n').map((v) => v.trim()).filter(Boolean),
         participationRules,
@@ -167,7 +175,7 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
           <label className="block text-[10px] uppercase text-neon-500">Description
             <textarea value={draft.description} onChange={(e) => update('description', e.target.value)} rows={2} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
           </label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <label className="text-[10px] uppercase text-neon-500">Status
               <select value={draft.status} onChange={(e) => update('status', e.target.value as Draft['status'])} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200">
                 <option value="draft">Draft</option><option value="published">Published</option><option value="cancelled">Cancelled</option>
@@ -175,6 +183,9 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
             </label>
             <label className="text-[10px] uppercase text-neon-500">Reward (ZP)
               <input type="number" min="0" step="1" value={draft.rewardZp} onChange={(e) => update('rewardZp', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+            </label>
+            <label className="text-[10px] uppercase text-neon-500">Reward (ZAP)
+              <input type="number" min="0" step="1" value={draft.rewardZap} onChange={(e) => update('rewardZap', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
             </label>
             <label className="text-[10px] uppercase text-neon-500">Timezone (IANA)
               <input value={draft.timezone} onChange={(e) => update('timezone', e.target.value)} placeholder="Africa/Lagos" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
@@ -222,7 +233,7 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
               </div>
               {event.description && <p className="text-[11px] text-neon-500">{event.description}</p>}
               <p className="text-[10px] text-neon-600">{dateLabel(event.starts_at)} → {dateLabel(event.ends_at)}</p>
-              <p className="text-[10px] text-neon-400">Reward: {event.reward_zp.toLocaleString()} ZP · {event.objectives.length} objectives · {event.requirements.length} requirements</p>
+              <p className="text-[10px] text-neon-400">Rewards: {event.reward_zp.toLocaleString()} ZP + {event.reward_zap.toLocaleString()} ZAP · {event.objectives.length} objectives · {event.requirements.length} requirements</p>
               <div className="flex justify-end gap-2 pt-1">
                 <button type="button" onClick={() => { setDraft(toDraft(event)); setError(''); }} className="flex items-center gap-1 border border-neon/30 px-2 py-1 text-[10px] text-neon-300"><Edit2 size={12} /> Edit</button>
                 <button type="button" disabled={deletingId === event.id} onClick={() => void handleDelete(event)} className="flex items-center gap-1 border border-red-500/30 px-2 py-1 text-[10px] text-red-300 disabled:opacity-50">{deletingId === event.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete</button>
