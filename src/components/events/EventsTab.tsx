@@ -84,6 +84,13 @@ function EventCard({ event, now, registered, registering, onRegister }: { event:
         </div>
       )}
 
+      {event.participation_rules.trim().length > 0 && (
+        <div>
+          <h4 className="font-mono text-[9px] uppercase tracking-widest text-neon-500">Participation rules</h4>
+          <p className="mt-1 whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-neon-600">{event.participation_rules}</p>
+        </div>
+      )}
+
       {event.requirements.length > 0 && (
         <div>
           <h4 className="font-mono text-[9px] uppercase tracking-widest text-neon-500">Requirements</h4>
