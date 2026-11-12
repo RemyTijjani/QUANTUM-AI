@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.public-events]
 verify_jwt = false
+
+[functions.event-participation]
+verify_jwt = false
