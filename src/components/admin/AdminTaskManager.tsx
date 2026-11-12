@@ -197,13 +197,15 @@ function TaskFormModal({
         )}
         <div>
           <label className="text-[11px] text-neon-500 uppercase">What must the player do?</label>
-          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\n') ?? ''} disabled={saving} placeholder="Example: Submit an approved creator link" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\n') ?? ''} disabled={saving} placeholder="Write one simple task per line. Example: Submit a ZORD video link for review." className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <p className="text-[10px] text-neon-600 mt-1">Beginner tip: use normal sentences, one task per line. You do not need JSON, code, or special formatting.</p>
         </div>
         <div>
           <label className="text-[11px] text-neon-500 uppercase">What does the player need before starting?</label>
-          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\n') ?? ''} disabled={saving} placeholder="Example: A Telegram account" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\n') ?? ''} disabled={saving} placeholder="Write one requirement per line. Example: Have access to the official ZORD Telegram channel." className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <p className="text-[10px] text-neon-600 mt-1">Beginner tip: describe the requirement in plain language, one per line. No code or JSON is needed.</p>
         </div>
-        <p className="text-[10px] text-amber-300">Important: ZP rewards are configured here. ZAP rewards are saved for later and cannot be paid yet. A ZP unlock cost is displayed as a setting only; players are not charged until secure unlock processing is added.</p>
+        <p className="text-[10px] text-amber-300">Reward safety: ZAP is configuration only and cannot be paid yet. ZP unlock cost is also only a setting; players are not charged. Mission rewards must not be treated as earned until the relevant activity has a trusted server-side verification and payout flow.</p>
         <div>
           <label className="text-[11px] text-neon-500 uppercase">Link for the player (optional)</label>
           <input name="actionUrl" type="url" defaultValue={task?.actionUrl ?? ''} disabled={saving} placeholder="https://t.me/..." className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
