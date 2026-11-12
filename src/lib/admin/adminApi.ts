@@ -77,6 +77,21 @@ export interface AdminEventInput {
   participationRules: string;
 }
 
+export interface AdminEventParticipant {
+  id: string;
+  event_id: string;
+  status: 'registered' | 'in_progress' | 'completed' | 'submitted' | 'withdrawn';
+  registered_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  players: {
+    telegram_id: number | string;
+    username: string | null;
+    first_name: string | null;
+    referral_code: string;
+  };
+}
+
 export interface AdminPlayerEconomy {
   player_id: string;
   zp_balance: number | string | null;
@@ -353,4 +368,18 @@ export async function listPlayers(
     throw new AdminApiError('Received an unexpected player list response.');
   }
   return (body as { players: AdminPlayer[] }).players;
+}
+
+export async function listEventParticipants(
+  creds: AdminCredentials,
+  eventId: string,
+): Promise<AdminEventParticipant[]> {
+  const body = await callAdminApi(creds, {
+    action: 'list_event_participants',
+    eventId,
+  });
+  if (!body || typeof body !== 'object' || !Array.isArray((body as { participants?: unknown }).participants)) {
+    throw new AdminApiError('Received an unexpected event participants response.');
+  }
+  return (body as { participants: AdminEventParticipant[] }).participants;
 }
