@@ -28,6 +28,7 @@ import {
   saveEvent,
   deleteEvent,
   listEventParticipants,
+  updateEventParticipantStatus,
 } from '@/lib/admin/adminApi';
 
 import type {
@@ -37,6 +38,7 @@ import type {
   AdminTaskInput,
   AdminVaultReserves,
   AdminEventInput,
+  AdminEventParticipantStatus,
 } from '@/lib/admin/adminApi';
 
 import AdminLogin from '@/components/admin/AdminLogin';
@@ -226,6 +228,11 @@ function AdminConsole({
     const participants = await listEventParticipants(creds, eventId);
     addLog(`[EVENT] Loaded ${participants.length} participant record(s) for ${eventId}`);
     return participants;
+  };
+
+  const handleUpdateEventParticipantStatus = async (participationId: string, status: AdminEventParticipantStatus) => {
+    await updateEventParticipantStatus(creds, participationId, status);
+    addLog(`[EVENT] Participant ${participationId} status updated to ${status}; no reward issued.`);
   };
 
   const handleFlushCache = () => {
@@ -664,6 +671,7 @@ function AdminConsole({
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
           onListParticipants={handleListEventParticipants}
+          onUpdateParticipantStatus={handleUpdateEventParticipantStatus}
         />
       )}
 
