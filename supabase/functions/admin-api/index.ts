@@ -258,7 +258,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Player search must be 64 characters or fewer" }, 400);
       }
       const term = rawSearch.replace(/^@/, "");
-      if (term && !/^[a-zA-Z0-9_-]+$/.test(term)) {
+      if (term && !/^[a-zA-Z0-9_ -]+$/.test(term)) {
         return json({ error: "Search using a username, referral code, or Telegram ID" }, 400);
       }
 
