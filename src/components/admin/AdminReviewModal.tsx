@@ -27,6 +27,7 @@ import {
   saveVaultReserves,
   saveEvent,
   deleteEvent,
+  listEventParticipants,
 } from '@/lib/admin/adminApi';
 
 import type {
@@ -219,6 +220,12 @@ function AdminConsole({
     await deleteEvent(creds, eventId);
     addLog(`[EVENT] Deleted event: ${eventId}`);
     await refresh();
+  };
+
+  const handleListEventParticipants = async (eventId: string) => {
+    const participants = await listEventParticipants(creds, eventId);
+    addLog(`[EVENT] Loaded ${participants.length} participant record(s) for ${eventId}`);
+    return participants;
   };
 
   const handleFlushCache = () => {
@@ -656,6 +663,7 @@ function AdminConsole({
           events={data.events}
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
+          onListParticipants={handleListEventParticipants}
         />
       )}
 
