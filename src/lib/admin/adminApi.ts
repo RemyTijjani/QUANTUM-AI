@@ -43,11 +43,44 @@ export interface AdminStats {
   totalZp: number;
 }
 
+export interface AdminEvent {
+  id: string;
+  title: string;
+  description: string;
+  category: 'daily' | 'weekly' | 'monthly' | 'special';
+  status: 'draft' | 'published' | 'cancelled';
+  starts_at: string | null;
+  ends_at: string | null;
+  timezone: string;
+  reward_zp: number;
+  objectives: unknown[];
+  requirements: unknown[];
+  participation_rules: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminEventInput {
+  id?: string;
+  title: string;
+  description: string;
+  category: AdminEvent['category'];
+  status: AdminEvent['status'];
+  startsAt: string | null;
+  endsAt: string | null;
+  timezone: string;
+  rewardZp: number;
+  objectives: unknown[];
+  requirements: unknown[];
+  participationRules: Record<string, unknown>;
+}
+
 export interface AdminDashboardData {
   stats: AdminStats;
   vaultReserves: AdminVaultReserves;
   submissions: AdminSubmission[];
   tasks: AdminTask[];
+  events: AdminEvent[];
 }
 
 export interface AdminVaultReserves {
@@ -126,7 +159,8 @@ function isDashboardData(value: unknown): value is AdminDashboardData {
     !!v.stats &&
     !!v.vaultReserves &&
     Array.isArray(v.submissions) &&
-    Array.isArray(v.tasks)
+    Array.isArray(v.tasks) &&
+    Array.isArray(v.events)
   );
 }
 
@@ -221,5 +255,25 @@ export async function saveVaultReserves(
   await callAdminApi(creds, {
     action: 'save_vault_reserves',
     vaultReserves: reserves,
+  });
+}
+
+export async function saveEvent(
+  creds: AdminCredentials,
+  event: AdminEventInput,
+): Promise<void> {
+  await callAdminApi(creds, {
+    action: 'save_event',
+    event,
+  });
+}
+
+export async function deleteEvent(
+  creds: AdminCredentials,
+  eventId: string,
+): Promise<void> {
+  await callAdminApi(creds, {
+    action: 'delete_event',
+    eventId,
   });
 }
