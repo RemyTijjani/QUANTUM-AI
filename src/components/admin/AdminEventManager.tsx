@@ -172,8 +172,8 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
               </select>
             </label>
           </div>
-          <label className="block text-[10px] uppercase text-neon-500">Description
-            <textarea value={draft.description} onChange={(e) => update('description', e.target.value)} rows={2} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+          <label className="block text-[10px] uppercase text-neon-500">Description (2,000 characters max)
+            <textarea maxLength={2000} value={draft.description} onChange={(e) => update('description', e.target.value)} rows={2} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <label className="text-[10px] uppercase text-neon-500">Status
@@ -188,7 +188,7 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
               <input type="number" min="0" step="1" value={draft.rewardZap} onChange={(e) => update('rewardZap', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
             </label>
             <label className="text-[10px] uppercase text-neon-500">Timezone (IANA)
-              <input value={draft.timezone} onChange={(e) => update('timezone', e.target.value)} placeholder="Africa/Lagos" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+              <input maxLength={100} value={draft.timezone} onChange={(e) => update('timezone', e.target.value)} placeholder="Africa/Lagos" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
             </label>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -200,11 +200,11 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
             </label>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="text-[10px] uppercase text-neon-500">Objectives (one per line)
-              <textarea rows={3} value={draft.objectivesText} onChange={(e) => update('objectivesText', e.target.value)} placeholder="Complete the daily mission\nEarn 100 ZP" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+            <label className="text-[10px] uppercase text-neon-500">Objectives (up to 50, 300 characters each)
+              <textarea maxLength={15049} rows={3} value={draft.objectivesText} onChange={(e) => update('objectivesText', e.target.value)} placeholder="Complete the daily mission\nEarn 100 ZP" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
             </label>
-            <label className="text-[10px] uppercase text-neon-500">Requirements (one per line)
-              <textarea rows={3} value={draft.requirementsText} onChange={(e) => update('requirementsText', e.target.value)} placeholder="Telegram account required" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+            <label className="text-[10px] uppercase text-neon-500">Requirements (up to 50, 300 characters each)
+              <textarea maxLength={15049} rows={3} value={draft.requirementsText} onChange={(e) => update('requirementsText', e.target.value)} placeholder="Telegram account required" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
             </label>
           </div>
           <label className="block text-[10px] uppercase text-neon-500">Participation rules (JSON object)
