@@ -77,10 +77,12 @@ export interface AdminEventInput {
   participationRules: string;
 }
 
+export type AdminEventParticipantStatus = 'registered' | 'in_progress' | 'completed' | 'submitted' | 'withdrawn';
+
 export interface AdminEventParticipant {
   id: string;
   event_id: string;
-  status: 'registered' | 'in_progress' | 'completed' | 'submitted' | 'withdrawn';
+  status: AdminEventParticipantStatus;
   registered_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -382,4 +384,17 @@ export async function listEventParticipants(
     throw new AdminApiError('Received an unexpected event participants response.');
   }
   return (body as { participants: AdminEventParticipant[] }).participants;
+}
+
+
+export async function updateEventParticipantStatus(
+  creds: AdminCredentials,
+  participationId: string,
+  status: AdminEventParticipantStatus,
+): Promise<void> {
+  await callAdminApi(creds, {
+    action: 'update_event_participant_status',
+    participationId,
+    participationStatus: status,
+  });
 }
