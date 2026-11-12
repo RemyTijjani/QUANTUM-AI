@@ -29,7 +29,8 @@ interface AdminRequestBody {
     | "delete_event"
     | "list_players"
     | "get_player_economy"
-    | "list_event_participants";
+    | "list_event_participants"
+    | "update_event_participant_status";
   adminUsername?: string;
   search?: string;
   playerId?: string;
@@ -63,6 +64,8 @@ interface AdminRequestBody {
     participationRules?: unknown;
   };
   eventId?: string;
+  participationId?: string;
+  participationStatus?: string;
 }
 
 function json(body: unknown, status = 200) {
@@ -301,6 +304,35 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Failed to load event participants" }, 500);
       }
       return json({ participants: data ?? [], participantLimit: 500 });
+    }
+
+    // ADMIN-REVIEWED EVENT PARTICIPANT STATUS. This does not issue rewards.
+    if (body.action === "update_event_participant_status") {
+      const participationId = typeof body.participationId === "string" ? body.participationId : "";
+      const status = body.participationStatus;
+      const allowedStatuses = ["registered", "in_progress", "submitted", "completed", "withdrawn"];
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(participationId)) {
+        return json({ error: "A valid participation ID is required" }, 400);
+      }
+      if (typeof status !== "string" || !allowedStatuses.includes(status)) {
+        return json({ error: "Invalid participant status" }, 400);
+      }
+      const { data, error } = await db
+        .from("game_event_participations")
+        .update({
+          status,
+          completed_at: status === "completed" ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", participationId)
+        .select("id, status, updated_at, completed_at")
+        .maybeSingle();
+      if (error) {
+        console.error("Event participant status update failed:", error);
+        return json({ error: "Failed to update participant status" }, 500);
+      }
+      if (!data) return json({ error: "Event participant record not found" }, 404);
+      return json({ success: true, participation: data, rewardsIssued: false });
     }
 
     // READ-ONLY PLAYER ECONOMY AND LEDGER DETAIL.
