@@ -77,6 +77,16 @@ export interface AdminEventInput {
   participationRules: Record<string, unknown>;
 }
 
+export interface AdminPlayer {
+  id: string;
+  telegram_id: number | string;
+  username: string | null;
+  first_name: string | null;
+  referral_code: string;
+  created_at: string;
+}
+
+
 export interface AdminDashboardData {
   stats: AdminStats;
   vaultReserves: AdminVaultReserves;
@@ -278,4 +288,18 @@ export async function deleteEvent(
     action: 'delete_event',
     eventId,
   });
+}
+
+export async function listPlayers(
+  creds: AdminCredentials,
+  search = '',
+): Promise<AdminPlayer[]> {
+  const body = await callAdminApi(creds, {
+    action: 'list_players',
+    search,
+  });
+  if (!body || typeof body !== 'object' || !Array.isArray((body as { players?: unknown }).players)) {
+    throw new AdminApiError('Received an unexpected player list response.');
+  }
+  return (body as { players: AdminPlayer[] }).players;
 }
