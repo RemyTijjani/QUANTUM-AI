@@ -52,6 +52,7 @@ interface AdminRequestBody {
     endsAt?: string | null;
     timezone?: string;
     rewardZp?: number;
+    rewardZap?: number;
     objectives?: unknown;
     requirements?: unknown;
     participationRules?: unknown;
@@ -191,7 +192,7 @@ Deno.serve(async (req: Request) => {
 
         db
           .from("game_events")
-          .select("id, title, description, category, status, starts_at, ends_at, timezone, reward_zp, objectives, requirements, participation_rules, created_at, updated_at")
+          .select("id, title, description, category, status, starts_at, ends_at, timezone, reward_zp, reward_zap, objectives, requirements, participation_rules, created_at, updated_at")
           .order("created_at", { ascending: false }),
       ]);
 
@@ -417,6 +418,10 @@ Deno.serve(async (req: Request) => {
       if (typeof event.rewardZp !== "number" || !Number.isSafeInteger(event.rewardZp) || event.rewardZp < 0) {
         return json({ error: "Event ZP reward must be a whole number of 0 or more" }, 400);
       }
+      const rewardZap = event.rewardZap ?? 0;
+      if (typeof rewardZap !== "number" || !Number.isSafeInteger(rewardZap) || rewardZap < 0) {
+        return json({ error: "Event ZAP reward must be a whole number of 0 or more" }, 400);
+      }
       if (event.objectives !== undefined && !Array.isArray(event.objectives)) {
         return json({ error: "Objectives must be a JSON array" }, 400);
       }
@@ -450,6 +455,7 @@ Deno.serve(async (req: Request) => {
         ends_at: endsAt?.toISOString() ?? null,
         timezone: event.timezone?.trim() || "UTC",
         reward_zp: event.rewardZp,
+        reward_zap: rewardZap,
         objectives: event.objectives ?? [],
         requirements: event.requirements ?? [],
         participation_rules: event.participationRules ?? {},
