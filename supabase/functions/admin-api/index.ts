@@ -30,7 +30,10 @@ interface AdminRequestBody {
     | "list_players"
     | "get_player_economy"
     | "list_event_participants"
-    | "update_event_participant_status";
+    | "update_event_participant_status"
+    | "list_event_activities"
+    | "save_event_activity"
+    | "delete_event_activity";
   adminUsername?: string;
   search?: string;
   playerId?: string;
@@ -71,6 +74,19 @@ interface AdminRequestBody {
   eventId?: string;
   participationId?: string;
   participationStatus?: string;
+  activityId?: string;
+  activity?: {
+    id?: string;
+    eventId?: string;
+    missionId?: string | null;
+    activityType?: string;
+    title?: string;
+    description?: string;
+    instructions?: string;
+    config?: unknown;
+    isRequired?: boolean;
+    sortOrder?: number;
+  };
 }
 
 function json(body: unknown, status = 200) {
@@ -321,6 +337,102 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Failed to load event participants" }, 500);
       }
       return json({ participants: data ?? [], participantLimit: 500 });
+    }
+
+    // ADMIN EVENT ACTIVITY MANAGEMENT. Configuration only; it does not mark player progress or issue rewards.
+    if (body.action === "list_event_activities") {
+      const eventId = typeof body.eventId === "string" ? body.eventId : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId)) {
+        return json({ error: "A valid event ID is required" }, 400);
+      }
+      const { data, error } = await db
+        .from("game_event_activities")
+        .select("id, event_id, mission_id, activity_type, title, description, instructions, config, is_required, sort_order, created_at, updated_at")
+        .eq("event_id", eventId)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) return json({ error: "Failed to load event activities" }, 500);
+      return json({ activities: data ?? [] });
+    }
+
+    if (body.action === "save_event_activity") {
+      const activity = body.activity;
+      const eventId = typeof activity?.eventId === "string" ? activity.eventId : "";
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const activityTypes = ["mission", "creator_submission_approved", "referral_registration", "telegram_membership", "gameplay_verification", "admin_review"];
+      if (!activity || !validUuid.test(eventId)) return json({ error: "A valid event is required" }, 400);
+      if (typeof activity.title !== "string" || !activity.title.trim() || activity.title.trim().length > 120) {
+        return json({ error: "Activity title must be between 1 and 120 characters" }, 400);
+      }
+      if (typeof activity.description !== "string" || activity.description.length > 2000 ||
+          typeof activity.instructions !== "string" || activity.instructions.length > 5000) {
+        return json({ error: "Activity description or instructions are too long" }, 400);
+      }
+      if (typeof activity.activityType !== "string" || !activityTypes.includes(activity.activityType)) {
+        return json({ error: "Invalid activity type" }, 400);
+      }
+      if (activity.activityType === "mission" && (typeof activity.missionId !== "string" || !activity.missionId.trim())) {
+        return json({ error: "Choose a mission for this activity" }, 400);
+      }
+      if (activity.activityType !== "mission" && activity.missionId) {
+        return json({ error: "Only mission activities may reference a mission" }, 400);
+      }
+      if (typeof activity.isRequired !== "boolean" ||
+          !Number.isSafeInteger(activity.sortOrder) || (activity.sortOrder ?? -1) < 0) {
+        return json({ error: "Invalid required flag or display order" }, 400);
+      }
+      const config = activity.config ?? {};
+      if (!config || typeof config !== "object" || Array.isArray(config) || JSON.stringify(config).length > 10000) {
+        return json({ error: "Activity configuration must be a JSON object under 10,000 characters" }, 400);
+      }
+      const { data: eventRow, error: eventError } = await db
+        .from("game_events").select("id").eq("id", eventId).maybeSingle();
+      if (eventError || !eventRow) return json({ error: "Event not found" }, 404);
+
+      if (activity.activityType === "mission") {
+        const { data: mission, error: missionError } = await db
+          .from("mission_tasks").select("id").eq("id", activity.missionId).maybeSingle();
+        if (missionError || !mission) return json({ error: "Selected mission was not found" }, 404);
+      }
+
+      const row = {
+        event_id: eventId,
+        mission_id: activity.activityType === "mission" ? activity.missionId : null,
+        activity_type: activity.activityType,
+        title: activity.title.trim(),
+        description: activity.description.trim(),
+        instructions: activity.instructions.trim(),
+        config,
+        is_required: activity.isRequired,
+        sort_order: activity.sortOrder,
+        updated_at: new Date().toISOString(),
+      };
+      if (activity.id) {
+        if (!validUuid.test(activity.id)) return json({ error: "A valid activity ID is required" }, 400);
+        const { data, error } = await db.from("game_event_activities")
+          .update(row).eq("id", activity.id).eq("event_id", eventId).select("id").maybeSingle();
+        if (error) return json({ error: "Failed to update event activity" }, 500);
+        if (!data) return json({ error: "Event activity not found" }, 404);
+        return json({ success: true, id: data.id });
+      }
+      const { data, error } = await db.from("game_event_activities")
+        .insert(row).select("id").single();
+      if (error || !data) return json({ error: "Failed to create event activity" }, 500);
+      return json({ success: true, id: data.id });
+    }
+
+    if (body.action === "delete_event_activity") {
+      const activityId = typeof body.activityId === "string" ? body.activityId : "";
+      const eventId = typeof body.eventId === "string" ? body.eventId : "";
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!validUuid.test(activityId) || !validUuid.test(eventId)) {
+        return json({ error: "Valid event and activity IDs are required" }, 400);
+      }
+      const { data, error } = await db.from("game_event_activities")
+        .delete().eq("id", activityId).eq("event_id", eventId).select("id").maybeSingle();
+      if (error) return json({ error: "Failed to delete event activity" }, 500);
+      if (!data) return json({ error: "Event activity not found" }, 404);
+      return json({ success: true });
     }
 
     // ADMIN-REVIEWED EVENT PARTICIPANT STATUS. Update and audit are one database transaction.
