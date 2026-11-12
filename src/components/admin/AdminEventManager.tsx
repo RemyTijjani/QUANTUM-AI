@@ -45,7 +45,7 @@ const emptyDraft = (): Draft => ({
   rewardZap: '0',
   objectivesText: '',
   requirementsText: '',
-  participationRulesText: '{}',
+  participationRulesText: '',
 });
 
 const toDraft = (event: AdminEvent): Draft => ({
@@ -61,7 +61,7 @@ const toDraft = (event: AdminEvent): Draft => ({
   rewardZap: String(event.reward_zap ?? 0),
   objectivesText: event.objectives.map(String).join('\n'),
   requirementsText: event.requirements.map(String).join('\n'),
-  participationRulesText: JSON.stringify(event.participation_rules, null, 2),
+  participationRulesText: event.participation_rules ?? '',
 });
 
 const dateLabel = (value: string | null) =>
@@ -83,15 +83,9 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
     setSaving(true);
     setError('');
     try {
-      let participationRules: Record<string, unknown>;
-      try {
-        const parsed: unknown = JSON.parse(draft.participationRulesText || '{}');
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          throw new Error('Participation rules must be a JSON object.');
-        }
-        participationRules = parsed as Record<string, unknown>;
-      } catch {
-        throw new Error('Participation rules must contain valid JSON object syntax.');
+      const participationRules = draft.participationRulesText.trim();
+      if (participationRules.length > 10000) {
+        throw new Error('Participation rules must be 10,000 characters or fewer.');
       }
 
       const rewardZp = Number(draft.rewardZp);
@@ -207,8 +201,9 @@ export default function AdminEventManager({ events, onSave, onDelete }: Props) {
               <textarea maxLength={15049} rows={3} value={draft.requirementsText} onChange={(e) => update('requirementsText', e.target.value)} placeholder="Telegram account required" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
             </label>
           </div>
-          <label className="block text-[10px] uppercase text-neon-500">Participation rules (JSON object)
-            <textarea rows={3} value={draft.participationRulesText} onChange={(e) => update('participationRulesText', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200 font-mono" />
+          <label className="block text-[10px] uppercase text-neon-500">Participation rules (plain text)
+            <textarea maxLength={10000} rows={3} value={draft.participationRulesText} onChange={(e) => update('participationRulesText', e.target.value)} placeholder="Explain how players can participate, in normal language." className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+            <span className="block mt-1 normal-case text-neon-600">Write normal instructions. No JSON formatting is required.</span>
           </label>
           <p className="text-[10px] text-neon-600">Publishing requires both start and end times. Dates entered above are converted to UTC for storage; the timezone label is retained for display.</p>
           <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-2 py-2 bg-neon/20 border border-neon text-xs uppercase tracking-wider text-neon-200 disabled:opacity-50">
