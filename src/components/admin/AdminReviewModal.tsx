@@ -29,6 +29,9 @@ import {
   deleteEvent,
   listEventParticipants,
   updateEventParticipantStatus,
+  listEventActivities,
+  saveEventActivity,
+  deleteEventActivity,
 } from '@/lib/admin/adminApi';
 
 import type {
@@ -39,6 +42,7 @@ import type {
   AdminVaultReserves,
   AdminEventInput,
   AdminEventParticipantStatus,
+  AdminEventActivityInput,
 } from '@/lib/admin/adminApi';
 
 import AdminLogin from '@/components/admin/AdminLogin';
@@ -228,6 +232,20 @@ function AdminConsole({
     const participants = await listEventParticipants(creds, eventId);
     addLog(`[EVENT] Loaded ${participants.length} participant record(s) for ${eventId}`);
     return participants;
+  };
+
+  const handleListEventActivities = async (eventId: string) => {
+    return await listEventActivities(creds, eventId);
+  };
+
+  const handleSaveEventActivity = async (activity: AdminEventActivityInput) => {
+    await saveEventActivity(creds, activity);
+    addLog(`[EVENT] ${activity.id ? 'Updated' : 'Created'} activity: ${activity.title}`);
+  };
+
+  const handleDeleteEventActivity = async (eventId: string, activityId: string) => {
+    await deleteEventActivity(creds, eventId, activityId);
+    addLog(`[EVENT] Deleted activity ${activityId} from ${eventId}`);
   };
 
   const handleUpdateEventParticipantStatus = async (participationId: string, status: AdminEventParticipantStatus) => {
@@ -668,6 +686,10 @@ function AdminConsole({
       {activeTab === 'events' && (
         <AdminEventManager
           events={data.events}
+          missions={data.tasks}
+          onListActivities={handleListEventActivities}
+          onSaveActivity={handleSaveEventActivity}
+          onDeleteActivity={handleDeleteEventActivity}
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
           onListParticipants={handleListEventParticipants}
