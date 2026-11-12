@@ -77,6 +77,34 @@ export interface AdminEventInput {
   participationRules: Record<string, unknown>;
 }
 
+export interface AdminPlayerEconomy {
+  player_id: string;
+  zp_balance: number | string | null;
+  lifetime_zp: number | string | null;
+  pending_kickback: number | string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  last_accrued_at: string | null;
+}
+
+export interface AdminEconomyLedgerEntry {
+  id: string;
+  player_id: string;
+  transaction_type: string;
+  amount: number | string;
+  balance_after: number | string;
+  reference_id: string | null;
+  description: string | null;
+  created_at: string | null;
+}
+
+export interface AdminPlayerEconomyDetail {
+  economy: AdminPlayerEconomy | null;
+  ledger: AdminEconomyLedgerEntry[];
+  ledgerLimit: number;
+  zapBalanceAvailable: false;
+}
+
 export interface AdminPlayer {
   id: string;
   telegram_id: number | string;
@@ -288,6 +316,29 @@ export async function deleteEvent(
     action: 'delete_event',
     eventId,
   });
+}
+
+export async function getPlayerEconomy(
+  creds: AdminCredentials,
+  playerId: string,
+): Promise<AdminPlayerEconomyDetail> {
+  const body = await callAdminApi(creds, {
+    action: 'get_player_economy',
+    playerId,
+  });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('Received an unexpected player economy response.');
+  }
+  const result = body as Partial<AdminPlayerEconomyDetail>;
+  if (
+    !Array.isArray(result.ledger) ||
+    result.ledgerLimit !== 50 ||
+    result.zapBalanceAvailable !== false ||
+    (result.economy !== null && typeof result.economy !== 'object')
+  ) {
+    throw new AdminApiError('Received an unexpected player economy response.');
+  }
+  return result as AdminPlayerEconomyDetail;
 }
 
 export async function listPlayers(
