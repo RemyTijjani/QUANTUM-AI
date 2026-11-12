@@ -1,10 +1,15 @@
 import { useState, FormEvent } from 'react';
-import { CalendarDays, Plus, Edit2, Trash2, Loader2, Save, X, Users } from 'lucide-react';
+import { CalendarDays, Plus, Edit2, Trash2, Loader2, Save, X, Users, ListChecks } from 'lucide-react';
 import { AdminApiError } from '@/lib/admin/adminApi';
-import type { AdminEvent, AdminEventInput, AdminEventParticipant, AdminEventParticipantStatus } from '@/lib/admin/adminApi';
+import AdminEventActivityManager from './AdminEventActivityManager';
+import type { AdminEvent, AdminEventInput, AdminEventParticipant, AdminEventParticipantStatus, AdminEventActivity, AdminEventActivityInput, AdminTask } from '@/lib/admin/adminApi';
 
 interface Props {
   events: AdminEvent[];
+  missions: AdminTask[];
+  onListActivities: (eventId: string) => Promise<AdminEventActivity[]>;
+  onSaveActivity: (activity: AdminEventActivityInput) => Promise<void>;
+  onDeleteActivity: (eventId: string, activityId: string) => Promise<void>;
   onSave: (event: AdminEventInput) => Promise<void>;
   onDelete: (eventId: string) => Promise<void>;
   onListParticipants: (eventId: string) => Promise<AdminEventParticipant[]>;
@@ -69,12 +74,13 @@ const toDraft = (event: AdminEvent): Draft => ({
 const dateLabel = (value: string | null) =>
   value ? new Date(value).toLocaleString() : 'Not scheduled';
 
-export default function AdminEventManager({ events, onSave, onDelete, onListParticipants, onUpdateParticipantStatus }: Props) {
+export default function AdminEventManager({ events, missions, onListActivities, onSaveActivity, onDeleteActivity, onSave, onDelete, onListParticipants, onUpdateParticipantStatus }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [participantsForEvent, setParticipantsForEvent] = useState<string | null>(null);
+  const [activitiesForEvent, setActivitiesForEvent] = useState<string | null>(null);
   const [participants, setParticipants] = useState<AdminEventParticipant[]>([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [participantStatusDrafts, setParticipantStatusDrafts] = useState<Record<string, AdminEventParticipantStatus>>({});
@@ -272,6 +278,7 @@ export default function AdminEventManager({ events, onSave, onDelete, onListPart
               <p className="text-[10px] text-neon-600">{dateLabel(event.starts_at)} → {dateLabel(event.ends_at)}</p>
               <p className="text-[10px] text-neon-400">Rewards: {event.reward_zp.toLocaleString()} ZP + {event.reward_zap.toLocaleString()} ZAP · {event.objectives.length} objectives · {event.requirements.length} requirements</p>
               <div className="flex flex-wrap justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setActivitiesForEvent(current => current === event.id ? null : event.id)} className="flex items-center gap-1 border border-cyan-500/30 px-2 py-1 text-[10px] text-cyan-300"><ListChecks size={12} /> Activities</button>
                 <button type="button" onClick={() => void handleViewParticipants(event.id)} className="flex items-center gap-1 border border-cyan-500/30 px-2 py-1 text-[10px] text-cyan-300"><Users size={12} /> Participants</button>
                 <button type="button" onClick={() => { setDraft(toDraft(event)); setError(''); }} className="flex items-center gap-1 border border-neon/30 px-2 py-1 text-[10px] text-neon-300"><Edit2 size={12} /> Edit</button>
                 <button type="button" disabled={deletingId === event.id} onClick={() => void handleDelete(event)} className="flex items-center gap-1 border border-red-500/30 px-2 py-1 text-[10px] text-red-300 disabled:opacity-50">{deletingId === event.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete</button>
@@ -279,6 +286,16 @@ export default function AdminEventManager({ events, onSave, onDelete, onListPart
             </article>
           ))}
         </div>
+      )}
+
+      {activitiesForEvent && (
+        <AdminEventActivityManager
+          eventId={activitiesForEvent}
+          missions={missions}
+          onList={onListActivities}
+          onSave={onSaveActivity}
+          onDelete={onDeleteActivity}
+        />
       )}
 
       {participantsForEvent && (
