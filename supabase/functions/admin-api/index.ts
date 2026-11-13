@@ -510,6 +510,38 @@ Deno.serve(async (req: Request) => {
       if (typeof status !== "string" || !allowedStatuses.includes(status)) {
         return json({ error: "Invalid participant status" }, 400);
       }
+      if (status === "completed") {
+        const { data: participation, error: participationError } = await db
+          .from("game_event_participations")
+          .select("id, event_id, progress")
+          .eq("id", participationId)
+          .maybeSingle();
+        if (participationError || !participation) {
+          return json({ error: "Participant record not found" }, 404);
+        }
+        const { data: requiredActivities, error: activitiesError } = await db
+          .from("game_event_activities")
+          .select("id")
+          .eq("event_id", participation.event_id)
+          .eq("is_required", true);
+        if (activitiesError) {
+          return json({ error: "Could not verify required event activities" }, 500);
+        }
+        const progress = participation.progress && typeof participation.progress === "object" && !Array.isArray(participation.progress)
+          ? participation.progress as Record<string, unknown>
+          : {};
+        const activityProgress = progress.activities && typeof progress.activities === "object" && !Array.isArray(progress.activities)
+          ? progress.activities as Record<string, unknown>
+          : {};
+        const required = requiredActivities ?? [];
+        const allRequiredVerified = required.length > 0 && required.every((activity) => {
+          const evidence = activityProgress[activity.id];
+          return !!evidence && typeof evidence === "object" && (evidence as Record<string, unknown>).verified === true;
+        });
+        if (!allRequiredVerified) {
+          return json({ error: "Completion can only be recorded after every required activity has server-verified evidence." }, 409);
+        }
+      }
       const { data, error } = await db.rpc("admin_update_event_participant_status", {
         p_participation_id: participationId,
         p_status: status,
