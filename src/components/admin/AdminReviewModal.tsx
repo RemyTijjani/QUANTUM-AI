@@ -22,6 +22,7 @@ import {
   AdminApiError,
   fetchDashboard,
   reviewSubmission,
+  bulkApproveSubmissions,
   saveTask,
   deleteTask,
   saveVaultReserves,
@@ -109,6 +110,8 @@ function AdminConsole({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [selectedSubmissionIds, setSelectedSubmissionIds] = useState<string[]>([]);
+  const [bulkApproving, setBulkApproving] = useState(false);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
 
   const [multiplier, setMultiplier] = useState<number>(0.09);
@@ -172,6 +175,31 @@ function AdminConsole({
     }
 
     setProcessingId(null);
+  };
+
+  const handleBulkApprove = async () => {
+    const selected = selectedSubmissionIds.filter((id) => data.submissions.some((submission) => submission.id === id));
+    if (selected.length === 0 || bulkApproving) return;
+    if (!window.confirm(`Approve ${selected.length} selected submission(s)? Each approved submission will receive its configured ZP reward.`)) return;
+
+    setBulkApproving(true);
+    setActionError(null);
+    try {
+      const result = await bulkApproveSubmissions(creds, selected);
+      for (const item of result.results) {
+        if (item.success) onApproveSubmission(item.rewardZp ?? 0);
+      }
+      addLog(`[BULK APPROVAL] ${result.approvedCount} approved; ${result.failedCount} failed. Individual Creator Ops rewards were processed by the backend.`);
+      setSelectedSubmissionIds([]);
+      await refresh();
+      if (result.failedCount > 0) {
+        setActionError(`Bulk approval finished: ${result.approvedCount} approved, ${result.failedCount} could not be approved. Refresh the queue to review remaining submissions.`);
+      }
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setBulkApproving(false);
+    }
   };
 
   const handleSaveTask = async (input: AdminTaskInput) => {
@@ -415,11 +443,16 @@ function AdminConsole({
 
       {activeTab === 'queue' && (
         <div className="panel p-4 border border-neon/20 space-y-4">
-          <div className="flex items-center justify-between border-b border-neon/20 pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neon/20 pb-2">
             <h2 className="text-xs uppercase tracking-widest text-neon-400 font-bold flex items-center gap-2">
               <ShieldCheck size={14} />
               Creator Ops Submissions Review Queue
             </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => setSelectedSubmissionIds(data.submissions.map((submission) => submission.id))} disabled={data.submissions.length === 0 || bulkApproving} className="border border-neon/30 px-2 py-1 text-[10px] text-neon-300 disabled:opacity-40">Select all</button>
+              <button type="button" onClick={() => setSelectedSubmissionIds([])} disabled={selectedSubmissionIds.length === 0 || bulkApproving} className="border border-neon/30 px-2 py-1 text-[10px] text-neon-300 disabled:opacity-40">Clear</button>
+              <button type="button" onClick={() => void handleBulkApprove()} disabled={selectedSubmissionIds.length === 0 || bulkApproving || refreshing} className="border border-neon/70 bg-neon/15 px-3 py-1 text-[10px] font-bold text-neon-200 disabled:opacity-40">{bulkApproving ? 'Approving…' : `Approve selected (${selectedSubmissionIds.length})`}</button>
+            </div>
           </div>
 
           {refreshing ? (
@@ -440,6 +473,10 @@ function AdminConsole({
                   className="panel space-y-3 p-4 border border-neon/30 bg-black/50"
                 >
                   <div className="flex items-start justify-between gap-3">
+                    <label className="flex items-center gap-2 text-[9px] text-neon-600">
+                      <input type="checkbox" checked={selectedSubmissionIds.includes(sub.id)} onChange={(e) => setSelectedSubmissionIds((current) => e.target.checked ? [...current, sub.id] : current.filter((id) => id !== sub.id))} disabled={bulkApproving || processingId === sub.id} aria-label={`Select submission from ${sub.player_referral_code ?? 'player'}`} />
+                      Select
+                    </label>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-display text-xs font-bold uppercase tracking-wide text-neon-300">
                         {missionTitle(sub.mission_id)}
