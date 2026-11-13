@@ -371,11 +371,12 @@ Deno.serve(async (req: Request) => {
       if (typeof activity.activityType !== "string" || !activityTypes.includes(activity.activityType)) {
         return json({ error: "Invalid activity type" }, 400);
       }
-      if (activity.activityType === "mission" && (typeof activity.missionId !== "string" || !activity.missionId.trim())) {
-        return json({ error: "Choose a mission for this activity" }, 400);
+      const missionRequired = activity.activityType === "mission" || activity.activityType === "creator_submission_approved";
+      if (missionRequired && (typeof activity.missionId !== "string" || !activity.missionId.trim())) {
+        return json({ error: "Choose the mission this activity must verify" }, 400);
       }
-      if (activity.activityType !== "mission" && activity.missionId) {
-        return json({ error: "Only mission activities may reference a mission" }, 400);
+      if (!missionRequired && activity.missionId) {
+        return json({ error: "This activity type cannot reference a mission" }, 400);
       }
       if (typeof activity.isRequired !== "boolean" ||
           !Number.isSafeInteger(activity.sortOrder) || (activity.sortOrder ?? -1) < 0) {
@@ -389,15 +390,18 @@ Deno.serve(async (req: Request) => {
         .from("game_events").select("id").eq("id", eventId).maybeSingle();
       if (eventError || !eventRow) return json({ error: "Event not found" }, 404);
 
-      if (activity.activityType === "mission") {
+      if (missionRequired) {
         const { data: mission, error: missionError } = await db
-          .from("mission_tasks").select("id").eq("id", activity.missionId).maybeSingle();
+          .from("mission_tasks").select("id, kind").eq("id", activity.missionId).maybeSingle();
         if (missionError || !mission) return json({ error: "Selected mission was not found" }, 404);
+        if (activity.activityType === "creator_submission_approved" && mission.kind !== "creator") {
+          return json({ error: "Choose a Creator Ops mission for this activity" }, 400);
+        }
       }
 
       const row = {
         event_id: eventId,
-        mission_id: activity.activityType === "mission" ? activity.missionId : null,
+        mission_id: missionRequired ? activity.missionId : null,
         activity_type: activity.activityType,
         title: activity.title.trim(),
         description: activity.description.trim(),
