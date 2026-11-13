@@ -17,6 +17,12 @@ import type {
 
 import { fetchUnsyncedReferrals } from '@/lib/referral';
 import { supabase } from '@/lib/supabase';
+import {
+  beginTrustedUnlock,
+  completeTrustedUnlock,
+  fetchTrustedFragments,
+  fixTrustedFragment,
+} from '@/lib/gameplay/trustedGameplay';
 
 function createActions(send: (command: Command) => void) {
   return {
@@ -73,6 +79,11 @@ export function useGame(
   loadError: string | null;
   syncError: string | null;
   retryLoad: () => void;
+  trustedGameplay: {
+    beginUnlock: (id: FragmentId) => Promise<string>;
+    completeUnlock: (sessionId: string) => Promise<void>;
+    fixFragment: (id: FragmentId) => Promise<void>;
+  };
 } {
   const [state, setState] = useState<GameState>(() =>
     loadState(Date.now(), referralCode, playerId),
@@ -385,6 +396,50 @@ export function useGame(
     [],
   );
 
+  const applyTrustedFragments = async () => {
+    const fragments = await fetchTrustedFragments();
+    if (fragments.length === 0) return;
+    setState((previous) => {
+      const next = { ...previous, fragments: { ...previous.fragments }, fragmentCooldowns: { ...previous.fragmentCooldowns } };
+      for (const fragment of fragments) {
+        next.fragments[fragment.fragment_id] = fragment.status;
+        next.fragmentCooldowns[fragment.fragment_id] = fragment.cooldown_until ? new Date(fragment.cooldown_until).getTime() : 0;
+        if (fragment.core_mining_until) next.coreMiningUntil = Math.max(next.coreMiningUntil, new Date(fragment.core_mining_until).getTime());
+      }
+      return next;
+    });
+  };
+
+  const trustedGameplay = useMemo(() => ({
+    beginUnlock: (id: FragmentId) => beginTrustedUnlock(id),
+    completeUnlock: async (sessionId: string) => {
+      await completeTrustedUnlock(sessionId);
+      await applyTrustedFragments();
+    },
+    fixFragment: async (id: FragmentId) => {
+      await fixTrustedFragment(id);
+      await applyTrustedFragments();
+    },
+  }), [playerId]);
+
+  useEffect(() => {
+    if (isLoading || loadError) return;
+    let cancelled = false;
+    void fetchTrustedFragments().then((fragments) => {
+      if (cancelled || fragments.length === 0) return;
+      setState((previous) => {
+        const next = { ...previous, fragments: { ...previous.fragments }, fragmentCooldowns: { ...previous.fragmentCooldowns } };
+        for (const fragment of fragments) {
+          next.fragments[fragment.fragment_id] = fragment.status;
+          next.fragmentCooldowns[fragment.fragment_id] = fragment.cooldown_until ? new Date(fragment.cooldown_until).getTime() : 0;
+          if (fragment.core_mining_until) next.coreMiningUntil = Math.max(next.coreMiningUntil, new Date(fragment.core_mining_until).getTime());
+        }
+        return next;
+      });
+    }).catch((error) => console.error('Trusted fragment state load failed:', error));
+    return () => { cancelled = true; };
+  }, [playerId, isLoading, loadError]);
+
   // Keep the player's referral code updated.
   useEffect(() => {
     if (!referralCode || isLoading || loadError) return;
@@ -446,5 +501,6 @@ export function useGame(
     loadError,
     syncError,
     retryLoad,
+    trustedGameplay,
   };
 }
