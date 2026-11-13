@@ -148,7 +148,7 @@ function EventCard({ event, now, registration, registering, expanded, onRegister
               {activity.progress && activity.progress.fixesPerFragmentPerDay != null && (
                 <div className="space-y-2 border border-cyan-500/20 bg-cyan-500/5 p-2">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-mono text-[9px] uppercase tracking-wider text-cyan-300">Trusted fragment progress · today</p>
+                    <p className="font-mono text-[9px] uppercase tracking-wider text-cyan-300">Trusted fragment progress · event day</p>
                     <span className="font-mono text-[9px] text-neon-500">
                       {activity.progress.completedDays ?? 0}/{activity.progress.totalDays ?? 0} days complete
                     </span>
