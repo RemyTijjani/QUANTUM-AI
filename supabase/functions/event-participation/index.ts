@@ -54,6 +54,19 @@ async function verifyConfiguredCreatorActivities(
 
   for (const activity of activities ?? []) {
     if (activity.activity_type !== "creator_submission_approved" || !activity.mission_id) continue;
+
+    const { data: creatorMission, error: missionError } = await admin
+      .from("mission_tasks")
+      .select("id")
+      .eq("id", activity.mission_id)
+      .eq("kind", "creator")
+      .maybeSingle();
+    if (missionError) {
+      console.error("Creator mission lookup failed:", missionError);
+      throw new Error("Could not verify the linked Creator Ops mission.");
+    }
+    if (!creatorMission) continue;
+
     const previous = nextActivityProgress[activity.id];
     if (previous && typeof previous === "object" && (previous as Record<string, unknown>).verified === true) continue;
 
