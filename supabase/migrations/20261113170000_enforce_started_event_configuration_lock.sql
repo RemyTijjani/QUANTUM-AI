@@ -15,7 +15,7 @@ begin
     return old;
   end if;
 
-  if old.starts_at is not null and old.starts_at <= now() then
+  if (old.starts_at is not null and old.starts_at <= now()) then
     if new.starts_at is distinct from old.starts_at
        or new.ends_at is distinct from old.ends_at
        or new.timezone is distinct from old.timezone
@@ -27,6 +27,20 @@ begin
        or new.requirements is distinct from old.requirements
        or new.participation_rules is distinct from old.participation_rules then
       raise exception 'Event schedule, rewards, capacity, and participation rules are locked once the event starts';
+    end if;
+  elsif new.starts_at is not null and new.starts_at <= now() then
+    -- An update that starts the event early may change starts_at, but cannot
+    -- simultaneously alter its other protected configuration.
+    if new.ends_at is distinct from old.ends_at
+       or new.timezone is distinct from old.timezone
+       or new.reward_zp is distinct from old.reward_zp
+       or new.reward_zap is distinct from old.reward_zap
+       or new.min_participants is distinct from old.min_participants
+       or new.max_participants is distinct from old.max_participants
+       or new.objectives is distinct from old.objectives
+       or new.requirements is distinct from old.requirements
+       or new.participation_rules is distinct from old.participation_rules then
+      raise exception 'Event configuration cannot be changed while starting the event';
     end if;
   end if;
 
