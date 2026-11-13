@@ -8,6 +8,13 @@ security definer
 set search_path = pg_catalog, public, pg_temp
 as $$
 begin
+  if tg_op = 'DELETE' then
+    if old.starts_at is not null and old.starts_at <= now() then
+      raise exception 'An event cannot be deleted after it starts';
+    end if;
+    return old;
+  end if;
+
   if old.starts_at is not null and old.starts_at <= now() then
     if new.starts_at is distinct from old.starts_at
        or new.ends_at is distinct from old.ends_at
@@ -31,7 +38,7 @@ drop trigger if exists game_events_started_configuration_lock
   on public.game_events;
 
 create trigger game_events_started_configuration_lock
-before update on public.game_events
+before update or delete on public.game_events
 for each row
 execute function public.guard_started_game_event_configuration();
 
@@ -50,10 +57,15 @@ begin
     raise exception 'An event activity cannot be moved to another event';
   end if;
 
-  v_event_id := case when tg_op = 'DELETE' then old.event_id else new.event_id end;
+  if tg_op = 'DELETE' then
+    v_event_id := old.event_id;
+  else
+    v_event_id := new.event_id;
+  end if;
 
-  -- Lock the parent event so an activity write cannot race with the event
-  -- transitioning from upcoming to started.
+  -- During an event deletion, the parent row may already be invisible to
+  -- cascading child deletes. Permit that cascade; direct child deletion still
+  -- finds and locks its parent event.
   select starts_at
     into v_starts_at
     from public.game_events
@@ -61,6 +73,9 @@ begin
     for update;
 
   if not found then
+    if tg_op = 'DELETE' then
+      return old;
+    end if;
     raise exception 'Event not found';
   end if;
 
