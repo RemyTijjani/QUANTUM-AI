@@ -64,6 +64,8 @@ export interface AdminEvent {
   timezone: string;
   reward_zp: number;
   reward_zap: number;
+  min_participants: number | null;
+  max_participants: number | null;
   objectives: unknown[];
   requirements: unknown[];
   participation_rules: string;
@@ -82,6 +84,8 @@ export interface AdminEventInput {
   timezone: string;
   rewardZp: number;
   rewardZap: number;
+  minParticipants: number | null;
+  maxParticipants: number | null;
   objectives: unknown[];
   requirements: unknown[];
   participationRules: string;
@@ -281,6 +285,33 @@ export async function fetchDashboard(
   }
 
   return body;
+}
+
+export interface BulkApprovalResult {
+  success: true;
+  approvedCount: number;
+  failedCount: number;
+  results: Array<{ submissionId: string; success: boolean; rewardZp?: number; reason?: string }>;
+}
+
+export async function bulkApproveSubmissions(
+  creds: AdminCredentials,
+  submissionIds: string[],
+): Promise<BulkApprovalResult> {
+  const body = await callAdminApi(creds, {
+    action: 'bulk_approve_submissions',
+    submissionIds,
+  });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('The bulk approval response could not be verified.');
+  }
+  const result = body as Partial<BulkApprovalResult>;
+  if (result.success !== true || !Number.isInteger(result.approvedCount) ||
+      !Number.isInteger(result.failedCount) || !Array.isArray(result.results) ||
+      result.results.some((item) => !item || typeof item.submissionId !== 'string' || typeof item.success !== 'boolean')) {
+    throw new AdminApiError('The bulk approval response could not be verified. Refresh the queue and check submission statuses.');
+  }
+  return result as BulkApprovalResult;
 }
 
 export async function reviewSubmission(
