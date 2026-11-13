@@ -88,8 +88,8 @@ function AppShell() {
     return null;
   }
 
-  const referralCode = demoMode ? 'ZORD-DEMO' : auth.player.referralCode;
-  const playerId = demoMode ? 'preview-demo-session' : auth.player.playerId;
+  const referralCode = auth.status === 'authenticated' ? auth.player.referralCode : 'ZORD-DEMO';
+  const playerId = auth.status === 'authenticated' ? auth.player.playerId : 'preview-demo-session';
 
   return (
     <GameApp
