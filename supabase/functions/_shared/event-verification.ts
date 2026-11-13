@@ -85,7 +85,23 @@ export async function verifyConfiguredEventActivities(
   const activityEnd = new Date(Math.min(Date.now(), eventEnd)).toISOString();
 
   for (const activity of activities ?? []) {
-    if (activity.activity_type === "creator_submission_approved" && activity.mission_id) {
+    if (activity.activity_type === "creator_submission_approved") {
+      const previous = nextActivityProgress[activity.id];
+      const previousEvidence = previous && typeof previous === "object"
+        ? previous as Record<string, unknown>
+        : null;
+
+      // Re-check the source record on every refresh. A previously verified
+      // JSON marker must not survive deletion or invalidation of its submission
+      // or linked mission.
+      if (!activity.mission_id) {
+        if (previousEvidence) {
+          delete nextActivityProgress[activity.id];
+          changed = true;
+        }
+        continue;
+      }
+
       const { data: creatorMission, error: missionError } = await admin
         .from("mission_tasks")
         .select("id")
@@ -96,10 +112,13 @@ export async function verifyConfiguredEventActivities(
         console.error("Creator mission lookup failed:", missionError);
         throw new Error("Could not verify the linked Creator Ops mission.");
       }
-      if (!creatorMission) continue;
-
-      const previous = nextActivityProgress[activity.id];
-      if (previous && typeof previous === "object" && (previous as Record<string, unknown>).verified === true) continue;
+      if (!creatorMission) {
+        if (previousEvidence) {
+          delete nextActivityProgress[activity.id];
+          changed = true;
+        }
+        continue;
+      }
 
       const { data: submission, error } = await admin
         .from("creator_ops_submissions")
@@ -119,7 +138,13 @@ export async function verifyConfiguredEventActivities(
         console.error("Creator activity verification failed:", error);
         throw new Error("Could not verify creator submission activity.");
       }
-      if (!submission) continue;
+      if (!submission) {
+        if (previousEvidence) {
+          delete nextActivityProgress[activity.id];
+          changed = true;
+        }
+        continue;
+      }
       const approvedSubmission = submission as unknown as {
         id: string;
         mission_id: string;
@@ -127,16 +152,22 @@ export async function verifyConfiguredEventActivities(
         reviewed_at: string;
       };
 
-      nextActivityProgress[activity.id] = {
+      const evidence = {
         verified: true,
-        verifiedAt: new Date().toISOString(),
+        verifiedAt: previousEvidence?.submissionId === approvedSubmission.id &&
+          typeof previousEvidence.verifiedAt === "string"
+          ? previousEvidence.verifiedAt
+          : new Date().toISOString(),
         method: "admin_approved_creator_ops_submission",
         submissionId: approvedSubmission.id,
         missionId: approvedSubmission.mission_id,
         submittedAt: approvedSubmission.created_at,
         approvedAt: approvedSubmission.reviewed_at,
       };
-      changed = true;
+      if (JSON.stringify(previousEvidence) !== JSON.stringify(evidence)) {
+        nextActivityProgress[activity.id] = evidence;
+        changed = true;
+      }
       continue;
     }
 
