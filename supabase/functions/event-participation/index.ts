@@ -34,7 +34,7 @@ function eventLocalDateKey(value: string | number, timezone: string): string {
     day: "2-digit",
   }).formatToParts(new Date(value));
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return \`\${get("year")}-\${get("month")}-\${get("day")}\`;
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 function eventLocalDateKeys(start: string, end: string, timezone: string): string[] {
@@ -147,8 +147,8 @@ async function verifyConfiguredEventActivities(
       .select("id, fragment_id, created_at")
       .eq("player_id", playerId)
       .eq("action_type", "fragment_fixed")
-      .gte("created_at", event.starts_at)
-      .lte("created_at", actionWindowEnd)
+      .gte("created_at", activityStart)
+      .lte("created_at", activityEnd)
       .order("created_at", { ascending: true })
       .limit(5000);
     if (actionsError) {
