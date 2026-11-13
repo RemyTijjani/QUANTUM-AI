@@ -154,6 +154,20 @@ declare
   v_session public.fragment_unlock_sessions%rowtype;
   v_state public.player_fragment_gameplay_state%rowtype;
 begin
+  -- Use the same lock order as begin_fragment_unlock: fragment state, then session.
+  select * into v_session
+  from public.fragment_unlock_sessions
+  where id = p_session_id and player_id = p_player_id;
+
+  if not found then
+    return jsonb_build_object('success', false, 'reason', 'session_not_found');
+  end if;
+
+  select * into v_state
+  from public.player_fragment_gameplay_state
+  where player_id = p_player_id and fragment_id = v_session.fragment_id
+  for update;
+
   select * into v_session
   from public.fragment_unlock_sessions
   where id = p_session_id and player_id = p_player_id
@@ -183,11 +197,6 @@ begin
       'retryAfterSeconds', greatest(1, ceil(extract(epoch from (v_session.started_at + interval '3 seconds' - now())))::integer)
     );
   end if;
-
-  select * into v_state
-  from public.player_fragment_gameplay_state
-  where player_id = p_player_id and fragment_id = v_session.fragment_id
-  for update;
 
   if not found or v_state.status <> 'locked' then
     return jsonb_build_object('success', false, 'reason', 'fragment_not_locked');
