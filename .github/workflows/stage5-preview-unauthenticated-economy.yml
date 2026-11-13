@@ -1,6 +1,11 @@
 name: Stage 5 Preview Security - Player Economy Unauthenticated
 
 on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - ".github/workflows/stage5-preview-unauthenticated-economy.yml"
   workflow_dispatch:
 
 permissions:
