@@ -16,7 +16,7 @@ export function registrationEvidence(event: { objectives?: unknown; requirements
   };
 }
 
-export function eventLocalDateKey(value: string | number, timezone: string): string {
+export function eventLocalDateKey(value: string | number | Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     year: "numeric",
@@ -49,7 +49,7 @@ export async function verifyConfiguredEventActivities(
   admin: ReturnType<typeof createClient>,
   playerId: string,
   event: { id: string; starts_at: string | null; ends_at: string | null; timezone?: string | null },
-  registration: Record<string, unknown>,
+  registration: Record<string, unknown> & { id: string; status: string; registered_at?: string; completed_at?: string | null; zp_reward_approved_at?: string | null },
   preloadedActivities?: Array<{ id: string; mission_id: string | null; activity_type: string; is_required: boolean; config: unknown }>,
 ) {
   // A paid participation is an immutable audit record. Do not recalculate or
@@ -120,15 +120,21 @@ export async function verifyConfiguredEventActivities(
         throw new Error("Could not verify creator submission activity.");
       }
       if (!submission) continue;
+      const approvedSubmission = submission as unknown as {
+        id: string;
+        mission_id: string;
+        created_at: string;
+        reviewed_at: string;
+      };
 
       nextActivityProgress[activity.id] = {
         verified: true,
         verifiedAt: new Date().toISOString(),
         method: "admin_approved_creator_ops_submission",
-        submissionId: submission.id,
-        missionId: submission.mission_id,
-        submittedAt: submission.created_at,
-        approvedAt: submission.reviewed_at,
+        submissionId: approvedSubmission.id,
+        missionId: approvedSubmission.mission_id,
+        submittedAt: approvedSubmission.created_at,
+        approvedAt: approvedSubmission.reviewed_at,
       };
       changed = true;
       continue;
@@ -259,7 +265,7 @@ export async function verifyConfiguredEventActivities(
 
   const { data: updated, error: updateError } = await admin
     .from("game_event_participations")
-    .update(update)
+    .update(update as never)
     .eq("id", registration.id)
     .eq("player_id", playerId)
     .select("id, event_id, status, progress, registered_at, updated_at, completed_at, game_events(id, title, category, starts_at, ends_at, timezone, objectives, requirements)")
