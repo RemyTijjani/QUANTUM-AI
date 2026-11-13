@@ -384,9 +384,24 @@ Deno.serve(async (req: Request) => {
           !Number.isSafeInteger(activity.sortOrder) || (activity.sortOrder ?? -1) < 0) {
         return json({ error: "Invalid required flag or display order" }, 400);
       }
-      const config = activity.config ?? {};
+      let config = activity.config ?? {};
       if (!config || typeof config !== "object" || Array.isArray(config) || JSON.stringify(config).length > 10000) {
         return json({ error: "Activity configuration must be a JSON object under 10,000 characters" }, 400);
+      }
+      if (activity.activityType === "gameplay_verification") {
+        const target = config.targetCountPerDay;
+        const allowedFragments = ["top", "bottom", "left", "right"];
+        const fragments = config.fragmentIds === undefined ? allowedFragments : config.fragmentIds;
+        if (config.action !== "fragment_fixed" ||
+            !Number.isSafeInteger(target) || target < 1 || target > 4 ||
+            !Array.isArray(fragments) || fragments.length < 1 || fragments.length > 4 ||
+            fragments.some((id: unknown) => typeof id !== "string" || !allowedFragments.includes(id)) ||
+            new Set(fragments).size !== fragments.length) {
+          return json({ error: "Gameplay challenges need a daily target of 1–4 and at least one unique valid fragment" }, 400);
+        }
+        config = { action: "fragment_fixed", targetCountPerDay: target, fragmentIds: fragments };
+      } else {
+        config = {};
       }
       const { data: eventRow, error: eventError } = await db
         .from("game_events").select("id").eq("id", eventId).maybeSingle();
