@@ -302,11 +302,7 @@ function GameApp({
         {tab === 'events' && <EventsTab />}
 
         {tab === 'vault' && (
-          <VaultTab
-            state={state}
-            actions={actions}
-            notify={notify}
-          />
+          <VaultTab verifiedZpBalance={verifiedZpBalance} />
         )}
       </main>
 
