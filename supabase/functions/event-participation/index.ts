@@ -375,6 +375,13 @@ Deno.serve(async (req: Request) => {
             sort_order: activity.sort_order,
             mission: linkedMission,
             verification: isVerified ? "verified" : "awaiting_verification",
+            progress: evidence && typeof evidence === "object" ? {
+              currentDayCount: (evidence as Record<string, unknown>).currentDayCount ?? null,
+              targetCountPerDay: (evidence as Record<string, unknown>).targetCountPerDay ?? null,
+              completedDays: (evidence as Record<string, unknown>).completedDays ?? null,
+              totalDays: (evidence as Record<string, unknown>).totalDays ?? null,
+              dailyCounts: (evidence as Record<string, unknown>).dailyCounts ?? null,
+            } : null,
           });
           activitiesByEvent.set(activity.event_id, eventActivities);
         }
