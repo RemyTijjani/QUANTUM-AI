@@ -437,7 +437,7 @@ export function useGame(
       await fixTrustedFragment(id);
       await applyTrustedFragments();
     },
-  }), [playerId]);
+  }), []);
 
   useEffect(() => {
     if (isLoading || loadError) return;
