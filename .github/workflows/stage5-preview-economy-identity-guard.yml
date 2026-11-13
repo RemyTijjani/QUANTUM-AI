@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           response_file="$(mktemp)"
-          status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request GET "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/player-economy?player_id=00000000-0000-0000-0000-000000000000" --header "Authorization: Bearer stage5-invalid-test-token")
+          status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request GET "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/player-economy?player_id=00000000-0000-0000-0000-000000000000" --header "Authorization: Bearer stage5-invalid-test-token")"
           echo "HTTP status: $status"
           echo "Response:"
           cat "$response_file"
