@@ -26,9 +26,6 @@ import { AuthProvider, useAuth } from '@/hooks/useTelegramAuth';
 import { useMissions } from '@/hooks/useMissions';
 
 import type { MissionSpec } from '@/lib/game/config';
-import {
-} from '@/lib/game/config';
-
 import type { FragmentId } from '@/lib/game/config';
 
 import { formatZp } from '@/lib/format';
@@ -238,7 +235,6 @@ function GameApp({
         {tab === 'core' && (
           <CoreTab
             state={state}
-            actions={actions}
             notify={notify}
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
             onFixFragment={async (id) => {
