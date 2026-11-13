@@ -14,6 +14,7 @@ import type {
   FragmentId,
   MissionSpec,
 } from '@/lib/game/config';
+import { FRAGMENT_IDS } from '@/lib/game/config';
 
 import { fetchUnsyncedReferrals } from '@/lib/referral';
 import { supabase } from '@/lib/supabase';
@@ -400,7 +401,19 @@ export function useGame(
     const fragments = await fetchTrustedFragments();
     if (fragments.length === 0) return;
     setState((previous) => {
-      const next = { ...previous, fragments: { ...previous.fragments }, fragmentCooldowns: { ...previous.fragmentCooldowns } };
+      // Once trusted gameplay exists, treat its rows as the source of truth.
+      // Fragments without a server row must remain locked, not inherit stale
+      // fixed/unlocked values from the legacy client-saved game state.
+      const next: GameState = {
+        ...previous,
+        fragments: Object.fromEntries(
+          FRAGMENT_IDS.map((id) => [id, 'locked']),
+        ) as GameState['fragments'],
+        fragmentCooldowns: Object.fromEntries(
+          FRAGMENT_IDS.map((id) => [id, 0]),
+        ) as GameState['fragmentCooldowns'],
+        coreMiningUntil: 0,
+      };
       for (const fragment of fragments) {
         next.fragments[fragment.fragment_id] = fragment.status;
         next.fragmentCooldowns[fragment.fragment_id] = fragment.cooldown_until ? new Date(fragment.cooldown_until).getTime() : 0;
@@ -428,7 +441,17 @@ export function useGame(
     void fetchTrustedFragments().then((fragments) => {
       if (cancelled || fragments.length === 0) return;
       setState((previous) => {
-        const next = { ...previous, fragments: { ...previous.fragments }, fragmentCooldowns: { ...previous.fragmentCooldowns } };
+        // Trusted rows supersede legacy client-saved fragment statuses.
+        const next: GameState = {
+          ...previous,
+          fragments: Object.fromEntries(
+            FRAGMENT_IDS.map((id) => [id, 'locked']),
+          ) as GameState['fragments'],
+          fragmentCooldowns: Object.fromEntries(
+            FRAGMENT_IDS.map((id) => [id, 0]),
+          ) as GameState['fragmentCooldowns'],
+          coreMiningUntil: 0,
+        };
         for (const fragment of fragments) {
           next.fragments[fragment.fragment_id] = fragment.status;
           next.fragmentCooldowns[fragment.fragment_id] = fragment.cooldown_until ? new Date(fragment.cooldown_until).getTime() : 0;
