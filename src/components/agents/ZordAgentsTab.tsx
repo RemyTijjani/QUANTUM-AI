@@ -1,4 +1,4 @@
-import { Activity, Bot, Cpu, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { Activity, Bot, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { AGENTS, AGENT_IDS } from '@/lib/game/config';
 import type { AgentId } from '@/lib/game/config';
 import { activeAgents } from '@/lib/game/state';
