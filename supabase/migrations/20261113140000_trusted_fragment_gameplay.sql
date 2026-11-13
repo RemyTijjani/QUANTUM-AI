@@ -43,9 +43,9 @@ alter table public.player_fragment_gameplay_state enable row level security;
 alter table public.fragment_unlock_sessions enable row level security;
 alter table public.gameplay_action_events enable row level security;
 
-revoke all on public.player_fragment_gameplay_state from anon, authenticated;
-revoke all on public.fragment_unlock_sessions from anon, authenticated;
-revoke all on public.gameplay_action_events from anon, authenticated;
+revoke all on public.player_fragment_gameplay_state from public, anon, authenticated;
+revoke all on public.fragment_unlock_sessions from public, anon, authenticated;
+revoke all on public.gameplay_action_events from public, anon, authenticated;
 
 grant select, insert, update on public.player_fragment_gameplay_state to service_role;
 grant select, insert, update on public.fragment_unlock_sessions to service_role;
@@ -198,7 +198,7 @@ begin
     );
   end if;
 
-  if not found or v_state.status <> 'locked' then
+  if v_state.player_id is null or v_state.status <> 'locked' then
     return jsonb_build_object('success', false, 'reason', 'fragment_not_locked');
   end if;
 
