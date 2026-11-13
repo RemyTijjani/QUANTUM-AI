@@ -250,10 +250,10 @@ Deno.serve(async (req: Request) => {
           const progress = activityRegistration?.progress && typeof activityRegistration.progress === "object" && !Array.isArray(activityRegistration.progress)
             ? activityRegistration.progress as Record<string, unknown>
             : {};
-          const evidenceKey = activity.activity_type === "mission" && linkedMission?.kind === "creator"
-            ? "creator_submission_approved"
-            : activity.activity_type;
-          const evidence = progress[evidenceKey];
+          const activityProgress = progress.activities && typeof progress.activities === "object" && !Array.isArray(progress.activities)
+            ? progress.activities as Record<string, unknown>
+            : {};
+          const evidence = activityProgress[activity.id];
           const isVerified = !!evidence && typeof evidence === "object" && (evidence as Record<string, unknown>).verified === true;
           eventActivities.push({
             id: activity.id,
