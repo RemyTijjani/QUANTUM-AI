@@ -12,16 +12,12 @@ interface Props {
 }
 
 const TYPES: { value: AdminEventActivityType; label: string }[] = [
-  { value: 'mission', label: 'Complete a mission' },
   { value: 'creator_submission_approved', label: 'Approved Creator Ops submission' },
-  { value: 'referral_registration', label: 'Verified referral registration' },
-  { value: 'telegram_membership', label: 'Telegram membership check' },
   { value: 'gameplay_verification', label: 'Verified gameplay activity' },
-  { value: 'admin_review', label: 'Administrator review' },
 ];
 
 const emptyDraft = (eventId: string, sortOrder: number): AdminEventActivityInput => ({
-  eventId, missionId: null, activityType: 'mission', title: '', description: '',
+  eventId, missionId: null, activityType: 'creator_submission_approved', title: '', description: '',
   instructions: '', config: {}, isRequired: true, sortOrder,
 });
 
