@@ -780,6 +780,9 @@ Deno.serve(async (req: Request) => {
       if (startsAt && endsAt && startsAt >= endsAt) {
         return json({ error: "Event end must be after its start" }, 400);
       }
+      if (startsAt && endsAt && endsAt.getTime() - startsAt.getTime() > 365 * 24 * 60 * 60 * 1000) {
+        return json({ error: "Events cannot run longer than 365 days." }, 400);
+      }
       if (event.status === "published" && (!startsAt || !endsAt)) {
         return json({ error: "Add both start and end dates before publishing an event" }, 400);
       }
