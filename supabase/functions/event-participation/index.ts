@@ -157,9 +157,12 @@ Deno.serve(async (req: Request) => {
             progress: evidence && typeof evidence === "object" ? {
               currentDayCount: (evidence as Record<string, unknown>).currentDayCount ?? null,
               targetCountPerDay: (evidence as Record<string, unknown>).targetCountPerDay ?? null,
+              fixesPerFragmentPerDay: (evidence as Record<string, unknown>).fixesPerFragmentPerDay ?? null,
               completedDays: (evidence as Record<string, unknown>).completedDays ?? null,
               totalDays: (evidence as Record<string, unknown>).totalDays ?? null,
               dailyCounts: (evidence as Record<string, unknown>).dailyCounts ?? null,
+              currentDayFragmentCounts: (evidence as Record<string, unknown>).currentDayFragmentCounts ?? null,
+              dailyFragmentCounts: (evidence as Record<string, unknown>).dailyFragmentCounts ?? null,
             } : null,
           });
           activitiesByEvent.set(activity.event_id, eventActivities);
