@@ -32,6 +32,7 @@ interface AdminRequestBody {
     | "get_player_economy"
     | "list_event_participants"
     | "update_event_participant_status"
+    | "approve_event_participant_reward"
     | "list_event_activities"
     | "save_event_activity"
     | "delete_event_activity";
@@ -330,17 +331,26 @@ Deno.serve(async (req: Request) => {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId)) {
         return json({ error: "A valid event ID is required" }, 400);
       }
-      const { data, error } = await db
-        .from("game_event_participations")
-        .select("id, event_id, status, registered_at, updated_at, completed_at, players!inner(telegram_id, username, first_name, referral_code)")
-        .eq("event_id", eventId)
-        .order("registered_at", { ascending: false })
-        .limit(500);
-      if (error) {
-        console.error("Event participant lookup failed:", error);
+      const [{ data, error }, { data: eventRow, error: eventError }] = await Promise.all([
+        db
+          .from("game_event_participations")
+          .select("id, event_id, status, registered_at, updated_at, completed_at, zp_reward_approved_at, zp_reward_approved_by, zp_reward_amount, players!inner(telegram_id, username, first_name, referral_code)")
+          .eq("event_id", eventId)
+          .order("registered_at", { ascending: false })
+          .limit(500),
+        db.from("game_events").select("ends_at, reward_zp, reward_zap").eq("id", eventId).maybeSingle(),
+      ]);
+      if (error || eventError) {
+        console.error("Event participant lookup failed:", error ?? eventError);
         return json({ error: "Failed to load event participants" }, 500);
       }
-      return json({ participants: data ?? [], participantLimit: 500 });
+      const participants = (data ?? []).map((participant) => ({
+        ...participant,
+        event_ends_at: eventRow?.ends_at ?? null,
+        event_reward_zp: eventRow?.reward_zp ?? 0,
+        event_reward_zap: eventRow?.reward_zap ?? 0,
+      }));
+      return json({ participants, participantLimit: 500 });
     }
 
     // ADMIN EVENT ACTIVITY MANAGEMENT. Configuration only; it does not mark player progress or issue rewards.
@@ -480,6 +490,25 @@ Deno.serve(async (req: Request) => {
       }
       if (!data) return json({ error: "Event participant record not found" }, 404);
       return json({ success: true, participation: data, auditRecorded: true, rewardsIssued: false });
+    }
+
+    if (body.action === "approve_event_participant_reward") {
+      const participationId = typeof body.participationId === "string" ? body.participationId : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(participationId)) {
+        return json({ error: "A valid participation ID is required" }, 400);
+      }
+      const { data, error } = await db.rpc("admin_approve_event_participant_reward", {
+        p_participation_id: participationId,
+        p_admin_actor: ADMIN_USERNAME,
+      });
+      if (error) {
+        console.error("Event reward approval failed:", error);
+        return json({ error: error.message || "Event reward approval failed" }, 409);
+      }
+      if (!data || data.success !== true) {
+        return json({ error: "Event reward approval could not be completed" }, 409);
+      }
+      return json(data);
     }
 
     // READ-ONLY PLAYER ECONOMY AND LEDGER DETAIL.
