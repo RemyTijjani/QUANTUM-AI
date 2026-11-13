@@ -52,6 +52,9 @@ export async function verifyConfiguredEventActivities(
   registration: Record<string, unknown>,
   preloadedActivities?: Array<{ id: string; mission_id: string | null; activity_type: string; is_required: boolean; config: unknown }>,
 ) {
+  // A paid participation is an immutable audit record. Do not recalculate or
+  // attempt to update its evidence after the reward has been issued.
+  if (typeof registration.zp_reward_approved_at === "string") return registration;
   if (!event.starts_at || !event.ends_at) return registration;
   const timezone = event.timezone || "UTC";
 
