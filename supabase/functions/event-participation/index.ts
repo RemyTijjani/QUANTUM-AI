@@ -61,6 +61,7 @@ Deno.serve(async (req: Request) => {
 
       const verifiedRegistrations = await mapInBatches(registrations ?? [], 8, async (registration) => {
         const event = registration.game_events;
+        // Paid participation rows are immutable; do not write registration evidence after payout.
         if (!event || registration.status === "withdrawn" || registration.zp_reward_approved_at) return registration;
 
         let current = registration as unknown as Record<string, unknown>;
