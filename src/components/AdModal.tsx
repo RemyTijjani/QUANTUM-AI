@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Radio } from 'lucide-react';
 import Modal from '@/components/Modal';
-import { AD_MAX_SECONDS, AD_MIN_SECONDS, FRAGMENT_NAMES, FRAGMENT_UNLOCK_REWARD } from '@/lib/game/config';
+import { AD_MAX_SECONDS, AD_MIN_SECONDS, FRAGMENT_NAMES } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
 
 const TICK_MS = 100;
@@ -60,11 +60,11 @@ export default function AdModal({ fragmentId, onComplete, onCancel }: AdModalPro
 
         {done ? (
           <button type="button" onClick={onComplete} className="btn-primary w-full">
-            Claim +{FRAGMENT_UNLOCK_REWARD} ZP
+            Complete unlock
           </button>
         ) : (
           <button type="button" onClick={onCancel} className="btn-ghost w-full">
-            Abort feed (no reward)
+            Cancel unlock session
           </button>
         )}
       </div>
