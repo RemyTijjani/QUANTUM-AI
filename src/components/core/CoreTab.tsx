@@ -15,9 +15,10 @@ interface CoreTabProps {
   actions: GameActions;
   notify: Notify;
   onWatchAd: (id: FragmentId) => void;
+  onFixFragment: (id: FragmentId) => Promise<void>;
 }
 
-export default function CoreTab({ state, actions, notify, onWatchAd }: CoreTabProps) {
+export default function CoreTab({ state, actions, notify, onWatchAd, onFixFragment }: CoreTabProps) {
   const now = Date.now();
   const tier = tierInfo(state.lifetimeZp);
   const rate = passiveRate(state, now);
@@ -33,8 +34,11 @@ export default function CoreTab({ state, actions, notify, onWatchAd }: CoreTabPr
         notify('Fragment cooldown is still active', 'info');
         return;
       }
-      actions.fixFragment(id);
-      notify(`${FRAGMENT_NAMES[id]} fixed into the circuit. Core mining started`);
+      void onFixFragment(id).then(() => {
+        notify(`${FRAGMENT_NAMES[id]} fixed into the circuit. Core mining started`);
+      }).catch((error) => {
+        notify(error instanceof Error ? error.message : 'Could not verify this fragment action', 'error');
+      });
       return;
     }
     notify(`${FRAGMENT_NAMES[id]} is already online`, 'info');
