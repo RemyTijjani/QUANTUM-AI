@@ -814,7 +814,7 @@ Deno.serve(async (req: Request) => {
       if (event.id) {
         const { data: existingEvent, error: existingEventError } = await db
           .from("game_events")
-          .select("starts_at, ends_at, timezone, reward_zp, reward_zap")
+          .select("starts_at, ends_at, timezone, reward_zp, reward_zap, min_participants, max_participants")
           .eq("id", event.id)
           .maybeSingle();
         if (existingEventError || !existingEvent) return json({ error: "Event not found" }, 404);
@@ -826,8 +826,11 @@ Deno.serve(async (req: Request) => {
           const rewardChanged =
             Number(existingEvent.reward_zp) !== event.rewardZp ||
             Number(existingEvent.reward_zap ?? 0) !== rewardZap;
-          if (scheduleChanged || rewardChanged) {
-            return json({ error: "Event schedule and reward amounts are locked once the event starts." }, 409);
+          const capacityChanged =
+            (existingEvent.min_participants ?? null) !== minParticipants ||
+            (existingEvent.max_participants ?? null) !== maxParticipants;
+          if (scheduleChanged || rewardChanged || capacityChanged) {
+            return json({ error: "Event schedule, reward amounts, and participant limits are locked once the event starts." }, 409);
           }
         }
       }
