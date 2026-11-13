@@ -1,5 +1,6 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { verifyConfiguredEventActivities } from "../_shared/event-verification.ts";
 
 // admin-api: privileged admin actions using service role key,
 // credentials verified server-side.
@@ -334,23 +335,44 @@ Deno.serve(async (req: Request) => {
       const [{ data, error }, { data: eventRow, error: eventError }] = await Promise.all([
         db
           .from("game_event_participations")
-          .select("id, event_id, status, registered_at, updated_at, completed_at, zp_reward_approved_at, zp_reward_approved_by, zp_reward_amount, players!inner(telegram_id, username, first_name, referral_code)")
+          .select("id, event_id, player_id, status, progress, registered_at, updated_at, completed_at, zp_reward_approved_at, zp_reward_approved_by, zp_reward_amount, players!inner(telegram_id, username, first_name, referral_code)")
           .eq("event_id", eventId)
           .order("registered_at", { ascending: false })
           .limit(500),
-        db.from("game_events").select("ends_at, reward_zp, reward_zap").eq("id", eventId).maybeSingle(),
+        db.from("game_events").select("id, starts_at, ends_at, timezone, objectives, requirements, reward_zp, reward_zap").eq("id", eventId).maybeSingle(),
       ]);
       if (error || eventError) {
         console.error("Event participant lookup failed:", error ?? eventError);
         return json({ error: "Failed to load event participants" }, 500);
       }
-      const participants = (data ?? []).map((participant) => ({
+      // Refresh trusted evidence from server records whenever an administrator opens
+      // the participant list. This removes dependence on the player reopening the Mini App.
+      const refreshedParticipants = [];
+      for (const participant of data ?? []) {
+        if (participant.status === "withdrawn" || !eventRow?.starts_at || !eventRow?.ends_at) {
+          refreshedParticipants.push(participant);
+          continue;
+        }
+        try {
+          const refreshed = await verifyConfiguredEventActivities(
+            db,
+            participant.player_id,
+            eventRow,
+            participant,
+          );
+          refreshedParticipants.push({ ...participant, ...refreshed });
+        } catch (verificationError) {
+          console.error("Admin-triggered event verification failed:", verificationError);
+          return json({ error: "Could not refresh verified event progress. Participant data was not marked complete." }, 500);
+        }
+      }
+      const participants = refreshedParticipants.map((participant) => ({
         ...participant,
         event_ends_at: eventRow?.ends_at ?? null,
         event_reward_zp: eventRow?.reward_zp ?? 0,
         event_reward_zap: eventRow?.reward_zap ?? 0,
       }));
-      return json({ participants, participantLimit: 500 });
+      return json({ participants, participantLimit: 500, verificationRefreshed: true });
     }
 
     // ADMIN EVENT ACTIVITY MANAGEMENT. Configuration only; it does not mark player progress or issue rewards.
