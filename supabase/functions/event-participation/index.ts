@@ -10,7 +10,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-import { verifyConfiguredEventActivities } from "../_shared/event-verification.ts";
+import { registrationEvidence, verifyConfiguredEventActivities } from "../_shared/event-verification.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
