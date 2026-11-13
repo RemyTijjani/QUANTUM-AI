@@ -265,6 +265,7 @@ function GameApp({
             state={state}
             notify={notify}
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
+            verifiedZpBalance={verifiedZpBalance}
             onFixFragment={async (id) => {
               try {
                 await trustedGameplay.fixFragment(id);
@@ -279,7 +280,7 @@ function GameApp({
           />
         )}
 
-        {tab === 'agents' && <ZordAgentsTab />}
+        {tab === 'agents' && <ZordAgentsTab state={state} />}
 
         {tab === 'network' && (
           <NetworkTab
