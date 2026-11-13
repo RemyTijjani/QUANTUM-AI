@@ -21,7 +21,12 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function parseComment(msg: any): string | null {
+interface TonIncomingMessage {
+  msg_data?: Record<string, unknown> | null;
+  message?: unknown;
+}
+
+function parseComment(msg: TonIncomingMessage): string | null {
   try {
     const data = msg?.msg_data;
     if (data?.["@type"] === "msg.dataText" && typeof data.text === "string") {
