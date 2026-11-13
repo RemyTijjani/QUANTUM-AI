@@ -293,7 +293,6 @@ function GameApp({
         {tab === 'missions' && (
           <MissionsTab
             state={state}
-            actions={actions}
             notify={notify}
             missions={missions}
             onOpenAdmin={() => setOverlay('admin')}
