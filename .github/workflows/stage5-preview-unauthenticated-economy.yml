@@ -1,0 +1,28 @@
+name: Stage 5 Preview Security - Player Economy Unauthenticated
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unauthenticated-player-economy:
+    name: Reject unauthenticated economy reads (Preview)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Preview player-economy without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request GET "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/player-economy")"
+          echo "HTTP status: $status"
+          echo "Response:"
+          cat "$response_file"
+          rm -f "$response_file"
+          if [ "$status" != "401" ]; then
+            echo "::error::Expected HTTP 401 for an unauthenticated request; received $status"
+            exit 1
+          fi
+          echo "PASS: Preview player-economy rejected the unauthenticated request."
