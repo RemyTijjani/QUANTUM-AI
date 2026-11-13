@@ -43,6 +43,7 @@ type Overlay = 'profile' | 'leaderboard' | 'admin' | null;
 
 function AppShell() {
   const { auth } = useAuth();
+  const [demoMode, setDemoMode] = useState(false);
   const missions = useMissions();
 
   useEffect(() => {
@@ -58,7 +59,7 @@ function AppShell() {
     );
   }
 
-  if (auth.status === 'error') {
+  if (auth.status === 'error' && !demoMode) {
     return (
       <div className="relative mx-auto flex h-dvh max-w-md flex-col items-center justify-center gap-4 bg-obsidian px-6 text-center">
         <div className="crt-overlay" aria-hidden />
@@ -70,25 +71,33 @@ function AppShell() {
         </p>
 
         <p className="font-mono text-[10px] text-neon-600">
-          Open this app from Telegram to authenticate.
+          Open this app from Telegram to authenticate, or use the isolated Preview demo.
         </p>
+        <button
+          type="button"
+          onClick={() => setDemoMode(true)}
+          className="mt-2 rounded-lg border border-cyan-400/50 bg-cyan-400/10 px-6 py-3 font-mono text-xs uppercase tracking-wider text-cyan-200"
+        >
+          Enter Preview Demo
+        </button>
       </div>
     );
   }
 
-  if (auth.status !== 'authenticated') {
+  if (auth.status !== 'authenticated' && !demoMode) {
     return null;
   }
 
-  const referralCode = auth.player.referralCode;
-  const playerId = auth.player.playerId;
+  const referralCode = demoMode ? 'ZORD-DEMO' : auth.player.referralCode;
+  const playerId = demoMode ? 'preview-demo-session' : auth.player.playerId;
 
   return (
     <GameApp
       key={playerId}
       playerId={playerId}
       referralCode={referralCode}
-      missions={missions}
+      missions={demoMode ? [] : missions}
+      isDemo={demoMode}
     />
   );
 }
@@ -118,10 +127,12 @@ function GameApp({
   playerId,
   referralCode,
   missions,
+  isDemo = false,
 }: {
   playerId: string;
   referralCode: string | null;
   missions: MissionSpec[];
+  isDemo?: boolean;
 }) {
   const {
     state,
@@ -130,7 +141,7 @@ function GameApp({
     loadError,
     syncError,
     retryLoad,
-  } = useGame(referralCode, playerId);
+  } = useGame(referralCode, playerId, isDemo);
 
   const { auth } = useAuth();
 
@@ -212,6 +223,12 @@ function GameApp({
     <div className="relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden bg-obsidian">
       <div className="crt-overlay" aria-hidden />
 
+      {isDemo && (
+        <div className="mx-4 mt-2 border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">
+          Preview Demo — sample data only · no cloud saves or rewards
+        </div>
+      )}
+
       <Header
         zp={state.zp}
         onOpenProfile={() => setOverlay('profile')}
@@ -244,7 +261,26 @@ function GameApp({
           />
         )}
 
-        {tab === 'missions' && (
+        {tab === 'missions' && isDemo && (
+          <section className="panel space-y-3 border border-cyan-400/30 bg-black/40 p-4">
+            <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-cyan-200">Demo missions</h2>
+            <p className="font-mono text-[10px] leading-relaxed text-neon-500">These are examples for interface review. Mission submissions, verification and rewards are disabled in Demo Mode.</p>
+            {[
+              ['Daily Uplink', 'Check in with ZORD OS for today.', '100 ZP'],
+              ['Agent Uptime', 'Keep a ZORD agent running.', '200 ZP'],
+              ['Follow the Signal Feed', 'Catch every fragment drop as it breaks.', '250 ZP'],
+              ['Creator Content Drop', 'Submit a video featuring ZORD.', '500 ZP'],
+            ].map(([title, description, reward]) => (
+              <article key={title} className="border border-neon/20 bg-black/30 p-3">
+                <p className="font-mono text-[11px] font-bold text-neon-300">{title}</p>
+                <p className="mt-1 font-mono text-[10px] text-neon-600">{description}</p>
+                <p className="mt-2 font-mono text-[10px] text-cyan-300">{reward} · preview only</p>
+              </article>
+            ))}
+          </section>
+        )}
+
+        {tab === 'missions' && !isDemo && (
           <MissionsTab
             state={state}
             actions={actions}
@@ -254,7 +290,25 @@ function GameApp({
           />
         )}
 
-        {tab === 'events' && <EventsTab />}
+        {tab === 'events' && (isDemo ? (
+          <section className="panel space-y-3 border border-cyan-400/30 bg-black/40 p-4">
+            <h2 className="font-display text-lg font-bold uppercase tracking-wider text-cyan-200">Events Hub · Demo</h2>
+            <p className="font-mono text-[10px] leading-relaxed text-neon-500">Sample event cards are shown for layout review. Joining, participation tracking and reward claims are disabled.</p>
+            {[
+              ['ZORD Daily Uplink', 'Daily', 'Complete the daily check-in objective.', '100 ZP configured'],
+              ['Community Signal Challenge', 'Weekly', 'Take part in the community challenge.', '500 ZP configured'],
+              ['Creator Content Sprint', 'Special', 'Publish and submit ZORD-related content.', '500 ZP + 10 ZAP configured'],
+            ].map(([title, category, description, reward]) => (
+              <article key={title} className="border border-neon/20 bg-black/30 p-3">
+                <p className="font-mono text-[9px] uppercase tracking-widest text-neon-600">{category} event · sample</p>
+                <h3 className="mt-1 font-mono text-[11px] font-bold text-neon-300">{title}</h3>
+                <p className="mt-1 font-mono text-[10px] text-neon-600">{description}</p>
+                <p className="mt-2 font-mono text-[10px] text-cyan-300">{reward}</p>
+                <span className="mt-2 inline-block border border-cyan-400/30 px-2 py-1 font-mono text-[9px] uppercase text-cyan-200">Demo only · no registration</span>
+              </article>
+            ))}
+          </section>
+        ) : <EventsTab />)}
 
         {tab === 'vault' && (
           <VaultTab
