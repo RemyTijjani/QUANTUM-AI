@@ -106,9 +106,10 @@ async function verifyConfiguredEventActivities(
         .eq("player_id", playerId)
         .eq("mission_id", activity.mission_id)
         .eq("status", "approved")
-        .gte("created_at", event.starts_at)
-        .lte("created_at", event.ends_at)
-        .order("created_at", { ascending: true })
+        .not("reviewed_at", "is", null)
+        .gte("reviewed_at", event.starts_at)
+        .lte("reviewed_at", event.ends_at)
+        .order("reviewed_at", { ascending: true })
         .limit(1)
         .maybeSingle();
 
