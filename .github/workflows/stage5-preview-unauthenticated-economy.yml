@@ -1,4 +1,4 @@
-name: Stage 5 Preview Security - Player Economy Unauthenticated
+name: Stage 5 Preview Security - Player Economy and Admin Authentication
 
 on:
   push:
@@ -31,3 +31,29 @@ jobs:
             exit 1
           fi
           echo "PASS: Preview player-economy rejected the unauthenticated request."
+
+  invalid-admin-credentials:
+    name: Reject invalid admin credentials (Preview)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Preview admin-api with invalid credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request POST "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/admin-api" --header "Content-Type: application/json" --data '{"action":"fetch_dashboard","adminUsername":"stage5-invalid-user","adminPassword":"stage5-invalid-password"}')"
+          echo "HTTP status: $status"
+          echo "Response:"
+          cat "$response_file"
+          if [ "$status" != "401" ]; then
+            rm -f "$response_file"
+            echo "::error::Expected HTTP 401 for invalid admin credentials; received $status"
+            exit 1
+          fi
+          if ! grep -q '"error":"Unauthorized"' "$response_file"; then
+            rm -f "$response_file"
+            echo "::error::Expected the admin-api Unauthorized response."
+            exit 1
+          fi
+          rm -f "$response_file"
+          echo "PASS: Preview admin-api rejected invalid admin credentials."
