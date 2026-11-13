@@ -73,6 +73,13 @@ function EventCard({ event, now, registration, registering, expanded, onRegister
           </span>
         )}
       </div>
+      {(event.min_participants !== null || event.max_participants !== null) && (
+        <p className="font-mono text-[10px] text-cyan-500">
+          {event.min_participants !== null ? `Minimum target: ${event.min_participants}` : 'No minimum target'}
+          {' · '}
+          {event.max_participants !== null ? `Maximum: ${event.max_participants} participants` : 'No participant cap'}
+        </p>
+      )}
 
       {event.objectives.length > 0 && (
         <div>
