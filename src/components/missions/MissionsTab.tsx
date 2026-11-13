@@ -1,37 +1,28 @@
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock } from 'lucide-react';
 import { AD_QUOTA_TARGET } from '@/lib/game/config';
 import type { MissionSpec } from '@/lib/game/config';
 import { adsWatchedToday, missionStatus } from '@/lib/game/state';
 import type { GameState } from '@/lib/game/state';
 import { formatClock, formatZp, msUntilNextDay } from '@/lib/format';
-import type { GameActions } from '@/hooks/useGame';
 import type { Notify } from '@/hooks/useToast';
 import { supabase } from '@/lib/supabase';
 import type { CreatorOpsSubmission } from '@/lib/supabase';
 
-const VERIFY_MS = 2000;
-
 interface MissionsTabProps {
   state: GameState;
-  actions: GameActions;
   notify: Notify;
   missions: MissionSpec[];
   onOpenAdmin: () => void;
 }
 
-export default function MissionsTab({ state, actions, notify, missions, onOpenAdmin }: MissionsTabProps) {
+export default function MissionsTab({ state, notify, missions, onOpenAdmin }: MissionsTabProps) {
   const now = Date.now();
 
   const daily = missions.filter((m) => m.kind === 'daily');
   const social = missions.filter((m) => m.kind === 'social');
   const creator = missions.filter((m) => m.kind === 'creator');
-
-  const claim = (mission: MissionSpec) => {
-    actions.claimMission(mission);
-    notify(`${mission.title} complete. +${formatZp(mission.reward)} ZP`);
-  };
 
   return (
     <div className="space-y-6 pb-2">
@@ -63,7 +54,6 @@ export default function MissionsTab({ state, actions, notify, missions, onOpenAd
                 ? `${Math.min(adsWatchedToday(state, now), AD_QUOTA_TARGET)} / ${AD_QUOTA_TARGET} feeds`
                 : undefined
             }
-            onClaim={() => claim(mission)}
           />
         ))}
       </section>
@@ -78,10 +68,18 @@ export default function MissionsTab({ state, actions, notify, missions, onOpenAd
             key={mission.id}
             mission={mission}
             status={missionStatus(state, mission, now)}
-            onClaim={() => claim(mission)}
             verifiable
           />
         ))}
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 px-1"><Clock size={14} className="text-cyan-300" /><p className="label">Special Operations</p></div>
+        <div className="panel border border-cyan-500/20 bg-cyan-500/5 p-4">
+          <h3 className="font-display text-xs font-bold uppercase text-cyan-300">Expeditions & intelligence briefings</h3>
+          <p className="mt-2 font-mono text-[10px] leading-relaxed text-neon-500">Special missions, expeditions and intelligence briefings will appear here when published by the operations team. No placeholder mission or reward is being counted.</p>
+          <p className="mt-2 font-mono text-[9px] uppercase tracking-wider text-neon-700">Awaiting published operations</p>
+        </div>
       </section>
 
       <section className="space-y-3">
@@ -116,97 +114,28 @@ interface MissionCardProps {
   status: 'claimed' | 'ready' | 'locked';
   progressLabel?: string;
   verifiable?: boolean;
-  onClaim: () => void;
 }
 
-function MissionCard({ mission, status, progressLabel, verifiable, onClaim }: MissionCardProps) {
-  const [verifying, setVerifying] = useState(false);
-  const [started, setStarted] = useState(false);
-  const onClaimRef = useRef(onClaim);
-
-  useEffect(() => {
-    onClaimRef.current = onClaim;
-  });
-
-  useEffect(() => {
-    if (!verifying) return;
-    const id = window.setTimeout(() => {
-      setVerifying(false);
-      onClaimRef.current();
-    }, VERIFY_MS);
-    return () => window.clearTimeout(id);
-  }, [verifying]);
-
+function MissionCard({ mission, status, progressLabel, verifiable }: MissionCardProps) {
   const Icon = mission.kind === 'daily' ? CalendarCheck : Megaphone;
-  const claimed = status === 'claimed';
-
-  const handleStart = () => {
-    if (mission.actionUrl) {
-      window.open(mission.actionUrl, '_blank', 'noopener');
-    }
-    setStarted(true);
-  };
-
-  const buttonLabel = claimed
-    ? 'Completed'
-    : started && verifiable
-      ? verifying ? 'Verifying' : 'Verify'
-      : !started && mission.actionUrl
-        ? 'Start Mission'
-        : status === 'ready'
-          ? 'Claim ZP'
-          : 'Locked';
-
-  const buttonAction = () => {
-    if (claimed) return;
-    if (!started && mission.actionUrl) {
-      handleStart();
-      return;
-    }
-    if (verifiable) {
-      setVerifying(true);
-      return;
-    }
-    onClaim();
-  };
-
-  const buttonDisabled = claimed || (status === 'locked' && !mission.actionUrl) || (verifying && !started);
+  const legacyClaimed = status === 'claimed';
 
   return (
-    <div className={`panel flex items-center gap-4 p-4 transition duration-300 ${claimed ? 'opacity-60' : ''}`}>
-      <div
-        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border ${
-          claimed ? 'border-neon bg-neon/20 text-neon-300' : 'border-neon/30 text-neon-400'
-        }`}
-      >
-        {claimed ? <Check size={20} /> : <Icon size={20} />}
+    <div className="panel flex items-center gap-4 p-4">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neon/30 text-neon-400">
+        {legacyClaimed ? <Check size={20} /> : <Icon size={20} />}
       </div>
-
       <div className="min-w-0 flex-1">
         <h3 className="font-display text-xs font-bold uppercase tracking-wide text-neon-300">{mission.title}</h3>
         <p className="mt-1 font-mono text-[11px] leading-relaxed text-neon-500">{mission.description}</p>
-        <div className="mt-2 flex items-center gap-3 font-mono text-[11px] tabular-nums">
-          <span className="text-neon-400">+{formatZp(mission.reward)} ZP</span>
+        <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[11px] tabular-nums">
+          <span className="text-neon-400">Potential reward: {formatZp(mission.reward)} ZP</span>
           {progressLabel && <span className="text-cyan-300">{progressLabel}</span>}
         </div>
+        {mission.actionUrl && <a href={mission.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-cyan-300 underline">Open mission <ExternalLink size={10} /></a>}
+        <p className="mt-2 font-mono text-[9px] text-amber-300">{verifiable ? 'External activity verification is not connected for this mission yet.' : 'Secure mission reward claims are pending backend integration.'}</p>
       </div>
-
-      {claimed ? (
-        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-neon-500">
-          <Check size={14} className="inline" /> Completed
-        </span>
-      ) : (
-        <button
-          type="button"
-          onClick={buttonAction}
-          disabled={buttonDisabled}
-          className={`shrink-0 px-3 py-2 transition duration-200 ${
-            started && verifiable ? 'btn-ghost' : 'btn-primary'
-          }`}
-        >
-          {buttonLabel}
-        </button>
-      )}
+      <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-neon-600">{legacyClaimed ? 'Legacy record' : status === 'ready' ? 'Ready to verify' : 'In progress'}</span>
     </div>
   );
 }
