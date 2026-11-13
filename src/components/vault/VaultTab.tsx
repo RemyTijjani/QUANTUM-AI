@@ -1,122 +1,46 @@
-import { Link2, Link2Off, Landmark, Coins, Cpu } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { TON_FAUCET_AMOUNT, VAULT_ADDRESS } from '@/lib/game/config';
-import type { GameState } from '@/lib/game/state';
-import { formatZp, formatTon, truncateAddress } from '@/lib/format';
-import type { GameActions } from '@/hooks/useGame';
-import type { Notify } from '@/hooks/useToast';
+import { ArrowLeftRight, Coins, History, Image, Landmark, Wallet } from 'lucide-react';
+import { formatZp } from '@/lib/format';
 
-interface VaultTabProps {
-  state: GameState;
-  actions: GameActions;
-  notify: Notify;
-}
-
-export default function VaultTab({ state, actions, notify }: VaultTabProps) {
-  const { connected, faucetClaimed, tonBalance } = state.wallet;
-
-  const toggleConnection = () => {
-    if (connected) {
-      actions.disconnectWallet();
-      notify('Vault unlinked. Rentals are paused until you reconnect', 'info');
-      return;
-    }
-    const isFirstLink = !faucetClaimed;
-    actions.connectWallet();
-    notify(
-      isFirstLink
-        ? `Vault linked. Testnet faucet credited ${TON_FAUCET_AMOUNT} TON`
-        : 'Vault linked to ZORD OS',
-    );
-  };
-
+export default function VaultTab({ verifiedZpBalance }: { verifiedZpBalance: number | null }) {
   return (
-    <div className="space-y-6 pb-2">
-      <section className="panel space-y-5 p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="label">TON operative vault</p>
-            <h2 className="title mt-1">Wallet link</h2>
-          </div>
-          <span
-            className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider ${
-              connected ? 'border-neon/60 bg-neon/10 text-neon-300' : 'border-neon/20 text-neon-600'
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-neon shadow-glow' : 'bg-neon-700'}`} />
-            {connected ? 'Connected' : 'Disconnected'}
-          </span>
-        </div>
+    <div className="space-y-5 pb-3">
+      <header className="panel space-y-2 border border-neon/30 bg-neon/5 p-4">
+        <div className="flex items-center gap-2 text-neon-400"><Wallet size={18} /><p className="label">ZORD asset vault</p></div>
+        <h1 className="title">Wallet & assets</h1>
+        <p className="font-mono text-[10px] leading-relaxed text-neon-500">Wallet connection, ZP/ZAP operations, transaction records and future collectibles will be managed here.</p>
+      </header>
 
-        <div className="rounded-lg border border-neon/20 bg-black/50 px-4 py-3">
-          <p className="label">Linked vault address</p>
-          <p className="mt-1 font-mono text-sm tabular-nums text-neon-300">
-            {connected ? truncateAddress(VAULT_ADDRESS) : 'Not linked'}
-          </p>
+      <section className="panel space-y-3 p-4">
+        <div className="flex items-center gap-2"><Landmark size={16} className="text-neon-400" /><p className="label">Wallet connection</p></div>
+        <div className="flex items-center justify-between border border-amber-500/25 bg-amber-500/5 p-3">
+          <div><p className="font-display text-xs text-amber-200">TON Connect</p><p className="mt-1 font-mono text-[9px] text-amber-300">Not connected</p></div>
+          <span className="border border-amber-500/30 px-2 py-1 font-mono text-[9px] uppercase text-amber-300">Integration pending</span>
         </div>
-
-        <button
-          type="button"
-          onClick={toggleConnection}
-          className={connected ? 'btn-ghost w-full' : 'btn-primary w-full'}
-        >
-          {connected ? <Link2Off size={16} /> : <Link2 size={16} />}
-          {connected ? 'Disconnect vault' : 'Connect vault'}
-        </button>
+        <p className="font-mono text-[9px] leading-relaxed text-neon-600">The previous faucet and wallet-link controls were simulations. They have been removed from the active wallet flow; no real funds were moved.</p>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <BalanceCard
-          icon={Coins}
-          label="TON balance"
-          value={formatTon(tonBalance)}
-          unit="TON"
-          tone="amber"
-        />
-        <BalanceCard
-          icon={Cpu}
-          label="ZP vault balance"
-          value={formatZp(state.zp)}
-          unit="ZP"
-          tone="neon"
-        />
+      <section className="grid grid-cols-2 gap-3">
+        <div className="panel p-4"><div className="flex items-center gap-2 text-neon-500"><Coins size={14} /><p className="label">Verified ZP</p></div><p className="mt-3 font-display text-xl text-neon-300">{verifiedZpBalance === null ? 'Unavailable' : formatZp(verifiedZpBalance)}</p></div>
+        <div className="panel p-4"><div className="flex items-center gap-2 text-cyan-400"><ArrowLeftRight size={14} /><p className="label">ZAP balance</p></div><p className="mt-3 font-display text-xl text-cyan-300">Not enabled</p></div>
       </section>
 
-      <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-600">
-        <Landmark size={12} className="mr-1 inline" />
-        Simulated TON Connect session. No real funds move in this build.
-      </p>
-    </div>
-  );
-}
+      <section className="panel space-y-2 p-4">
+        <h2 className="title">Conversion & transfers</h2>
+        <div className="flex justify-between gap-2 font-mono text-[10px] text-neon-400"><span>1,000 ZP</span><span>1 ZAP</span></div>
+        <div className="flex justify-between gap-2 font-mono text-[10px] text-neon-400"><span>Minimum ZAP transfer</span><span>100 ZAP</span></div>
+        <p className="font-mono text-[9px] leading-relaxed text-amber-300">Conversion and transfers are not active. ZAP is not currently held in the verified economy ledger.</p>
+      </section>
 
-const TONE_CLASS = {
-  amber: 'border-amber-400/35 text-amber-300',
-  neon: 'border-neon/35 text-neon-300',
-} as const;
+      <section className="panel space-y-2 p-4">
+        <div className="flex items-center gap-2"><History size={15} className="text-neon-400" /><h2 className="title">Transaction history</h2></div>
+        <p className="font-mono text-[10px] text-neon-600">Verified transaction history will appear here when the wallet ledger is connected.</p>
+        <div className="border border-neon/15 px-3 py-4 text-center font-mono text-[9px] uppercase tracking-wider text-neon-700">No wallet transactions loaded</div>
+      </section>
 
-function BalanceCard({
-  icon: Icon,
-  label,
-  value,
-  unit,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  unit: string;
-  tone: keyof typeof TONE_CLASS;
-}) {
-  return (
-    <div className={`panel p-5 ${TONE_CLASS[tone]}`}>
-      <div className="flex items-center gap-2 text-neon-500">
-        <Icon size={14} />
-        <p className="label">{label}</p>
-      </div>
-      <p className="mt-3 font-display text-2xl font-bold tabular-nums">
-        {value} <span className="font-mono text-xs text-neon-500">{unit}</span>
-      </p>
+      <section className="panel space-y-2 p-4">
+        <div className="flex items-center gap-2"><Image size={15} className="text-neon-400" /><h2 className="title">Collectibles & NFTs</h2></div>
+        <p className="font-mono text-[10px] text-neon-600">Collectibles and early-adopter NFT features are planned. No NFT reward or ownership is being represented as active.</p>
+      </section>
     </div>
   );
 }
