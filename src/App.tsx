@@ -207,8 +207,12 @@ function GameApp({
 
   const startFragmentUnlock = async (fragmentId: FragmentId) => {
     try {
-      const sessionId = await trustedGameplay.beginUnlock(fragmentId);
-      setAdSessionId(sessionId);
+      const result = await trustedGameplay.beginUnlock(fragmentId);
+      if (result.alreadyUnlocked || !result.sessionId) {
+        notify('This fragment is already unlocked and ready to fix.', 'info');
+        return;
+      }
+      setAdSessionId(result.sessionId);
       setAdFragment(fragmentId);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not start fragment unlock', 'error');
