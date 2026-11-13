@@ -21,6 +21,7 @@ const TASK_PLATFORMS = ["tiktok", "youtube"];
 interface AdminRequestBody {
   action:
     | "review_submission"
+    | "bulk_approve_submissions"
     | "fetch_dashboard"
     | "save_task"
     | "delete_task"
@@ -39,6 +40,7 @@ interface AdminRequestBody {
   playerId?: string;
   adminPassword?: string;
   submissionId?: string;
+  submissionIds?: string[];
   decision?: "approved" | "rejected";
   task?: {
     id?: string;
@@ -229,7 +231,7 @@ Deno.serve(async (req: Request) => {
 
         db
           .from("game_events")
-          .select("id, title, description, category, status, starts_at, ends_at, timezone, reward_zp, reward_zap, objectives, requirements, participation_rules, created_at, updated_at")
+          .select("id, title, description, category, status, starts_at, ends_at, timezone, reward_zp, reward_zap, min_participants, max_participants, objectives, requirements, participation_rules, created_at, updated_at")
           .order("created_at", { ascending: false }),
       ]);
 
@@ -534,6 +536,23 @@ Deno.serve(async (req: Request) => {
       return json(data);
     }
 
+    if (body.action === "bulk_approve_submissions") {
+      const ids = body.submissionIds;
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!Array.isArray(ids) || ids.length < 1 || ids.length > 100 ||
+          ids.some((id) => typeof id !== "string" || !uuidPattern.test(id))) {
+        return json({ error: "Select between 1 and 100 valid pending submissions" }, 400);
+      }
+      const { data, error } = await db.rpc("admin_bulk_approve_creator_submissions", {
+        p_submission_ids: [...new Set(ids)],
+      });
+      if (error || !data || data.success !== true) {
+        console.error("Bulk Creator Ops approval failed:", error);
+        return json({ error: "Bulk approval could not be completed." }, 500);
+      }
+      return json(data);
+    }
+
     // SAVE OR UPDATE TASK
     if (body.action === "save_task") {
       const task = body.task;
@@ -676,6 +695,17 @@ Deno.serve(async (req: Request) => {
       if (typeof rewardZap !== "number" || !Number.isSafeInteger(rewardZap) || rewardZap < 0) {
         return json({ error: "Event ZAP reward must be a whole number of 0 or more" }, 400);
       }
+      const minParticipants = event.minParticipants ?? null;
+      const maxParticipants = event.maxParticipants ?? null;
+      if (minParticipants !== null && (!Number.isSafeInteger(minParticipants) || minParticipants < 1)) {
+        return json({ error: "Minimum participants must be a whole number of at least 1, or left blank" }, 400);
+      }
+      if (maxParticipants !== null && (!Number.isSafeInteger(maxParticipants) || maxParticipants < 1)) {
+        return json({ error: "Maximum participants must be a whole number of at least 1, or left blank" }, 400);
+      }
+      if (minParticipants !== null && maxParticipants !== null && minParticipants > maxParticipants) {
+        return json({ error: "Minimum participants cannot be greater than maximum participants" }, 400);
+      }
       if (event.objectives !== undefined && !Array.isArray(event.objectives)) {
         return json({ error: "Objectives must be a JSON array" }, 400);
       }
@@ -736,6 +766,8 @@ Deno.serve(async (req: Request) => {
         timezone,
         reward_zp: event.rewardZp,
         reward_zap: rewardZap,
+        min_participants: minParticipants,
+        max_participants: maxParticipants,
         objectives,
         requirements,
         participation_rules: participationRulesText,
