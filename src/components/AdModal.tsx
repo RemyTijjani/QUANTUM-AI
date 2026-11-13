@@ -30,12 +30,12 @@ export default function AdModal({ fragmentId, onComplete, onCancel }: AdModalPro
   const progress = Math.min(1, elapsedMs / durationMs) * 100;
 
   return (
-    <Modal title="Sponsor Interstitial" onClose={done ? onCancel : undefined}>
+    <Modal title="Fragment Unlock" onClose={done ? onCancel : undefined}>
       <div className="space-y-5">
         <div className="scan-bars relative flex aspect-video flex-col items-center justify-center overflow-hidden rounded-lg border border-cyan-400/40 bg-black/70">
           <Radio size={28} className="mb-3 text-cyan-300 animate-soft-pulse" />
           <p className="font-display text-xs uppercase tracking-[0.2em] text-cyan-300">
-            {done ? 'Feed complete' : 'Receiving sponsor feed'}
+            {done ? 'Unlock timer complete' : 'Completing server-timed unlock'}
           </p>
           <p className="mt-2 font-mono text-[11px] text-neon-500">
             Unlocking {FRAGMENT_NAMES[fragmentId]}
@@ -47,7 +47,7 @@ export default function AdModal({ fragmentId, onComplete, onCancel }: AdModalPro
 
         <div>
           <div className="mb-2 flex justify-between font-mono text-[11px] uppercase tracking-wider text-neon-500">
-            <span>Uplink progress</span>
+            <span>Unlock progress</span>
             <span className="tabular-nums">{Math.round(progress)}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-cyan-400/10">
