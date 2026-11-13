@@ -14,15 +14,23 @@ export async function fetchTrustedFragments(): Promise<TrustedFragment[]> {
   return (data?.fragments ?? []) as TrustedFragment[];
 }
 
-export async function beginTrustedUnlock(fragmentId: FragmentId): Promise<string> {
+export interface TrustedUnlockStart {
+  sessionId: string | null;
+  alreadyUnlocked: boolean;
+}
+
+export async function beginTrustedUnlock(fragmentId: FragmentId): Promise<TrustedUnlockStart> {
   const { data, error } = await supabase.functions.invoke('gameplay-actions', {
     body: { action: 'begin_fragment_unlock', fragmentId },
   });
   if (error) throw error;
+  if (data?.success && data.alreadyUnlocked === true) {
+    return { sessionId: null, alreadyUnlocked: true };
+  }
   if (!data?.success || typeof data.sessionId !== 'string') {
     throw new Error(data?.reason === 'cooldown' ? 'This fragment is still cooling down.' : 'Could not start the trusted unlock session.');
   }
-  return data.sessionId;
+  return { sessionId: data.sessionId, alreadyUnlocked: false };
 }
 
 export async function completeTrustedUnlock(sessionId: string): Promise<void> {
