@@ -145,6 +145,32 @@ function EventCard({ event, now, registration, registering, expanded, onRegister
               <p className="font-mono text-[9px] text-neon-600">{activity.is_required ? 'Required activity' : 'Optional activity'}</p>
               {activity.description && <p className="font-mono text-[10px] leading-relaxed text-neon-500">{activity.description}</p>}
               {activity.instructions && <p className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-neon-500">{activity.instructions}</p>}
+              {activity.progress && activity.progress.fixesPerFragmentPerDay != null && (
+                <div className="space-y-2 border border-cyan-500/20 bg-cyan-500/5 p-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-[9px] uppercase tracking-wider text-cyan-300">Trusted fragment progress · today</p>
+                    <span className="font-mono text-[9px] text-neon-500">
+                      {activity.progress.completedDays ?? 0}/{activity.progress.totalDays ?? 0} days complete
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['top', 'bottom', 'left', 'right'] as const)
+                      .filter((fragment) => activity.progress?.currentDayFragmentCounts?.[fragment] !== undefined)
+                      .map((fragment) => {
+                        const count = activity.progress?.currentDayFragmentCounts?.[fragment] ?? 0;
+                        const target = activity.progress?.fixesPerFragmentPerDay ?? 0;
+                        const complete = target > 0 && count >= target;
+                        return (
+                          <div key={fragment} className="flex items-center justify-between border border-neon/15 px-2 py-1">
+                            <span className="font-mono text-[9px] uppercase text-neon-500">{fragment}</span>
+                            <span className={`font-mono text-[9px] ${complete ? 'text-green-300' : 'text-cyan-300'}`}>{count}/{target}</span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  <p className="font-mono text-[8px] leading-relaxed text-neon-700">Only successful fragment fixes recorded by the trusted gameplay service count. Each fragment has its own cooldown.</p>
+                </div>
+              )}
               {activity.mission && (
                 <div className="border-l border-cyan-500/30 pl-2">
                   <p className="font-mono text-[10px] text-cyan-300">Mission: {activity.mission.title}</p>
