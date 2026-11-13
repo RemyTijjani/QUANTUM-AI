@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
               })
               .eq("id", registration.id)
               .eq("player_id", player.id)
-              .select("id, event_id, status, progress, registered_at, updated_at, completed_at, game_events(id, title, category, starts_at, ends_at, timezone, objectives, requirements)")
+              .select("id, event_id, status, progress, registered_at, updated_at, completed_at, zp_reward_approved_at, game_events(id, title, category, starts_at, ends_at, timezone, objectives, requirements)")
               .single();
             if (updateError) throw new Error("Could not verify event registration evidence.");
             current = updated as unknown as Record<string, unknown>;
