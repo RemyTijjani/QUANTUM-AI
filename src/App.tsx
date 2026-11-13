@@ -27,8 +27,6 @@ import { useMissions } from '@/hooks/useMissions';
 
 import type { MissionSpec } from '@/lib/game/config';
 import {
-  FRAGMENT_NAMES,
-  FRAGMENT_UNLOCK_REWARD,
 } from '@/lib/game/config';
 
 import type { FragmentId } from '@/lib/game/config';
@@ -130,6 +128,7 @@ function GameApp({
     loadError,
     syncError,
     retryLoad,
+    trustedGameplay,
   } = useGame(referralCode, playerId);
 
   const { auth } = useAuth();
@@ -144,6 +143,7 @@ function GameApp({
   const [tab, setTab] = useState<TabId>('core');
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [adFragment, setAdFragment] = useState<FragmentId | null>(null);
+  const [adSessionId, setAdSessionId] = useState<string | null>(null);
 
   // Wait until the cloud save has loaded.
   if (isLoading) {
@@ -185,16 +185,26 @@ function GameApp({
     );
   }
 
-  const completeAd = () => {
-    if (!adFragment) return;
+  const startFragmentUnlock = async (fragmentId: FragmentId) => {
+    try {
+      const sessionId = await trustedGameplay.beginUnlock(fragmentId);
+      setAdSessionId(sessionId);
+      setAdFragment(fragmentId);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not start fragment unlock', 'error');
+    }
+  };
 
-    actions.unlockFragment(adFragment);
-
-    notify(
-      `${FRAGMENT_NAMES[adFragment]} unlocked. +${formatZp(FRAGMENT_UNLOCK_REWARD)} ZP`,
-    );
-
-    setAdFragment(null);
+  const completeAd = async () => {
+    if (!adSessionId) return;
+    try {
+      await trustedGameplay.completeUnlock(adSessionId);
+      notify('Fragment unlocked by the trusted gameplay service. No ZP reward was issued.');
+      setAdFragment(null);
+      setAdSessionId(null);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'The server could not verify this unlock', 'error');
+    }
   };
 
   const resetSystem = () => {
@@ -230,7 +240,8 @@ function GameApp({
             state={state}
             actions={actions}
             notify={notify}
-            onWatchAd={setAdFragment}
+            onWatchAd={(id) => { void startFragmentUnlock(id); }}
+            onFixFragment={trustedGameplay.fixFragment}
           />
         )}
 
@@ -274,7 +285,7 @@ function GameApp({
         <AdModal
           fragmentId={adFragment}
           onComplete={completeAd}
-          onCancel={() => setAdFragment(null)}
+          onCancel={() => { setAdFragment(null); setAdSessionId(null); }}
         />
       )}
 
