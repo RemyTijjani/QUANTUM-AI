@@ -146,20 +146,6 @@ async function verifyConfiguredEventActivities(
       continue;
     }
 
-    const { data: actions, error: actionsError } = await admin
-      .from("gameplay_action_events")
-      .select("id, fragment_id, created_at")
-      .eq("player_id", playerId)
-      .eq("action_type", "fragment_fixed")
-      .gte("created_at", activityStart)
-      .lte("created_at", activityEnd)
-      .order("created_at", { ascending: true })
-      .limit(5000);
-    if (actionsError) {
-      console.error("Gameplay evidence lookup failed:", actionsError);
-      throw new Error("Could not verify gameplay activity.");
-    }
-
     const configuredFragments = config.fragmentIds;
     const allowedFragments = configuredFragments === undefined
       ? ["top", "bottom", "left", "right"]
@@ -170,12 +156,36 @@ async function verifyConfiguredEventActivities(
       console.error("Skipping gameplay activity with an invalid fragment selection:", activity.id);
       continue;
     }
+
+    // Page through the complete event window. A single PostgREST result is capped,
+    // so a fixed limit could silently omit valid actions on long-running events.
+    const actions: Array<{ id: string; fragment_id: string; created_at: string }> = [];
+    const pageSize = 1000;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data: page, error: actionsError } = await admin
+        .from("gameplay_action_events")
+        .select("id, fragment_id, created_at")
+        .eq("player_id", playerId)
+        .eq("action_type", "fragment_fixed")
+        .in("fragment_id", allowedFragments)
+        .gte("created_at", activityStart)
+        .lte("created_at", activityEnd)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (actionsError) {
+        console.error("Gameplay evidence lookup failed:", actionsError);
+        throw new Error("Could not verify gameplay activity.");
+      }
+      actions.push(...(page ?? []));
+      if (!page || page.length < pageSize) break;
+    }
     const days = eventLocalDateKeys(activityStart, event.ends_at, timezone);
     const dailyCounts: Record<string, number> = Object.fromEntries(days.map((day) => [day, 0]));
     const dailyFragmentCounts: Record<string, Record<string, number>> = Object.fromEntries(
       days.map((day) => [day, Object.fromEntries(allowedFragments.map((fragment) => [fragment, 0]))])
     );
-    for (const action of actions ?? []) {
+    for (const action of actions) {
       if (!allowedFragments.includes(action.fragment_id)) continue;
       const day = eventLocalDateKey(action.created_at, timezone);
       if (day in dailyCounts) {
