@@ -235,6 +235,9 @@ begin
   where player_id = p_player_id and request_id = p_request_id;
 
   if found then
+    if v_event.fragment_id <> p_fragment_id then
+      return jsonb_build_object('success', false, 'reason', 'request_id_conflict');
+    end if;
     return jsonb_build_object(
       'success', true,
       'duplicate', true,
@@ -260,6 +263,9 @@ begin
   where player_id = p_player_id and request_id = p_request_id;
 
   if found then
+    if v_event.fragment_id <> p_fragment_id then
+      return jsonb_build_object('success', false, 'reason', 'request_id_conflict');
+    end if;
     return jsonb_build_object(
       'success', true,
       'duplicate', true,
