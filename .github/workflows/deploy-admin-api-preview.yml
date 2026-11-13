@@ -6,6 +6,7 @@ on:
       - security/trusted-gameplay-migration
     paths:
       - 'supabase/functions/admin-api/**'
+      - 'supabase/functions/_shared/**'
       - '.github/workflows/deploy-admin-api-preview.yml'
   workflow_dispatch:
 
