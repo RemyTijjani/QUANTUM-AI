@@ -107,6 +107,7 @@ async function verifyConfiguredEventActivities(
         .eq("mission_id", activity.mission_id)
         .eq("status", "approved")
         .not("reviewed_at", "is", null)
+        .gte("created_at", activityStart)
         .gte("reviewed_at", activityStart)
         .lte("reviewed_at", event.ends_at)
         .order("reviewed_at", { ascending: true })
