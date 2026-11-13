@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { createInitialState, gameReducer } from '@/lib/game/state';
+import { gameReducer } from '@/lib/game/state';
 import type { Command, GameState } from '@/lib/game/state';
 
 import {
@@ -66,7 +66,6 @@ export type GameActions = ReturnType<typeof createActions>;
 export function useGame(
   referralCode: string | null,
   playerId: string,
-  isDemo = false,
 ): {
   state: GameState;
   actions: GameActions;
@@ -75,24 +74,9 @@ export function useGame(
   syncError: string | null;
   retryLoad: () => void;
 } {
-  const [state, setState] = useState<GameState>(() => {
-    if (!isDemo) return loadState(Date.now(), referralCode, playerId);
-    const now = Date.now();
-    const initial = createInitialState(now, 'ZORD-DEMO');
-    return {
-      ...initial,
-      zp: 4250,
-      lifetimeZp: 18250,
-      fragments: { top: 'fixed', bottom: 'unlocked', left: 'locked', right: 'locked' },
-      fragmentCooldowns: { ...initial.fragmentCooldowns, top: now + 6 * 60 * 60 * 1000 },
-      agents: { alpha: now + 2 * 86400000, overclock: 0 },
-      wallet: { connected: true, faucetClaimed: true, tonBalance: 5.5 },
-      subNodes: [
-        { id: 'ZORD-ALLY-01', name: 'Demo Operative 01', joinedAt: now - 5 * 86400000, generated: 840 },
-        { id: 'ZORD-ALLY-02', name: 'Demo Operative 02', joinedAt: now - 2 * 86400000, generated: 320 },
-      ],
-    };
-  });
+  const [state, setState] = useState<GameState>(() =>
+    loadState(Date.now(), referralCode, playerId),
+  );
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -119,25 +103,6 @@ export function useGame(
 
     async function loadCloudState() {
       setIsLoading(true);
-      if (isDemo) {
-        const now = Date.now();
-        const initial = createInitialState(now, 'ZORD-DEMO');
-        setState({
-          ...initial,
-          zp: 4250,
-          lifetimeZp: 18250,
-          fragments: { top: 'fixed', bottom: 'unlocked', left: 'locked', right: 'locked' },
-          fragmentCooldowns: { ...initial.fragmentCooldowns, top: now + 6 * 60 * 60 * 1000 },
-          agents: { alpha: now + 2 * 86400000, overclock: 0 },
-          wallet: { connected: true, faucetClaimed: true, tonBalance: 5.5 },
-          subNodes: [
-            { id: 'ZORD-ALLY-01', name: 'Demo Operative 01', joinedAt: now - 5 * 86400000, generated: 840 },
-            { id: 'ZORD-ALLY-02', name: 'Demo Operative 02', joinedAt: now - 2 * 86400000, generated: 320 },
-          ],
-        });
-        setIsLoading(false);
-        return;
-      }
       setLoadError(null);
       setSyncError(null);
 
@@ -262,12 +227,12 @@ export function useGame(
     return () => {
       cancelled = true;
     };
-  }, [playerId, referralCode, loadAttempt, isDemo]);
+  }, [playerId, referralCode, loadAttempt]);
 
   // Save locally immediately whenever the game changes.
   // Mark the game as needing a cloud save.
   useEffect(() => {
-    if (isLoading || loadError || isDemo) return;
+    if (isLoading || loadError) return;
 
     saveState(state, playerId);
 
@@ -277,12 +242,12 @@ export function useGame(
     }
 
     dirtyRef.current = true;
-  }, [state, playerId, isLoading, loadError, isDemo]);
+  }, [state, playerId, isLoading, loadError]);
 
   // Upload changed game state to Supabase every 5 seconds.
   // This interval does not restart when the game ticks every second.
   useEffect(() => {
-    if (isLoading || loadError || isDemo) return;
+    if (isLoading || loadError) return;
 
     let cancelled = false;
 
@@ -390,7 +355,7 @@ export function useGame(
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [playerId, referralCode, isLoading, loadError, isDemo]);
+  }, [playerId, referralCode, isLoading, loadError]);
 
   // Game timer.
   useEffect(() => {
@@ -422,7 +387,7 @@ export function useGame(
 
   // Keep the player's referral code updated.
   useEffect(() => {
-    if (isDemo || !referralCode || isLoading || loadError) return;
+    if (!referralCode || isLoading || loadError) return;
 
     setState((previous) =>
       gameReducer(previous, {
@@ -431,11 +396,11 @@ export function useGame(
         now: Date.now(),
       }),
     );
-  }, [referralCode, isLoading, loadError, isDemo]);
+  }, [referralCode, isLoading, loadError]);
 
   // Keep referral recruits synchronized.
   useEffect(() => {
-    if (isDemo || !referralCode || isLoading || loadError) return;
+    if (!referralCode || isLoading || loadError) return;
 
     let cancelled = false;
 
@@ -472,7 +437,7 @@ export function useGame(
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [referralCode, isLoading, loadError, isDemo]);
+  }, [referralCode, isLoading, loadError]);
 
   return {
     state,
