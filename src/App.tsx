@@ -241,7 +241,17 @@ function GameApp({
             actions={actions}
             notify={notify}
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
-            onFixFragment={trustedGameplay.fixFragment}
+            onFixFragment={async (id) => {
+              try {
+                await trustedGameplay.fixFragment(id);
+              } catch (error) {
+                if (error instanceof Error && error.message.includes('Unlock this fragment')) {
+                  await startFragmentUnlock(id);
+                  return;
+                }
+                throw error;
+              }
+            }}
           />
         )}
 
