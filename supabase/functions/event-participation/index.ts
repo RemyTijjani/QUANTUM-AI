@@ -136,10 +136,13 @@ async function verifyConfiguredEventActivities(
     const config = activity.config && typeof activity.config === "object" && !Array.isArray(activity.config)
       ? activity.config as Record<string, unknown>
       : {};
-    if (config.action !== "fragment_fixed" ||
-        !Number.isSafeInteger(config.targetCountPerDay) ||
-        (config.targetCountPerDay as number) < 1 ||
-        (config.targetCountPerDay as number) > 100) {
+    const perFragmentTarget = config.fixesPerFragmentPerDay;
+    const legacyTotalTarget = config.targetCountPerDay;
+    const usesPerFragmentTarget = Number.isSafeInteger(perFragmentTarget) &&
+      (perFragmentTarget as number) >= 1 && (perFragmentTarget as number) <= 100;
+    const usesLegacyTotalTarget = Number.isSafeInteger(legacyTotalTarget) &&
+      (legacyTotalTarget as number) >= 1 && (legacyTotalTarget as number) <= 100;
+    if (config.action !== "fragment_fixed" || (!usesPerFragmentTarget && !usesLegacyTotalTarget)) {
       continue;
     }
 
@@ -162,14 +165,23 @@ async function verifyConfiguredEventActivities(
       : ["top", "bottom", "left", "right"];
     const days = eventLocalDateKeys(activityStart, event.ends_at, timezone);
     const dailyCounts: Record<string, number> = Object.fromEntries(days.map((day) => [day, 0]));
+    const dailyFragmentCounts: Record<string, Record<string, number>> = Object.fromEntries(
+      days.map((day) => [day, Object.fromEntries(allowedFragments.map((fragment) => [fragment, 0]))])
+    );
     for (const action of actions ?? []) {
       if (!allowedFragments.includes(action.fragment_id)) continue;
       const day = eventLocalDateKey(action.created_at, timezone);
-      if (day in dailyCounts) dailyCounts[day] += 1;
+      if (day in dailyCounts) {
+        dailyCounts[day] += 1;
+        dailyFragmentCounts[day][action.fragment_id] += 1;
+      }
     }
 
-    const target = config.targetCountPerDay as number;
-    const completedDays = days.filter((day) => dailyCounts[day] >= target).length;
+    const target = (usesPerFragmentTarget ? perFragmentTarget : legacyTotalTarget) as number;
+    const completedDay = (day: string) => usesPerFragmentTarget
+      ? allowedFragments.every((fragment) => dailyFragmentCounts[day][fragment] >= target)
+      : dailyCounts[day] >= target;
+    const completedDays = days.filter(completedDay).length;
     const currentDay = eventLocalDateKey(Date.now(), timezone);
     const previous = nextActivityProgress[activity.id] && typeof nextActivityProgress[activity.id] === "object"
       ? nextActivityProgress[activity.id] as Record<string, unknown>
@@ -178,9 +190,11 @@ async function verifyConfiguredEventActivities(
     const evidence = {
       verified,
       verifiedAt: verified ? (typeof previous.verifiedAt === "string" ? previous.verifiedAt : new Date().toISOString()) : null,
-      method: "server_recorded_fragment_fix_actions",
+      method: usesPerFragmentTarget ? "server_recorded_per_fragment_fix_actions" : "server_recorded_fragment_fix_actions",
       action: "fragment_fixed",
-      targetCountPerDay: target,
+      ...(usesPerFragmentTarget
+        ? { fixesPerFragmentPerDay: target, dailyFragmentCounts, currentDayFragmentCounts: dailyFragmentCounts[currentDay] ?? {} }
+        : { targetCountPerDay: target }),
       dailyCounts,
       currentDayCount: dailyCounts[currentDay] ?? 0,
       completedDays,
