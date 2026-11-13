@@ -30,7 +30,7 @@ jobs:
           deno-version: v2.x
 
       - name: Test event verification helpers
-        run: deno test supabase/functions/_shared/event-verification.test.ts
+        run: deno test --node-modules-dir=none supabase/functions/_shared/event-verification.test.ts
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
