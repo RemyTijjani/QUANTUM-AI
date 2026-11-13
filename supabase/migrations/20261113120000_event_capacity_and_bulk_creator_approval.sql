@@ -115,8 +115,8 @@ begin
   end if;
 
   for v_id in
-    select distinct item
-    from unnest(p_submission_ids) as item
+    select distinct submission_id
+    from unnest(p_submission_ids) as selected_ids(submission_id)
   loop
     begin
       v_result := public.admin_review_creator_submission(v_id, 'approved');
