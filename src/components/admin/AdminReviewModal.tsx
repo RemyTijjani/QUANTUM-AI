@@ -30,6 +30,7 @@ import {
   deleteEvent,
   listEventParticipants,
   updateEventParticipantStatus,
+  approveEventParticipantReward,
   listEventActivities,
   saveEventActivity,
   deleteEventActivity,
@@ -279,6 +280,12 @@ function AdminConsole({
   const handleUpdateEventParticipantStatus = async (participationId: string, status: AdminEventParticipantStatus) => {
     await updateEventParticipantStatus(creds, participationId, status);
     addLog(`[EVENT] Participant ${participationId} status updated to ${status}; no reward issued.`);
+  };
+
+  const handleApproveEventReward = async (participationId: string) => {
+    const result = await approveEventParticipantReward(creds, participationId);
+    addLog(`[EVENT] Approved ${result.rewardZp.toLocaleString()} ZP for participation ${participationId}.`);
+    if (result.zapRewardDeferred) addLog('[EVENT] Any configured ZAP reward remains deferred to the separate ZAP economy stage.');
   };
 
   const handleFlushCache = () => {
@@ -731,6 +738,7 @@ function AdminConsole({
           onDelete={handleDeleteEvent}
           onListParticipants={handleListEventParticipants}
           onUpdateParticipantStatus={handleUpdateEventParticipantStatus}
+          onApproveEventReward={handleApproveEventReward}
         />
       )}
 
