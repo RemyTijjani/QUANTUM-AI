@@ -70,10 +70,10 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
       return;
     }
     if (draft.activityType === 'gameplay_verification') {
-      const target = Number(draft.config.targetCountPerDay ?? 1);
+      const target = Number(draft.config.fixesPerFragmentPerDay ?? 1);
       const fragments = Array.isArray(draft.config.fragmentIds) ? draft.config.fragmentIds : ['top', 'bottom', 'left', 'right'];
-      if (!Number.isInteger(target) || target < 1 || target > 4) {
-        setError('Set a daily target from 1 to 4 fragment fixes.');
+      if (!Number.isInteger(target) || target < 1 || target > 100) {
+        setError('Set a daily target from 1 to 100 fixes for each selected fragment.');
         return;
       }
       if (fragments.length < 1 || fragments.some(id => !['top', 'bottom', 'left', 'right'].includes(String(id)))) {
@@ -86,7 +86,7 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
     try {
       await onSave({ ...draft, config: draft.activityType === 'gameplay_verification' ? {
         action: 'fragment_fixed',
-        targetCountPerDay: Number(draft.config.targetCountPerDay ?? 1),
+        fixesPerFragmentPerDay: Number(draft.config.fixesPerFragmentPerDay ?? 1),
         fragmentIds: Array.isArray(draft.config.fragmentIds) ? draft.config.fragmentIds : ['top', 'bottom', 'left', 'right'],
       } : {} });
       setDraft(null);
@@ -138,10 +138,11 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
           {draft.activityType === 'gameplay_verification' && (
             <div className="border border-cyan-500/25 bg-cyan-500/5 p-2 space-y-2">
               <p className="text-[10px] font-bold text-cyan-200">Trusted fragment challenge</p>
-              <p className="text-[9px] text-neon-500">Count only fragment fixes recorded by the trusted server. The target applies to each event day.</p>
-              <label className="block text-[10px] text-neon-500">Required fragment fixes per day
-                <input type="number" min={1} max={4} step={1} value={Number(draft.config.targetCountPerDay ?? 1)} onChange={e => update('config', { ...draft.config, action: 'fragment_fixed', targetCountPerDay: Number(e.target.value) })} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+              <p className="text-[9px] text-neon-500">Each selected fragment must reach this number of trusted server-recorded fixes every event day.</p>
+              <label className="block text-[10px] text-neon-500">Fixes required for EACH selected fragment per day
+                <input type="number" min={1} max={100} step={1} value={Number(draft.config.fixesPerFragmentPerDay ?? 1)} onChange={e => update('config', { ...draft.config, action: 'fragment_fixed', fixesPerFragmentPerDay: Number(e.target.value) })} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
               </label>
+              <p className="text-[9px] text-cyan-300">Example: all 4 fragments × 5 fixes = 20 successful fixes per day.</p>
               <div className="space-y-1">
                 <p className="text-[10px] text-neon-500">Fragments that count</p>
                 {(['top', 'bottom', 'left', 'right'] as const).map(id => {
