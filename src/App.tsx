@@ -24,6 +24,7 @@ import { useGame } from '@/hooks/useGame';
 import { useToast } from '@/hooks/useToast';
 import { AuthProvider, useAuth } from '@/hooks/useTelegramAuth';
 import { useMissions } from '@/hooks/useMissions';
+import { fetchVerifiedEconomy } from '@/lib/economy/verifiedEconomy';
 
 import type { MissionSpec } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
@@ -129,6 +130,28 @@ function GameApp({
   } = useGame(referralCode, playerId);
 
   const { auth } = useAuth();
+  const [verifiedZpBalance, setVerifiedZpBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshVerifiedBalance = async () => {
+      try {
+        const economy = await fetchVerifiedEconomy();
+        if (!cancelled) setVerifiedZpBalance(economy.verifiedZpBalance);
+      } catch (error) {
+        console.error('Verified ZP balance load failed:', error);
+        if (!cancelled) setVerifiedZpBalance(null);
+      }
+    };
+    void refreshVerifiedBalance();
+    const interval = window.setInterval(() => void refreshVerifiedBalance(), 60000);
+    window.addEventListener('focus', refreshVerifiedBalance);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshVerifiedBalance);
+    };
+  }, [playerId]);
 
   const identity = resolveIdentity(
     auth,
@@ -221,6 +244,7 @@ function GameApp({
 
       <Header
         zp={state.zp}
+        verifiedZpBalance={verifiedZpBalance}
         onOpenProfile={() => setOverlay('profile')}
         onOpenLeaderboard={() => setOverlay('leaderboard')}
       />
