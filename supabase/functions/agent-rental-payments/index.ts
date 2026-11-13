@@ -12,6 +12,7 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const TONCENTER_API_KEY = Deno.env.get("TONCENTER_API_KEY") ?? "";
 const TREASURY_ADDRESS = Deno.env.get("ZORD_GRAM_TREASURY_ADDRESS") ?? "";
+const VERIFICATION_GRACE_MS = 10 * 60 * 1000;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -78,7 +79,9 @@ async function findMainnetPayment(reference: string, amountNano: string, created
       if (!Number.isFinite(timestamp) || timestamp < created || timestamp > expires) continue;
 
       const incoming = tx?.in_msg;
-      if (!incoming || incoming.bounced === true) continue;
+      // Reject bounced inbound messages and transactions that aborted or entered a bounce phase.
+      if (!incoming || incoming.bounced === true || incoming.bounce === true) continue;
+      if (tx?.description?.aborted === true || tx?.description?.bounce != null) continue;
       if (typeof incoming.destination !== "string" || rawAddress(incoming.destination) !== treasuryRaw) continue;
       if (String(incoming.value) !== amountNano) continue;
       if (parseComment(incoming) !== reference) continue;
@@ -201,11 +204,13 @@ Deno.serve(async (req: Request) => {
         intent.expires_at,
       );
       if (!payment) {
-        if (new Date(intent.expires_at).getTime() <= Date.now()) {
+        // Keep the intent pending briefly after its payment window so a valid on-chain
+        // transfer is not lost while TON Center indexes the transaction.
+        if (new Date(intent.expires_at).getTime() + VERIFICATION_GRACE_MS <= Date.now()) {
           await admin.from("agent_rental_payment_intents")
             .update({ status: "expired", updated_at: new Date().toISOString() })
             .eq("id", intent.id).eq("status", "pending");
-          return json({ error: "No matching payment was found before this request expired." }, 409);
+          return json({ error: "No matching payment was found during the payment window or verification grace period." }, 409);
         }
         return json({ success: false, pending: true, message: "Payment has not been confirmed on TON mainnet yet." }, 202);
       }
