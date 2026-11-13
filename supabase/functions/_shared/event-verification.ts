@@ -230,8 +230,10 @@ export async function verifyConfiguredEventActivities(
       Number((evidence as Record<string, unknown>).completedDays ?? 0) > 0 ||
       Number((evidence as Record<string, unknown>).currentDayCount ?? 0) > 0)
   );
+  const shouldResetUnverifiedCompletion = registration.status === "completed" && !allRequiredActivitiesVerified;
   if (!changed && !(allRequiredActivitiesVerified && registration.status !== "completed") &&
-      !(hasAnyVerifiedProgress && registration.status === "registered")) return registration;
+      !(hasAnyVerifiedProgress && registration.status === "registered") &&
+      !shouldResetUnverifiedCompletion) return registration;
 
   const update: Record<string, unknown> = {
     progress: { ...currentProgress, activities: nextActivityProgress },
@@ -240,6 +242,9 @@ export async function verifyConfiguredEventActivities(
   if (allRequiredActivitiesVerified && registration.status !== "completed") {
     update.status = "completed";
     update.completed_at = registration.completed_at ?? new Date().toISOString();
+  } else if (shouldResetUnverifiedCompletion) {
+    update.status = hasAnyVerifiedProgress ? "in_progress" : "registered";
+    update.completed_at = null;
   } else if (hasAnyVerifiedProgress && registration.status === "registered") {
     update.status = "in_progress";
   }
