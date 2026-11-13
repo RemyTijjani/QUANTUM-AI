@@ -45,35 +45,62 @@ function rawAddress(value: string): string {
 }
 
 async function findMainnetPayment(reference: string, amountNano: string, createdAt: string, expiresAt: string) {
-  const response = await fetch("https://toncenter.com/api/v2/getTransactions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-API-Key": TONCENTER_API_KEY },
-    body: JSON.stringify({ address: TREASURY_ADDRESS, limit: 100 }),
-  });
-  if (!response.ok) throw new Error(`TON Center returned HTTP ${response.status}`);
-  const payload = await response.json();
-  if (payload?.ok !== true || !Array.isArray(payload.result)) throw new Error("TON Center returned an invalid transaction response.");
-
   const treasuryRaw = rawAddress(TREASURY_ADDRESS);
   const created = Math.floor(new Date(createdAt).getTime() / 1000);
   const expires = Math.floor(new Date(expiresAt).getTime() / 1000);
+  let cursor: { lt: string; hash: string } | null = null;
 
-  for (const tx of payload.result) {
-    const incoming = tx?.in_msg;
-    if (!incoming || incoming.bounced === true) continue;
-    if (typeof incoming.destination !== "string" || rawAddress(incoming.destination) !== treasuryRaw) continue;
-    if (String(incoming.value) !== amountNano) continue;
-    if (parseComment(incoming) !== reference) continue;
+  // Paginate newest-first until the intent's creation time is passed.
+  // A bounded page count prevents a single verification request from running indefinitely.
+  for (let page = 0; page < 20; page++) {
+    const requestBody: Record<string, unknown> = { address: TREASURY_ADDRESS, limit: 100 };
+    if (cursor) {
+      requestBody.lt = cursor.lt;
+      requestBody.hash = cursor.hash;
+    }
 
-    const timestamp = Number(tx.utime);
-    if (!Number.isFinite(timestamp) || timestamp < created || timestamp > expires) continue;
-    const hash = tx?.transaction_id?.hash;
-    const sender = incoming.source;
-    if (typeof hash !== "string" || !hash || typeof sender !== "string" || !sender) continue;
+    const response = await fetch("https://toncenter.com/api/v2/getTransactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-API-Key": TONCENTER_API_KEY },
+      body: JSON.stringify(requestBody),
+    });
+    if (!response.ok) throw new Error(`TON Center returned HTTP ${response.status}`);
+    const payload = await response.json();
+    if (payload?.ok !== true || !Array.isArray(payload.result)) {
+      throw new Error("TON Center returned an invalid transaction response.");
+    }
 
-    return { hash, sender, timestamp };
+    const transactions = payload.result;
+    if (transactions.length === 0) return null;
+
+    for (const tx of transactions) {
+      const timestamp = Number(tx?.utime);
+      if (!Number.isFinite(timestamp) || timestamp < created || timestamp > expires) continue;
+
+      const incoming = tx?.in_msg;
+      if (!incoming || incoming.bounced === true) continue;
+      if (typeof incoming.destination !== "string" || rawAddress(incoming.destination) !== treasuryRaw) continue;
+      if (String(incoming.value) !== amountNano) continue;
+      if (parseComment(incoming) !== reference) continue;
+
+      const hash = tx?.transaction_id?.hash;
+      const sender = incoming.source;
+      if (typeof hash !== "string" || !hash || typeof sender !== "string" || !sender) continue;
+
+      return { hash, sender, timestamp };
+    }
+
+    const oldest = transactions[transactions.length - 1];
+    const oldestTime = Number(oldest?.utime);
+    if (Number.isFinite(oldestTime) && oldestTime < created) return null;
+
+    const lt = oldest?.transaction_id?.lt;
+    const hash = oldest?.transaction_id?.hash;
+    if (transactions.length < 100 || lt == null || typeof hash !== "string" || !hash) return null;
+    cursor = { lt: String(lt), hash };
   }
-  return null;
+
+  throw new Error("Payment history scan limit reached; retry verification.");
 }
 
 Deno.serve(async (req: Request) => {
@@ -160,8 +187,8 @@ Deno.serve(async (req: Request) => {
           .select("expires_at").eq("player_id", player.id).eq("agent_type", intent.agent_type).maybeSingle();
         return json({ success: true, alreadyPaid: true, agentType: intent.agent_type, expiresAt: rental?.expires_at ?? null });
       }
-      if (intent.status !== "pending" || new Date(intent.expires_at).getTime() <= Date.now()) {
-        return json({ error: "This payment request has expired. Create a new one." }, 409);
+      if (intent.status !== "pending") {
+        return json({ error: "This payment request is no longer pending." }, 409);
       }
       if (rawAddress(intent.recipient_address) !== rawAddress(TREASURY_ADDRESS)) {
         return json({ error: "Payment destination configuration mismatch." }, 500);
@@ -173,7 +200,15 @@ Deno.serve(async (req: Request) => {
         intent.created_at,
         intent.expires_at,
       );
-      if (!payment) return json({ success: false, pending: true, message: "Payment has not been confirmed on TON mainnet yet." }, 202);
+      if (!payment) {
+        if (new Date(intent.expires_at).getTime() <= Date.now()) {
+          await admin.from("agent_rental_payment_intents")
+            .update({ status: "expired", updated_at: new Date().toISOString() })
+            .eq("id", intent.id).eq("status", "pending");
+          return json({ error: "No matching payment was found before this request expired." }, 409);
+        }
+        return json({ success: false, pending: true, message: "Payment has not been confirmed on TON mainnet yet." }, 202);
+      }
 
       const { data: confirmed, error: confirmError } = await admin.rpc("confirm_agent_rental_payment", {
         p_intent_id: intent.id,
