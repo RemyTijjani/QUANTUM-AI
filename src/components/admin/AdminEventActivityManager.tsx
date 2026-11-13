@@ -20,9 +20,9 @@ const TYPES: { value: AdminEventActivityType; label: string }[] = [
   { value: 'admin_review', label: 'Administrator review' },
 ];
 
-const emptyDraft = (eventId: string): AdminEventActivityInput => ({
+const emptyDraft = (eventId: string, sortOrder: number): AdminEventActivityInput => ({
   eventId, missionId: null, activityType: 'mission', title: '', description: '',
-  instructions: '', config: {}, isRequired: true, sortOrder: 0,
+  instructions: '', config: {}, isRequired: true, sortOrder,
 });
 
 export default function AdminEventActivityManager({ eventId, missions, onList, onSave, onDelete }: Props) {
@@ -45,7 +45,8 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
 
   const edit = (activity?: AdminEventActivity) => {
     if (!activity) {
-      setDraft(emptyDraft(eventId));
+      const nextOrder = activities.reduce((highest, item) => Math.max(highest, item.sort_order), -1) + 1;
+      setDraft(emptyDraft(eventId, nextOrder));
       return;
     }
     setDraft({
@@ -118,11 +119,8 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
           {draft.activityType === 'mission' && <label className="block text-[10px] text-neon-500">Mission<select required value={draft.missionId ?? ''} onChange={e => update('missionId', e.target.value || null)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200"><option value="">Select a mission</option>{missions.map(m => <option key={m.id} value={m.id}>{m.title} ({m.status})</option>)}</select></label>}
           <label className="block text-[10px] text-neon-500">Description<textarea rows={2} maxLength={2000} value={draft.description} onChange={e => update('description', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
           <label className="block text-[10px] text-neon-500">Player instructions<textarea rows={3} maxLength={5000} value={draft.instructions} onChange={e => update('instructions', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="text-[10px] text-neon-500">Display order<input type="number" min={0} step={1} value={draft.sortOrder} onChange={e => update('sortOrder', Number(e.target.value))} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
-            <label className="flex items-center gap-2 text-[10px] text-neon-500"><input type="checkbox" checked={draft.isRequired} onChange={e => update('isRequired', e.target.checked)} /> Required activity</label>
-          </div>
-          <div className="border border-cyan-500/20 bg-cyan-500/5 p-2 space-y-1"><p className="text-[10px] font-semibold text-cyan-200">No technical setup needed</p><p className="text-[9px] text-neon-500">Just enter the activity title, description and player instructions. ZORD saves the technical settings automatically.</p><p className="text-[9px] text-amber-300">Important: adding an activity does not by itself enable automatic completion checks or reward payouts. Those checks must be connected and tested for each activity type first.</p></div>
+          <label className="flex items-center gap-2 text-[10px] text-neon-500"><input type="checkbox" checked={draft.isRequired} onChange={e => update('isRequired', e.target.checked)} /> Required activity</label>
+          <div className="border border-cyan-500/20 bg-cyan-500/5 p-2 space-y-1"><p className="text-[10px] font-semibold text-cyan-200">Activities are arranged automatically</p><p className="text-[9px] text-neon-500">Players see activities in the same order you add them. You do not need to set a display order.</p><p className="text-[9px] text-amber-300">Important: adding an activity does not by itself enable automatic completion checks or reward payouts. Those checks must be connected and tested for each activity type first.</p></div>
           <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-2 border border-cyan-500/50 bg-cyan-500/10 py-2 text-xs text-cyan-200 disabled:opacity-50">{saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}{saving ? 'Saving…' : 'Save activity'}</button>
         </form>
       )}
