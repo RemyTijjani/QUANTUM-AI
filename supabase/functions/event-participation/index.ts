@@ -227,11 +227,16 @@ Deno.serve(async (req: Request) => {
           for (const mission of missions ?? []) missionById.set(mission.id, mission);
         }
 
+        const registrationByEventId = new Map(
+          verifiedRegistrations.map((item) => [item.event_id, item]),
+        );
+
         for (const activity of activities ?? []) {
           const eventActivities = activitiesByEvent.get(activity.event_id) ?? [];
           const linkedMission = activity.mission_id ? missionById.get(activity.mission_id) ?? null : null;
-          const progress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
-            ? registration.progress as Record<string, unknown>
+          const activityRegistration = registrationByEventId.get(activity.event_id);
+          const progress = activityRegistration?.progress && typeof activityRegistration.progress === "object" && !Array.isArray(activityRegistration.progress)
+            ? activityRegistration.progress as Record<string, unknown>
             : {};
           const evidenceKey = activity.activity_type === "mission" && linkedMission?.kind === "creator"
             ? "creator_submission_approved"
