@@ -69,10 +69,26 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
       setError('Choose the mission this activity must verify.');
       return;
     }
+    if (draft.activityType === 'gameplay_verification') {
+      const target = Number(draft.config.targetCountPerDay ?? 1);
+      const fragments = Array.isArray(draft.config.fragmentIds) ? draft.config.fragmentIds : ['top', 'bottom', 'left', 'right'];
+      if (!Number.isInteger(target) || target < 1 || target > 4) {
+        setError('Set a daily target from 1 to 4 fragment fixes.');
+        return;
+      }
+      if (fragments.length < 1 || fragments.some(id => !['top', 'bottom', 'left', 'right'].includes(String(id)))) {
+        setError('Select at least one valid fragment.');
+        return;
+      }
+    }
     setSaving(true);
     setError('');
     try {
-      await onSave({ ...draft, config: {} });
+      await onSave({ ...draft, config: draft.activityType === 'gameplay_verification' ? {
+        action: 'fragment_fixed',
+        targetCountPerDay: Number(draft.config.targetCountPerDay ?? 1),
+        fragmentIds: Array.isArray(draft.config.fragmentIds) ? draft.config.fragmentIds : ['top', 'bottom', 'left', 'right'],
+      } : {} });
       setDraft(null);
       await refresh();
     } catch (err) {
@@ -119,6 +135,27 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
           {(draft.activityType === 'mission' || draft.activityType === 'creator_submission_approved') && <label className="block text-[10px] text-neon-500">{draft.activityType === 'creator_submission_approved' ? 'Creator Ops mission to verify' : 'Mission'}<select required value={draft.missionId ?? ''} onChange={e => update('missionId', e.target.value || null)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200"><option value="">Select a mission</option>{missions.filter(m => draft.activityType !== 'creator_submission_approved' || m.kind === 'creator').map(m => <option key={m.id} value={m.id}>{m.title} ({m.status})</option>)}</select>{draft.activityType === 'creator_submission_approved' && <p className="mt-1 text-[9px] text-neon-600">Only an approved submission for this exact Creator Ops mission can verify this activity.</p>}</label>}
           <label className="block text-[10px] text-neon-500">Description<textarea rows={2} maxLength={2000} value={draft.description} onChange={e => update('description', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
           <label className="block text-[10px] text-neon-500">Player instructions<textarea rows={3} maxLength={5000} value={draft.instructions} onChange={e => update('instructions', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
+          {draft.activityType === 'gameplay_verification' && (
+            <div className="border border-cyan-500/25 bg-cyan-500/5 p-2 space-y-2">
+              <p className="text-[10px] font-bold text-cyan-200">Trusted fragment challenge</p>
+              <p className="text-[9px] text-neon-500">Count only fragment fixes recorded by the trusted server. The target applies to each event day.</p>
+              <label className="block text-[10px] text-neon-500">Required fragment fixes per day
+                <input type="number" min={1} max={4} step={1} value={Number(draft.config.targetCountPerDay ?? 1)} onChange={e => update('config', { ...draft.config, action: 'fragment_fixed', targetCountPerDay: Number(e.target.value) })} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+              </label>
+              <div className="space-y-1">
+                <p className="text-[10px] text-neon-500">Fragments that count</p>
+                {(['top', 'bottom', 'left', 'right'] as const).map(id => {
+                  const selected = Array.isArray(draft.config.fragmentIds) ? draft.config.fragmentIds as string[] : ['top', 'bottom', 'left', 'right'];
+                  return <label key={id} className="flex items-center gap-2 text-[10px] text-neon-400">
+                    <input type="checkbox" checked={selected.includes(id)} onChange={e => {
+                      const next = e.target.checked ? [...selected, id] : selected.filter(value => value !== id);
+                      update('config', { ...draft.config, action: 'fragment_fixed', fragmentIds: next });
+                    }} /> {id.charAt(0).toUpperCase() + id.slice(1)}
+                  </label>;
+                })}
+              </div>
+            </div>
+          )}
           <label className="flex items-center gap-2 text-[10px] text-neon-500"><input type="checkbox" checked={draft.isRequired} onChange={e => update('isRequired', e.target.checked)} /> Required activity</label>
           <div className="border border-cyan-500/20 bg-cyan-500/5 p-2 space-y-1"><p className="text-[10px] font-semibold text-cyan-200">Activities are arranged automatically</p><p className="text-[9px] text-neon-500">Players see activities in the same order you add them. You do not need to set a display order.</p><p className="text-[9px] text-amber-300">Important: adding an activity does not by itself enable automatic completion checks or reward payouts. Those checks must be connected and tested for each activity type first.</p></div>
           <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-2 border border-cyan-500/50 bg-cyan-500/10 py-2 text-xs text-cyan-200 disabled:opacity-50">{saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}{saving ? 'Saving…' : 'Save activity'}</button>
