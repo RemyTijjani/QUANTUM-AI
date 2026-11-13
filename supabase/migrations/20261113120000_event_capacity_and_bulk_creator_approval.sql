@@ -28,6 +28,7 @@ declare
   v_event public.game_events%rowtype;
   v_existing public.game_event_participations%rowtype;
   v_count integer;
+  v_has_existing boolean := false;
   v_inserted public.game_event_participations%rowtype;
 begin
   select * into v_event
@@ -44,8 +45,9 @@ begin
   select * into v_existing
   from public.game_event_participations
   where event_id = p_event_id and player_id = p_player_id;
+  v_has_existing := found;
 
-  if found and v_existing.status <> 'withdrawn' then
+  if v_has_existing and v_existing.status <> 'withdrawn' then
     return jsonb_build_object(
       'success', true,
       'alreadyRegistered', true,
@@ -66,7 +68,7 @@ begin
     );
   end if;
 
-  if found then
+  if v_has_existing then
     update public.game_event_participations
       set status = 'registered', progress = '{}'::jsonb,
           registered_at = now(), updated_at = now(), completed_at = null
