@@ -389,17 +389,17 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Activity configuration must be a JSON object under 10,000 characters" }, 400);
       }
       if (activity.activityType === "gameplay_verification") {
-        const target = config.targetCountPerDay;
+        const target = config.fixesPerFragmentPerDay;
         const allowedFragments = ["top", "bottom", "left", "right"];
         const fragments = config.fragmentIds === undefined ? allowedFragments : config.fragmentIds;
         if (config.action !== "fragment_fixed" ||
-            !Number.isSafeInteger(target) || target < 1 || target > 4 ||
+            !Number.isSafeInteger(target) || target < 1 || target > 100 ||
             !Array.isArray(fragments) || fragments.length < 1 || fragments.length > 4 ||
             fragments.some((id: unknown) => typeof id !== "string" || !allowedFragments.includes(id)) ||
             new Set(fragments).size !== fragments.length) {
-          return json({ error: "Gameplay challenges need a daily target of 1–4 and at least one unique valid fragment" }, 400);
+          return json({ error: "Gameplay challenges need 1–100 fixes per selected fragment per day and at least one unique valid fragment" }, 400);
         }
-        config = { action: "fragment_fixed", targetCountPerDay: target, fragmentIds: fragments };
+        config = { action: "fragment_fixed", fixesPerFragmentPerDay: target, fragmentIds: fragments };
       } else {
         config = {};
       }
