@@ -1,6 +1,6 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { verifyConfiguredEventActivities } from "../_shared/event-verification.ts";
+import { mapInBatches, verifyConfiguredEventActivities } from "../_shared/event-verification.ts";
 
 // admin-api: privileged admin actions using service role key,
 // credentials verified server-side.
@@ -347,24 +347,23 @@ Deno.serve(async (req: Request) => {
       }
       // Refresh trusted evidence from server records whenever an administrator opens
       // the participant list. This removes dependence on the player reopening the Mini App.
-      const refreshedParticipants = [];
-      for (const participant of data ?? []) {
-        if (participant.status === "withdrawn" || !eventRow?.starts_at || !eventRow?.ends_at) {
-          refreshedParticipants.push(participant);
-          continue;
-        }
-        try {
+      let refreshedParticipants;
+      try {
+        refreshedParticipants = await mapInBatches(data ?? [], 8, async (participant) => {
+          if (participant.status === "withdrawn" || !eventRow?.starts_at || !eventRow?.ends_at) {
+            return participant;
+          }
           const refreshed = await verifyConfiguredEventActivities(
             db,
             participant.player_id,
             eventRow,
             participant,
           );
-          refreshedParticipants.push({ ...participant, ...refreshed });
-        } catch (verificationError) {
-          console.error("Admin-triggered event verification failed:", verificationError);
-          return json({ error: "Could not refresh verified event progress. Participant data was not marked complete." }, 500);
-        }
+          return { ...participant, ...refreshed };
+        });
+      } catch (verificationError) {
+        console.error("Admin-triggered event verification failed:", verificationError);
+        return json({ error: "Could not refresh verified event progress. Participant data was not marked complete." }, 500);
       }
       const participants = refreshedParticipants.map((participant) => ({
         ...participant,
