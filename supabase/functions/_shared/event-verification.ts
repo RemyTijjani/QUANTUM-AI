@@ -171,7 +171,15 @@ export async function verifyConfiguredEventActivities(
       continue;
     }
 
-    if (activity.activity_type !== "gameplay_verification") continue;
+    if (activity.activity_type !== "gameplay_verification") {
+      // Fail closed: stale evidence must not survive if an activity's type is
+      // changed to one this verifier does not support.
+      if (Object.prototype.hasOwnProperty.call(nextActivityProgress, activity.id)) {
+        delete nextActivityProgress[activity.id];
+        changed = true;
+      }
+      continue;
+    }
     const config = activity.config && typeof activity.config === "object" && !Array.isArray(activity.config)
       ? activity.config as Record<string, unknown>
       : {};
@@ -182,6 +190,11 @@ export async function verifyConfiguredEventActivities(
     const usesLegacyTotalTarget = Number.isSafeInteger(legacyTotalTarget) &&
       (legacyTotalTarget as number) >= 1 && (legacyTotalTarget as number) <= 100;
     if (config.action !== "fragment_fixed" || (!usesPerFragmentTarget && !usesLegacyTotalTarget)) {
+      // A changed/invalid configuration invalidates any previously stored proof.
+      if (Object.prototype.hasOwnProperty.call(nextActivityProgress, activity.id)) {
+        delete nextActivityProgress[activity.id];
+        changed = true;
+      }
       continue;
     }
 
@@ -193,6 +206,10 @@ export async function verifyConfiguredEventActivities(
         allowedFragments.some((id: unknown) => typeof id !== "string" || !["top", "bottom", "left", "right"].includes(id)) ||
         new Set(allowedFragments).size !== allowedFragments.length) {
       console.error("Skipping gameplay activity with an invalid fragment selection:", activity.id);
+      if (Object.prototype.hasOwnProperty.call(nextActivityProgress, activity.id)) {
+        delete nextActivityProgress[activity.id];
+        changed = true;
+      }
       continue;
     }
 
