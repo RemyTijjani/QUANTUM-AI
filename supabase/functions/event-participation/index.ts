@@ -26,47 +26,56 @@ function registrationEvidence(event: { objectives?: unknown; requirements?: unkn
   };
 }
 
-async function verifyCreatorSubmissionObjective(
+async function verifyConfiguredCreatorActivities(
   admin: ReturnType<typeof createClient>,
   playerId: string,
-  event: { id: string; starts_at: string | null; ends_at: string | null; objectives?: unknown },
+  event: { id: string; starts_at: string | null; ends_at: string | null },
   registration: Record<string, unknown>,
 ) {
-  const objectives = Array.isArray(event.objectives)
-    ? event.objectives.filter((item): item is string => typeof item === "string")
-    : [];
-  if (!objectives.includes("creator_submission_approved") || !event.starts_at || !event.ends_at) {
-    return registration;
+  if (!event.starts_at || !event.ends_at) return registration;
+
+  const { data: activities, error: activitiesError } = await admin
+    .from("game_event_activities")
+    .select("id, mission_id, activity_type, is_required")
+    .eq("event_id", event.id);
+  if (activitiesError) {
+    console.error("Event activity verification lookup failed:", activitiesError);
+    throw new Error("Could not verify event activities.");
   }
 
   const currentProgress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
     ? registration.progress as Record<string, unknown>
     : {};
-  const currentEvidence = currentProgress.creator_submission_approved && typeof currentProgress.creator_submission_approved === "object"
-    ? currentProgress.creator_submission_approved as Record<string, unknown>
-    : null;
-  if (currentEvidence?.verified === true) return registration;
+  const existingActivityProgress = currentProgress.activities && typeof currentProgress.activities === "object" && !Array.isArray(currentProgress.activities)
+    ? currentProgress.activities as Record<string, unknown>
+    : {};
+  const nextActivityProgress: Record<string, unknown> = { ...existingActivityProgress };
+  let changed = false;
 
-  const { data: submission, error } = await admin
-    .from("creator_ops_submissions")
-    .select("id, mission_id, created_at, reviewed_at")
-    .eq("player_id", playerId)
-    .eq("status", "approved")
-    .gte("created_at", event.starts_at)
-    .lte("created_at", event.ends_at)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  for (const activity of activities ?? []) {
+    if (activity.activity_type !== "creator_submission_approved" || !activity.mission_id) continue;
+    const previous = nextActivityProgress[activity.id];
+    if (previous && typeof previous === "object" && (previous as Record<string, unknown>).verified === true) continue;
 
-  if (error) {
-    console.error("Creator submission event verification failed:", error);
-    throw new Error("Could not verify creator submission activity.");
-  }
-  if (!submission) return registration;
+    const { data: submission, error } = await admin
+      .from("creator_ops_submissions")
+      .select("id, mission_id, created_at, reviewed_at")
+      .eq("player_id", playerId)
+      .eq("mission_id", activity.mission_id)
+      .eq("status", "approved")
+      .gte("created_at", event.starts_at)
+      .lte("created_at", event.ends_at)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
-  const nextProgress = {
-    ...currentProgress,
-    creator_submission_approved: {
+    if (error) {
+      console.error("Creator activity verification failed:", error);
+      throw new Error("Could not verify creator submission activity.");
+    }
+    if (!submission) continue;
+
+    nextActivityProgress[activity.id] = {
       verified: true,
       verifiedAt: new Date().toISOString(),
       method: "admin_approved_creator_ops_submission",
@@ -74,25 +83,28 @@ async function verifyCreatorSubmissionObjective(
       missionId: submission.mission_id,
       submittedAt: submission.created_at,
       approvedAt: submission.reviewed_at,
-    },
-  };
+    };
+    changed = true;
+  }
 
-  const verifiedObjectives = objectives.filter((objective) => objective !== "register")
-    .every((objective) => {
-      const evidence = nextProgress[objective];
+  const requiredActivities = (activities ?? []).filter((activity) => activity.is_required);
+  const allRequiredActivitiesVerified = requiredActivities.length > 0 &&
+    requiredActivities.every((activity) => {
+      if (activity.activity_type !== "creator_submission_approved" || !activity.mission_id) return false;
+      const evidence = nextActivityProgress[activity.id];
       return !!evidence && typeof evidence === "object" && (evidence as Record<string, unknown>).verified === true;
     });
-  const hasParticipationObjective = objectives.some((objective) => objective !== "register");
-  const completesEvent = hasParticipationObjective && verifiedObjectives;
+
+  if (!changed && !(allRequiredActivitiesVerified && registration.status !== "completed")) return registration;
 
   const update: Record<string, unknown> = {
-    progress: nextProgress,
+    progress: { ...currentProgress, activities: nextActivityProgress },
     updated_at: new Date().toISOString(),
   };
-  if (completesEvent) {
+  if (allRequiredActivitiesVerified && registration.status !== "completed") {
     update.status = "completed";
     update.completed_at = registration.completed_at ?? new Date().toISOString();
-  } else if (registration.status === "registered") {
+  } else if (changed && registration.status === "registered") {
     update.status = "in_progress";
   }
 
@@ -105,7 +117,7 @@ async function verifyCreatorSubmissionObjective(
     .single();
 
   if (updateError) {
-    console.error("Creator submission progress update failed:", updateError);
+    console.error("Creator activity progress update failed:", updateError);
     throw new Error("Could not save verified event progress.");
   }
   return updated;
@@ -187,7 +199,7 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        return await verifyCreatorSubmissionObjective(
+        return await verifyConfiguredCreatorActivities(
           admin,
           player.id,
           event,
