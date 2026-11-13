@@ -1,39 +1,60 @@
-import { Cpu, ShieldCheck } from 'lucide-react';
+import { Activity, Bot, Cpu, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { AGENTS, AGENT_IDS } from '@/lib/game/config';
+import type { AgentId } from '@/lib/game/config';
+import { activeAgents } from '@/lib/game/state';
+import type { GameState } from '@/lib/game/state';
+import { formatRate, formatRemaining } from '@/lib/format';
 
-export default function ZordAgentsTab() {
+export default function ZordAgentsTab({ state }: { state: GameState }) {
+  const now = Date.now();
+  const running = activeAgents(state, now);
+  const miningRate = running.reduce((sum, id) => sum + AGENTS[id].zpPerSec, 0);
+  const tiers = [
+    { name: 'Sentinel', tier: 'Tier 1', icon: ShieldCheck, summary: 'AI moderation and community protection.', features: ['Threat and spam monitoring', 'Community safety workflows', 'Configurable moderation rules'] },
+    { name: 'Poly-Shield', tier: 'Tier 2', icon: Users, summary: 'Expanded multi-layer protection for Telegram communities.', features: ['All Sentinel capabilities', 'Advanced community defense', 'Expanded moderation controls'] },
+    { name: 'Omini Glitch', tier: 'Tier 3', icon: Sparkles, summary: 'Full community intelligence and creative operations.', features: ['All Sentinel and Poly-Shield capabilities', 'AI content creation for Telegram groups and channels', 'Meme creation for community engagement'] },
+  ];
+
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-16">
-      <div className="pointer-events-none absolute inset-0 bg-obsidian/60 backdrop-blur-xl" />
-      <div className="pointer-events-none absolute inset-0 scan-bars opacity-30" />
+    <div className="space-y-5 pb-3">
+      <header className="panel space-y-2 border border-neon/30 bg-neon/5 p-4">
+        <div className="flex items-center gap-2 text-neon-400"><Bot size={18} /><span className="label">ZORD autonomous services</span></div>
+        <h1 className="title">ZORD Agents</h1>
+        <p className="font-mono text-[11px] leading-relaxed text-neon-500">Community agents and mining operations share the ZORD platform. Each rented service tier will have isolated community settings and permissions.</p>
+      </header>
 
-      <div className="relative z-10 flex flex-col items-center text-center">
-        <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl border border-neon/40 bg-neon/10 shadow-glow">
-          <Cpu size={40} className="text-neon-400 animate-soft-pulse" />
+      <section className="panel space-y-3 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div><p className="label">Mining operations</p><h2 className="title mt-1">ZP agent activity</h2></div>
+          <Activity size={18} className="text-neon-400" />
         </div>
-
-        <div className="mb-2 flex items-center gap-2">
-          <ShieldCheck size={16} className="text-neon-500" />
-          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-neon-500">Classified</span>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="border border-neon/20 bg-black/40 p-3"><p className="label">Active miners</p><p className="mt-1 font-display text-xl text-neon-300">{running.length}</p></div>
+          <div className="border border-neon/20 bg-black/40 p-3"><p className="label">Displayed rate</p><p className="mt-1 font-display text-xl text-neon-300">{formatRate(miningRate)} <span className="text-[10px]">ZP/s</span></p></div>
         </div>
-
-        <h2 className="glow-text font-display text-2xl font-bold uppercase tracking-[0.14em] text-neon-300 sm:text-3xl">
-          ZORD AGENTS
-        </h2>
-        <p className="glow-text mt-1 font-display text-lg font-bold uppercase tracking-[0.2em] text-neon-400 sm:text-xl">
-          Coming Soon
-        </p>
-
-        <p className="mt-6 max-w-xs font-mono text-[12px] leading-relaxed text-neon-500">
-          Total Group Dominion protocols are currently compiling. Autonomous moderation intelligence launching soon.
-        </p>
-
-        <div className="mt-8 flex items-center gap-2 rounded-full border border-neon/20 bg-black/40 px-4 py-2">
-          <span className="h-1.5 w-1.5 animate-soft-pulse rounded-full bg-neon shadow-glow" />
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-neon-500">
-            Deployment in progress
-          </span>
+        <div className="space-y-2">
+          {AGENT_IDS.map((id: AgentId) => {
+            const agent = AGENTS[id];
+            const endsAt = state.agents[id];
+            const isActive = endsAt > now;
+            return <article key={id} className="flex items-start justify-between gap-3 border border-neon/15 bg-black/30 p-3">
+              <div className="min-w-0"><p className="font-display text-xs font-bold text-neon-300">{agent.name}</p><p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-600">{agent.summary}</p><p className="mt-2 font-mono text-[10px] text-cyan-300">{formatRate(agent.zpPerSec)} ZP/sec while active</p></div>
+              <span className={`shrink-0 border px-2 py-1 font-mono text-[9px] uppercase ${isActive ? 'border-green-500/40 text-green-300' : 'border-neon/20 text-neon-600'}`}>{isActive ? formatRemaining(endsAt - now) : 'Inactive'}</span>
+            </article>;
+          })}
         </div>
-      </div>
+        <p className="font-mono text-[9px] leading-relaxed text-amber-300">Mining figures shown here are legacy game-state estimates, not a verified payout or withdrawable balance. Agent rentals and real payments are not enabled yet. Working agents generate ZP only.</p>
+      </section>
+
+      <section className="space-y-3">
+        <div><p className="label">Community protection tiers</p><h2 className="title mt-1">Rent a ZORD service</h2></div>
+        {tiers.map(({ name, tier, icon: Icon, summary, features }) => <article key={name} className="panel space-y-3 border border-neon/25 p-4">
+          <div className="flex items-center justify-between"><span className="font-mono text-[9px] uppercase tracking-widest text-cyan-300">{tier}</span><Icon size={19} className="text-neon-400" /></div>
+          <div><h3 className="font-display text-base font-bold uppercase tracking-wider text-neon-300">{name}</h3><p className="mt-1 font-mono text-[10px] text-neon-500">{summary}</p></div>
+          <ul className="space-y-1">{features.map(feature => <li key={feature} className="font-mono text-[10px] text-neon-400">• {feature}</li>)}</ul>
+          <div className="border-t border-neon/15 pt-2 font-mono text-[9px] uppercase tracking-wider text-amber-300">Rental checkout and Telegram bot provisioning pending</div>
+        </article>)}
+      </section>
     </div>
   );
 }
