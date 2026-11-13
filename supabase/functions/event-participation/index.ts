@@ -39,7 +39,7 @@ function eventLocalDateKey(value: string | number, timezone: string): string {
 
 function eventLocalDateKeys(start: string, end: string, timezone: string): string[] {
   const first = eventLocalDateKey(start, timezone);
-  const last = eventLocalDateKey(end, timezone);
+  const last = eventLocalDateKey(new Date(new Date(end).getTime() - 1), timezone);
   const [startYear, startMonth, startDay] = first.split("-").map(Number);
   const [endYear, endMonth, endDay] = last.split("-").map(Number);
   let cursor = Date.UTC(startYear, startMonth - 1, startDay);
@@ -79,7 +79,9 @@ async function verifyConfiguredEventActivities(
   const nextActivityProgress: Record<string, unknown> = { ...existingActivityProgress };
   let changed = false;
   const eventEnd = new Date(event.ends_at).getTime();
-  const actionWindowEnd = new Date(Math.min(Date.now(), eventEnd)).toISOString();
+  const registeredAt = typeof registration.registered_at === "string" ? new Date(registration.registered_at).getTime() : new Date(event.starts_at).getTime();
+  const activityStart = new Date(Math.max(new Date(event.starts_at).getTime(), registeredAt)).toISOString();
+  const activityEnd = new Date(Math.min(Date.now(), eventEnd)).toISOString();
 
   for (const activity of activities ?? []) {
     if (activity.activity_type === "creator_submission_approved" && activity.mission_id) {
@@ -157,7 +159,7 @@ async function verifyConfiguredEventActivities(
     const allowedFragments = Array.isArray(config.fragmentIds)
       ? config.fragmentIds.filter((id): id is string => typeof id === "string" && ["top", "bottom", "left", "right"].includes(id))
       : ["top", "bottom", "left", "right"];
-    const days = eventLocalDateKeys(event.starts_at, event.ends_at, timezone);
+    const days = eventLocalDateKeys(activityStart, event.ends_at, timezone);
     const dailyCounts: Record<string, number> = Object.fromEntries(days.map((day) => [day, 0]));
     for (const action of actions ?? []) {
       if (!allowedFragments.includes(action.fragment_id)) continue;
@@ -182,7 +184,6 @@ async function verifyConfiguredEventActivities(
       currentDayCount: dailyCounts[currentDay] ?? 0,
       completedDays,
       totalDays: days.length,
-      updatedAt: new Date().toISOString(),
     };
     if (JSON.stringify(previous) !== JSON.stringify(evidence)) {
       nextActivityProgress[activity.id] = evidence;
