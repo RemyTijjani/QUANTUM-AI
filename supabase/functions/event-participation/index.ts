@@ -26,17 +26,44 @@ function registrationEvidence(event: { objectives?: unknown; requirements?: unkn
   };
 }
 
-async function verifyConfiguredCreatorActivities(
+function eventLocalDateKey(value: string | number, timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return \`\${get("year")}-\${get("month")}-\${get("day")}\`;
+}
+
+function eventLocalDateKeys(start: string, end: string, timezone: string): string[] {
+  const first = eventLocalDateKey(start, timezone);
+  const last = eventLocalDateKey(end, timezone);
+  const [startYear, startMonth, startDay] = first.split("-").map(Number);
+  const [endYear, endMonth, endDay] = last.split("-").map(Number);
+  let cursor = Date.UTC(startYear, startMonth - 1, startDay);
+  const finalDay = Date.UTC(endYear, endMonth - 1, endDay);
+  const days: string[] = [];
+  while (cursor <= finalDay && days.length < 370) {
+    days.push(new Date(cursor).toISOString().slice(0, 10));
+    cursor += 24 * 60 * 60 * 1000;
+  }
+  return days;
+}
+
+async function verifyConfiguredEventActivities(
   admin: ReturnType<typeof createClient>,
   playerId: string,
-  event: { id: string; starts_at: string | null; ends_at: string | null },
+  event: { id: string; starts_at: string | null; ends_at: string | null; timezone?: string | null },
   registration: Record<string, unknown>,
 ) {
   if (!event.starts_at || !event.ends_at) return registration;
+  const timezone = event.timezone || "UTC";
 
   const { data: activities, error: activitiesError } = await admin
     .from("game_event_activities")
-    .select("id, mission_id, activity_type, is_required")
+    .select("id, mission_id, activity_type, is_required, config")
     .eq("event_id", event.id);
   if (activitiesError) {
     console.error("Event activity verification lookup failed:", activitiesError);
@@ -51,64 +78,133 @@ async function verifyConfiguredCreatorActivities(
     : {};
   const nextActivityProgress: Record<string, unknown> = { ...existingActivityProgress };
   let changed = false;
+  const eventEnd = new Date(event.ends_at).getTime();
+  const actionWindowEnd = new Date(Math.min(Date.now(), eventEnd)).toISOString();
 
   for (const activity of activities ?? []) {
-    if (activity.activity_type !== "creator_submission_approved" || !activity.mission_id) continue;
+    if (activity.activity_type === "creator_submission_approved" && activity.mission_id) {
+      const { data: creatorMission, error: missionError } = await admin
+        .from("mission_tasks")
+        .select("id")
+        .eq("id", activity.mission_id)
+        .eq("kind", "creator")
+        .maybeSingle();
+      if (missionError) {
+        console.error("Creator mission lookup failed:", missionError);
+        throw new Error("Could not verify the linked Creator Ops mission.");
+      }
+      if (!creatorMission) continue;
 
-    const { data: creatorMission, error: missionError } = await admin
-      .from("mission_tasks")
-      .select("id")
-      .eq("id", activity.mission_id)
-      .eq("kind", "creator")
-      .maybeSingle();
-    if (missionError) {
-      console.error("Creator mission lookup failed:", missionError);
-      throw new Error("Could not verify the linked Creator Ops mission.");
+      const previous = nextActivityProgress[activity.id];
+      if (previous && typeof previous === "object" && (previous as Record<string, unknown>).verified === true) continue;
+
+      const { data: submission, error } = await admin
+        .from("creator_ops_submissions")
+        .select("id, mission_id, created_at, reviewed_at")
+        .eq("player_id", playerId)
+        .eq("mission_id", activity.mission_id)
+        .eq("status", "approved")
+        .gte("created_at", event.starts_at)
+        .lte("created_at", event.ends_at)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Creator activity verification failed:", error);
+        throw new Error("Could not verify creator submission activity.");
+      }
+      if (!submission) continue;
+
+      nextActivityProgress[activity.id] = {
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+        method: "admin_approved_creator_ops_submission",
+        submissionId: submission.id,
+        missionId: submission.mission_id,
+        submittedAt: submission.created_at,
+        approvedAt: submission.reviewed_at,
+      };
+      changed = true;
+      continue;
     }
-    if (!creatorMission) continue;
 
-    const previous = nextActivityProgress[activity.id];
-    if (previous && typeof previous === "object" && (previous as Record<string, unknown>).verified === true) continue;
+    if (activity.activity_type !== "gameplay_verification") continue;
+    const config = activity.config && typeof activity.config === "object" && !Array.isArray(activity.config)
+      ? activity.config as Record<string, unknown>
+      : {};
+    if (config.action !== "fragment_fixed" ||
+        !Number.isSafeInteger(config.targetCountPerDay) ||
+        (config.targetCountPerDay as number) < 1 ||
+        (config.targetCountPerDay as number) > 100) {
+      continue;
+    }
 
-    const { data: submission, error } = await admin
-      .from("creator_ops_submissions")
-      .select("id, mission_id, created_at, reviewed_at")
+    const { data: actions, error: actionsError } = await admin
+      .from("gameplay_action_events")
+      .select("id, fragment_id, created_at")
       .eq("player_id", playerId)
-      .eq("mission_id", activity.mission_id)
-      .eq("status", "approved")
+      .eq("action_type", "fragment_fixed")
       .gte("created_at", event.starts_at)
-      .lte("created_at", event.ends_at)
+      .lte("created_at", actionWindowEnd)
       .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.error("Creator activity verification failed:", error);
-      throw new Error("Could not verify creator submission activity.");
+      .limit(5000);
+    if (actionsError) {
+      console.error("Gameplay evidence lookup failed:", actionsError);
+      throw new Error("Could not verify gameplay activity.");
     }
-    if (!submission) continue;
 
-    nextActivityProgress[activity.id] = {
-      verified: true,
-      verifiedAt: new Date().toISOString(),
-      method: "admin_approved_creator_ops_submission",
-      submissionId: submission.id,
-      missionId: submission.mission_id,
-      submittedAt: submission.created_at,
-      approvedAt: submission.reviewed_at,
+    const allowedFragments = Array.isArray(config.fragmentIds)
+      ? config.fragmentIds.filter((id): id is string => typeof id === "string" && ["top", "bottom", "left", "right"].includes(id))
+      : ["top", "bottom", "left", "right"];
+    const days = eventLocalDateKeys(event.starts_at, event.ends_at, timezone);
+    const dailyCounts: Record<string, number> = Object.fromEntries(days.map((day) => [day, 0]));
+    for (const action of actions ?? []) {
+      if (!allowedFragments.includes(action.fragment_id)) continue;
+      const day = eventLocalDateKey(action.created_at, timezone);
+      if (day in dailyCounts) dailyCounts[day] += 1;
+    }
+
+    const target = config.targetCountPerDay as number;
+    const completedDays = days.filter((day) => dailyCounts[day] >= target).length;
+    const currentDay = eventLocalDateKey(Date.now(), timezone);
+    const previous = nextActivityProgress[activity.id] && typeof nextActivityProgress[activity.id] === "object"
+      ? nextActivityProgress[activity.id] as Record<string, unknown>
+      : {};
+    const verified = days.length > 0 && completedDays === days.length;
+    const evidence = {
+      verified,
+      verifiedAt: verified ? (typeof previous.verifiedAt === "string" ? previous.verifiedAt : new Date().toISOString()) : null,
+      method: "server_recorded_fragment_fix_actions",
+      action: "fragment_fixed",
+      targetCountPerDay: target,
+      dailyCounts,
+      currentDayCount: dailyCounts[currentDay] ?? 0,
+      completedDays,
+      totalDays: days.length,
+      updatedAt: new Date().toISOString(),
     };
-    changed = true;
+    if (JSON.stringify(previous) !== JSON.stringify(evidence)) {
+      nextActivityProgress[activity.id] = evidence;
+      changed = true;
+    }
   }
 
   const requiredActivities = (activities ?? []).filter((activity) => activity.is_required);
   const allRequiredActivitiesVerified = requiredActivities.length > 0 &&
     requiredActivities.every((activity) => {
-      if (activity.activity_type !== "creator_submission_approved" || !activity.mission_id) return false;
       const evidence = nextActivityProgress[activity.id];
       return !!evidence && typeof evidence === "object" && (evidence as Record<string, unknown>).verified === true;
     });
 
-  if (!changed && !(allRequiredActivitiesVerified && registration.status !== "completed")) return registration;
+  const hasAnyVerifiedProgress = Object.values(nextActivityProgress).some((evidence) =>
+    !!evidence && typeof evidence === "object" &&
+    ((evidence as Record<string, unknown>).verified === true ||
+      Number((evidence as Record<string, unknown>).completedDays ?? 0) > 0 ||
+      Number((evidence as Record<string, unknown>).currentDayCount ?? 0) > 0)
+  );
+  if (!changed && !(allRequiredActivitiesVerified && registration.status !== "completed") &&
+      !(hasAnyVerifiedProgress && registration.status === "registered")) return registration;
 
   const update: Record<string, unknown> = {
     progress: { ...currentProgress, activities: nextActivityProgress },
@@ -117,7 +213,7 @@ async function verifyConfiguredCreatorActivities(
   if (allRequiredActivitiesVerified && registration.status !== "completed") {
     update.status = "completed";
     update.completed_at = registration.completed_at ?? new Date().toISOString();
-  } else if (changed && registration.status === "registered") {
+  } else if (hasAnyVerifiedProgress && registration.status === "registered") {
     update.status = "in_progress";
   }
 
@@ -130,7 +226,7 @@ async function verifyConfiguredCreatorActivities(
     .single();
 
   if (updateError) {
-    console.error("Creator activity progress update failed:", updateError);
+    console.error("Verified event activity progress update failed:", updateError);
     throw new Error("Could not save verified event progress.");
   }
   return updated;
@@ -212,7 +308,7 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        return await verifyConfiguredCreatorActivities(
+        return await verifyConfiguredEventActivities(
           admin,
           player.id,
           event,
