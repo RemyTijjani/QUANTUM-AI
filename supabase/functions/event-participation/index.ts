@@ -61,7 +61,7 @@ Deno.serve(async (req: Request) => {
 
       const verifiedRegistrations = await mapInBatches(registrations ?? [], 8, async (registration) => {
         const event = registration.game_events;
-        if (!event || registration.status === "withdrawn") return registration;
+        if (!event || registration.status === "withdrawn" || registration.zp_reward_approved_at) return registration;
 
         let current = registration as unknown as Record<string, unknown>;
         const registrationProof = registrationEvidence(event);
