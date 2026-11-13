@@ -820,6 +820,7 @@ Deno.serve(async (req: Request) => {
         if (existingEventError || !existingEvent) return json({ error: "Event not found" }, 404);
         if (existingEvent.starts_at && new Date(existingEvent.starts_at).getTime() <= Date.now()) {
           const scheduleChanged =
+            new Date(existingEvent.starts_at).getTime() !== (startsAt?.getTime() ?? NaN) ||
             new Date(existingEvent.ends_at ?? "").getTime() !== (endsAt?.getTime() ?? NaN) ||
             existingEvent.timezone !== timezone;
           const rewardChanged =
