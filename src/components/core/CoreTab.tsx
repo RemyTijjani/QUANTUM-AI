@@ -60,7 +60,7 @@ export default function CoreTab({ state, notify, onWatchAd, onFixFragment }: Cor
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
         Complete the timed unlock, then fix the fragment into the core (+0.02 ZP/sec).
         {' '}
-        {FRAGMENT_IDS.length - fixedCount(state)} of {FRAGMENT_IDS.length} fragments still missing.
+        {fixedCount(state)} of {FRAGMENT_IDS.length} fragments fixed.
       </p>
       <CharacterCard
         fixed={fixedCount(state)}
