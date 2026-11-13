@@ -110,6 +110,16 @@ export interface EventParticipationActivity {
   is_required: boolean;
   sort_order: number;
   verification: 'verified' | 'awaiting_verification';
+  progress: {
+    currentDayCount?: number | null;
+    targetCountPerDay?: number | null;
+    fixesPerFragmentPerDay?: number | null;
+    completedDays?: number | null;
+    totalDays?: number | null;
+    dailyCounts?: Record<string, number> | null;
+    currentDayFragmentCounts?: Record<string, number> | null;
+    dailyFragmentCounts?: Record<string, Record<string, number>> | null;
+  } | null;
   mission: {
     id: string;
     title: string;
