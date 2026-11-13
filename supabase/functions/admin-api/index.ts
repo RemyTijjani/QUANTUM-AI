@@ -416,8 +416,11 @@ Deno.serve(async (req: Request) => {
         config = {};
       }
       const { data: eventRow, error: eventError } = await db
-        .from("game_events").select("id").eq("id", eventId).maybeSingle();
+        .from("game_events").select("id, starts_at").eq("id", eventId).maybeSingle();
       if (eventError || !eventRow) return json({ error: "Event not found" }, 404);
+      if (eventRow.starts_at && new Date(eventRow.starts_at).getTime() <= Date.now()) {
+        return json({ error: "Event activities are locked once the event starts." }, 409);
+      }
 
       if (missionRequired) {
         const { data: mission, error: missionError } = await db
@@ -460,6 +463,12 @@ Deno.serve(async (req: Request) => {
       const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!validUuid.test(activityId) || !validUuid.test(eventId)) {
         return json({ error: "Valid event and activity IDs are required" }, 400);
+      }
+      const { data: eventRow, error: eventError } = await db
+        .from("game_events").select("starts_at").eq("id", eventId).maybeSingle();
+      if (eventError || !eventRow) return json({ error: "Event not found" }, 404);
+      if (eventRow.starts_at && new Date(eventRow.starts_at).getTime() <= Date.now()) {
+        return json({ error: "Event activities are locked once the event starts." }, 409);
       }
       const { data, error } = await db.from("game_event_activities")
         .delete().eq("id", activityId).eq("event_id", eventId).select("id").maybeSingle();
@@ -802,6 +811,26 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Participation rules must be 10,000 characters or fewer" }, 400);
       }
 
+      if (event.id) {
+        const { data: existingEvent, error: existingEventError } = await db
+          .from("game_events")
+          .select("starts_at, ends_at, timezone, reward_zp, reward_zap")
+          .eq("id", event.id)
+          .maybeSingle();
+        if (existingEventError || !existingEvent) return json({ error: "Event not found" }, 404);
+        if (existingEvent.starts_at && new Date(existingEvent.starts_at).getTime() <= Date.now()) {
+          const scheduleChanged =
+            new Date(existingEvent.ends_at ?? "").getTime() !== (endsAt?.getTime() ?? NaN) ||
+            existingEvent.timezone !== timezone;
+          const rewardChanged =
+            Number(existingEvent.reward_zp) !== event.rewardZp ||
+            Number(existingEvent.reward_zap ?? 0) !== rewardZap;
+          if (scheduleChanged || rewardChanged) {
+            return json({ error: "Event schedule and reward amounts are locked once the event starts." }, 409);
+          }
+        }
+      }
+
       const row = {
         title: event.title.trim(),
         description,
@@ -837,6 +866,12 @@ Deno.serve(async (req: Request) => {
     // DELETE EVENT
     if (body.action === "delete_event") {
       if (!body.eventId) return json({ error: "eventId required" }, 400);
+      const { data: eventToDelete, error: lookupError } = await db
+        .from("game_events").select("starts_at").eq("id", body.eventId).maybeSingle();
+      if (lookupError || !eventToDelete) return json({ error: "Event not found" }, 404);
+      if (eventToDelete.starts_at && new Date(eventToDelete.starts_at).getTime() <= Date.now()) {
+        return json({ error: "Events cannot be deleted after they start. Cancel the event instead." }, 409);
+      }
       const { error } = await db.from("game_events").delete().eq("id", body.eventId);
       if (error) return json({ error: "Failed to delete event" }, 500);
       return json({ success: true });
