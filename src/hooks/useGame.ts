@@ -81,7 +81,7 @@ export function useGame(
   syncError: string | null;
   retryLoad: () => void;
   trustedGameplay: {
-    beginUnlock: (id: FragmentId) => Promise<string>;
+    beginUnlock: (id: FragmentId) => Promise<{ sessionId: string | null; alreadyUnlocked: boolean }>;
     completeUnlock: (sessionId: string) => Promise<void>;
     fixFragment: (id: FragmentId) => Promise<void>;
   };
@@ -424,7 +424,11 @@ export function useGame(
   };
 
   const trustedGameplay = useMemo(() => ({
-    beginUnlock: (id: FragmentId) => beginTrustedUnlock(id),
+    beginUnlock: async (id: FragmentId) => {
+      const result = await beginTrustedUnlock(id);
+      if (result.alreadyUnlocked) await applyTrustedFragments();
+      return result;
+    },
     completeUnlock: async (sessionId: string) => {
       await completeTrustedUnlock(sessionId);
       await applyTrustedFragments();
