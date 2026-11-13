@@ -332,7 +332,11 @@ Deno.serve(async (req: Request) => {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId)) {
         return json({ error: "A valid event ID is required" }, 400);
       }
-      const [{ data, error }, { data: eventRow, error: eventError }] = await Promise.all([
+      const [
+        { data, error },
+        { data: eventRow, error: eventError },
+        { data: eventActivities, error: activitiesError },
+      ] = await Promise.all([
         db
           .from("game_event_participations")
           .select("id, event_id, player_id, status, progress, registered_at, updated_at, completed_at, zp_reward_approved_at, zp_reward_approved_by, zp_reward_amount, players!inner(telegram_id, username, first_name, referral_code)")
@@ -340,10 +344,11 @@ Deno.serve(async (req: Request) => {
           .order("registered_at", { ascending: false })
           .limit(500),
         db.from("game_events").select("id, starts_at, ends_at, timezone, objectives, requirements, reward_zp, reward_zap").eq("id", eventId).maybeSingle(),
+        db.from("game_event_activities").select("id, mission_id, activity_type, is_required, config").eq("event_id", eventId),
       ]);
-      if (error || eventError) {
-        console.error("Event participant lookup failed:", error ?? eventError);
-        return json({ error: "Failed to load event participants" }, 500);
+      if (error || eventError || activitiesError) {
+        console.error("Event participant lookup failed:", error ?? eventError ?? activitiesError);
+        return json({ error: "Failed to load event participants and verification rules" }, 500);
       }
       // Refresh trusted evidence from server records whenever an administrator opens
       // the participant list. This removes dependence on the player reopening the Mini App.
@@ -358,6 +363,7 @@ Deno.serve(async (req: Request) => {
             participant.player_id,
             eventRow,
             participant,
+            eventActivities ?? [],
           );
           return { ...participant, ...refreshed };
         });
