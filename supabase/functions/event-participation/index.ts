@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === "GET") {
       const { data: registrations, error: registrationsError } = await admin
         .from("game_event_participations")
-        .select("id, event_id, status, progress, registered_at, updated_at, completed_at, game_events(id, title, category, starts_at, ends_at, timezone, objectives, requirements)")
+        .select("id, event_id, status, progress, registered_at, updated_at, completed_at, zp_reward_approved_at, game_events(id, title, category, starts_at, ends_at, timezone, objectives, requirements)")
         .eq("player_id", player.id)
         .order("registered_at", { ascending: false })
         .limit(100);
