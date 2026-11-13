@@ -137,8 +137,13 @@ export const fragmentCooldownRemaining = (
 
 export function passiveRate(s: GameState, now: number) {
   const coreRate = now < s.coreMiningUntil ? CORE_BASE_RATE : 0;
-  const fragmentRate = fixedCount(s) * FRAGMENT_ZP_PER_SEC;
-  const agentRate = activeAgents(s, now).reduce(
+  const runningAgents = activeAgents(s, now);
+  // A fixed fragment maintains the rented agent; it does not add a separate
+  // fragment rate while an agent is active.
+  const fragmentRate = runningAgents.length > 0
+    ? 0
+    : fixedCount(s) * FRAGMENT_ZP_PER_SEC;
+  const agentRate = runningAgents.reduce(
     (sum, id) => sum + AGENTS[id].zpPerSec,
     0
   );
