@@ -1,13 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Activity,
   Bot,
-  Check,
-  Copy,
   LoaderCircle,
   ShieldCheck,
   Sparkles,
   Users,
+  Wallet,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { AGENTS, AGENT_IDS } from '@/lib/game/config';
@@ -15,6 +14,11 @@ import type { AgentId } from '@/lib/game/config';
 import { activeAgents } from '@/lib/game/state';
 import type { GameState } from '@/lib/game/state';
 import { formatRate, formatRemaining } from '@/lib/format';
+import {
+  encodeTonCommentPayload,
+  getTonConnectUI,
+} from '@/lib/ton-connect';
+import type { TonConnectWallet } from '@/lib/ton-connect';
 
 type AgentRentalType = 'alpha_miner' | 'overclocked_core';
 
@@ -54,16 +58,62 @@ const RENTAL_OPTIONS: {
 
 function AgentRentalCheckout() {
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
-  const [busy, setBusy] = useState<'alpha_miner' | 'overclocked_core' | 'verify' | null>(null);
+  const [busy, setBusy] = useState<'alpha_miner' | 'overclocked_core' | 'send' | 'verify' | null>(null);
   const [notice, setNotice] = useState('');
   const [noticeKind, setNoticeKind] = useState<'info' | 'success' | 'error'>('info');
-  const [copied, setCopied] = useState<'address' | 'reference' | null>(null);
   const [activeUntil, setActiveUntil] = useState<string | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [walletNetwork, setWalletNetwork] = useState<string | null>(null);
+  const [walletReady, setWalletReady] = useState(false);
+  const [sendAttempted, setSendAttempted] = useState(false);
+  const [transactionSubmitted, setTransactionSubmitted] = useState(false);
+
+  // Real transfers remain disabled until the user explicitly enables them
+  // for Preview after wallet-connection testing is complete.
+  const paymentsEnabled = import.meta.env.VITE_TON_CONNECT_ENABLE_PAYMENTS === 'true';
+
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribe: (() => void) | undefined;
+
+    try {
+      const ui = getTonConnectUI();
+      const syncWallet = (wallet: TonConnectWallet | null) => {
+        if (!mounted) return;
+        setWalletAddress(wallet?.account.address ?? null);
+        setWalletNetwork(wallet?.account.chain ?? null);
+      };
+
+      syncWallet(ui.wallet);
+      unsubscribe = ui.onStatusChange(syncWallet);
+      setWalletReady(true);
+    } catch (error) {
+      setWalletReady(false);
+      setNotice(error instanceof Error ? error.message : 'TON Connect could not be initialized.');
+      setNoticeKind('error');
+    }
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, []);
+
+  const connectWallet = async () => {
+    try {
+      await getTonConnectUI().openModal();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not open the TON wallet selector.');
+      setNoticeKind('error');
+    }
+  };
 
   const createIntent = async (agentType: AgentRentalType) => {
     setBusy(agentType);
     setNotice('');
     setActiveUntil(null);
+    setSendAttempted(false);
+    setTransactionSubmitted(false);
     try {
       const { data, error } = await supabase.functions.invoke('agent-rental-payments', {
         body: { action: 'create_intent', agentType },
@@ -73,7 +123,7 @@ function AgentRentalCheckout() {
         throw new Error(data?.error || 'The payment service returned an incomplete request.');
       }
       setIntent(data.intent as PaymentIntent);
-      setNotice('Payment request created. No wallet transaction has been sent.');
+      setNotice('Checkout created. Connect your TON wallet to continue. No funds have been sent.');
       setNoticeKind('success');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Could not create a payment request.');
@@ -110,16 +160,66 @@ function AgentRentalCheckout() {
     }
   };
 
-  const copyValue = async (kind: 'address' | 'reference', value: string) => {
+  const sendPayment = async () => {
+    if (!intent) return;
+
+    if (!paymentsEnabled) {
+      setNotice('Real TON transfers are disabled during Preview testing. Wallet connection can be tested safely without sending funds.');
+      setNoticeKind('info');
+      return;
+    }
+
     try {
-      await navigator.clipboard.writeText(value);
-      setCopied(kind);
-      window.setTimeout(() => setCopied((current) => current === kind ? null : current), 1800);
-    } catch {
-      setNotice('Clipboard access is unavailable in this Telegram session.');
+      const ui = getTonConnectUI();
+      const wallet = ui.wallet;
+      if (!wallet) throw new Error('Connect your TON wallet before continuing.');
+      if (wallet.account.chain !== '-239' || intent.network !== 'mainnet') {
+        throw new Error('This checkout accepts TON mainnet wallets only. Switch your wallet to TON mainnet.');
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const expiry = Math.floor(new Date(intent.expiresAt).getTime() / 1000);
+      const validUntil = Math.min(now + 300, expiry);
+      if (!Number.isFinite(validUntil) || validUntil <= now) {
+        throw new Error('This payment request has expired. Create a new checkout.');
+      }
+
+      setBusy('send');
+      setSendAttempted(true);
+      setNotice('Confirm the exact amount and recipient in your wallet.');
+      setNoticeKind('info');
+
+      const response = await ui.sendTransaction({
+        validUntil,
+        network: '-239',
+        messages: [{
+          address: intent.recipientAddress,
+          amount: intent.amountNano,
+          payload: encodeTonCommentPayload(intent.paymentReference),
+        }],
+      });
+
+      if (!response?.boc) {
+        throw new Error('The wallet did not return a transaction confirmation. Check wallet activity before retrying.');
+      }
+
+      setTransactionSubmitted(true);
+      setNotice('Wallet returned a transaction response. Checking TON mainnet for confirmation...');
+      setNoticeKind('info');
+      setBusy(null);
+      await verifyIntent();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'The wallet transaction was not confirmed. Check wallet activity before retrying.');
       setNoticeKind('error');
+    } finally {
+      setBusy((current) => current === 'send' ? null : current);
     }
   };
+
+  const shortAddress = walletAddress
+    ? walletAddress.slice(0, 6) + '…' + walletAddress.slice(-6)
+    : null;
+  const isMainnetWallet = walletNetwork === '-239';
 
   return (
     <section className="panel space-y-4 border border-cyan-400/25 p-4">
@@ -130,6 +230,31 @@ function AgentRentalCheckout() {
           ZORD displays the native TON coin as GRAM. Both rentals run for 30 days.
           Working agents generate ZP only.
         </p>
+      </div>
+
+      <div className="border border-neon/20 bg-black/30 p-3">
+        <div className="flex items-center gap-2">
+          <Wallet size={15} className="text-cyan-300" />
+          <p className="label">TON wallet</p>
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-[11px] text-neon-300">
+              {walletAddress ? shortAddress : walletReady ? 'Wallet not connected' : 'Loading wallet connector…'}
+            </p>
+            <p className="mt-1 font-mono text-[9px] text-neon-600">
+              {walletAddress ? (isMainnetWallet ? 'Connected · TON mainnet' : 'Connected · wrong network') : 'Connect to prepare a secure checkout'}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-ghost shrink-0"
+            disabled={!walletReady}
+            onClick={() => void connectWallet()}
+          >
+            {walletAddress ? 'Change wallet' : 'Connect wallet'}
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-3">
@@ -149,11 +274,11 @@ function AgentRentalCheckout() {
             <button
               type="button"
               className="btn-primary mt-3 w-full"
-              disabled={busy !== null}
+              disabled={busy !== null || (intent !== null && Date.parse(intent.expiresAt) > Date.now())}
               onClick={() => void createIntent(option.id)}
             >
               {busy === option.id ? <LoaderCircle size={14} className="animate-spin" /> : null}
-              Create payment request
+              {intent?.agentType === option.id ? 'Current checkout' : 'Create checkout'}
             </button>
           </article>
         ))}
@@ -162,8 +287,10 @@ function AgentRentalCheckout() {
       {intent && (
         <div className="space-y-3 border border-cyan-400/30 bg-cyan-400/5 p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="font-display text-xs font-bold uppercase text-cyan-300">Payment request ready</p>
-            <span className="font-mono text-[9px] uppercase text-amber-300">Pending</span>
+            <p className="font-display text-xs font-bold uppercase text-cyan-300">Wallet checkout ready</p>
+            <span className="font-mono text-[9px] uppercase text-amber-300">
+              {transactionSubmitted ? 'Submitted · verifying' : 'Awaiting wallet'}
+            </span>
           </div>
           <div>
             <p className="label">Exact amount</p>
@@ -173,25 +300,40 @@ function AgentRentalCheckout() {
             <p className="font-mono text-[9px] text-neon-600">TON mainnet · native coin · not a jetton</p>
           </div>
           <div>
-            <p className="label">Treasury address</p>
-            <p className="mt-1 break-all font-mono text-[10px] text-neon-300">{intent.recipientAddress}</p>
-            <button type="button" className="btn-ghost mt-2 w-full" onClick={() => void copyValue('address', intent.recipientAddress)}>
-              {copied === 'address' ? <Check size={13} /> : <Copy size={13} />}
-              {copied === 'address' ? 'Address copied' : 'Copy address'}
-            </button>
-          </div>
-          <div>
-            <p className="label">Required payment comment / reference</p>
+            <p className="label">Payment reference</p>
             <p className="mt-1 break-all font-mono text-[10px] text-cyan-200">{intent.paymentReference}</p>
-            <button type="button" className="btn-ghost mt-2 w-full" onClick={() => void copyValue('reference', intent.paymentReference)}>
-              {copied === 'reference' ? <Check size={13} /> : <Copy size={13} />}
-              {copied === 'reference' ? 'Reference copied' : 'Copy reference'}
-            </button>
+            <p className="mt-1 font-mono text-[9px] text-neon-600">
+              This reference is attached automatically as the TON transaction comment.
+            </p>
           </div>
           <p className="font-mono text-[9px] leading-relaxed text-neon-600">
             Request expires: {new Date(intent.expiresAt).toLocaleString()}
           </p>
-          <button type="button" className="btn-cyan w-full" disabled={busy !== null} onClick={() => void verifyIntent()}>
+          <button
+            type="button"
+            className="btn-cyan w-full"
+            disabled={!paymentsEnabled || !walletAddress || !isMainnetWallet || busy !== null || sendAttempted}
+            onClick={() => void sendPayment()}
+          >
+            {busy === 'send' ? <LoaderCircle size={14} className="animate-spin" /> : null}
+            {paymentsEnabled ? 'Approve payment in TON wallet' : 'Wallet transfers disabled in Preview'}
+          </button>
+          {!paymentsEnabled && (
+            <p className="font-mono text-[9px] leading-relaxed text-amber-300">
+              Preview safety lock: wallet connection is enabled, but sending real GRAM is disabled. No funds can be transferred during this test.
+            </p>
+          )}
+          {sendAttempted && !transactionSubmitted && (
+            <p className="font-mono text-[9px] leading-relaxed text-amber-300">
+              A wallet request was attempted. Check wallet activity and payment status before creating another checkout; do not retry blindly.
+            </p>
+          )}
+          <button
+            type="button"
+            className="btn-ghost w-full"
+            disabled={busy !== null}
+            onClick={() => void verifyIntent()}
+          >
             {busy === 'verify' ? <LoaderCircle size={14} className="animate-spin" /> : null}
             Check mainnet payment
           </button>
@@ -204,13 +346,12 @@ function AgentRentalCheckout() {
       )}
 
       {notice && (
-        <p role="status" className={`font-mono text-[10px] leading-relaxed ${noticeKind === 'error' ? 'text-red-300' : noticeKind === 'success' ? 'text-green-300' : 'text-amber-300'}`}>
+        <p role="status" className={'font-mono text-[10px] leading-relaxed ' + (noticeKind === 'error' ? 'text-red-300' : noticeKind === 'success' ? 'text-green-300' : 'text-amber-300')}>
           {notice}
         </p>
       )}
       <p className="font-mono text-[9px] leading-relaxed text-amber-300">
-        Creating a request does not send funds. Do not make a real transfer during this integration test.
-        Wallet connection and verified ZP mining activation are separate steps.
+        A wallet connection never activates a rental. The server must independently verify the TON mainnet transaction and its unique comment before recording payment. Confirmed rentals are not yet connected to trusted ZP accrual.
       </p>
     </section>
   );
@@ -252,7 +393,7 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
             const isActive = endsAt > now;
             return <article key={id} className="flex items-start justify-between gap-3 border border-neon/15 bg-black/30 p-3">
               <div className="min-w-0"><p className="font-display text-xs font-bold text-neon-300">{agent.name}</p><p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-600">{agent.summary}</p><p className="mt-2 font-mono text-[10px] text-cyan-300">{formatRate(agent.zpPerSec)} ZP/sec while active</p></div>
-              <span className={`shrink-0 border px-2 py-1 font-mono text-[9px] uppercase ${isActive ? 'border-green-500/40 text-green-300' : 'border-neon/20 text-neon-600'}`}>{isActive ? formatRemaining(endsAt - now) : 'Inactive'}</span>
+              <span className={'shrink-0 border px-2 py-1 font-mono text-[9px] uppercase ' + (isActive ? 'border-green-500/40 text-green-300' : 'border-neon/20 text-neon-600')}>{isActive ? formatRemaining(endsAt - now) : 'Inactive'}</span>
             </article>;
           })}
         </div>
