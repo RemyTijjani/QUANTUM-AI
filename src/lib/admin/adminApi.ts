@@ -136,6 +136,12 @@ export interface AdminEventParticipant {
   registered_at: string;
   updated_at: string;
   completed_at: string | null;
+  zp_reward_approved_at: string | null;
+  zp_reward_approved_by: string | null;
+  zp_reward_amount: number | string | null;
+  event_ends_at: string | null;
+  event_reward_zp: number | string;
+  event_reward_zap: number | string;
   players: {
     telegram_id: number | string;
     username: string | null;
@@ -500,4 +506,32 @@ export async function updateEventParticipantStatus(
     participationId,
     participationStatus: status,
   });
+}
+
+export interface EventRewardApprovalResult {
+  success: true;
+  alreadyApproved: boolean;
+  participationId?: string;
+  playerId?: string;
+  eventId?: string;
+  rewardZp: number;
+  balanceAfter?: number;
+  approvedAt: string;
+  approvedBy?: string;
+  zapRewardIssued?: false;
+  zapRewardDeferred?: boolean;
+}
+
+export async function approveEventParticipantReward(
+  creds: AdminCredentials,
+  participationId: string,
+): Promise<EventRewardApprovalResult> {
+  const body = await callAdminApi(creds, {
+    action: 'approve_event_participant_reward',
+    participationId,
+  });
+  if (!body || typeof body !== 'object' || (body as { success?: unknown }).success !== true) {
+    throw new AdminApiError('Event reward approval returned an unexpected response.');
+  }
+  return body as EventRewardApprovalResult;
 }
