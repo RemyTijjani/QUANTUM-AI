@@ -1,6 +1,4 @@
 import { createContext, useContext } from 'react';
-import type { TelegramUser } from '@/lib/telegram';
-
 export interface AuthPlayer {
   playerId: string;
   telegramId: number;
