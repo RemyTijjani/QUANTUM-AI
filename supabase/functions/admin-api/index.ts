@@ -69,6 +69,8 @@ interface AdminRequestBody {
     timezone?: string;
     rewardZp?: number;
     rewardZap?: number;
+    minParticipants?: number | null;
+    maxParticipants?: number | null;
     objectives?: unknown;
     requirements?: unknown;
     participationRules?: unknown;
