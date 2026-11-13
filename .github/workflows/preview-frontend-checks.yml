@@ -6,6 +6,7 @@ on:
       - security/trusted-gameplay-migration
     paths:
       - 'src/**'
+      - 'supabase/functions/**'
       - 'index.html'
       - 'package.json'
       - 'package-lock.json'
