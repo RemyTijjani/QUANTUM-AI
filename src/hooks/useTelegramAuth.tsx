@@ -178,6 +178,16 @@ export function AuthProvider({
     let cancelled = false;
 
     const init = async () => {
+      // A normal browser must not clear or claim a Telegram player's local session.
+      // Stop before any local-session ownership changes when Telegram initData is absent.
+      if (!getTelegramInitData()) {
+        setAuth({
+          status: 'error',
+          message: 'Telegram login is not available in this browser session.',
+        });
+        return;
+      }
+
       const currentStartParam = getTelegramStartParam();
       const currentTgId = (() => {
         const initData = getTelegramInitData();
@@ -239,7 +249,7 @@ export function AuthProvider({
         if ('error' in result) {
           setAuth({
             status: 'error',
-            error: result.error,
+            message: result.error,
           } as AuthState);
 
           return;
@@ -255,7 +265,7 @@ export function AuthProvider({
         if (!cancelled) {
           setAuth({
             status: 'error',
-            error:
+            message:
               err instanceof Error
                 ? err.message
                 : 'Authentication failed.',
