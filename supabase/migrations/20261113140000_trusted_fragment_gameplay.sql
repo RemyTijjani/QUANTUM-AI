@@ -66,7 +66,7 @@ declare
   v_state public.player_fragment_gameplay_state%rowtype;
   v_session public.fragment_unlock_sessions%rowtype;
 begin
-  if p_fragment_id not in ('top', 'bottom', 'left', 'right') then
+  if p_fragment_id is null or p_fragment_id not in ('top', 'bottom', 'left', 'right') then
     raise exception 'Invalid fragment';
   end if;
 
@@ -252,6 +252,22 @@ begin
   from public.player_fragment_gameplay_state
   where player_id = p_player_id and fragment_id = p_fragment_id
   for update;
+
+  -- Re-check idempotency after taking the state lock so concurrent retries
+  -- of the same request return the first committed event rather than failing.
+  select * into v_event
+  from public.gameplay_action_events
+  where player_id = p_player_id and request_id = p_request_id;
+
+  if found then
+    return jsonb_build_object(
+      'success', true,
+      'duplicate', true,
+      'actionEventId', v_event.id,
+      'fragmentId', v_event.fragment_id,
+      'createdAt', v_event.created_at
+    );
+  end if;
 
   if v_state.status <> 'unlocked' then
     return jsonb_build_object('success', false, 'reason', 'fragment_not_unlocked');
