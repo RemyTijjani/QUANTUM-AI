@@ -14,6 +14,7 @@ interface Props {
   onDelete: (eventId: string) => Promise<void>;
   onListParticipants: (eventId: string) => Promise<AdminEventParticipant[]>;
   onUpdateParticipantStatus: (participationId: string, status: AdminEventParticipantStatus) => Promise<void>;
+  onApproveEventReward: (participationId: string) => Promise<void>;
 }
 
 type Draft = {
@@ -113,7 +114,7 @@ const PARTICIPATION_RULE_TEMPLATES = [
   },
 ] as const;
 
-export default function AdminEventManager({ events, missions, onListActivities, onSaveActivity, onDeleteActivity, onSave, onDelete, onListParticipants, onUpdateParticipantStatus }: Props) {
+export default function AdminEventManager({ events, missions, onListActivities, onSaveActivity, onDeleteActivity, onSave, onDelete, onListParticipants, onUpdateParticipantStatus, onApproveEventReward }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -124,6 +125,7 @@ export default function AdminEventManager({ events, missions, onListActivities, 
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [participantStatusDrafts, setParticipantStatusDrafts] = useState<Record<string, AdminEventParticipantStatus>>({});
   const [updatingParticipantId, setUpdatingParticipantId] = useState<string | null>(null);
+  const [approvingRewardId, setApprovingRewardId] = useState<string | null>(null);
 
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => current ? { ...current, [key]: value } : current);
@@ -217,6 +219,21 @@ export default function AdminEventManager({ events, missions, onListActivities, 
       setError(err instanceof Error ? err.message : 'Could not update participant status.');
     } finally {
       setUpdatingParticipantId(null);
+    }
+  };
+
+  const handleApproveEventReward = async (participant: AdminEventParticipant) => {
+    const amount = Number(participant.event_reward_zp ?? 0);
+    if (!window.confirm(`Approve and credit ${amount.toLocaleString()} ZP to this player? This action cannot be reversed.`)) return;
+    setApprovingRewardId(participant.id);
+    setError('');
+    try {
+      await onApproveEventReward(participant.id);
+      if (participantsForEvent) setParticipants(await onListParticipants(participantsForEvent));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not approve this event reward.');
+    } finally {
+      setApprovingRewardId(null);
     }
   };
 
@@ -396,8 +413,13 @@ export default function AdminEventManager({ events, missions, onListActivities, 
                     <p className="text-[10px] text-neon-300">{participant.players.first_name ?? participant.players.username ?? 'Player'} {participant.players.username ? `(@${participant.players.username})` : ''}</p>
                     <p className="text-[9px] text-neon-700">{participant.players.referral_code} · Telegram {participant.players.telegram_id}</p>
                     <p className="text-[9px] text-neon-700">Registered {new Date(participant.registered_at).toLocaleString()}</p>
+                    {participant.zp_reward_approved_at ? (
+                      <p className="text-[9px] text-green-400">Reward paid: {Number(participant.zp_reward_amount ?? 0).toLocaleString()} ZP · {participant.zp_reward_approved_by ?? 'Admin'}</p>
+                    ) : (
+                      <p className="text-[9px] text-neon-700">Event ZP reward: {Number(participant.event_reward_zp ?? 0).toLocaleString()} · {participant.status === 'completed' ? 'Completion recorded' : 'Not completed'}</p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <select
                       aria-label={`Status for ${participant.players.username ?? participant.players.first_name ?? 'participant'}`}
                       value={participantStatusDrafts[participant.id] ?? participant.status}
@@ -418,12 +440,26 @@ export default function AdminEventManager({ events, missions, onListActivities, 
                     >
                       {updatingParticipantId === participant.id ? 'Saving…' : 'Save'}
                     </button>
+                    {!participant.zp_reward_approved_at &&
+                      participant.status === 'completed' &&
+                      Number(participant.event_reward_zp ?? 0) > 0 &&
+                      !!participant.event_ends_at &&
+                      new Date(participant.event_ends_at).getTime() <= Date.now() && (
+                        <button
+                          type="button"
+                          disabled={approvingRewardId === participant.id}
+                          onClick={() => void handleApproveEventReward(participant)}
+                          className="border border-green-500/40 px-2 py-1 text-[9px] text-green-300 disabled:opacity-40"
+                        >
+                          {approvingRewardId === participant.id ? 'Approving…' : 'Approve ZP reward'}
+                        </button>
+                      )}
                   </div>
                 </article>
               ))}
             </div>
           )}
-          <p className="text-[9px] text-neon-700">Statuses are administrator-reviewed only. No objective telemetry or ZP/ZAP rewards are issued by this control.</p>
+          <p className="text-[9px] text-neon-700">Status edits do not issue rewards. ZP approval is available only after the event ends and verified completion is recorded. ZAP is not issued here.</p>
         </section>
       )}
     </section>
