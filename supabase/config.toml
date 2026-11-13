@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.event-participation]
 verify_jwt = false
+
+[functions.gameplay-actions]
+verify_jwt = false
