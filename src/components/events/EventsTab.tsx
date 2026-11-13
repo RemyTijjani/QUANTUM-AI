@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarDays, Clock3, Trophy, Sparkles, RefreshCw, UserPlus, CheckCircle2, ListChecks, ExternalLink } from 'lucide-react';
+import { CalendarDays, Clock3, Trophy, Sparkles, RefreshCw, UserPlus, ListChecks, ExternalLink } from 'lucide-react';
 import { EventsApiError, fetchPublishedEvents } from '@/lib/events/eventsApi';
 import type { PublicGameEvent, EventRegistration } from '@/lib/events/eventsApi';
 import { fetchMyEventRegistrations, registerForEvent } from '@/lib/events/eventsApi';
