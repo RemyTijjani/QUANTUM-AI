@@ -50,17 +50,22 @@ export async function verifyConfiguredEventActivities(
   playerId: string,
   event: { id: string; starts_at: string | null; ends_at: string | null; timezone?: string | null },
   registration: Record<string, unknown>,
+  preloadedActivities?: Array<{ id: string; mission_id: string | null; activity_type: string; is_required: boolean; config: unknown }>,
 ) {
   if (!event.starts_at || !event.ends_at) return registration;
   const timezone = event.timezone || "UTC";
 
-  const { data: activities, error: activitiesError } = await admin
-    .from("game_event_activities")
-    .select("id, mission_id, activity_type, is_required, config")
-    .eq("event_id", event.id);
-  if (activitiesError) {
-    console.error("Event activity verification lookup failed:", activitiesError);
-    throw new Error("Could not verify event activities.");
+  let activities = preloadedActivities;
+  if (!activities) {
+    const { data, error } = await admin
+      .from("game_event_activities")
+      .select("id, mission_id, activity_type, is_required, config")
+      .eq("event_id", event.id);
+    if (error) {
+      console.error("Event activity verification lookup failed:", error);
+      throw new Error("Could not verify event activities.");
+    }
+    activities = data ?? [];
   }
 
   const currentProgress = registration.progress && typeof registration.progress === "object" && !Array.isArray(registration.progress)
