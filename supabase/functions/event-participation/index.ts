@@ -49,6 +49,9 @@ function eventLocalDateKeys(start: string, end: string, timezone: string): strin
     days.push(new Date(cursor).toISOString().slice(0, 10));
     cursor += 24 * 60 * 60 * 1000;
   }
+  if (cursor <= finalDay) {
+    throw new Error("Event duration exceeds the supported verification window.");
+  }
   return days;
 }
 
