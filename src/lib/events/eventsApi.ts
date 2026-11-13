@@ -8,6 +8,8 @@ export interface PublicGameEvent {
   timezone: string;
   reward_zp: number;
   reward_zap: number;
+  min_participants: number | null;
+  max_participants: number | null;
   objectives: unknown[];
   requirements: unknown[];
   participation_rules: string;
@@ -67,6 +69,8 @@ export async function fetchPublishedEvents(): Promise<PublicGameEvent[]> {
       typeof event.timezone !== 'string' ||
       typeof event.reward_zp !== 'number' ||
       typeof event.reward_zap !== 'number' ||
+      (event.min_participants !== null && typeof event.min_participants !== 'number') ||
+      (event.max_participants !== null && typeof event.max_participants !== 'number') ||
       !Array.isArray(event.objectives) ||
       !Array.isArray(event.requirements) ||
       typeof event.participation_rules !== 'string'
