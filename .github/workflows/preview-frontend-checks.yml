@@ -1,0 +1,47 @@
+name: Preview frontend checks
+
+on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'vite.config.*'
+      - 'eslint.config.*'
+      - '.github/workflows/preview-frontend-checks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.ref == 'refs/heads/security/trusted-gameplay-migration'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: security/trusted-gameplay-migration
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check frontend
+        run: npm run typecheck
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build
