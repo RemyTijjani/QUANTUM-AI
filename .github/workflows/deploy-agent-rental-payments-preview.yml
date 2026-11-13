@@ -29,4 +29,4 @@ jobs:
             echo "Missing SUPABASE_ACCESS_TOKEN or SUPABASE_PREVIEW_PROJECT_REF GitHub Actions secret."
             exit 1
           fi
-          supabase functions deploy agent-rental-payments --project-ref "$PREVIEW_PROJECT_REF"
+          supabase functions deploy agent-rental-payments --project-ref "$PREVIEW_PROJECT_REF" --yes
