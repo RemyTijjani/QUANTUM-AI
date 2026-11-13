@@ -7,6 +7,7 @@ on:
       - security/trusted-gameplay-migration
     paths:
       - 'supabase/functions/event-participation/**'
+      - 'supabase/functions/_shared/**'
       - '.github/workflows/deploy-event-participation-preview.yml'
   workflow_dispatch:
 
