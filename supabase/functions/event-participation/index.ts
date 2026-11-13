@@ -314,59 +314,33 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Registration for this event has closed." }, 409);
     }
 
-    const { data: existing, error: existingError } = await admin
-      .from("game_event_participations")
-      .select("id, status, registered_at, progress, completed_at")
-      .eq("event_id", event.id)
-      .eq("player_id", player.id)
-      .maybeSingle();
-    if (existingError) return json({ error: "Could not check your existing registration." }, 500);
-    const evidence = registrationEvidence(event);
-    if (existing) {
-      if (evidence && existing.status !== "withdrawn") {
-        const previousProgress = existing.progress && typeof existing.progress === "object" && !Array.isArray(existing.progress)
-          ? existing.progress as Record<string, unknown>
-          : {};
-        const { data: verifiedParticipation, error: verifyError } = await admin
-          .from("game_event_participations")
-          .update({
-            progress: { ...previousProgress, ...evidence.progress },
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id)
-          .select("id, status, registered_at, updated_at, completed_at, progress")
-          .single();
-        if (verifyError) {
-          console.error("Existing event registration verification failed:", verifyError);
-          return json({ error: "Could not verify your event registration." }, 500);
-        }
-        return json({ success: true, alreadyRegistered: true, participation: verifiedParticipation });
-      }
-      return json({ success: true, alreadyRegistered: true, participation: existing });
-    }
+    const { data: registrationResult, error: registrationError } = await admin.rpc("register_for_game_event", {
+      p_event_id: event.id,
+      p_player_id: player.id,
+    });
 
-    const registration = {
-      event_id: event.id,
-      player_id: player.id,
-      ...(evidence ? {
-        progress: evidence.progress,
-      } : {}),
-    };
-    const { data: participation, error: insertError } = await admin
-      .from("game_event_participations")
-      .insert(registration)
-      .select("id, status, registered_at, updated_at, completed_at, progress")
-      .single();
-
-    if (insertError) {
-      if (insertError.code === "23505") {
-        return json({ success: true, alreadyRegistered: true });
-      }
-      console.error("Event registration insert failed:", insertError);
+    if (registrationError || !registrationResult) {
+      console.error("Event registration RPC failed:", registrationError);
       return json({ error: "Could not register for this event. Please try again." }, 500);
     }
 
-    return json({ success: true, alreadyRegistered: false, participation });
+    if (registrationResult.success !== true) {
+      if (registrationResult.reason === "event_full") {
+        return json({
+          error: "This event has reached its participant limit.",
+          reason: "event_full",
+          participantCount: registrationResult.participantCount,
+          maxParticipants: registrationResult.maxParticipants,
+        }, 409);
+      }
+      return json({ error: "This event is not open for registration." }, 409);
+    }
+
+    return json({
+      success: true,
+      alreadyRegistered: registrationResult.alreadyRegistered === true,
+      participation: registrationResult.participation,
+    });
   } catch (error) {
     console.error("Event registration failed:", error);
     return json({ error: "Event registration could not be completed." }, 500);
