@@ -264,3 +264,24 @@ export async function verifyConfiguredEventActivities(
   return updated;
 }
 
+
+
+/** Run async verification work in bounded batches to avoid request spikes. */
+export async function mapInBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 32) {
+    throw new Error("Batch size must be between 1 and 32.");
+  }
+  const results: R[] = [];
+  for (let offset = 0; offset < items.length; offset += batchSize) {
+    const batch = items.slice(offset, offset + batchSize);
+    const completed = await Promise.all(
+      batch.map((item, index) => mapper(item, offset + index)),
+    );
+    results.push(...completed);
+  }
+  return results;
+}
