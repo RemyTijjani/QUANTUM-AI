@@ -363,7 +363,7 @@ Deno.serve(async (req: Request) => {
       const activity = body.activity;
       const eventId = typeof activity?.eventId === "string" ? activity.eventId : "";
       const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      const activityTypes = ["mission", "creator_submission_approved", "referral_registration", "telegram_membership", "gameplay_verification", "admin_review"];
+      const activityTypes = ["creator_submission_approved", "gameplay_verification"];
       if (!activity || !validUuid.test(eventId)) return json({ error: "A valid event is required" }, 400);
       if (typeof activity.title !== "string" || !activity.title.trim() || activity.title.trim().length > 120) {
         return json({ error: "Activity title must be between 1 and 120 characters" }, 400);
@@ -375,7 +375,7 @@ Deno.serve(async (req: Request) => {
       if (typeof activity.activityType !== "string" || !activityTypes.includes(activity.activityType)) {
         return json({ error: "Invalid activity type" }, 400);
       }
-      const missionRequired = activity.activityType === "mission" || activity.activityType === "creator_submission_approved";
+      const missionRequired = activity.activityType === "creator_submission_approved";
       if (missionRequired && (typeof activity.missionId !== "string" || !activity.missionId.trim())) {
         return json({ error: "Choose the mission this activity must verify" }, 400);
       }
