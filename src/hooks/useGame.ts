@@ -435,7 +435,7 @@ export function useGame(
 
   // Keep referral recruits synchronized.
   useEffect(() => {
-    if (!referralCode || isLoading || loadError) return;
+    if (isDemo || !referralCode || isLoading || loadError) return;
 
     let cancelled = false;
 
@@ -472,7 +472,7 @@ export function useGame(
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [referralCode, isLoading, loadError]);
+  }, [referralCode, isLoading, loadError, isDemo]);
 
   return {
     state,
