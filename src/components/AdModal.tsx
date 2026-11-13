@@ -45,6 +45,10 @@ export default function AdModal({ fragmentId, onComplete, onCancel }: AdModalPro
           </span>
         </div>
 
+        <p className="font-mono text-[9px] leading-relaxed text-amber-300/80">
+          This is a server-timed fragment unlock. It does not verify that a third-party advertisement was shown or watched.
+        </p>
+
         <div>
           <div className="mb-2 flex justify-between font-mono text-[11px] uppercase tracking-wider text-neon-500">
             <span>Unlock progress</span>
