@@ -3,11 +3,12 @@ import { formatZp } from '@/lib/format';
 
 interface HeaderProps {
   zp: number;
+  verifiedZpBalance: number | null;
   onOpenProfile: () => void;
   onOpenLeaderboard: () => void;
 }
 
-export default function Header({ zp, onOpenProfile, onOpenLeaderboard }: HeaderProps) {
+export default function Header({ zp, verifiedZpBalance, onOpenProfile, onOpenLeaderboard }: HeaderProps) {
   return (
     <header className="relative z-20 flex items-center justify-between gap-3 border-b border-neon/20 bg-obsidian/90 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur">
       <div className="flex min-w-0 items-center gap-3">
@@ -37,13 +38,24 @@ export default function Header({ zp, onOpenProfile, onOpenLeaderboard }: HeaderP
         >
           <Trophy size={17} />
         </button>
-        <div
-          className="flex items-center gap-1.5 rounded-full border border-neon/50 bg-neon/10 px-3 py-1.5 text-neon-300 shadow-glow"
-          aria-live="polite"
-        >
-          <Zap size={14} className="fill-neon/40" />
-         <span className="font-display text-sm font-bold tabular-nums">{formatZp(Number(zp) || 0)}</span>
-          <span className="font-mono text-[10px] text-neon-500">ZP</span>
+        <div className="flex flex-col items-end gap-1">
+          <div
+            className="flex items-center gap-1.5 rounded-full border border-neon/50 bg-neon/10 px-3 py-1.5 text-neon-300 shadow-glow"
+            aria-live="polite"
+            aria-label="Game ZP balance"
+          >
+            <Zap size={14} className="fill-neon/40" />
+            <span className="font-display text-sm font-bold tabular-nums">{formatZp(Number(zp) || 0)}</span>
+            <span className="font-mono text-[10px] text-neon-500">GAME ZP</span>
+          </div>
+          <div
+            className="rounded-full border border-sky-400/30 bg-sky-400/5 px-2.5 py-1 font-mono text-[9px] text-sky-200"
+            aria-live="polite"
+            aria-label="Verified server ZP balance"
+            title="Server-recorded ZP rewards. Separate from the existing game balance."
+          >
+            VERIFIED ZP: {verifiedZpBalance === null ? '—' : formatZp(verifiedZpBalance)}
+          </div>
         </div>
       </div>
     </header>
