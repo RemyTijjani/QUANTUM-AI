@@ -65,8 +65,8 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!draft) return;
-    if (draft.activityType === 'mission' && !draft.missionId) {
-      setError('Choose a mission for this activity.');
+    if ((draft.activityType === 'mission' || draft.activityType === 'creator_submission_approved') && !draft.missionId) {
+      setError('Choose the mission this activity must verify.');
       return;
     }
     setSaving(true);
@@ -115,8 +115,8 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
         <form onSubmit={submit} className="border border-cyan-500/25 bg-black/60 p-3 space-y-2">
           <div className="flex justify-between items-center"><p className="text-[11px] text-cyan-300 font-bold">{draft.id ? 'Edit activity' : 'New activity'}</p><button type="button" onClick={() => setDraft(null)} aria-label="Close"><X size={14} /></button></div>
           <label className="block text-[10px] text-neon-500">Activity title<input required maxLength={120} value={draft.title} onChange={e => update('title', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
-          <label className="block text-[10px] text-neon-500">Activity type<select value={draft.activityType} onChange={e => { const nextType = e.target.value as AdminEventActivityType; update('activityType', nextType); if (nextType !== 'mission') update('missionId', null); }} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200">{TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
-          {draft.activityType === 'mission' && <label className="block text-[10px] text-neon-500">Mission<select required value={draft.missionId ?? ''} onChange={e => update('missionId', e.target.value || null)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200"><option value="">Select a mission</option>{missions.map(m => <option key={m.id} value={m.id}>{m.title} ({m.status})</option>)}</select></label>}
+          <label className="block text-[10px] text-neon-500">Activity type<select value={draft.activityType} onChange={e => { const nextType = e.target.value as AdminEventActivityType; update('activityType', nextType); if (nextType !== 'mission' && nextType !== 'creator_submission_approved') update('missionId', null); }} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200">{TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
+          {(draft.activityType === 'mission' || draft.activityType === 'creator_submission_approved') && <label className="block text-[10px] text-neon-500">{draft.activityType === 'creator_submission_approved' ? 'Creator Ops mission to verify' : 'Mission'}<select required value={draft.missionId ?? ''} onChange={e => update('missionId', e.target.value || null)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200"><option value="">Select a mission</option>{missions.filter(m => draft.activityType !== 'creator_submission_approved' || m.kind === 'creator').map(m => <option key={m.id} value={m.id}>{m.title} ({m.status})</option>)}</select>{draft.activityType === 'creator_submission_approved' && <p className="mt-1 text-[9px] text-neon-600">Only an approved submission for this exact Creator Ops mission can verify this activity.</p>}</label>}
           <label className="block text-[10px] text-neon-500">Description<textarea rows={2} maxLength={2000} value={draft.description} onChange={e => update('description', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
           <label className="block text-[10px] text-neon-500">Player instructions<textarea rows={3} maxLength={5000} value={draft.instructions} onChange={e => update('instructions', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" /></label>
           <label className="flex items-center gap-2 text-[10px] text-neon-500"><input type="checkbox" checked={draft.isRequired} onChange={e => update('isRequired', e.target.checked)} /> Required activity</label>
