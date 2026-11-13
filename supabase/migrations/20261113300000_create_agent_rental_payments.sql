@@ -151,6 +151,9 @@ begin
     return jsonb_build_object('success', false, 'reason', 'payment_outside_intent_window');
   end if;
 
+  -- Serialize renewals for the same player and agent, including first-time rentals.
+  perform pg_advisory_xact_lock(hashtextextended(v_intent.player_id::text || ':' || v_intent.agent_type, 0));
+
   select * into v_rental
   from public.player_agent_rentals
   where player_id = v_intent.player_id and agent_type = v_intent.agent_type
