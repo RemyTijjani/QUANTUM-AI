@@ -10,7 +10,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-import { registrationEvidence, verifyConfiguredEventActivities } from "../_shared/event-verification.ts";
+import { mapInBatches, registrationEvidence, verifyConfiguredEventActivities } from "../_shared/event-verification.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Could not load your event history." }, 500);
       }
 
-      const verifiedRegistrations = await Promise.all((registrations ?? []).map(async (registration) => {
+      const verifiedRegistrations = await mapInBatches(registrations ?? [], 8, async (registration) => {
         const event = registration.game_events;
         if (!event || registration.status === "withdrawn") return registration;
 
@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
           event,
           current,
         );
-      }));
+      });
 
       const registeredEventIds = verifiedRegistrations
         .filter((registration) => registration.status !== "withdrawn")
