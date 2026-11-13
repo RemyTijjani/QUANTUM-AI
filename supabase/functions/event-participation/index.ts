@@ -160,9 +160,16 @@ async function verifyConfiguredEventActivities(
       throw new Error("Could not verify gameplay activity.");
     }
 
-    const allowedFragments = Array.isArray(config.fragmentIds)
-      ? config.fragmentIds.filter((id): id is string => typeof id === "string" && ["top", "bottom", "left", "right"].includes(id))
-      : ["top", "bottom", "left", "right"];
+    const configuredFragments = config.fragmentIds;
+    const allowedFragments = configuredFragments === undefined
+      ? ["top", "bottom", "left", "right"]
+      : Array.isArray(configuredFragments) ? configuredFragments : [];
+    if (allowedFragments.length < 1 || allowedFragments.length > 4 ||
+        allowedFragments.some((id: unknown) => typeof id !== "string" || !["top", "bottom", "left", "right"].includes(id)) ||
+        new Set(allowedFragments).size !== allowedFragments.length) {
+      console.error("Skipping gameplay activity with an invalid fragment selection:", activity.id);
+      continue;
+    }
     const days = eventLocalDateKeys(activityStart, event.ends_at, timezone);
     const dailyCounts: Record<string, number> = Object.fromEntries(days.map((day) => [day, 0]));
     const dailyFragmentCounts: Record<string, Record<string, number>> = Object.fromEntries(
