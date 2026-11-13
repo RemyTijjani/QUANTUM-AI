@@ -449,7 +449,7 @@ function AdminConsole({
               Creator Ops Submissions Review Queue
             </h2>
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => setSelectedSubmissionIds(data.submissions.map((submission) => submission.id))} disabled={data.submissions.length === 0 || bulkApproving} className="border border-neon/30 px-2 py-1 text-[10px] text-neon-300 disabled:opacity-40">Select all</button>
+              <button type="button" onClick={() => setSelectedSubmissionIds(data.submissions.slice(0, 100).map((submission) => submission.id))} disabled={data.submissions.length === 0 || bulkApproving} className="border border-neon/30 px-2 py-1 text-[10px] text-neon-300 disabled:opacity-40">Select first 100</button>
               <button type="button" onClick={() => setSelectedSubmissionIds([])} disabled={selectedSubmissionIds.length === 0 || bulkApproving} className="border border-neon/30 px-2 py-1 text-[10px] text-neon-300 disabled:opacity-40">Clear</button>
               <button type="button" onClick={() => void handleBulkApprove()} disabled={selectedSubmissionIds.length === 0 || bulkApproving || refreshing} className="border border-neon/70 bg-neon/15 px-3 py-1 text-[10px] font-bold text-neon-200 disabled:opacity-40">{bulkApproving ? 'Approving…' : `Approve selected (${selectedSubmissionIds.length})`}</button>
             </div>
