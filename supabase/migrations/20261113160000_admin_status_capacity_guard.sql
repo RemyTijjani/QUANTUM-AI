@@ -18,7 +18,7 @@ declare
   v_updated public.game_event_participations%rowtype;
   v_active_count integer;
 begin
-  if p_status not in ('registered', 'in_progress', 'submitted', 'completed', 'withdrawn') then
+  if p_status is null or p_status not in ('registered', 'in_progress', 'submitted', 'completed', 'withdrawn') then
     raise exception 'Invalid participant status';
   end if;
 
