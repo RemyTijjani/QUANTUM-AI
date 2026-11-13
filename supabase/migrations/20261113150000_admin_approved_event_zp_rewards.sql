@@ -95,8 +95,8 @@ begin
   end if;
 
   -- Lock/create the economy row and update its ZP balance atomically.
-  insert into public.player_economy (player_id, zp_balance, lifetime_zp)
-  values (v_participation.player_id, 0, 0)
+  insert into public.player_economy (player_id, zp_balance, lifetime_zp, pending_kickback)
+  values (v_participation.player_id, 0, 0, 0)
   on conflict (player_id) do nothing;
 
   select *
