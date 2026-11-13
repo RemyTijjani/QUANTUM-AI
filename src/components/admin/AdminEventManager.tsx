@@ -27,6 +27,8 @@ type Draft = {
   timezone: string;
   rewardZp: string;
   rewardZap: string;
+  minParticipants: string;
+  maxParticipants: string;
   objectivesText: string;
   requirementsText: string;
   participationRulesText: string;
@@ -50,6 +52,8 @@ const emptyDraft = (): Draft => ({
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   rewardZp: '0',
   rewardZap: '0',
+  minParticipants: '',
+  maxParticipants: '',
   objectivesText: '',
   requirementsText: '',
   participationRulesText: '',
@@ -66,6 +70,8 @@ const toDraft = (event: AdminEvent): Draft => ({
   timezone: event.timezone,
   rewardZp: String(event.reward_zp),
   rewardZap: String(event.reward_zap ?? 0),
+  minParticipants: event.min_participants == null ? '' : String(event.min_participants),
+  maxParticipants: event.max_participants == null ? '' : String(event.max_participants),
   objectivesText: event.objectives.map(String).join('\n'),
   requirementsText: event.requirements.map(String).join('\n'),
   participationRulesText: event.participation_rules ?? '',
@@ -142,6 +148,17 @@ export default function AdminEventManager({ events, missions, onListActivities, 
       if (!Number.isSafeInteger(rewardZap) || rewardZap < 0) {
         throw new Error('ZAP reward must be a whole number of 0 or more.');
       }
+      const minParticipants = draft.minParticipants.trim() ? Number(draft.minParticipants) : null;
+      const maxParticipants = draft.maxParticipants.trim() ? Number(draft.maxParticipants) : null;
+      if (minParticipants !== null && (!Number.isSafeInteger(minParticipants) || minParticipants < 1)) {
+        throw new Error('Minimum participants must be at least 1, or leave it blank.');
+      }
+      if (maxParticipants !== null && (!Number.isSafeInteger(maxParticipants) || maxParticipants < 1)) {
+        throw new Error('Maximum participants must be at least 1, or leave it blank.');
+      }
+      if (minParticipants !== null && maxParticipants !== null && minParticipants > maxParticipants) {
+        throw new Error('Minimum participants cannot be greater than maximum participants.');
+      }
 
       await onSave({
         id: draft.id,
@@ -154,6 +171,8 @@ export default function AdminEventManager({ events, missions, onListActivities, 
         timezone: draft.timezone.trim() || 'UTC',
         rewardZp,
         rewardZap,
+        minParticipants,
+        maxParticipants,
         objectives: draft.objectivesText.split('\n').map((v) => v.trim()).filter(Boolean),
         requirements: draft.requirementsText.split('\n').map((v) => v.trim()).filter(Boolean),
         participationRules,
@@ -267,6 +286,16 @@ export default function AdminEventManager({ events, missions, onListActivities, 
             </label>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="text-[10px] uppercase text-neon-500">Minimum participants (optional)
+              <input type="number" min="1" step="1" value={draft.minParticipants} onChange={(e) => update('minParticipants', e.target.value)} placeholder="No minimum" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+              <span className="block mt-1 normal-case text-neon-700">Target attendance. The event can still accept registrations below this number.</span>
+            </label>
+            <label className="text-[10px] uppercase text-neon-500">Maximum participants (optional)
+              <input type="number" min="1" step="1" value={draft.maxParticipants} onChange={(e) => update('maxParticipants', e.target.value)} placeholder="Unlimited" className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
+              <span className="block mt-1 normal-case text-neon-700">Registration closes automatically when this limit is reached.</span>
+            </label>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="text-[10px] uppercase text-neon-500">Starts (your local time)
               <input type="datetime-local" value={draft.startsAt} onChange={(e) => update('startsAt', e.target.value)} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-200" />
             </label>
@@ -326,6 +355,7 @@ export default function AdminEventManager({ events, missions, onListActivities, 
               {event.description && <p className="text-[11px] text-neon-500">{event.description}</p>}
               <p className="text-[10px] text-neon-600">{dateLabel(event.starts_at)} → {dateLabel(event.ends_at)}</p>
               <p className="text-[10px] text-neon-400">Rewards: {event.reward_zp.toLocaleString()} ZP + {event.reward_zap.toLocaleString()} ZAP · {event.objectives.length} objectives · {event.requirements.length} requirements</p>
+              <p className="text-[10px] text-cyan-500">Participant limits: minimum {event.min_participants ?? "not set"} · maximum {event.max_participants ?? "unlimited"}</p>
               <div className="flex flex-wrap justify-end gap-2 pt-1">
                 <button type="button" onClick={() => setActivitiesForEvent(current => current === event.id ? null : event.id)} className="flex items-center gap-1 border border-cyan-500/30 px-2 py-1 text-[10px] text-cyan-300"><ListChecks size={12} /> Activities</button>
                 <button type="button" onClick={() => void handleViewParticipants(event.id)} className="flex items-center gap-1 border border-cyan-500/30 px-2 py-1 text-[10px] text-cyan-300"><Users size={12} /> Participants</button>
@@ -351,6 +381,7 @@ export default function AdminEventManager({ events, missions, onListActivities, 
         <section className="border border-cyan-500/30 bg-black/50 p-3 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-300">Event participants · {events.find((event) => event.id === participantsForEvent)?.title ?? 'Selected event'}</h3>
+            <p className="text-[10px] text-cyan-600">{participants.filter((participant) => participant.status !== 'withdrawn').length} active registrations · minimum {events.find((event) => event.id === participantsForEvent)?.min_participants ?? 'not set'} · maximum {events.find((event) => event.id === participantsForEvent)?.max_participants ?? 'unlimited'}</p>
             <button type="button" onClick={() => setParticipantsForEvent(null)} className="text-[10px] text-neon-500">Close</button>
           </div>
           {loadingParticipants ? (
