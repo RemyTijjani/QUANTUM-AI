@@ -18,7 +18,6 @@ import MissionsTab from '@/components/missions/MissionsTab';
 import type { EngagementView } from '@/components/missions/Stage6EngagementHub';
 import VaultTab from '@/components/vault/VaultTab';
 import ZordAgentsTab from '@/components/agents/ZordAgentsTab';
-import EventsTab from '@/components/events/EventsTab';
 import { AdminDashboard } from '@/components/admin/AdminReviewModal';
 
 import { useGame } from '@/hooks/useGame';
@@ -279,7 +278,7 @@ function GameApp({
             verifiedZpBalance={verifiedZpBalance}
             pendingFragmentZp={pendingFragmentZp}
             nextFragmentReleaseAt={nextFragmentReleaseAt}
-            onOpenEvents={() => setTab('events')}
+            onOpenExpeditions={() => { setMissionsInitialView('expeditions'); setTab('missions'); }}
             onOpenMissions={() => { setMissionsInitialView('missions'); setTab('missions'); }}
             onOpenStreaks={() => { setMissionsInitialView('streaks'); setTab('missions'); }}
             onOpenMysteryBoxes={() => { setMissionsInitialView('mystery'); setTab('missions'); }}
@@ -316,8 +315,6 @@ function GameApp({
             initialView={missionsInitialView}
           />
         )}
-
-        {tab === 'events' && <EventsTab />}
 
         {tab === 'vault' && (
           <VaultTab verifiedZpBalance={verifiedZpBalance} transactions={verifiedTransactions} />
