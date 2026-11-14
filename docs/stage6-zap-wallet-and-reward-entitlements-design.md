@@ -1,6 +1,6 @@
 # Stage 6 Shared ZAP Wallet and Reward Entitlements — Architecture Design
 
-Status: Design proposal only. No schema, migration, data, balance, deployment, or Production changes.
+Status: Product design approved. Source-only Preview implementation committed on the active security branch; migration not applied, Edge Function not deployed, and no data, balance, or Production changes.
 Target: Supabase Preview project `lchkctclxzwwvfwosava`; active branch `security/trusted-gameplay-migration`.
 
 ## 1. Goals
@@ -248,3 +248,12 @@ Each migration application, database mutation, Edge Function source change/deplo
 - No Mystery Discovery activation or ad integration.
 - No Expedition ZAP awards until the rules and verification requirements are approved.
 - No migration, deployment, real reward claim, or Production change.
+
+## 12. Source implementation status
+
+The source-only implementation is in:
+- `supabase/migrations/20261114160000_mystery_box_reward_system.sql` — private wallet, ledger, entitlement, versioned pool catalog, idempotent grant/open/inventory RPCs, and atomic ZP/ZAP/boost outcomes.
+- `supabase/functions/mystery-box-actions/index.ts` — authenticated inventory and open endpoint; player identity is derived from the verified Supabase user.
+- `supabase/tests/mystery_box_reward_system.test.sql` — read-only post-migration assertions for pool totals, approved odds, and RPC/table privileges.
+
+The migration and function are source only. They have not been applied or deployed. The next step is static/CI validation, followed by a separately approved Preview migration application and function deployment. No player reward has been granted or opened.
