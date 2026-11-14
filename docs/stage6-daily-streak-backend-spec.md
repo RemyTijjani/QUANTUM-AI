@@ -24,10 +24,10 @@ Each eligible daily claim selects exactly one outcome from this distribution:
 
 | Outcome | Probability | Reward detail |
 |---|---:|---|
-| ZAP | 35% | Random amount from 10 to 20 ZAP |
-| Boost | 34% | One boost entitlement lasting 6 hours |
+| ZAP | 35% | Random whole-number amount from 1 to 10 ZAP |
+| Boost | 34% | One boost entitlement: 2× Fragment Mining for 6 hours |
 | Mystery Box | 30% | One randomly selected Standard or Premium box |
-| Temporary mining agent | 1% | One free mining-agent entitlement lasting 24 hours |
+| Temporary mining agent | 1% | One free Agent 1 entitlement lasting 24 hours |
 
 The 1% chance is the chance of the temporary mining-agent outcome on each Day 8–30 reward draw. Other reward outcomes do not have to include ZAP.
 
@@ -116,11 +116,12 @@ Extend `gameplay-actions` with a minimal action such as `claim_daily_streak`.
 ## 7. Decisions/prerequisites still open
 
 These are not invented by this specification:
-1. The random integer selection rule for 10–20 ZAP (uniform integer is a reasonable default, but needs confirmation).
-2. The Standard-versus-Premium box selection probability.
-3. The actual boost effect/type and stacking policy; duration is approved as 6 hours.
-4. The eligible mining-agent type and whether the 24-hour clock begins at reward grant or first activation.
+1. The exact draw method for the approved 1–10 whole-ZAP range; uniform selection is proposed.
+2. The Standard-versus-Premium box selection probability and each box's reward contents/odds.
+3. The boost effect and duration are approved: 2× Fragment Mining for 6 hours. Activation-start and non-stacking behavior are recommended defaults, pending confirmation.
+4. Agent 1 is the approved free mining-agent type. Starting the 24-hour clock on activation is recommended, pending confirmation.
 5. A trusted ZAP wallet/ledger and credit RPC. Preview currently has no dedicated ZAP balance/ledger table.
 6. The canonical boost, box, and temporary-agent entitlement model.
+7. The ad provider will be supplied later; design an ad reward slot, but do not integrate a provider until selected.
 
 No migration, database write, reward claim, Edge Function deployment, or Production change is authorized or performed by this specification commit.
