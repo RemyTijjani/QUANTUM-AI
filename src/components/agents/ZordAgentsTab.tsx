@@ -72,6 +72,9 @@ function AgentRentalCheckout() {
   // Do not replace this with an environment flag; enabling payments requires
   // separate explicit approval and a reviewed release process.
   const paymentsEnabled = false;
+  // Creating or verifying rental intents writes to the Preview database.
+  // Keep those operations disabled until Preview database-write testing is approved.
+  const rentalBackendActionsEnabled = false;
 
   useEffect(() => {
     let mounted = true;
@@ -110,6 +113,11 @@ function AgentRentalCheckout() {
   };
 
   const createIntent = async (agentType: AgentRentalType) => {
+    if (!rentalBackendActionsEnabled) {
+      setNotice('Rental checkout creation is disabled during Preview safety testing. Wallet connection can still be tested.');
+      setNoticeKind('info');
+      return;
+    }
     setBusy(agentType);
     setNotice('');
     setActiveUntil(null);
@@ -136,6 +144,11 @@ function AgentRentalCheckout() {
 
   const verifyIntent = async () => {
     if (!intent) return;
+    if (!rentalBackendActionsEnabled) {
+      setNotice('Payment verification is disabled during Preview safety testing because it can update rental records.');
+      setNoticeKind('info');
+      return;
+    }
     setBusy('verify');
     setNotice('');
     try {
@@ -275,11 +288,11 @@ function AgentRentalCheckout() {
             <button
               type="button"
               className="btn-primary mt-3 w-full"
-              disabled={busy !== null || (intent !== null && Date.parse(intent.expiresAt) > Date.now())}
+              disabled={!rentalBackendActionsEnabled || busy !== null || (intent !== null && Date.parse(intent.expiresAt) > Date.now())}
               onClick={() => void createIntent(option.id)}
             >
               {busy === option.id ? <LoaderCircle size={14} className="animate-spin" /> : null}
-              {intent?.agentType === option.id ? 'Current checkout' : 'Create checkout'}
+              {rentalBackendActionsEnabled ? (intent?.agentType === option.id ? 'Current checkout' : 'Create checkout') : 'Checkout disabled in Preview'}
             </button>
           </article>
         ))}
@@ -332,11 +345,11 @@ function AgentRentalCheckout() {
           <button
             type="button"
             className="btn-ghost w-full"
-            disabled={busy !== null}
+            disabled={!rentalBackendActionsEnabled || busy !== null}
             onClick={() => void verifyIntent()}
           >
             {busy === 'verify' ? <LoaderCircle size={14} className="animate-spin" /> : null}
-            Check mainnet payment
+            {rentalBackendActionsEnabled ? 'Check mainnet payment' : 'Payment verification disabled in Preview'}
           </button>
           {activeUntil && (
             <p className="font-mono text-[10px] text-green-300">
