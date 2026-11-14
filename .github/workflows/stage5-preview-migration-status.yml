@@ -2,6 +2,12 @@ name: Stage 5 Preview Migration Status (Read Only)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - .github/workflows/stage5-preview-migration-status.yml
+      - supabase/migrations/**
 
 permissions:
   contents: read
