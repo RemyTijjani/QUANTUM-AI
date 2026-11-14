@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Compass, Plus, ChevronLeft, ChevronRight, Save, Users, BookOpen, Gamepad2, Globe, Trophy, CalendarDays, Sparkles, Layers, ShieldCheck, Clock3 } from 'lucide-react';
-import type { AdminEvent } from '@/lib/admin/adminApi';
+import { saveExpeditionDraft, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput } from '@/lib/admin/adminApi';
 
 type ObjectiveKind = 'briefing' | 'quiz' | 'game' | 'community' | 'external' | 'milestone';
 type Objective = { id: number; kind: ObjectiveKind; title: string };
-type LocalDraft = { id: number; title: string; category: string; access: string; participation: string; rewardType: string; rewardAmount: number };
+type LocalDraft = { id: string; title: string; category: string; access: string; participation: string; rewardType: string; rewardAmount: number };
 const steps = ['Basics', 'Access', 'Objectives', 'Rewards', 'Schedule & rules', 'Preview'];
 const kinds: { value: ObjectiveKind; label: string; icon: typeof BookOpen }[] = [
   { value: 'briefing', label: 'Briefing', icon: BookOpen }, { value: 'quiz', label: 'Knowledge challenge', icon: ShieldCheck },
@@ -12,7 +12,7 @@ const kinds: { value: ObjectiveKind; label: string; icon: typeof BookOpen }[] = 
   { value: 'external', label: 'External ecosystem', icon: Globe }, { value: 'milestone', label: 'Milestone', icon: Trophy },
 ];
 
-export default function AdminExpeditionManager({ events }: { events: AdminEvent[] }) {
+export default function AdminExpeditionManager({ events, creds }: { events: AdminEvent[]; creds: AdminCredentials }) {
   const [step, setStep] = useState(0);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
@@ -32,6 +32,7 @@ export default function AdminExpeditionManager({ events }: { events: AdminEvent[
   const [objectiveKind, setObjectiveKind] = useState<ObjectiveKind>('briefing');
   const [drafts, setDrafts] = useState<LocalDraft[]>([]);
   const [savedMessage, setSavedMessage] = useState('');
+  const [saving, setSaving] = useState(false);
   const counts = useMemo(() => ({ legacy: events.length, active: events.filter(e => e.status === 'published').length, drafts: drafts.length }), [events, drafts]);
 
   const reset = () => {
@@ -47,11 +48,43 @@ export default function AdminExpeditionManager({ events }: { events: AdminEvent[
   const validReward = rewardType === 'none' || (Number.isSafeInteger(Number(rewardAmount)) && Number(rewardAmount) > 0);
   const validDates = !startsAt || !endsAt || new Date(startsAt).getTime() < new Date(endsAt).getTime();
   const canSave = !!title.trim() && validReward && validDates && objectives.length > 0;
-  const saveDraft = () => {
-    if (!canSave) return;
-    setDrafts(v => [...v, { id: Date.now(), title: title.trim(), category, access, participation, rewardType, rewardAmount: rewardType === 'none' ? 0 : Number(rewardAmount) }]);
-    setSavedMessage('Draft added to this admin session only. It has not been saved to the database.');
-    setCreating(false);
+  const saveDraft = async () => {
+    if (!canSave || saving) return;
+    const min = Number(teamMin);
+    const max = Number(teamMax);
+    const minContributions = Number(contribution);
+    if (participation !== 'solo' && (!Number.isInteger(min) || !Number.isInteger(max) || min < 2 || max > 100 || min > max || !Number.isInteger(minContributions) || minContributions < 0)) {
+      setSavedMessage('Check the team size and individual contribution settings.');
+      return;
+    }
+    setSaving(true);
+    setSavedMessage('');
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const saved = await saveExpeditionDraft(creds, {
+        title: title.trim(),
+        description: description.trim(),
+        category: category as AdminExpeditionDraftInput['category'],
+        accessMode: access as 'open' | 'progressive',
+        participationMode: participation as 'solo' | 'team' | 'both',
+        minTeamSize: participation === 'solo' ? 2 : min,
+        maxTeamSize: participation === 'solo' ? 5 : max,
+        minIndividualContributions: participation === 'solo' ? 0 : minContributions,
+        startsAt: startsAt ? new Date(startsAt).toISOString() : null,
+        endsAt: endsAt ? new Date(endsAt).toISOString() : null,
+        timezone,
+        rewardType: rewardType === 'none' ? 'none' : rewardType.toLowerCase() as 'zp' | 'zap',
+        rewardAmount: rewardType === 'none' ? 0 : Number(rewardAmount),
+        objectives: objectives.map(({ kind, title }) => ({ kind, title })),
+      });
+      setDrafts(v => [...v, { id: saved.id, title: title.trim(), category, access, participation, rewardType, rewardAmount: rewardType === 'none' ? 0 : Number(rewardAmount) }]);
+      setSavedMessage(`Draft saved securely to Preview database (ID: ${saved.id}). It remains unpublished.`);
+      setCreating(false);
+    } catch (error) {
+      setSavedMessage(error instanceof Error ? error.message : 'Could not save the Expedition draft.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const content = () => {
@@ -72,7 +105,7 @@ export default function AdminExpeditionManager({ events }: { events: AdminEvent[
     </div>;
     if (step === 2) return <div className="space-y-4">
       <p className="text-[11px] text-neon-600">Combine different objective types. Add up to 20 objectives.</p>
-      <div className="grid gap-2 md:grid-cols-[1fr_2fr_auto]"><select value={objectiveKind} onChange={e => setObjectiveKind(e.target.value as ObjectiveKind)} className="admin-field">{kinds.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}</select><input value={objectiveTitle} onChange={e => setObjectiveTitle(e.target.value)} maxLength={180} placeholder="Objective instruction" className="admin-field" /><button type="button" onClick={addObjective} disabled={!objectiveTitle.trim() || objectives.length>=20} className="border border-neon/40 px-3 py-2 text-xs text-neon-300 disabled:opacity-40"><Plus size={14}/></button></div>
+      <div className="grid gap-2 md:grid-cols-[1fr_2fr_auto]"><select value={objectiveKind} onChange={e => setObjectiveKind(e.target.value as ObjectiveKind)} className="admin-field">{kinds.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}</select><input value={objectiveTitle} onChange={e => setObjectiveTitle(e.target.value)} maxLength={160} placeholder="Objective instruction" className="admin-field" /><button type="button" onClick={addObjective} disabled={!objectiveTitle.trim() || objectives.length>=20} className="border border-neon/40 px-3 py-2 text-xs text-neon-300 disabled:opacity-40"><Plus size={14}/></button></div>
       {objectives.map((o,i) => { const k = kinds.find(x => x.value===o.kind)!; const Icon=k.icon; return <div key={o.id} className="flex items-center gap-3 border border-neon/20 bg-black/30 p-3"><span className="text-[10px] text-neon-700">{i+1}</span><Icon size={15} className="text-neon-400"/><div className="min-w-0 flex-1"><p className="text-xs text-neon-200">{o.title}</p><p className="text-[9px] text-neon-700">{k.label} · Required</p></div><button type="button" onClick={() => setObjectives(v => v.filter(x => x.id!==o.id))} className="text-[10px] text-red-300">Remove</button></div>; })}
       {!objectives.length && <p className="border border-dashed border-neon/20 p-6 text-center text-xs text-neon-700">No objectives added yet.</p>}
       <p className="text-[10px] text-neon-700">Previously completed Briefings are intended to count automatically; backend verification is not connected yet.</p>
@@ -93,7 +126,7 @@ export default function AdminExpeditionManager({ events }: { events: AdminEvent[
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{[['Category',category],['Access',access],['Participation',participation],['Reward',rewardType==='none'?'None':rewardAmount+' '+rewardType]].map(([k,v]) => <div key={k} className="border border-neon/20 p-2"><p className="text-[9px] uppercase text-neon-700">{k}</p><p className="mt-1">{v}</p></div>)}</div>
       <p className="text-neon-600">{objectives.length} objectives · {startsAt ? new Date(startsAt).toLocaleString() : 'Start not set'} · {endsAt ? new Date(endsAt).toLocaleString() : 'End not set'}</p>
       {objectives.map((o,i) => <p key={o.id} className="border-l border-neon/40 pl-2">{i+1}. {o.title} <span className="text-neon-700">({o.kind})</span></p>)}
-      <p className="border border-amber-500/30 bg-amber-950/10 p-3 text-[10px] text-amber-200">Preview only. This first pass stores a temporary session draft. Database persistence, player visibility, verification and reward issuance are not connected.</p>
+      <p className="border border-amber-500/30 bg-amber-950/10 p-3 text-[10px] text-amber-200">Preview only. Saving creates an unpublished database draft. Publishing, player visibility, objective verification and reward issuance are not enabled.</p>
     </div>;
   };
 
@@ -106,10 +139,10 @@ export default function AdminExpeditionManager({ events }: { events: AdminEvent[
       <div className="flex items-center justify-between gap-2"><div><p className="text-[10px] uppercase tracking-widest text-neon-500">Expedition Builder</p><h3 className="mt-1 text-sm font-bold text-neon-200">Step {step+1}: {steps[step]}</h3></div><button type="button" onClick={() => setCreating(false)} className="text-[10px] text-neon-700">Close</button></div>
       <div className="grid grid-cols-6 gap-1">{steps.map((name,i) => <button key={name} type="button" onClick={() => setStep(i)} title={name} className={'h-1.5 '+(i<=step?'bg-neon-400':'bg-neon/15')}/>)}</div>
       {content()}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neon/15 pt-3"><button type="button" disabled={step===0} onClick={() => setStep(v => Math.max(0,v-1))} className="flex items-center gap-1 border border-neon/20 px-3 py-2 text-xs text-neon-500 disabled:opacity-30"><ChevronLeft size={14}/> Back</button>{step<5 ? <button type="button" onClick={() => setStep(v => Math.min(5,v+1))} className="flex items-center gap-1 border border-neon/50 bg-neon/10 px-3 py-2 text-xs text-neon-200">Continue <ChevronRight size={14}/></button> : <button type="button" onClick={saveDraft} disabled={!canSave} className="flex items-center gap-2 border border-neon/50 bg-neon/15 px-3 py-2 text-xs text-neon-200 disabled:opacity-40"><Save size={14}/> Save session draft</button>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neon/15 pt-3"><button type="button" disabled={step===0} onClick={() => setStep(v => Math.max(0,v-1))} className="flex items-center gap-1 border border-neon/20 px-3 py-2 text-xs text-neon-500 disabled:opacity-30"><ChevronLeft size={14}/> Back</button>{step<5 ? <button type="button" onClick={() => setStep(v => Math.min(5,v+1))} className="flex items-center gap-1 border border-neon/50 bg-neon/10 px-3 py-2 text-xs text-neon-200">Continue <ChevronRight size={14}/></button> : <button type="button" onClick={saveDraft} disabled={!canSave || saving} className="flex items-center gap-2 border border-neon/50 bg-neon/15 px-3 py-2 text-xs text-neon-200 disabled:opacity-40"><Save size={14}/> {saving ? 'Saving…' : 'Save database draft'}</button>}</div>
       {!validDates && <p role="alert" className="text-[10px] text-red-300">The end date must be after the start date.</p>}{!validReward && <p role="alert" className="text-[10px] text-red-300">Enter a whole-number reward greater than zero, or select No reward.</p>}
     </div>}
-    <div className="space-y-2"><h3 className="text-[10px] font-bold uppercase tracking-widest text-neon-600">Session drafts</h3>{drafts.length===0 ? <div className="border border-dashed border-neon/20 p-6 text-center text-xs text-neon-700">No drafts created in this session yet.</div> : drafts.map(d => <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 border border-neon/20 bg-black/30 p-3"><div><p className="text-xs text-neon-200">{d.title}</p><p className="mt-1 text-[9px] text-neon-700">{d.category} · {d.access} · {d.participation}</p></div><span className="text-[10px] text-neon-400">{d.rewardAmount ? d.rewardAmount+' '+d.rewardType : 'No reward'}</span></div>)}</div>
-    <p className="text-[10px] leading-relaxed text-neon-800">Legacy Events data is preserved. This first UI pass does not modify, delete or publish existing Events. Database-backed Expedition storage and verified player execution are a separate next step.</p>
+    <div className="space-y-2"><h3 className="text-[10px] font-bold uppercase tracking-widest text-neon-600">Saved drafts</h3>{drafts.length===0 ? <div className="border border-dashed border-neon/20 p-6 text-center text-xs text-neon-700">No saved drafts in this session yet.</div> : drafts.map(d => <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 border border-neon/20 bg-black/30 p-3"><div><p className="text-xs text-neon-200">{d.title}</p><p className="mt-1 text-[9px] text-neon-700">{d.category} · {d.access} · {d.participation}</p></div><span className="text-[10px] text-neon-400">{d.rewardAmount ? d.rewardAmount+' '+d.rewardType : 'No reward'}</span></div>)}</div>
+    <p className="text-[10px] leading-relaxed text-neon-800">Legacy Events data is preserved. This first UI pass does not modify, delete or publish existing Events. Draft creation is connected to the Preview database. Publishing, player visibility, objective verification and reward issuance remain disabled.</p>
   </section>;
 }
