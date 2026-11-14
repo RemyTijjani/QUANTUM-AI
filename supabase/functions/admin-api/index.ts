@@ -740,6 +740,62 @@ Deno.serve(async (req: Request) => {
       return json(data);
     }
 
+
+    // ADMIN OBJECTIVE REVIEW. Only this authenticated admin route can approve or reject evidence.
+    if (body.action === "list_expedition_objective_reviews") {
+      const expeditionId = typeof body.expeditionId === "string" ? body.expeditionId : "";
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (expeditionId && !validUuid.test(expeditionId)) return json({ error: "A valid Expedition ID is required" }, 400);
+      let individualQuery = db.from("expedition_objective_progress")
+        .select("id, expedition_id, objective_id, player_id, status, evidence, created_at, expedition_objectives!inner(title, objective_type, completion_scope)")
+        .eq("status", "submitted").order("created_at", { ascending: true }).limit(100);
+      let teamQuery = db.from("expedition_team_objective_progress")
+        .select("id, expedition_id, objective_id, team_id, status, evidence, created_at, expedition_objectives!inner(title, objective_type, completion_scope), expedition_teams!inner(name)")
+        .eq("status", "submitted").order("created_at", { ascending: true }).limit(100);
+      if (expeditionId) {
+        individualQuery = individualQuery.eq("expedition_id", expeditionId);
+        teamQuery = teamQuery.eq("expedition_id", expeditionId);
+      }
+      const [individualRes, teamRes] = await Promise.all([individualQuery, teamQuery]);
+      if (individualRes.error || teamRes.error) {
+        console.error("Expedition objective review queue failed:", individualRes.error || teamRes.error);
+        return json({ error: "Could not load submitted Expedition objectives" }, 500);
+      }
+      return json({ success: true, individualSubmissions: individualRes.data ?? [], teamSubmissions: teamRes.data ?? [], limitPerQueue: 100 });
+    }
+
+    if (body.action === "review_expedition_objective") {
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (typeof body.progressId !== "string" || !validUuid.test(body.progressId) ||
+        (body.progressScope !== "individual" && body.progressScope !== "team") ||
+        (body.objectiveDecision !== "verified" && body.objectiveDecision !== "rejected")) {
+        return json({ error: "A valid submission, scope, and review decision are required" }, 400);
+      }
+      const reason = typeof body.reviewReason === "string" ? body.reviewReason.trim() : "";
+      if (reason.length > 500) return json({ error: "Review reason must be 500 characters or fewer" }, 400);
+      const { data, error } = await db.rpc("admin_review_expedition_objective", {
+        p_progress_id: body.progressId, p_scope: body.progressScope,
+        p_decision: body.objectiveDecision, p_actor: ADMIN_USERNAME, p_reason: reason || null,
+      });
+      if (error || !data || data.success !== true) {
+        console.error("Expedition objective review failed:", error);
+        return json({ error: error?.message || "Objective review could not be completed" }, 409);
+      }
+      return json({ ...data, rewardsIssued: false });
+    }
+
+    if (body.action === "prepare_expedition_rewards") {
+      const expeditionId = typeof body.expeditionId === "string" ? body.expeditionId : "";
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+      if (!validUuid.test(expeditionId)) return json({ error: "A valid Expedition ID is required" }, 400);
+      const { data, error } = await db.rpc("prepare_expedition_reward_issuances", { p_expedition_id: expeditionId });
+      if (error) {
+        console.error("Expedition reward preparation failed:", error);
+        return json({ error: error.message || "Could not prepare pending reward records" }, 409);
+      }
+      return json({ success: true, pendingIssuancesCreated: Number(data ?? 0), balancesChanged: false });
+    }
+
     // CREATE AN UNPUBLISHED EXPEDITION DRAFT. All writes use the service-role client
     // only after the existing server-side admin credential and rate-limit checks.
     if (body.action === "list_expeditions") {
