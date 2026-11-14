@@ -1,6 +1,5 @@
 import { Copy, Share2, Users } from 'lucide-react';
-import { SUB_NODE_RATE } from '@/lib/game/config';
-import { formatZp, formatRate } from '@/lib/format';
+import { formatZp } from '@/lib/format';
 import { buildReferralLink } from '@/lib/referral';
 import { openTelegramLink } from '@/lib/telegram';
 import type { GameState } from '@/lib/game/state';
@@ -71,7 +70,7 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
       <section className="space-y-3">
         <div className="px-1">
           <p className="label">Network milestones</p>
-          <h2 className="title mt-1">Drop rewards</h2>
+          <h2 className="title mt-1">Milestone progress</h2>
         </div>
         <MilestonesList subNodeCount={state.subNodes.length} />
       </section>
@@ -84,9 +83,6 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
               <Users size={16} /> {state.subNodes.length} online
             </h2>
           </div>
-          <span className="font-mono text-[11px] tabular-nums text-neon-500">
-            {formatRate(SUB_NODE_RATE)} ZP/sec each
-          </span>
         </div>
 
         <div className="panel overflow-hidden">
