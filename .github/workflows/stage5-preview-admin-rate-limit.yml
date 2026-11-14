@@ -1,0 +1,62 @@
+name: Stage 5 Preview Security - Admin API Rate Limit
+
+on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - ".github/workflows/stage5-preview-admin-rate-limit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-admin-login-rate-limit:
+    name: Verify admin login lockout (Preview)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify five invalid attempts are rejected and the sixth is throttled
+        shell: bash
+        env:
+          PREVIEW_ADMIN_API_URL: https://lchkctclxzwwvfwosava.supabase.co/functions/v1/admin-api
+          TEST_ADMIN_USERNAME: stage5-rate-limit-test-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+
+          for attempt in 1 2 3 4 5; do
+            status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" \
+              --request POST "$PREVIEW_ADMIN_API_URL" \
+              --header "Content-Type: application/json" \
+              --data "{\"action\":\"fetch_dashboard\",\"adminUsername\":\"$TEST_ADMIN_USERNAME\",\"adminPassword\":\"definitely-invalid-preview-test-password\"}")"
+            echo "Invalid attempt $attempt: HTTP $status"
+            if [ "$status" != "401" ]; then
+              echo "::error::Expected HTTP 401 on invalid attempt $attempt; received $status"
+              cat "$response_file"
+              exit 1
+            fi
+            if ! grep -q '"error":"Unauthorized"' "$response_file"; then
+              echo "::error::Unexpected response on invalid attempt $attempt"
+              cat "$response_file"
+              exit 1
+            fi
+          done
+
+          status="$(curl --silent --show-error --dump-header response_headers.txt --output "$response_file" --write-out "%{http_code}" \
+            --request POST "$PREVIEW_ADMIN_API_URL" \
+            --header "Content-Type: application/json" \
+            --data "{\"action\":\"fetch_dashboard\",\"adminUsername\":\"$TEST_ADMIN_USERNAME\",\"adminPassword\":\"definitely-invalid-preview-test-password\"}")"
+          echo "Sixth invalid attempt: HTTP $status"
+          if [ "$status" != "429" ]; then
+            echo "::error::Expected HTTP 429 after five failed attempts; received $status"
+            cat "$response_file"
+            exit 1
+          fi
+          if ! grep -qi '^retry-after: [1-9][0-9]*' response_headers.txt; then
+            echo "::error::Expected a positive Retry-After response header"
+            cat response_headers.txt
+            exit 1
+          fi
+          echo "PASS: five invalid attempts returned HTTP 401; the sixth was throttled with HTTP 429 and Retry-After."
