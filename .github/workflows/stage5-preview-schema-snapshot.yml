@@ -1,4 +1,5 @@
 name: Stage 5 Preview Schema Snapshot (Read Only)
+# Refresh the schema-only reference after the November 14 dependency audit.
 
 on:
   workflow_dispatch:
