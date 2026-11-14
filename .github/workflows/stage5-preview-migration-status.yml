@@ -61,6 +61,14 @@ jobs:
         run: |
           supabase link --project-ref "$PREVIEW_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
+      - name: List existing Preview database branches (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
+        run: |
+          echo "Listing existing Supabase preview branches under the dedicated Preview project. This does not create or modify a branch."
+          supabase branches list --remote="$PREVIEW_PROJECT_REF"
+
       - name: Inspect deployed Preview Edge Functions and required custom secret names (read only)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
