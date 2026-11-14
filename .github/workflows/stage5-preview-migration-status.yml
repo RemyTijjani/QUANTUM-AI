@@ -61,6 +61,22 @@ jobs:
         run: |
           supabase link --project-ref "$PREVIEW_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
+      - name: Inspect deployed Preview Edge Functions and required custom secret names (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
+        run: |
+          echo "Listing deployed Edge Functions for the Preview project (read only)."
+          supabase functions list --project-ref "$PREVIEW_PROJECT_REF"
+          echo "Checking only the names of required custom Edge Function secrets; values and digests are not printed."
+          supabase secrets list --project-ref "$PREVIEW_PROJECT_REF" > /tmp/preview-secret-list.txt
+          for name in TONCENTER_API_KEY ZORD_GRAM_TREASURY_ADDRESS; do
+            if grep -Eq "^\\s*${name}([[:space:]|]|$)" /tmp/preview-secret-list.txt; then
+              echo "$name: present"
+            else
+              echo "$name: NOT FOUND"
+            fi
+          done
       - name: List local versus Preview migration history (read only)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
