@@ -71,6 +71,30 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid gameplay request." }, 400);
     }
 
+    if (body.action === "get_daily_streak_state") {
+      const { data, error } = await admin.rpc("get_daily_streak_state", {
+        p_player_id: player.id,
+      });
+      if (error) {
+        console.error("Daily Streak state lookup failed:", error);
+        return json({ error: "Could not load Daily Streak status right now." }, 500);
+      }
+      return json({ success: true, streak: data });
+    }
+
+    if (body.action === "claim_daily_streak") {
+      // UTC date, streak day, reward draw and all grants are decided atomically
+      // by the database. No client-supplied player, date, reward or amount.
+      const { data, error } = await admin.rpc("claim_daily_streak", {
+        p_player_id: player.id,
+      });
+      if (error) {
+        console.error("Daily Streak claim failed:", error);
+        return json({ error: "Could not claim your Daily Streak reward right now." }, 409);
+      }
+      return json(data, data?.success === false ? 409 : 200);
+    }
+
     if (body.action === "claim_daily_uplink") {
       // The database derives the UTC claim date and reads the reward from the
       // published mission row. No client-supplied amount or date is accepted.
