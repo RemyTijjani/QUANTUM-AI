@@ -10,7 +10,6 @@ import {
   Gift,
   Radio,
   ShieldAlert,
-  Sparkles,
   Target,
 } from 'lucide-react';
 
