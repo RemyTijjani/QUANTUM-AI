@@ -57,6 +57,7 @@ export function getReferrerCodeFromUrl(): string | null {
 export async function registerReferral(
   _myCode: string,
 ): Promise<void> {
+  void _myCode;
   // Trusted registration happens inside the telegram-auth Edge Function.
 }
 
@@ -89,45 +90,6 @@ export async function fetchUnsyncedReferrals(
 export async function markReferralsSynced(
   _ids: string[],
 ): Promise<void> {
+  void _ids;
   // No client-side UPDATE on referral_sub_nodes.
-}
-
-const NAME_PREFIXES = [
-  'SHARD',
-  'LOOP',
-  'NULL',
-  'DATA',
-  'RIFT',
-  'ZERO',
-  'ECHO',
-  'HEX',
-  'CIPHER',
-  'VOID',
-];
-
-const NAME_SUFFIXES = [
-  'NOVA',
-  'KITE',
-  'ORCHID',
-  'MOTH',
-  'BISHOP',
-  'LATCH',
-  'PYLON',
-  'LANTERN',
-  'RAVEN',
-  'WRAITH',
-];
-
-function generateRecruitName(): string {
-  const prefix =
-    NAME_PREFIXES[
-      Math.floor(Math.random() * NAME_PREFIXES.length)
-    ];
-
-  const suffix =
-    NAME_SUFFIXES[
-      Math.floor(Math.random() * NAME_SUFFIXES.length)
-    ];
-
-  return `${prefix}_${suffix}`;
 }
