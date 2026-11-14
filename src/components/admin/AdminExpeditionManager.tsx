@@ -130,9 +130,16 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     </div>;
   };
 
+  const metrics = [
+    ['Drafts', counts.drafts, Layers],
+    ['Legacy Events', counts.legacy, CalendarDays],
+    ['Published legacy Events', counts.active, Clock3],
+    ['Builder steps', 6, Sparkles],
+  ] as const;
+
   return <section className="space-y-4">
     <style>{'.admin-field{display:block;width:100%;margin-top:6px;background:#020503;border:1px solid rgba(80,255,150,.25);padding:10px;color:#d1fae5;font-size:12px;outline:none}.admin-field:focus{border-color:rgba(80,255,150,.7)}.admin-field-label{display:block;font-size:11px;color:#70d99b}'}</style>
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[['Drafts',counts.drafts,Layers],['Legacy Events',counts.legacy,CalendarDays],['Published legacy Events',counts.active,Clock3],['Builder steps',6,Sparkles]].map(([label,value,Icon]: any) => <div key={label} className="border border-neon/20 bg-black/30 p-3"><Icon size={16} className="mb-2 text-neon-500"/><p className="text-xl font-bold text-neon-200">{value}</p><p className="text-[9px] uppercase tracking-wider text-neon-700">{label}</p></div>)}</div>
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{metrics.map(([label,value,Icon]) => <div key={label} className="border border-neon/20 bg-black/30 p-3"><Icon size={16} className="mb-2 text-neon-500"/><p className="text-xl font-bold text-neon-200">{value}</p><p className="text-[9px] uppercase tracking-wider text-neon-700">{label}</p></div>)}</div>
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neon/20 pb-3"><div><h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-neon-300"><Compass size={15}/> Expedition Command</h2><p className="mt-1 text-[10px] text-neon-700">Build structured solo, team and mixed-objective Expeditions.</p></div>{!creating && <button type="button" onClick={() => {reset();setCreating(true);}} className="flex items-center gap-2 border border-neon/50 bg-neon/10 px-3 py-2 text-xs text-neon-200"><Plus size={14}/> Create Expedition</button>}</div>
     {savedMessage && <p role="status" className="border-l-2 border-neon/50 bg-neon/5 px-3 py-2 text-[10px] text-neon-300">{savedMessage}</p>}
     {creating && <div className="space-y-4 border border-neon/30 bg-black/40 p-3 sm:p-5">
