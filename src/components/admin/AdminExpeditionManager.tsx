@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Compass, Plus, ChevronLeft, ChevronRight, Save, Users, BookOpen, Gamepad2, Globe, Trophy, CalendarDays, Sparkles, Layers, ShieldCheck, Clock3 } from 'lucide-react';
-import { saveExpeditionDraft, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput } from '@/lib/admin/adminApi';
+import { listAdminExpeditions, publishAdminExpedition, saveExpeditionDraft, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput, type AdminExpeditionRecord } from '@/lib/admin/adminApi';
 
 type ObjectiveKind = 'briefing' | 'quiz' | 'game' | 'community' | 'external' | 'milestone';
 type Objective = { id: number; kind: ObjectiveKind; title: string };
-type LocalDraft = { id: string; title: string; category: string; access: string; participation: string; rewardType: string; rewardAmount: number };
+type LocalDraft = AdminExpeditionRecord;
 const steps = ['Basics', 'Access', 'Objectives', 'Rewards', 'Schedule & rules', 'Preview'];
 const kinds: { value: ObjectiveKind; label: string; icon: typeof BookOpen }[] = [
   { value: 'briefing', label: 'Briefing', icon: BookOpen }, { value: 'quiz', label: 'Knowledge challenge', icon: ShieldCheck },
@@ -30,13 +30,13 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const [objectives, setObjectives] = useState<Objective[]>([]);
   const [objectiveTitle, setObjectiveTitle] = useState('');
   const [objectiveKind, setObjectiveKind] = useState<ObjectiveKind>('briefing');
-  const [drafts, setDrafts] = useState<LocalDraft[]>([]);
+  const [drafts, setDrafts] = useState<LocalDraft[]>([]);\n  const [loadingDrafts, setLoadingDrafts] = useState(true);\n  const [editingId, setEditingId] = useState<string | null>(null);\n  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
   const [saving, setSaving] = useState(false);
-  const counts = useMemo(() => ({ legacy: events.length, active: events.filter(e => e.status === 'published').length, drafts: drafts.length }), [events, drafts]);
+  const counts = useMemo(() => ({ legacy: events.length, active: drafts.filter(e => e.status === 'registration_open' || e.status === 'active').length, drafts: drafts.filter(e => e.status === 'draft').length }), [events, drafts]);\n\n  const loadDrafts = async () => { setLoadingDrafts(true); try { setDrafts(await listAdminExpeditions(creds)); } catch (error) { setSavedMessage(error instanceof Error ? error.message : 'Could not load saved Expeditions.'); } finally { setLoadingDrafts(false); } };\n  useEffect(() => { void loadDrafts(); }, [creds.username, creds.password]);
 
   const reset = () => {
-    setStep(0); setTitle(''); setDescription(''); setCategory('Community'); setAccess('open'); setParticipation('both');
+    setStep(0); setTitle(''); setDescription(''); setCategory('Community'); setAccess('open'); setParticipation('both'); setEditingId(null);
     setRewardType('ZP'); setRewardAmount('100'); setTeamMin('2'); setTeamMax('5'); setContribution('1');
     setStartsAt(''); setEndsAt(''); setObjectives([]); setCreating(false); setSavedMessage('');
   };
@@ -61,7 +61,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     setSavedMessage('');
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      const saved = await saveExpeditionDraft(creds, {
+      const saved = await saveExpeditionDraft(creds, {\n        id: editingId ?? undefined,
         title: title.trim(),
         description: description.trim(),
         category: category as AdminExpeditionDraftInput['category'],
@@ -87,7 +87,31 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     }
   };
 
-  const content = () => {
+  const editDraft = (draft: AdminExpeditionRecord) => {
+    if (draft.status !== 'draft') return;
+    setEditingId(draft.id); setTitle(draft.title); setDescription(draft.description);
+    const categoryLabels: Record<string, string> = { open:'Open', progressive:'Progressive', seasonal:'Seasonal', community:'Community', competitive:'Competitive', team:'Team', special_limited_time:'Special limited-time' };
+    setCategory(categoryLabels[draft.category] ?? 'Community'); setAccess(draft.access_mode); setParticipation(draft.participation_mode);
+    setTeamMin(String(draft.min_team_size)); setTeamMax(String(draft.max_team_size)); setContribution(String(draft.min_individual_contributions));
+    setStartsAt(draft.starts_at ? new Date(draft.starts_at).toISOString().slice(0,16) : '');
+    setEndsAt(draft.ends_at ? new Date(draft.ends_at).toISOString().slice(0,16) : '');
+    setRewardType(draft.reward?.reward_type === 'none' ? 'none' : (draft.reward?.reward_type ?? 'zp').toUpperCase());
+    setRewardAmount(String(draft.reward?.amount ?? 0));
+    setObjectives(draft.objectives.map((o,i) => ({ id: i+1, kind: o.objective_type, title: o.title })));
+    setStep(0); setCreating(true); setSavedMessage('');
+  };
+  const publishDraft = async (draft: AdminExpeditionRecord) => {
+    if (draft.status !== 'draft' || publishingId) return;
+    if (!window.confirm('Move this Expedition out of Draft? This updates its admin lifecycle status only. It will NOT appear to players yet, and no rewards will be issued.')) return;
+    setPublishingId(draft.id); setSavedMessage('');
+    try {
+      const result = await publishAdminExpedition(creds, draft.id);
+      setSavedMessage(`Expedition moved to ${result.status.replace('_',' ')}. Player visibility and reward issuance remain disabled.`);
+      await loadDrafts();
+    } catch (error) { setSavedMessage(error instanceof Error ? error.message : 'Could not publish Expedition.'); }
+    finally { setPublishingId(null); }
+  };
+\n  const content = () => {
     if (step === 0) return <div className="grid gap-4 md:grid-cols-2">
       <label className="admin-field-label">Expedition name<input value={title} onChange={e => setTitle(e.target.value)} maxLength={120} placeholder="e.g. Sentinel Initiation" className="admin-field" /></label>
       <label className="admin-field-label">Category<select value={category} onChange={e => setCategory(e.target.value)} className="admin-field">{['Open','Progressive','Seasonal','Community','Competitive','Team','Special limited-time'].map(v => <option key={v}>{v}</option>)}</select></label>
@@ -126,7 +150,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{[['Category',category],['Access',access],['Participation',participation],['Reward',rewardType==='none'?'None':rewardAmount+' '+rewardType]].map(([k,v]) => <div key={k} className="border border-neon/20 p-2"><p className="text-[9px] uppercase text-neon-700">{k}</p><p className="mt-1">{v}</p></div>)}</div>
       <p className="text-neon-600">{objectives.length} objectives · {startsAt ? new Date(startsAt).toLocaleString() : 'Start not set'} · {endsAt ? new Date(endsAt).toLocaleString() : 'End not set'}</p>
       {objectives.map((o,i) => <p key={o.id} className="border-l border-neon/40 pl-2">{i+1}. {o.title} <span className="text-neon-700">({o.kind})</span></p>)}
-      <p className="border border-amber-500/30 bg-amber-950/10 p-3 text-[10px] text-amber-200">Preview only. Saving creates an unpublished database draft. Publishing, player visibility, objective verification and reward issuance are not enabled.</p>
+      <p className="border border-amber-500/30 bg-amber-950/10 p-3 text-[10px] text-amber-200">Preview only. Publishing changes the admin lifecycle status; it does not make Expeditions visible to players or issue rewards.</p>
     </div>;
   };
 
@@ -150,6 +174,6 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       {!validDates && <p role="alert" className="text-[10px] text-red-300">The end date must be after the start date.</p>}{!validReward && <p role="alert" className="text-[10px] text-red-300">Enter a whole-number reward greater than zero, or select No reward.</p>}
     </div>}
     <div className="space-y-2"><h3 className="text-[10px] font-bold uppercase tracking-widest text-neon-600">Saved drafts</h3>{drafts.length===0 ? <div className="border border-dashed border-neon/20 p-6 text-center text-xs text-neon-700">No saved drafts in this session yet.</div> : drafts.map(d => <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 border border-neon/20 bg-black/30 p-3"><div><p className="text-xs text-neon-200">{d.title}</p><p className="mt-1 text-[9px] text-neon-700">{d.category} · {d.access} · {d.participation}</p></div><span className="text-[10px] text-neon-400">{d.rewardAmount ? d.rewardAmount+' '+d.rewardType : 'No reward'}</span></div>)}</div>
-    <p className="text-[10px] leading-relaxed text-neon-800">Legacy Events data is preserved. This first UI pass does not modify, delete or publish existing Events. Draft creation is connected to the Preview database. Publishing, player visibility, objective verification and reward issuance remain disabled.</p>
+    <p className="text-[10px] leading-relaxed text-neon-800">Legacy Events data is preserved. This first UI pass does not modify, delete or publish existing Events. Drafts can be loaded, edited and moved through the admin publishing lifecycle. Player visibility, objective verification and reward issuance remain disabled.</p>
   </section>;
 }
