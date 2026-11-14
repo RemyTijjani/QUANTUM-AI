@@ -93,6 +93,57 @@ jobs:
               ) AS ledger_columns;
           "
 
+      - name: Audit Preview referral rental and platform dependencies (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db query --remote --read-only --output json "
+            SELECT
+              (SELECT jsonb_agg(jsonb_build_object(
+                'status', status, 'count', row_count
+              ) ORDER BY status)
+               FROM (SELECT status, count(*) AS row_count
+                     FROM public.agent_rental_payment_intents GROUP BY status) s
+              ) AS rental_intents_by_status,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'id', id, 'agent_type', agent_type, 'amount_nano', amount_nano,
+                'status', status, 'created_at', created_at, 'expires_at', expires_at
+              ) ORDER BY created_at)
+               FROM public.agent_rental_payment_intents) AS rental_intents,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'function_name', p.proname,
+                'identity_arguments', pg_get_function_identity_arguments(p.oid),
+                'security_definer', p.prosecdef,
+                'search_path', (
+                  SELECT setting FROM unnest(coalesce(p.proconfig, ARRAY[]::text[])) setting
+                  WHERE setting LIKE 'search_path=%' LIMIT 1
+                ),
+                'execute_acl', coalesce(p.proacl::text, 'default')
+              ) ORDER BY p.proname)
+               FROM pg_proc p
+               JOIN pg_namespace n ON n.oid = p.pronamespace
+               WHERE n.nspname = 'public'
+                 AND p.proname IN (
+                   'register_referral',
+                   'create_agent_rental_payment_intent',
+                   'confirm_agent_rental_payment'
+                 )
+              ) AS critical_function_security,
+              (SELECT jsonb_agg(extname ORDER BY extname)
+               FROM pg_extension) AS installed_extensions,
+              to_regclass('cron.job')::text AS cron_job_catalog,
+              CASE WHEN to_regclass('cron.job') IS NULL THEN NULL
+                ELSE (SELECT count(*) FROM cron.job) END AS scheduled_job_count,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'schema_name', schema_name, 'role_name', role_name,
+                'privilege_type', privilege_type
+              ) ORDER BY schema_name, role_name, privilege_type)
+               FROM information_schema.role_table_grants
+               WHERE table_schema IN ('auth', 'storage', 'realtime')
+                 AND grantee IN ('anon', 'authenticated', 'service_role')
+              ) AS managed_schema_grants;
+          "
+
       - name: Audit Preview gameplay seed and reconciliation data (read only)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
