@@ -15,6 +15,7 @@ import LeaderboardModal from '@/components/LeaderboardModal';
 import CoreTab from '@/components/core/CoreTab';
 import NetworkTab from '@/components/network/NetworkTab';
 import MissionsTab from '@/components/missions/MissionsTab';
+import type { EngagementView } from '@/components/missions/Stage6EngagementHub';
 import VaultTab from '@/components/vault/VaultTab';
 import ZordAgentsTab from '@/components/agents/ZordAgentsTab';
 import EventsTab from '@/components/events/EventsTab';
@@ -164,6 +165,7 @@ function GameApp({
   const { toast, notify } = useToast();
 
   const [tab, setTab] = useState<TabId>('core');
+  const [missionsInitialView, setMissionsInitialView] = useState<EngagementView>('missions');
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [adFragment, setAdFragment] = useState<FragmentId | null>(null);
   const [adSessionId, setAdSessionId] = useState<string | null>(null);
@@ -270,7 +272,8 @@ function GameApp({
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
             verifiedZpBalance={verifiedZpBalance}
             onOpenEvents={() => setTab('events')}
-            onOpenMissions={() => setTab('missions')}
+            onOpenMissions={() => { setMissionsInitialView('missions'); setTab('missions'); }}
+            onOpenStreaks={() => { setMissionsInitialView('streaks'); setTab('missions'); }}
             onFixFragment={async (id) => {
               try {
                 await trustedGameplay.fixFragment(id);
@@ -301,6 +304,7 @@ function GameApp({
             missions={missions}
             onOpenAdmin={() => setOverlay('admin')}
             onRefreshVerifiedEconomy={refreshVerifiedBalance}
+            initialView={missionsInitialView}
           />
         )}
 
@@ -313,7 +317,7 @@ function GameApp({
 
       <BottomNav
         active={tab}
-        onChange={setTab}
+        onChange={(nextTab) => { if (nextTab === 'missions') setMissionsInitialView('missions'); setTab(nextTab); }}
       />
 
       {adFragment && (
