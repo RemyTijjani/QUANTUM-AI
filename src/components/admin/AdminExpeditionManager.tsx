@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Compass, Plus, ChevronLeft, ChevronRight, Save, Users, BookOpen, Gamepad2, Globe, Trophy, CalendarDays, Sparkles, Layers, ShieldCheck, Clock3 } from 'lucide-react';
 import { listAdminExpeditions, publishAdminExpedition, saveExpeditionDraft, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput, type AdminExpeditionRecord } from '@/lib/admin/adminApi';
 
@@ -30,10 +30,21 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const [objectives, setObjectives] = useState<Objective[]>([]);
   const [objectiveTitle, setObjectiveTitle] = useState('');
   const [objectiveKind, setObjectiveKind] = useState<ObjectiveKind>('briefing');
-  const [drafts, setDrafts] = useState<LocalDraft[]>([]);\n  const [loadingDrafts, setLoadingDrafts] = useState(true);\n  const [editingId, setEditingId] = useState<string | null>(null);\n  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<LocalDraft[]>([]);
+  const [loadingDrafts, setLoadingDrafts] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
   const [saving, setSaving] = useState(false);
-  const counts = useMemo(() => ({ legacy: events.length, active: drafts.filter(e => e.status === 'registration_open' || e.status === 'active').length, drafts: drafts.filter(e => e.status === 'draft').length }), [events, drafts]);\n\n  const loadDrafts = async () => { setLoadingDrafts(true); try { setDrafts(await listAdminExpeditions(creds)); } catch (error) { setSavedMessage(error instanceof Error ? error.message : 'Could not load saved Expeditions.'); } finally { setLoadingDrafts(false); } };\n  useEffect(() => { void loadDrafts(); }, [creds.username, creds.password]);
+  const counts = useMemo(() => ({ legacy: events.length, active: drafts.filter(e => e.status === 'registration_open' || e.status === 'active').length, drafts: drafts.filter(e => e.status === 'draft').length }), [events, drafts]);
+
+  const loadDrafts = useCallback(async () => {
+    setLoadingDrafts(true);
+    try { setDrafts(await listAdminExpeditions(creds)); }
+    catch (error) { setSavedMessage(error instanceof Error ? error.message : 'Could not load saved Expeditions.'); }
+    finally { setLoadingDrafts(false); }
+  }, [creds.username, creds.password]);
+  useEffect(() => { void loadDrafts(); }, [loadDrafts]);
 
   const reset = () => {
     setStep(0); setTitle(''); setDescription(''); setCategory('Community'); setAccess('open'); setParticipation('both'); setEditingId(null);
@@ -61,7 +72,8 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     setSavedMessage('');
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      const saved = await saveExpeditionDraft(creds, {\n        id: editingId ?? undefined,
+      const saved = await saveExpeditionDraft(creds, {
+        id: editingId ?? undefined,
         title: title.trim(),
         description: description.trim(),
         category: category as AdminExpeditionDraftInput['category'],
@@ -77,7 +89,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
         rewardAmount: rewardType === 'none' ? 0 : Number(rewardAmount),
         objectives: objectives.map(({ kind, title }) => ({ kind, title })),
       });
-      setDrafts(v => [...v, { id: saved.id, title: title.trim(), category, access, participation, rewardType, rewardAmount: rewardType === 'none' ? 0 : Number(rewardAmount) }]);
+      
       setSavedMessage(`Draft saved securely to Preview database (ID: ${saved.id}). It remains unpublished.`);
       setCreating(false);
     } catch (error) {
@@ -111,7 +123,8 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     } catch (error) { setSavedMessage(error instanceof Error ? error.message : 'Could not publish Expedition.'); }
     finally { setPublishingId(null); }
   };
-\n  const content = () => {
+
+  const content = () => {
     if (step === 0) return <div className="grid gap-4 md:grid-cols-2">
       <label className="admin-field-label">Expedition name<input value={title} onChange={e => setTitle(e.target.value)} maxLength={120} placeholder="e.g. Sentinel Initiation" className="admin-field" /></label>
       <label className="admin-field-label">Category<select value={category} onChange={e => setCategory(e.target.value)} className="admin-field">{['Open','Progressive','Seasonal','Community','Competitive','Team','Special limited-time'].map(v => <option key={v}>{v}</option>)}</select></label>
@@ -173,7 +186,13 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neon/15 pt-3"><button type="button" disabled={step===0} onClick={() => setStep(v => Math.max(0,v-1))} className="flex items-center gap-1 border border-neon/20 px-3 py-2 text-xs text-neon-500 disabled:opacity-30"><ChevronLeft size={14}/> Back</button>{step<5 ? <button type="button" onClick={() => setStep(v => Math.min(5,v+1))} className="flex items-center gap-1 border border-neon/50 bg-neon/10 px-3 py-2 text-xs text-neon-200">Continue <ChevronRight size={14}/></button> : <button type="button" onClick={saveDraft} disabled={!canSave || saving} className="flex items-center gap-2 border border-neon/50 bg-neon/15 px-3 py-2 text-xs text-neon-200 disabled:opacity-40"><Save size={14}/> {saving ? 'Saving…' : 'Save database draft'}</button>}</div>
       {!validDates && <p role="alert" className="text-[10px] text-red-300">The end date must be after the start date.</p>}{!validReward && <p role="alert" className="text-[10px] text-red-300">Enter a whole-number reward greater than zero, or select No reward.</p>}
     </div>}
-    <div className="space-y-2"><h3 className="text-[10px] font-bold uppercase tracking-widest text-neon-600">Saved drafts</h3>{drafts.length===0 ? <div className="border border-dashed border-neon/20 p-6 text-center text-xs text-neon-700">No saved drafts in this session yet.</div> : drafts.map(d => <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 border border-neon/20 bg-black/30 p-3"><div><p className="text-xs text-neon-200">{d.title}</p><p className="mt-1 text-[9px] text-neon-700">{d.category} · {d.access} · {d.participation}</p></div><span className="text-[10px] text-neon-400">{d.rewardAmount ? d.rewardAmount+' '+d.rewardType : 'No reward'}</span></div>)}</div>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2"><h3 className="text-[10px] font-bold uppercase tracking-widest text-neon-600">Saved Expeditions</h3><button type="button" onClick={() => void loadDrafts()} disabled={loadingDrafts} className="border border-neon/20 px-2 py-1 text-[10px] text-neon-400 disabled:opacity-40">Refresh</button></div>
+      {loadingDrafts ? <p className="border border-dashed border-neon/20 p-6 text-center text-xs text-neon-700">Loading saved Expeditions…</p> : drafts.length===0 ? <div className="border border-dashed border-neon/20 p-6 text-center text-xs text-neon-700">No Expeditions have been saved yet.</div> : drafts.map(d => <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 border border-neon/20 bg-black/30 p-3">
+        <div className="min-w-0"><p className="text-xs text-neon-200">{d.title}</p><p className="mt-1 text-[9px] text-neon-700">{d.category.replaceAll('_',' ')} · {d.participation_mode} · {d.objectives.length} objectives</p><p className="mt-1 text-[9px] uppercase tracking-wider text-neon-500">{d.status.replaceAll('_',' ')}</p></div>
+        <div className="flex flex-wrap items-center gap-2"><span className="text-[10px] text-neon-400">{d.reward?.amount ? d.reward.amount+' '+d.reward.reward_type.toUpperCase() : 'No reward'}</span>{d.status==='draft' && <><button type="button" onClick={() => editDraft(d)} className="border border-neon/30 px-2 py-1 text-[10px] text-neon-300">Edit</button><button type="button" disabled={publishingId===d.id} onClick={() => void publishDraft(d)} className="border border-amber-400/40 px-2 py-1 text-[10px] text-amber-200 disabled:opacity-40">{publishingId===d.id?'Publishing…':'Publish'}</button></>}</div>
+      </div>)}
+    </div>
     <p className="text-[10px] leading-relaxed text-neon-800">Legacy Events data is preserved. This first UI pass does not modify, delete or publish existing Events. Drafts can be loaded, edited and moved through the admin publishing lifecycle. Player visibility, objective verification and reward issuance remain disabled.</p>
   </section>;
 }
