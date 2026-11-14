@@ -50,3 +50,47 @@ export async function fixTrustedFragment(fragmentId: FragmentId): Promise<void> 
   if (error) throw error;
   if (!data?.success) throw new Error(data?.reason === 'fragment_not_unlocked' ? 'Unlock this fragment through the server first.' : 'The server could not verify this fragment action.');
 }
+
+
+export interface ActiveTemporaryRewards {
+  agentUntil: number;
+  fragmentBoostUntil: number;
+  fragmentBoostMultiplier: number;
+}
+
+/** Load only active, unexpired temporary rewards from the authenticated server. */
+export async function fetchActiveTemporaryRewards(): Promise<ActiveTemporaryRewards> {
+  const { data, error } = await supabase.functions.invoke('gameplay-actions', {
+    body: { action: 'get_reward_entitlements' },
+  });
+  if (error) throw error;
+  if (!data?.success || !Array.isArray(data.rewards)) {
+    throw new Error('The trusted reward service returned an invalid response.');
+  }
+
+  const now = Date.now();
+  let agentUntil = 0;
+  let fragmentBoostUntil = 0;
+  let fragmentBoostMultiplier = 1;
+
+  for (const reward of data.rewards as Array<Record<string, unknown>>) {
+    if (reward.status !== 'active' || typeof reward.expiresAt !== 'string') continue;
+    const expiresAt = Date.parse(reward.expiresAt);
+    if (!Number.isFinite(expiresAt) || expiresAt <= now) continue;
+
+    if (reward.rewardType === 'daily_streak_agent' && reward.rewardCode === 'free_agent_1_24h') {
+      agentUntil = Math.max(agentUntil, expiresAt);
+    }
+    if (reward.rewardType === 'fragment_mining_boost' && reward.rewardCode === 'fragment_mining_2x_6h') {
+      const metadata = reward.metadata && typeof reward.metadata === 'object'
+        ? reward.metadata as Record<string, unknown>
+        : {};
+      if (Number(metadata.multiplier) === 2) {
+        fragmentBoostUntil = Math.max(fragmentBoostUntil, expiresAt);
+        fragmentBoostMultiplier = 2;
+      }
+    }
+  }
+
+  return { agentUntil, fragmentBoostUntil, fragmentBoostMultiplier };
+}
