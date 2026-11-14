@@ -6,9 +6,12 @@ interface MissionTaskRow {
   kind: MissionKind;
   title: string;
   description: string;
-  reward: number;
+  reward: number | null;
   platform: 'tiktok' | 'youtube' | null;
   action_url: string | null;
+  reward_currency: 'ZP' | 'ZAP';
+  unlock_cost_zp: number;
+  status: 'draft' | 'published' | 'paused' | 'archived';
 }
 
 const MISSION_KINDS: MissionKind[] = ['daily', 'social', 'creator'];
@@ -56,25 +59,37 @@ export async function fetchMissions(): Promise<MissionSpec[]> {
   try {
     const { data, error } = await supabase
       .from('mission_tasks')
-      .select('id, kind, title, description, reward, platform, action_url')
+      .select('id, kind, title, description, reward, platform, action_url, reward_currency, unlock_cost_zp, status')
       .order('created_at', { ascending: true });
 
-    if (error || !Array.isArray(data) || data.length === 0) return FALLBACK_MISSIONS;
+    if (error) {
+      console.warn('Mission list unavailable, showing built-in display-only missions.', error);
+      return FALLBACK_MISSIONS;
+    }
+
+    if (!Array.isArray(data) || data.length === 0) return [];
 
     const rows = data as MissionTaskRow[];
-    if (rows.some((row) => !MISSION_KINDS.includes(row.kind))) return FALLBACK_MISSIONS;
-
-    return rows.map((row) => ({
-      id: row.id,
-      kind: row.kind,
-      title: row.title,
-      description: row.description,
-      reward: row.reward,
-      platform: row.platform ?? undefined,
-      actionUrl: row.action_url ?? undefined,
-    }));
+    return rows
+      .filter((row) =>
+        row.status === 'published' &&
+        row.reward_currency === 'ZP' &&
+        row.unlock_cost_zp === 0 &&
+        Number.isFinite(row.reward) &&
+        (row.reward ?? 0) > 0 &&
+        MISSION_KINDS.includes(row.kind)
+      )
+      .map((row) => ({
+        id: row.id,
+        kind: row.kind,
+        title: row.title,
+        description: row.description,
+        reward: row.reward as number,
+        platform: row.platform ?? undefined,
+        actionUrl: row.action_url ?? undefined,
+      }));
   } catch (err) {
-    console.warn('Mission list unavailable, showing built-in missions.', err);
+    console.warn('Mission list unavailable, showing built-in display-only missions.', err);
     return FALLBACK_MISSIONS;
   }
 }
