@@ -96,5 +96,6 @@ jobs:
               (SELECT count(*) FROM public.game_event_activities) AS game_event_activity_rows,
               (SELECT count(*) FROM public.game_event_participations) AS game_event_participation_rows,
               (SELECT count(*) FROM public.gameplay_action_events) AS gameplay_action_event_rows,
-              (SELECT count(*) FROM public.agent_rental_payments) AS agent_rental_payment_rows;
+              (SELECT count(*) FROM public.agent_rental_payment_intents) AS agent_rental_payment_intent_rows,
+              (SELECT count(*) FROM public.player_agent_rentals) AS player_agent_rental_rows;
           "
