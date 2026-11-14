@@ -133,16 +133,22 @@ function GameApp({
 
   const { auth } = useAuth();
   const [verifiedZpBalance, setVerifiedZpBalance] = useState<number | null>(null);
+  const [pendingFragmentZp, setPendingFragmentZp] = useState(0);
+  const [nextFragmentReleaseAt, setNextFragmentReleaseAt] = useState<string | null>(null);
   const [verifiedTransactions, setVerifiedTransactions] = useState<VerifiedLedgerEntry[]>([]);
 
   const refreshVerifiedBalance = useCallback(async () => {
     try {
       const economy = await fetchVerifiedEconomy();
       setVerifiedZpBalance(economy.verifiedZpBalance);
+      setPendingFragmentZp(economy.pendingFragmentZp);
+      setNextFragmentReleaseAt(economy.nextFragmentReleaseAt);
       setVerifiedTransactions(economy.transactions);
     } catch (error) {
       console.error('Verified ZP balance load failed:', error);
       setVerifiedZpBalance(null);
+      setPendingFragmentZp(0);
+      setNextFragmentReleaseAt(null);
       setVerifiedTransactions([]);
     }
   }, []);
@@ -271,6 +277,8 @@ function GameApp({
             notify={notify}
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
             verifiedZpBalance={verifiedZpBalance}
+            pendingFragmentZp={pendingFragmentZp}
+            nextFragmentReleaseAt={nextFragmentReleaseAt}
             onOpenEvents={() => setTab('events')}
             onOpenMissions={() => { setMissionsInitialView('missions'); setTab('missions'); }}
             onOpenStreaks={() => { setMissionsInitialView('streaks'); setTab('missions'); }}
