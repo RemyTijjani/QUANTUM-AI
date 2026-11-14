@@ -46,6 +46,8 @@ jobs:
           supabase link --project-ref "$PREVIEW_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
       - name: List local versus Preview migration history (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           echo "Running read-only migration list against the linked Preview project."
           echo "This workflow does not run db push, migration repair, migration up, or SQL writes."
