@@ -11,6 +11,7 @@ interface TonConnectUIInstance {
   setConnectionNetwork(network: string): void;
   onStatusChange(callback: (wallet: TonConnectWallet | null) => void): () => void;
   openModal(): Promise<void>;
+  disconnect(): Promise<void>;
   sendTransaction(request: {
     validUntil: number;
     network: string;
