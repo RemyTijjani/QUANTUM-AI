@@ -9,15 +9,17 @@ import { formatClock, formatZp, msUntilNextDay } from '@/lib/format';
 import type { Notify } from '@/hooks/useToast';
 import { supabase } from '@/lib/supabase';
 import type { CreatorOpsSubmission } from '@/lib/supabase';
+import DailyUplinkClaim from '@/components/missions/DailyUplinkClaim';
 
 interface MissionsTabProps {
   state: GameState;
   notify: Notify;
   missions: MissionSpec[];
   onOpenAdmin: () => void;
+  onRefreshVerifiedEconomy: () => Promise<void>;
 }
 
-export default function MissionsTab({ state, notify, missions, onOpenAdmin }: MissionsTabProps) {
+export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRefreshVerifiedEconomy }: MissionsTabProps) {
   const now = Date.now();
 
   const daily = missions.filter((m) => m.kind === 'daily');
@@ -49,6 +51,8 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin }: Mi
             key={mission.id}
             mission={mission}
             status={missionStatus(state, mission, now)}
+            notify={notify}
+            onRefreshVerifiedEconomy={onRefreshVerifiedEconomy}
             progressLabel={
               mission.id === 'ad-quota'
                 ? `${Math.min(adsWatchedToday(state, now), AD_QUOTA_TARGET)} / ${AD_QUOTA_TARGET} feeds`
@@ -112,9 +116,11 @@ interface MissionCardProps {
   mission: MissionSpec;
   status: 'claimed' | 'ready' | 'locked';
   progressLabel?: string;
+  notify: Notify;
+  onRefreshVerifiedEconomy: () => Promise<void>;
 }
 
-function MissionCard({ mission, status, progressLabel }: MissionCardProps) {
+function MissionCard({ mission, status, progressLabel, notify, onRefreshVerifiedEconomy }: MissionCardProps) {
   const Icon = mission.kind === 'daily' ? CalendarCheck : Megaphone;
   const legacyClaimed = status === 'claimed';
 
@@ -131,7 +137,11 @@ function MissionCard({ mission, status, progressLabel }: MissionCardProps) {
           {progressLabel && <span className="text-cyan-300">Local game estimate: {progressLabel}</span>}
         </div>
         {mission.actionUrl && <a href={mission.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-cyan-300 underline">Open mission <ExternalLink size={10} /></a>}
-        <p className="mt-2 font-mono text-[9px] text-amber-300">Trusted completion checks and reward claims are not available for this mission yet.</p>
+        {mission.id === 'daily-uplink' ? (
+          <DailyUplinkClaim notify={notify} onClaimed={onRefreshVerifiedEconomy} />
+        ) : (
+          <p className="mt-2 font-mono text-[9px] text-amber-300">Trusted completion checks and reward claims are not available for this mission yet.</p>
+        )}
       </div>
       <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-neon-600">{legacyClaimed ? 'Legacy local record' : 'Not claimable'}</span>
     </div>
