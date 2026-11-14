@@ -9,8 +9,8 @@ interface CharacterCardProps {
 export default function CharacterCard({ fixed, lifetimeZp, rate }: CharacterCardProps) {
   const stats = [
     { label: 'Fragments', value: `${fixed}/4` },
-    { label: 'Lifetime ZP', value: lifetimeZp },
-    { label: 'ZP / sec', value: rate },
+    { label: 'Game lifetime ZP', value: lifetimeZp },
+    { label: 'Estimated ZP / sec', value: rate },
   ];
 
   return (
@@ -27,8 +27,8 @@ export default function CharacterCard({ fixed, lifetimeZp, rate }: CharacterCard
       </div>
 
       <p className="mt-4 font-mono text-xs leading-relaxed text-neon-300/90">
-        ZORD was scattered across the grid in four pieces. Every fragment you restore strengthens its signal and
-        pulls more ZP from the dormant nodes. Restore the full circuit to bring ZORD back online.
+        ZORD was scattered across the grid in four pieces. Restore fragments to advance the local game simulation.
+        These game-state estimates do not credit the verified ZP economy.
       </p>
 
       <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-neon/15 pt-4">
