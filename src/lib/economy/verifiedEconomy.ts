@@ -11,6 +11,8 @@ export interface VerifiedEconomy {
   verifiedZpBalance: number;
   verifiedLifetimeZp: number;
   pendingKickback: number;
+  pendingFragmentZp: number;
+  nextFragmentReleaseAt: string | null;
   updatedAt: string | null;
   transactions: VerifiedLedgerEntry[];
 }
@@ -59,7 +61,10 @@ export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
     typeof value.verifiedLifetimeZp !== 'number' ||
     !Number.isFinite(value.verifiedLifetimeZp) ||
     typeof value.pendingKickback !== 'number' ||
-    !Number.isFinite(value.pendingKickback)
+    !Number.isFinite(value.pendingKickback) ||
+    typeof value.pendingFragmentZp !== 'number' ||
+    !Number.isFinite(value.pendingFragmentZp) ||
+    !(value.nextFragmentReleaseAt === null || typeof value.nextFragmentReleaseAt === 'string')
   ) {
     throw new VerifiedEconomyError('The verified economy service returned invalid balance data.');
   }
@@ -89,6 +94,8 @@ export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
     verifiedZpBalance: value.verifiedZpBalance,
     verifiedLifetimeZp: value.verifiedLifetimeZp,
     pendingKickback: value.pendingKickback,
+    pendingFragmentZp: value.pendingFragmentZp,
+    nextFragmentReleaseAt: value.nextFragmentReleaseAt,
     updatedAt: value.updatedAt ?? null,
     transactions,
   };
