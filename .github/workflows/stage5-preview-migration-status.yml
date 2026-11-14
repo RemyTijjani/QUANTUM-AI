@@ -77,3 +77,24 @@ jobs:
                   AND table_name = 'schema_migrations'
               ) AS ledger_columns;
           "
+
+      - name: Audit Preview gameplay seed and reconciliation data (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db query --remote --read-only --output json "
+            SELECT
+              (SELECT count(*) FROM public.mission_tasks) AS mission_task_count,
+              (SELECT jsonb_agg(to_jsonb(m) ORDER BY m.id)
+               FROM public.mission_tasks AS m) AS mission_tasks,
+              (SELECT count(*) FROM public.vault_reserves) AS vault_reserve_row_count,
+              (SELECT jsonb_agg(to_jsonb(v)) FROM public.vault_reserves AS v) AS vault_reserve_rows,
+              (SELECT count(*) FROM public.players WHERE referral_code IS NOT NULL) AS players_with_referral_code,
+              (SELECT count(*) FROM public.referrals) AS legacy_referral_rows,
+              (SELECT count(*) FROM public.referral_sub_nodes) AS referral_sub_node_rows,
+              (SELECT count(*) FROM public.creator_ops_submissions) AS creator_ops_submission_rows,
+              (SELECT count(*) FROM public.game_event_activities) AS game_event_activity_rows,
+              (SELECT count(*) FROM public.game_event_participations) AS game_event_participation_rows,
+              (SELECT count(*) FROM public.gameplay_action_events) AS gameplay_action_event_rows,
+              (SELECT count(*) FROM public.agent_rental_payments) AS agent_rental_payment_rows;
+          "
