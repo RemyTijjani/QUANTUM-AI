@@ -25,6 +25,8 @@ interface CoreTabProps {
   onWatchAd: (id: FragmentId) => void;
   onFixFragment: (id: FragmentId) => Promise<void>;
   verifiedZpBalance: number | null;
+  pendingFragmentZp: number;
+  nextFragmentReleaseAt: string | null;
   onOpenEvents: () => void;
   onOpenMissions: () => void;
   onOpenStreaks: () => void;
@@ -37,6 +39,8 @@ export default function CoreTab({
   onWatchAd,
   onFixFragment,
   verifiedZpBalance,
+  pendingFragmentZp,
+  nextFragmentReleaseAt,
   onOpenEvents,
   onOpenMissions,
   onOpenStreaks,
@@ -59,7 +63,7 @@ export default function CoreTab({
         return;
       }
       void onFixFragment(id).then(() => {
-        notify(`${FRAGMENT_NAMES[id]} fixed in the trusted gameplay record. Verified ZP accrual is not enabled yet.`, 'info');
+        notify(`${FRAGMENT_NAMES[id]} fixed. Its mining reward will enter Verified ZP after the six-hour hold.`, 'info');
       }).catch((error) => {
         notify(error instanceof Error ? error.message : 'Could not verify this fragment action', 'error');
       });
@@ -87,6 +91,8 @@ export default function CoreTab({
             <p className="label">Verified ZP</p>
             <p className="mt-1 font-display text-xl tabular-nums text-neon-200">{verifiedZpBalance === null ? '—' : formatZp(verifiedZpBalance)}</p>
             <p className="mt-1 font-mono text-[8px] text-neon-700">Server-recorded balance</p>
+            <p className="mt-2 font-mono text-[9px] text-amber-300">Pending Fragment: {formatZp(pendingFragmentZp)} ZP</p>
+            <p className="mt-1 font-mono text-[8px] text-neon-600">{nextFragmentReleaseAt ? `Next release in ${formatRemaining(new Date(nextFragmentReleaseAt).getTime() - now)}` : 'No Fragment rewards waiting'}</p>
           </div>
           <div className="border border-cyan-400/20 bg-black/40 p-3">
             <p className="label">Core rank</p>
