@@ -1,7 +1,14 @@
 import { ArrowLeftRight, Coins, History, Image, Landmark, Wallet } from 'lucide-react';
 import { formatZp } from '@/lib/format';
+import type { VerifiedLedgerEntry } from '@/lib/economy/verifiedEconomy';
 
-export default function VaultTab({ verifiedZpBalance }: { verifiedZpBalance: number | null }) {
+export default function VaultTab({
+  verifiedZpBalance,
+  transactions,
+}: {
+  verifiedZpBalance: number | null;
+  transactions: VerifiedLedgerEntry[];
+}) {
   return (
     <div className="space-y-5 pb-3">
       <header className="panel space-y-2 border border-neon/30 bg-neon/5 p-4">
@@ -31,10 +38,39 @@ export default function VaultTab({ verifiedZpBalance }: { verifiedZpBalance: num
         <p className="font-mono text-[9px] leading-relaxed text-amber-300">Conversion and transfers are not active. ZAP is not currently held in the verified economy ledger.</p>
       </section>
 
-      <section className="panel space-y-2 p-4">
-        <div className="flex items-center gap-2"><History size={15} className="text-neon-400" /><h2 className="title">Transaction history</h2></div>
-        <p className="font-mono text-[10px] text-neon-600">Verified transaction history will appear here when the wallet ledger is connected.</p>
-        <div className="border border-neon/15 px-3 py-4 text-center font-mono text-[9px] uppercase tracking-wider text-neon-700">No wallet transactions loaded</div>
+      <section className="panel space-y-3 p-4">
+        <div className="flex items-center gap-2"><History size={15} className="text-neon-400" /><h2 className="title">Verified ZP history</h2></div>
+        <p className="font-mono text-[10px] text-neon-600">Latest 50 entries from your server-side economy ledger. This history is read-only.</p>
+        {transactions.length === 0 ? (
+          <div className="border border-neon/15 px-3 py-4 text-center font-mono text-[9px] uppercase tracking-wider text-neon-700">No verified ZP transactions yet</div>
+        ) : (
+          <div className="space-y-2">
+            {transactions.map((entry) => {
+              const positive = entry.amount >= 0;
+              const dateLabel = entry.createdAt && Number.isFinite(Date.parse(entry.createdAt))
+                ? new Date(entry.createdAt).toLocaleString()
+                : 'Date unavailable';
+              const typeLabel = entry.transactionType.replace(/_/g, ' ');
+              return (
+                <article key={entry.id} className="border border-neon/15 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-mono text-[10px] uppercase text-neon-300">{typeLabel}</p>
+                      {entry.description && <p className="mt-1 break-words font-mono text-[9px] text-neon-600">{entry.description}</p>}
+                    </div>
+                    <p className={`shrink-0 font-display text-sm ${positive ? 'text-emerald-300' : 'text-amber-300'}`}>
+                      {positive ? '+' : ''}{formatZp(entry.amount)} ZP
+                    </p>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[9px] text-neon-700">
+                    <span>{dateLabel}</span>
+                    <span>Balance: {formatZp(entry.balanceAfter)} ZP</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section className="panel space-y-2 p-4">
