@@ -3,9 +3,9 @@ import FaIcon from '@/components/FaIcon';
 export type TabId = 'missions' | 'agents' | 'core' | 'network' | 'vault' | 'events';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: 'core', label: 'Core', icon: 'fa-microchip' },
   { id: 'missions', label: 'Missions', icon: 'fa-bullseye' },
   { id: 'agents', label: 'ZORD Agents', icon: 'fa-robot' },
+  { id: 'core', label: 'Core', icon: 'fa-microchip' },
   { id: 'network', label: 'Network', icon: 'fa-network-wired' },
   { id: 'vault', label: 'Vault', icon: 'fa-vault' },
 ];
