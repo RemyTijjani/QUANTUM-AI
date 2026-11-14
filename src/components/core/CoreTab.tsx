@@ -27,6 +27,7 @@ interface CoreTabProps {
   verifiedZpBalance: number | null;
   onOpenEvents: () => void;
   onOpenMissions: () => void;
+  onOpenStreaks: () => void;
 }
 
 export default function CoreTab({
@@ -37,6 +38,7 @@ export default function CoreTab({
   verifiedZpBalance,
   onOpenEvents,
   onOpenMissions,
+  onOpenStreaks,
 }: CoreTabProps) {
   const now = Date.now();
   const tier = tierInfo(state.lifetimeZp);
@@ -128,11 +130,11 @@ export default function CoreTab({
           <Flame size={18} className="text-orange-300" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <article className="panel space-y-3 border border-orange-400/25 bg-orange-400/5 p-3">
-            <div className="flex items-center justify-between"><Flame size={18} className="text-orange-300" /><span className="border border-amber-400/25 px-1.5 py-0.5 font-mono text-[8px] uppercase text-amber-300">In progress</span></div>
-            <div><h3 className="font-display text-xs font-bold uppercase text-orange-200">Daily Streaks</h3><p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-600">Consecutive-day activity, milestone calendar and streak status.</p></div>
-            <div className="border-t border-orange-400/15 pt-2"><p className="font-mono text-[8px] uppercase text-amber-300">Reward rules not activated</p><p className="mt-1 font-mono text-[8px] text-neon-700">No streak reward is currently claimable.</p></div>
-          </article>
+          <button type="button" onClick={onOpenStreaks} className="panel space-y-3 border border-orange-400/25 bg-orange-400/5 p-3 text-left transition hover:border-orange-300/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300">
+            <div className="flex items-center justify-between"><Flame size={18} className="text-orange-300" /><span className="border border-emerald-400/25 px-1.5 py-0.5 font-mono text-[8px] uppercase text-emerald-300">Open streak</span></div>
+            <div><h3 className="font-display text-xs font-bold uppercase text-orange-200">Daily Streaks</h3><p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-600">View your trusted streak count, claim today's reward and track milestones.</p></div>
+            <div className="border-t border-orange-400/15 pt-2"><p className="font-mono text-[8px] uppercase text-orange-300">Daily claim · UTC reset</p><p className="mt-1 font-mono text-[8px] text-neon-700">Open your server-verified streak status.</p></div>
+          </button>
           <article className="panel space-y-3 border border-violet-400/25 bg-violet-400/5 p-3">
             <div className="flex items-center justify-between"><Gift size={18} className="text-violet-300" /><span className="border border-amber-400/25 px-1.5 py-0.5 font-mono text-[8px] uppercase text-amber-300">In progress</span></div>
             <div><h3 className="font-display text-xs font-bold uppercase text-violet-200">Mystery Discovery</h3><p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-600">Daily discovery, reveal animation and earned-item history.</p></div>
