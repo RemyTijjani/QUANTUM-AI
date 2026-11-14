@@ -552,7 +552,7 @@ export interface AdminExpeditionDraftInput {
   timezone: string;
   rewardType: 'zp' | 'zap' | 'none';
   rewardAmount: number;
-  objectives: Array<{ kind: 'briefing' | 'quiz' | 'game' | 'community' | 'external' | 'milestone'; title: string }>;
+  objectives: Array<{ kind: 'briefing' | 'quiz' | 'game' | 'community' | 'external' | 'milestone'; title: string; scope: 'individual' | 'team' | 'both' }>;
 }
 
 export async function saveExpeditionDraft(
@@ -577,7 +577,7 @@ export interface AdminExpeditionRecord {
   status: 'draft' | 'scheduled' | 'registration_open' | 'active' | 'paused' | 'completed' | 'closed' | 'cancelled';
   starts_at: string | null; ends_at: string | null; timezone: string;
   min_team_size: number; max_team_size: number; min_individual_contributions: number;
-  objectives: Array<{ id: string; objective_type: AdminExpeditionDraftInput['objectives'][number]['kind']; title: string; sort_order: number }>;
+  objectives: Array<{ id: string; objective_type: AdminExpeditionDraftInput['objectives'][number]['kind']; title: string; completion_scope: 'individual' | 'team' | 'both'; sort_order: number }>;
   reward: { reward_type: 'zp' | 'zap' | 'none'; amount: number; recipient_scope: string } | null;
 }
 export async function listAdminExpeditions(creds: AdminCredentials): Promise<AdminExpeditionRecord[]> {
@@ -595,4 +595,45 @@ export async function publishAdminExpedition(creds: AdminCredentials, id: string
     throw new AdminApiError('Expedition publishing could not be verified.');
   }
   return { status: result.status as 'scheduled' | 'registration_open' };
+}
+
+
+export interface AdminExpeditionObjectiveReview {
+  id: string;
+  expedition_id: string;
+  objective_id: string;
+  player_id?: string;
+  team_id?: string;
+  status: 'submitted';
+  evidence: Record<string, unknown>;
+  created_at: string;
+  expedition_objectives?: { title?: string; objective_type?: string; completion_scope?: string };
+  expedition_teams?: { name?: string };
+}
+export async function listAdminExpeditionObjectiveReviews(creds: AdminCredentials, expeditionId?: string): Promise<{ individualSubmissions: AdminExpeditionObjectiveReview[]; teamSubmissions: AdminExpeditionObjectiveReview[] }> {
+  const body = await callAdminApi(creds, { action: 'list_expedition_objective_reviews', expeditionId });
+  if (!body || typeof body !== 'object') throw new AdminApiError('Could not load Expedition objective reviews.');
+  const result = body as { success?: unknown; individualSubmissions?: unknown; teamSubmissions?: unknown };
+  if (result.success !== true || !Array.isArray(result.individualSubmissions) || !Array.isArray(result.teamSubmissions)) {
+    throw new AdminApiError('The Expedition review queue response could not be verified.');
+  }
+  return {
+    individualSubmissions: result.individualSubmissions as AdminExpeditionObjectiveReview[],
+    teamSubmissions: result.teamSubmissions as AdminExpeditionObjectiveReview[],
+  };
+}
+export async function reviewAdminExpeditionObjective(
+  creds: AdminCredentials,
+  input: { progressId: string; progressScope: 'individual' | 'team'; decision: 'verified' | 'rejected'; reason: string },
+): Promise<void> {
+  const body = await callAdminApi(creds, {
+    action: 'review_expedition_objective',
+    progressId: input.progressId,
+    progressScope: input.progressScope,
+    objectiveDecision: input.decision,
+    reviewReason: input.reason,
+  });
+  if (!body || typeof body !== 'object' || (body as { success?: unknown }).success !== true || (body as { rewardsIssued?: unknown }).rewardsIssued !== false) {
+    throw new AdminApiError('The objective review could not be verified.');
+  }
 }
