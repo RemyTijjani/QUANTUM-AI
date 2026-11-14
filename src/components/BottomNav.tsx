@@ -8,7 +8,6 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'agents', label: 'ZORD Agents', icon: 'fa-robot' },
   { id: 'network', label: 'Network', icon: 'fa-network-wired' },
   { id: 'vault', label: 'Vault', icon: 'fa-vault' },
-  { id: 'events', label: 'Events', icon: 'fa-calendar-days' },
 ];
 
 interface BottomNavProps {
@@ -20,7 +19,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
   return (
     <nav
       aria-label="Main navigation"
-      className="relative z-20 grid grid-cols-6 border-t border-neon/20 bg-obsidian/95 px-1 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 backdrop-blur"
+      className="relative z-20 grid grid-cols-5 border-t border-neon/20 bg-obsidian/95 px-1 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 backdrop-blur"
     >
       {TABS.map(({ id, label, icon }) => {
         const isActive = id === active;
