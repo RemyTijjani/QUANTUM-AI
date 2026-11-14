@@ -1,5 +1,5 @@
 
-import { useCallback, useState, FormEvent } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Check,
   X,
@@ -9,8 +9,6 @@ import {
   Activity,
   Users,
   Database,
-  Radio,
-  Download,
   Zap,
   ArrowLeft,
   ShieldCheck,
@@ -115,9 +113,6 @@ function AdminConsole({
   const [bulkApproving, setBulkApproving] = useState(false);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
 
-  const [multiplier, setMultiplier] = useState<number>(0.09);
-  const [isFlushing, setIsFlushing] = useState<boolean>(false);
-  const [broadcastText, setBroadcastText] = useState<string>('');
 
   const [logs, setLogs] = useState<string[]>([
     '[INIT] ZORD OS // COMMAND & CONTROL online.',
@@ -286,28 +281,6 @@ function AdminConsole({
     const result = await approveEventParticipantReward(creds, participationId);
     addLog(`[EVENT] Approved ${result.rewardZp.toLocaleString()} ZP for participation ${participationId}.`);
     if (result.zapRewardDeferred) addLog('[EVENT] Any configured ZAP reward remains deferred to the separate ZAP economy stage.');
-  };
-
-  const handleFlushCache = () => {
-    setIsFlushing(true);
-
-    setTimeout(() => {
-      setIsFlushing(false);
-
-      addLog(
-        `[SYS] Cache flushed successfully at ${new Date().toLocaleTimeString()}`,
-      );
-    }, 1000);
-  };
-
-  const handleBroadcast = (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!broadcastText.trim()) return;
-
-    addLog(`[BROADCAST] Sent: "${broadcastText}"`);
-
-    setBroadcastText('');
   };
 
   const missionTitle = (id: string) =>
@@ -639,23 +612,15 @@ function AdminConsole({
                 ))}
               </div>
 
-              <form onSubmit={handleBroadcast} className="flex gap-2 mt-2">
+              <div className="mt-2 space-y-2">
                 <input
                   type="text"
-                  value={broadcastText}
-                  onChange={(e) => setBroadcastText(e.target.value)}
-                  placeholder="Broadcast alert to all active operatives..."
-                  className="flex-1 bg-black/50 border border-neon/30 px-3 py-1.5 text-xs text-neon-300 focus:outline-none focus:border-neon"
+                  disabled
+                  placeholder="Broadcast service is not connected"
+                  className="w-full cursor-not-allowed border border-neon/20 bg-black/30 px-3 py-1.5 text-xs text-neon-600 opacity-70"
                 />
-
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-neon/20 hover:bg-neon/30 border border-neon text-xs uppercase tracking-wider"
-                >
-                  <Radio size={14} className="inline mr-1" />
-                  Broadcast
-                </button>
-              </form>
+                <p className="text-[9px] uppercase tracking-wider text-amber-300">Broadcast delivery is unavailable until a secure server-side broadcast service is integrated.</p>
+              </div>
             </div>
 
             <div className="panel p-4 border border-neon/20 flex flex-col gap-4">
@@ -664,55 +629,20 @@ function AdminConsole({
                 Economy & Controls
               </h2>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-[11px] text-neon-500">
-                  Global Mining Multiplier (ZP/sec)
-                </label>
-
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min="0.01"
-                    max="0.50"
-                    step="0.01"
-                    value={multiplier}
-                    onChange={(e) =>
-                      setMultiplier(parseFloat(e.target.value))
-                    }
-                    className="flex-1 accent-green-500 bg-black"
-                  />
-
-                  <span className="text-sm font-bold text-neon-300">
-                    {multiplier}x
-                  </span>
-                </div>
+              <div className="space-y-2 border border-amber-400/20 bg-amber-400/5 p-3">
+                <p className="text-[11px] text-amber-300">Global mining controls are not connected.</p>
+                <p className="text-[9px] leading-relaxed text-neon-500">No client-side multiplier can change player earnings. A trusted server-side economy control is required before this setting can be enabled.</p>
               </div>
 
               <div className="mt-auto pt-4 border-t border-neon/20 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={handleFlushCache}
-                  disabled={isFlushing}
-                  className="py-2 px-3 bg-red-950/40 border border-red-500/40 hover:bg-red-900/40 text-red-400 text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
-                >
-                  <RefreshCw
-                    size={12}
-                    className={isFlushing ? 'animate-spin' : ''}
-                  />
-                  {isFlushing ? 'Flushing...' : 'Flush Cache'}
+                <button type="button" disabled className="cursor-not-allowed border border-red-500/20 bg-red-950/20 px-3 py-2 text-xs uppercase tracking-wider text-red-300/50">
+                  Flush Cache · Unavailable
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    addLog('[SYS] Exported system telemetry snapshot.')
-                  }
-                  className="py-2 px-3 bg-neon/10 border border-neon/40 hover:bg-neon/20 text-neon-300 text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
-                >
-                  <Download size={12} />
-                  Export Data
+                <button type="button" disabled className="cursor-not-allowed border border-neon/20 bg-neon/5 px-3 py-2 text-xs uppercase tracking-wider text-neon-600">
+                  Export Data · Unavailable
                 </button>
               </div>
+              <p className="text-[9px] leading-relaxed text-neon-600">Cache maintenance and telemetry export are not wired to backend operations yet. These controls are intentionally disabled.</p>
             </div>
           </div>
         </div>
