@@ -350,3 +350,54 @@ The artifact is a schema-only export and is retained by GitHub Actions until Nov
 The status workflow now includes a read-only check of deployed Preview Edge Functions and the presence of the two custom secrets required by the rental verifier (`TONCENTER_API_KEY` and `ZORD_GRAM_TREASURY_ADDRESS`). It prints only function names and secret names/presence; it does not print secret values or digests. The required built-in Supabase Edge Function environment variables are not treated as user-managed custom secrets. The new audit run must finish before reporting those deployment/configuration checks as verified.
 
 The current read-only database role still cannot certify grants on Supabase-managed schemas. No privileged DB connection has been attempted. A separately authorized privileged read-only inspection remains outstanding.
+
+
+## Preview Edge Function and custom-secret inventory — 2026-11-14
+
+Read-only workflow run: [43573323364](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43573323364)  
+Result: **success**.
+
+The linked `ZORD-PREVIEW` project reports these seven deployed Edge Functions as ACTIVE:
+
+| Function | Deployed version |
+|---|---:|
+| `telegram-auth` | 8 |
+| `public-events` | 9 |
+| `admin-api` | 37 |
+| `event-participation` | 41 |
+| `gameplay-actions` | 3 |
+| `player-economy` | 3 |
+| `agent-rental-payments` | 2 |
+
+The two custom secrets required by the rental verifier, `TONCENTER_API_KEY` and `ZORD_GRAM_TREASURY_ADDRESS`, are present. The workflow prints only secret names/presence; it does not print values or digests. Presence does not prove the values are correct or that a live payment has been tested.
+
+### Configuration discrepancy
+
+`supabase/config.toml` also contains a `[functions.telegram-bot]` entry, but the active branch has no `supabase/functions/telegram-bot` source folder and the Preview deployment inventory has no `telegram-bot` function. The first assertion mistakenly treated every config entry as a deployable local function and failed on this mismatch. The check was corrected to compare the seven actual local function folders; the next read-only run passed.
+
+This is a stale or intentionally reserved config entry, not evidence of a failed deployment. It should be resolved by confirming whether a separate Telegram bot Edge Function is still intended; it has not been deleted or modified during this audit.
+
+### Supabase environment label
+
+The Supabase CLI identifies the linked target as project `ZORD-PREVIEW` and labels its environment `production`. In Supabase CLI output, this denotes a standalone project rather than a Supabase Branch environment; it does not by itself prove that this is the application's separate Production project. The repository's dedicated Preview secret and the legacy target comparison both point to this named Preview project. No deploy, migration, or database write command was run.
+
+## Migration-tooling reference scan
+
+The repository workflow scan found only:
+- the read-only `supabase migration list --remote` command;
+- the read-only public-schema `supabase db dump` command;
+- a path trigger watching `supabase/migrations/**`.
+
+No workflow was found that automatically runs `supabase db push`, `supabase migration up`, or migration repair. The repository's package scripts and Supabase config do not contain additional migration execution commands in the files reviewed. This supports, but does not replace, an isolated baseline test.
+
+## Updated status
+
+- Fresh public-schema snapshot comparison: complete; byte-identical to reference.
+- Seven local Edge Functions: deployed and ACTIVE in Preview; versions recorded above.
+- Required custom TON rental secret names: present; values not inspected.
+- Supabase-managed schema effective grants: a new read-only audit using PostgreSQL privilege-check functions is running because the earlier information-schema grant view returned no rows under the restricted read-only role.
+- Stale `telegram-bot` config entry: identified; intent needs confirmation.
+- Migration ledger remains absent and all 48 local versions remain unrecorded.
+- Isolated baseline validation remains unavailable and is still a hard blocker.
+
+Stage 5 remains open. No database mutation, migration repair/application, function deployment, or Production change was performed.
