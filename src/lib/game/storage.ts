@@ -121,6 +121,9 @@ export function saveState(
       fragmentMiningBoostMultiplier: _fragmentMiningBoostMultiplier,
       ...persistedState
     } = state;
+    void _temporaryAgentUntil;
+    void _fragmentMiningBoostUntil;
+    void _fragmentMiningBoostMultiplier;
     window.localStorage.setItem(
       getStorageKey(playerId),
       JSON.stringify(persistedState),
@@ -133,5 +136,8 @@ export function saveState(
 /** Remove server-owned reward timers before writing the client game snapshot. */
 export function persistableGameState(state: GameState): Omit<GameState, 'temporaryAgentUntil' | 'fragmentMiningBoostUntil' | 'fragmentMiningBoostMultiplier'> {
   const { temporaryAgentUntil: _agent, fragmentMiningBoostUntil: _boost, fragmentMiningBoostMultiplier: _multiplier, ...persisted } = state;
+  void _agent;
+  void _boost;
+  void _multiplier;
   return persisted;
 }
