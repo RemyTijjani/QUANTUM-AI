@@ -274,6 +274,7 @@ function GameApp({
             onOpenEvents={() => setTab('events')}
             onOpenMissions={() => { setMissionsInitialView('missions'); setTab('missions'); }}
             onOpenStreaks={() => { setMissionsInitialView('streaks'); setTab('missions'); }}
+            onOpenMysteryBoxes={() => { setMissionsInitialView('mystery'); setTab('missions'); }}
             onFixFragment={async (id) => {
               try {
                 await trustedGameplay.fixFragment(id);
