@@ -1,28 +1,21 @@
-import { Check, Gift } from 'lucide-react';
+import { Gift } from 'lucide-react';
 import { MILESTONES } from '@/lib/game/config';
 import { formatZp } from '@/lib/format';
 
 interface MilestonesListProps {
   subNodeCount: number;
-  claimed: number[];
-  onClaim: (threshold: number) => void;
 }
 
-export default function MilestonesList({ subNodeCount, claimed, onClaim }: MilestonesListProps) {
+export default function MilestonesList({ subNodeCount }: MilestonesListProps) {
   return (
     <div className="space-y-3">
       {MILESTONES.map((milestone) => {
-        const isClaimed = claimed.includes(milestone.threshold);
         const reached = subNodeCount >= milestone.threshold;
         const progress = Math.min(1, subNodeCount / milestone.threshold) * 100;
         return (
           <div key={milestone.threshold} className="panel flex items-center gap-4 p-4">
-            <div
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border ${
-                isClaimed ? 'border-neon bg-neon/20 text-neon-300' : 'border-neon/30 text-neon-500'
-              }`}
-            >
-              {isClaimed ? <Check size={20} /> : <Gift size={20} />}
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neon/30 text-neon-500">
+              <Gift size={20} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
@@ -37,15 +30,10 @@ export default function MilestonesList({ subNodeCount, claimed, onClaim }: Miles
               <p className="mt-1.5 font-mono text-[10px] tabular-nums text-neon-500">
                 {Math.min(subNodeCount, milestone.threshold)} / {milestone.threshold} operatives
               </p>
+              <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-amber-300">
+                {reached ? 'Threshold reached · verification pending' : 'Progress · reward not yet enabled'}
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={() => onClaim(milestone.threshold)}
-              disabled={!reached || isClaimed}
-              className="btn-primary shrink-0 px-3 py-2"
-            >
-              {isClaimed ? 'Claimed' : 'Claim'}
-            </button>
           </div>
         );
       })}
