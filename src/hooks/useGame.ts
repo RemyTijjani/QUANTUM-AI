@@ -7,6 +7,7 @@ import {
   loadState,
   restoreGameState,
   saveState,
+  persistableGameState,
 } from '@/lib/game/storage';
 
 import type {
@@ -23,6 +24,7 @@ import {
   completeTrustedUnlock,
   fetchTrustedFragments,
   fixTrustedFragment,
+  fetchActiveTemporaryRewards,
 } from '@/lib/gameplay/trustedGameplay';
 
 function createActions(send: (command: Command) => void) {
@@ -270,7 +272,8 @@ export function useGame(
 
       savingRef.current = true;
 
-      const snapshot = stateRef.current;
+      const currentState = stateRef.current;
+      const snapshot = persistableGameState(currentState);
       dirtyRef.current = false;
 
       try {
@@ -337,7 +340,7 @@ export function useGame(
 
         // If the game changed while the upload was running,
         // another upload will still be needed.
-        if (stateRef.current !== snapshot) {
+        if (stateRef.current !== currentState) {
           dirtyRef.current = true;
         }
 
@@ -368,6 +371,43 @@ export function useGame(
       window.clearInterval(interval);
     };
   }, [playerId, referralCode, isLoading, loadError]);
+
+  // Sync temporary mining rewards from the trusted server. Client saves never
+  // carry these timers, and a failed lookup clears effects rather than trusting stale data.
+  useEffect(() => {
+    if (isLoading || loadError) return;
+    let cancelled = false;
+    const syncTemporaryRewards = async () => {
+      try {
+        const rewards = await fetchActiveTemporaryRewards();
+        if (cancelled) return;
+        setState((previous) => gameReducer(previous, {
+          type: 'setTemporaryRewards',
+          ...rewards,
+          now: Date.now(),
+        }));
+      } catch (error) {
+        console.error('Temporary reward sync failed:', error);
+        if (!cancelled) {
+          setState((previous) => gameReducer(previous, {
+            type: 'setTemporaryRewards',
+            agentUntil: 0,
+            fragmentBoostUntil: 0,
+            fragmentBoostMultiplier: 1,
+            now: Date.now(),
+          }));
+        }
+      }
+    };
+    void syncTemporaryRewards();
+    const interval = window.setInterval(() => void syncTemporaryRewards(), 15000);
+    window.addEventListener('focus', syncTemporaryRewards);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', syncTemporaryRewards);
+    };
+  }, [playerId, isLoading, loadError]);
 
   // Game timer.
   useEffect(() => {
