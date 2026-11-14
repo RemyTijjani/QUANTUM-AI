@@ -38,6 +38,21 @@ jobs:
           fi
           echo "Credentials are present. Target is the Preview project secret."
 
+      - name: Verify legacy Preview deploy target matches Preview secret (read only)
+        env:
+          LEGACY_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
+        run: |
+          if [ -z "$LEGACY_PROJECT_REF" ] || [ -z "$PREVIEW_PROJECT_REF" ]; then
+            echo "Cannot verify the legacy deployment target: a reference is missing."
+            exit 1
+          fi
+          if [ "$LEGACY_PROJECT_REF" != "$PREVIEW_PROJECT_REF" ]; then
+            echo "Deployment target mismatch: Preview-labelled workflows are not proven Preview-only."
+            exit 1
+          fi
+          echo "Verified: the legacy deployment target matches the dedicated Preview project."
+
       - name: Link only the Preview project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
