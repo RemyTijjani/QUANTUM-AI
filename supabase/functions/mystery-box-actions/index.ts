@@ -90,6 +90,17 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid Mystery Box request." }, 400);
     }
 
+    if (body.action === "get_inventory") {
+      const { data, error } = await admin.rpc("get_mystery_box_inventory", {
+        p_player_id: player.id,
+      });
+      if (error) {
+        console.error("Mystery Box inventory lookup failed:", error);
+        return json({ error: "Could not load Mystery Box inventory." }, 500);
+      }
+      return json({ success: true, inventory: data });
+    }
+
     if (body.action !== "open_mystery_box" ||
         typeof body.entitlementId !== "string" ||
         !UUID_PATTERN.test(body.entitlementId)) {
