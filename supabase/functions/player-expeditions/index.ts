@@ -147,7 +147,7 @@ Deno.serve(async (req: Request) => {
           isUnlocked: prerequisiteMet,
           lockedReason: prerequisiteMet ? null : "Complete the prerequisite Expedition first.",
           canJoinSolo: prerequisiteMet && !alreadyJoined && !notStarted && !ended &&
-            item.status === "registration_open" &&
+            (item.status === "registration_open" || (item.status === "scheduled" && !notStarted)) &&
             (item.participation_mode === "solo" || item.participation_mode === "both"),
           registrationOpensAt: notStarted ? item.starts_at : null,
         };
