@@ -117,7 +117,27 @@ Extend `gameplay-actions` with a minimal action such as `claim_daily_streak`.
 
 These are not invented by this specification:
 1. The exact draw method for the approved 1–10 whole-ZAP range; uniform selection is proposed.
-2. Standard Box excludes ZAP. Premium Box has a 10% chance to award 1–10 whole ZAP. Free Agent 1 remains exclusive to the 1% Daily Streak outcome. A Fragment reward is available in Premium Boxes only, with a 10% prize chance. It is a 2× multiplier on the player's current Fragment Mining rate for six hours from activation. Standard Boxes do not contain this boost. It is not a fixed fragment amount; the extra mining output can contribute toward both unlocking new fragments and repairing damaged fragments. It follows the same no-stacking/no-extension rule as the approved boost. Both Standard and Premium Boxes may award one of ten ZP prizes: 100, 200, 300, 400, 500, 600, 700, 800, 900, or 1,000 ZP. Premium Box odds must favor higher ZP amounts compared with Standard Box odds. The exact probability assigned to each ZP amount in each tier remains unapproved and must not be invented. Premium retains separate 10% chances for its 1–10 whole-ZAP prize and its 2× Fragment Mining boost. Other box contents and odds still require approval. Tier selection remains 80% Standard / 20% Premium when a Daily Streak draw awards a box.
+2. Standard Box excludes ZAP. Premium Box has a 10% chance to award 1–10 whole ZAP. Free Agent 1 remains exclusive to the 1% Daily Streak outcome. A Fragment reward is available in Premium Boxes only, with a 10% prize chance. It is a 2× multiplier on the player's current Fragment Mining rate for six hours from activation. Standard Boxes do not contain this boost. It is not a fixed fragment amount; the extra mining output can contribute toward both unlocking new fragments and repairing damaged fragments. It follows the same no-stacking/no-extension rule as the approved boost. Both Standard and Premium Boxes may award one of ten ZP prizes: 100, 200, 300, 400, 500, 600, 700, 800, 900, or 1,000 ZP. The approved Premium Box distribution is:
+
+| Premium Box prize | Probability |
+|---|---:|
+| 100 ZP | 2% |
+| 200 ZP | 3% |
+| 300 ZP | 4% |
+| 400 ZP | 5% |
+| 500 ZP | 6% |
+| 600 ZP | 8% |
+| 700 ZP | 10% |
+| 800 ZP | 12% |
+| 900 ZP | 14% |
+| 1,000 ZP | 16% |
+| 1–10 whole ZAP | 10% |
+| 2× Fragment Mining boost for 6 hours from activation | 10% |
+| **Total** | **100%** |
+
+The ZP prize probabilities total 80%. The ZP prize average, conditional on receiving a ZP prize, is 755 ZP. Premium Box ZP probabilities intentionally favor larger prizes.
+
+The Standard Box probability distribution remains unapproved and must be less generous than Premium for the higher ZP amounts. Standard excludes ZAP and the Fragment Mining boost. Tier selection remains 80% Standard / 20% Premium when a Daily Streak draw awards a box.
 3. Boost rules are approved: 2× Fragment Mining for 6 hours from activation; no stacking and no extension of an active boost.
 4. Agent 1 is the approved free mining-agent type. Starting the 24-hour clock on activation is recommended, pending confirmation.
 5. A trusted ZAP wallet/ledger and credit RPC. Preview currently has no dedicated ZAP balance/ledger table.
