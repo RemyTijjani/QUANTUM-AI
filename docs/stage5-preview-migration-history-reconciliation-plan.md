@@ -245,3 +245,33 @@ These counts are a point-in-time snapshot, not proof of every historical backfil
 A recent successful `deploy-admin-api-preview` run logged the target project reference from `vars.SUPABASE_PROJECT_REF`, while the read-only migration workflow links using the dedicated `secrets.SUPABASE_PREVIEW_PROJECT_REF`. GitHub's connected read interface does not expose repository Actions variables/secrets directly, and the previous logs do not independently prove that these two references are equal.
 
 A new read-only assertion has therefore been added to the Stage 5 audit workflow. It compares the legacy repository variable with the dedicated Preview secret and emits only match/mismatch, never either value. Until that assertion passes, the five Preview-labelled workflows using `vars.SUPABASE_PROJECT_REF` remain a deployment-target blocker. No new function deployment was triggered as part of this check.
+
+
+## Deployment-target guard result — 2026-11-14
+
+Read-only workflow run: [43571624005](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43571624005)  
+Commit: `4d74bb2b673dd3f08d28a852ce0dabc2e1835409`  
+Result: **success**.
+
+The assertion compared `vars.SUPABASE_PROJECT_REF` with `secrets.SUPABASE_PREVIEW_PROJECT_REF` without printing either value. It confirmed they match. This resolves the target ambiguity for the five Preview-labelled workflows that use the repository variable. The CLI linked the same project identified as `ZORD-PREVIEW`.
+
+The audit workflow completed all steps successfully: target comparison, migration list, ledger catalog inspection, and data reconciliation. It remained read-only and did not deploy any functions or modify the database.
+
+## Stage 5 closure assessment
+
+The following are now verified:
+- Preview-only project selection, including the legacy deployment variable comparison.
+- Current Preview migration history and absence of the migration ledger table.
+- Current Preview schema snapshot (reference snapshot remains the earlier artifact; a fresh comparison is still needed before baseline work).
+- Mission seed count and published ZP reward currency.
+- Vault singleton row and reserve values.
+- Point-in-time counts for referral, Creator Ops, events, gameplay evidence, and agent rental records.
+
+Stage 5 is **not ready to be marked complete** yet. The remaining hard blockers are:
+1. The 48 checked-in migrations are not represented in Preview's remote history, and the migration ledger table is absent. A safe baseline/history strategy has not been validated.
+2. No disposable Supabase project/clean database has yet been used to prove a reproducible baseline and compare it against Preview.
+3. The referral tables are empty despite one player referral code; the intended registration flow and its live function need a complete end-to-end verification.
+4. One rental payment intent exists but no rental entitlement exists; its status and payment verification path still need read-only review.
+5. A fresh schema snapshot comparison and external dependency inventory (managed schemas/roles, extensions, Edge Function configuration/secrets, scheduled jobs) remain outstanding.
+
+No database writes, migration repair, migration application, function deployment, or Production changes were performed during this reconciliation. These remaining checks should be completed before any Stage 5 sign-off. Any migration ledger or schema mutation still requires a separate explicit approval after the exact plan is reviewed.
