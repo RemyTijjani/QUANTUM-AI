@@ -63,8 +63,8 @@ create table app_private.mystery_box_reward_catalog (
   primary key (pool_version, box_tier, reward_code),
   check (
     (reward_type = 'zp' and amount is not null and amount between 100 and 1000 and amount % 100 = 0)
-    or (reward_type = 'zap' and box_tier = 'premium' and amount = 0)
-    or (reward_type = 'boost' and box_tier = 'premium' and amount = 0)
+    or (reward_type = 'zap' and box_tier = 'premium' and amount is not null and amount = 0)
+    or (reward_type = 'boost' and box_tier = 'premium' and amount is not null and amount = 0)
   )
 );
 
