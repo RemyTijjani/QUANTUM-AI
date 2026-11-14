@@ -257,7 +257,54 @@ jobs:
                FROM pg_default_acl d
                LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace
                WHERE d.defaclnamespace = 0 OR n.nspname = 'public'
-              ) AS default_privilege_acls;
+              ) AS default_privilege_acls,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'object_name', c.relname,
+                'object_type', c.relkind,
+                'role_name', r.role_name,
+                'row_security_enabled', c.relrowsecurity,
+                'select', CASE WHEN c.relkind = 'S'
+                  THEN has_sequence_privilege(r.role_name, c.oid, 'SELECT')
+                  ELSE has_table_privilege(r.role_name, c.oid, 'SELECT') END,
+                'insert', CASE WHEN c.relkind = 'S' THEN false
+                  ELSE has_table_privilege(r.role_name, c.oid, 'INSERT') END,
+                'update', CASE WHEN c.relkind = 'S'
+                  THEN has_sequence_privilege(r.role_name, c.oid, 'UPDATE')
+                  ELSE has_table_privilege(r.role_name, c.oid, 'UPDATE') END,
+                'delete', CASE WHEN c.relkind = 'S' THEN false
+                  ELSE has_table_privilege(r.role_name, c.oid, 'DELETE') END,
+                'usage', CASE WHEN c.relkind = 'S'
+                  THEN has_sequence_privilege(r.role_name, c.oid, 'USAGE')
+                  ELSE false END,
+                'truncate', CASE WHEN c.relkind = 'S' THEN false
+                  ELSE has_table_privilege(r.role_name, c.oid, 'TRUNCATE') END,
+                'references', CASE WHEN c.relkind = 'S' THEN false
+                  ELSE has_table_privilege(r.role_name, c.oid, 'REFERENCES') END,
+                'trigger', CASE WHEN c.relkind = 'S' THEN false
+                  ELSE has_table_privilege(r.role_name, c.oid, 'TRIGGER') END
+              ) ORDER BY c.relname, r.role_name)
+               FROM pg_class c
+               JOIN pg_namespace n ON n.oid = c.relnamespace
+               CROSS JOIN (VALUES ('anon'), ('authenticated'), ('service_role')) r(role_name)
+               WHERE n.nspname = 'public'
+                 AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+              ) AS public_relation_effective_privileges,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'function_name', p.proname,
+                'identity_arguments', pg_get_function_identity_arguments(p.oid),
+                'role_name', r.role_name,
+                'security_definer', p.prosecdef,
+                'search_path', (
+                  SELECT setting FROM unnest(coalesce(p.proconfig, ARRAY[]::text[])) setting
+                  WHERE setting LIKE 'search_path=%' LIMIT 1
+                ),
+                'execute', has_function_privilege(r.role_name, p.oid, 'EXECUTE')
+              ) ORDER BY p.proname, pg_get_function_identity_arguments(p.oid), r.role_name)
+               FROM pg_proc p
+               JOIN pg_namespace n ON n.oid = p.pronamespace
+               CROSS JOIN (VALUES ('anon'), ('authenticated'), ('service_role')) r(role_name)
+               WHERE n.nspname = 'public'
+              ) AS public_function_effective_privileges;
           "
 
       - name: Audit Preview gameplay seed and reconciliation data (read only)
