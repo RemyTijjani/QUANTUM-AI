@@ -146,10 +146,10 @@ Provide a read-only reconciliation query/job that compares each wallet balance w
 - **Revoked:** only through a privileged audited operation, with a reason.
 
 ### Boosts
-A boost grant is an entitlement, not a currency credit. The approved effect is 2× Fragment Mining for six hours. Recommended activation policy (not yet explicitly approved): start the six-hour timer when the player activates the boost; do not stack simultaneous boosts or extend an active boost. The backend must apply the effect server-side and must not let the client alter mining rates.
+A boost grant is an entitlement, not a currency credit. The approved effect is 2× Fragment Mining for six hours. Approved activation policy: start the six-hour timer when the player activates the boost. Boosts do not stack and do not extend an already active boost. The backend must apply the effect server-side and must not let the client alter mining rates.
 
 ### Mystery Boxes
-A box is an entitlement to open a versioned reward pool. Opening it is a separate idempotent server operation that selects and grants exactly one outcome atomically. Standard and Premium box selection probabilities and each box's contents/odds remain unapproved and must not be invented.
+A box is an entitlement to open a versioned reward pool. Opening it is a separate idempotent server operation that selects and grants exactly one outcome atomically. For a Daily Streak Mystery Box outcome, select Standard with 80% probability and Premium with 20% probability. This only determines which box tier is granted; the contents and individual prize odds inside each box remain unapproved and must not be invented.
 
 ### Free 24-hour mining agent
 Keep this distinct from paid `player_agent_rentals` and `agent_rental_payment_intents`. Grant a `temporary_mining_agent` entitlement, then activate through a trusted agent-entitlement service. The approved eligible agent is Agent 1. Recommended timer policy (not yet explicitly approved): start the 24-hour timer when the player activates the entitlement. It must not create a payment intent, fabricate a payment reference, or imply that the player paid.
@@ -197,9 +197,9 @@ Each migration application, database mutation, Edge Function source change/deplo
 
 1. **ZAP precision — approved:** whole ZAP only.
 2. **Daily Streak ZAP amount — approved:** random whole-number amount from 1 to 10 ZAP. Uniform selection across the ten values is proposed.
-3. **Boost effect/duration — approved:** 2× Fragment Mining for six hours. Activation-start and non-stacking behavior are recommended defaults pending confirmation.
-4. **Mystery Box — open:** Standard/Premium selection odds, contents and drop probabilities need a simple product decision. See the separate explanation in the project discussion; do not invent rewards or odds.
-5. **Temporary mining agent — partly approved:** Agent 1 is the eligible type. Starting its 24-hour timer on activation is recommended but not yet explicitly approved.
+3. **Boost — approved:** 2× Fragment Mining for six hours, timer starts on activation, no stacking and no extension of an active boost.
+4. **Mystery Box tier selection — approved:** 80% Standard / 20% Premium when a Streak draw awards a box. The contents and prize odds inside each box remain open and must be approved separately.
+5. **Temporary mining agent — partly approved:** Agent 1 is the eligible type. Starting its 24-hour timer on activation remains a recommended policy, but is not yet explicitly approved.
 6. **Ad unlock — deferred:** an advertising reward area is planned; the user will provide the ad provider later. Require a server-verifiable completion callback when selected; a client-side button or assertion is not proof of a completed view.
 7. **ZAP funding policy — approved:** working agents generate ZP only and never ZAP. Other ZAP credit sources must be explicitly approved.
 
