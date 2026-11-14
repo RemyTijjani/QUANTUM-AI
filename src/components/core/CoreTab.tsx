@@ -8,7 +8,6 @@ import {
   Gift,
   Radio,
   Target,
-  ShieldCheck,
 } from 'lucide-react';
 import type { FragmentId } from '@/lib/game/config';
 import { fixedCount, fragmentCooldownRemaining, passiveRate, tierInfo } from '@/lib/game/state';
