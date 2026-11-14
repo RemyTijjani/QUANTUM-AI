@@ -10,7 +10,6 @@ import {
   Compass,
   Gift,
   Radio,
-  ShieldAlert,
   Target,
 } from 'lucide-react';
 
