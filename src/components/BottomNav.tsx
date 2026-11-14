@@ -8,7 +8,6 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'core', label: 'Core', icon: 'fa-microchip' },
   { id: 'network', label: 'Network', icon: 'fa-network-wired' },
   { id: 'vault', label: 'Vault', icon: 'fa-vault' },
-  { id: 'events', label: 'Events', icon: 'fa-calendar-days' },
 ];
 
 interface BottomNavProps {
