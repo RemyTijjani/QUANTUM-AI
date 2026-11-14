@@ -754,8 +754,10 @@ Deno.serve(async (req: Request) => {
       const minTeam = expedition.minTeamSize;
       const maxTeam = expedition.maxTeamSize;
       const minContributions = expedition.minIndividualContributions;
-      if (![minTeam, maxTeam, minContributions].every(Number.isSafeInteger) ||
-          Number(minTeam) < 2 || Number(maxTeam) > 100 || Number(maxTeam) < Number(minTeam) || Number(minContributions) < 0) {
+      if (typeof minTeam !== "number" || !Number.isSafeInteger(minTeam) ||
+          typeof maxTeam !== "number" || !Number.isSafeInteger(maxTeam) ||
+          typeof minContributions !== "number" || !Number.isSafeInteger(minContributions) ||
+          minTeam < 2 || maxTeam > 100 || maxTeam < minTeam || minContributions < 0) {
         return json({ error: "Invalid team size or contribution requirements" }, 400);
       }
       if (!["zp", "zap", "none"].includes(String(rewardType))) return json({ error: "Invalid reward type" }, 400);
@@ -798,7 +800,7 @@ Deno.serve(async (req: Request) => {
       const { error: objectiveError } = await db.from("expedition_objectives").insert(objectiveRows);
       const { error: rewardError } = objectiveError ? { error: null } : await db.from("expedition_rewards").insert({
         expedition_id: created.id, reward_type: rewardType, amount: rewardAmount,
-        recipient_scope: participationMode === "solo" ? "each_eligible_participant" : "each_eligible_team_member",
+        recipient_scope: participationMode === "team" ? "each_eligible_team_member" : "each_eligible_participant",
       });
       const { error: auditError } = objectiveError || rewardError ? { error: null } : await db.from("expedition_audit_log").insert({
         expedition_id: created.id, actor: ADMIN_USERNAME, action: "draft_created",
