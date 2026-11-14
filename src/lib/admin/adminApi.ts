@@ -535,3 +535,36 @@ export async function approveEventParticipantReward(
   }
   return body as EventRewardApprovalResult;
 }
+
+
+export interface AdminExpeditionDraftInput {
+  title: string;
+  description: string;
+  category: 'Open' | 'Progressive' | 'Seasonal' | 'Community' | 'Competitive' | 'Team' | 'Special limited-time';
+  accessMode: 'open' | 'progressive';
+  participationMode: 'solo' | 'team' | 'both';
+  minTeamSize: number;
+  maxTeamSize: number;
+  minIndividualContributions: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  timezone: string;
+  rewardType: 'zp' | 'zap' | 'none';
+  rewardAmount: number;
+  objectives: Array<{ kind: 'briefing' | 'quiz' | 'game' | 'community' | 'external' | 'milestone'; title: string }>;
+}
+
+export async function saveExpeditionDraft(
+  creds: AdminCredentials,
+  expedition: AdminExpeditionDraftInput,
+): Promise<{ id: string; slug: string }> {
+  const body = await callAdminApi(creds, { action: 'save_expedition_draft', expedition });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('The Expedition draft response could not be verified.');
+  }
+  const result = body as { success?: unknown; id?: unknown; slug?: unknown; status?: unknown };
+  if (result.success !== true || typeof result.id !== 'string' || typeof result.slug !== 'string' || result.status !== 'draft') {
+    throw new AdminApiError('The Expedition draft could not be verified. Refresh the admin page before retrying.');
+  }
+  return { id: result.id, slug: result.slug };
+}
