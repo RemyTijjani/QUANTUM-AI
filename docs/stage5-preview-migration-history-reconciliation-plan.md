@@ -401,3 +401,25 @@ No workflow was found that automatically runs `supabase db push`, `supabase migr
 - Isolated baseline validation remains unavailable and is still a hard blocker.
 
 Stage 5 remains open. No database mutation, migration repair/application, function deployment, or Production change was performed.
+
+
+## Supabase-managed schema effective privileges and RLS — 2026-11-14
+
+Read-only workflow run: [43573448464](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43573448464)  
+Result: **success**.
+
+The audit was expanded to use PostgreSQL's effective privilege-check functions rather than relying only on `information_schema.role_table_grants`, which had returned no rows under the restricted audit role. It also inspected row-level-security flags and policy metadata for relations in `auth`, `storage`, and `realtime`.
+
+Observed:
+- All three schemas grant `USAGE` and deny `CREATE` to `anon`, `authenticated`, and `service_role`.
+- The checked roles have no table or sequence privileges on the inspected `auth` relations. Auth table RLS flags vary; no auth policies were listed in `pg_policies`.
+- `realtime.messages` has RLS enabled and no listed policies. `realtime.subscription` has RLS disabled but only SELECT among the checked role privileges; the schema is an internal Supabase schema and should not be exposed through the app API without a separate review.
+- Storage tables all have RLS enabled. `anon` and `authenticated` have table-level CRUD grants on `storage.buckets`, `storage.buckets_analytics`, and `storage.objects`, but no storage policies were listed. With RLS enabled and no applicable policies, these grants do not by themselves permit row access; the result is fail-closed. `service_role` has broad internal storage table privileges as expected for backend operations.
+- No managed-schema RLS policies were visible in the audit result. This should be treated as the observed state of the catalog view, not as proof that every Supabase-managed internal policy mechanism is absent.
+
+This is not evidence of an unauthorized public data path. It does mean Storage client operations are not demonstrated as enabled by this configuration; if the product expects user-facing Storage uploads/downloads, the required bucket/object policies need a separate intentional design and test. Do not add policies as part of migration reconciliation without explicit product/security review.
+
+## Latest full read-only verification — 2026-11-14
+
+Workflow run: [43573448464](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43573448464)  
+Result: **success**. All audit steps completed against the dedicated `ZORD-PREVIEW` project. The workflow verified the Preview target guard, seven deployed function names and two custom rental secret names, repeated the migration list and missing-ledger check, inspected referral/rental/function security and managed-schema effective privileges/RLS, and repeated the gameplay seed/data audit. No SQL writes, migrations, repair, function deployment, or Production-target command was run.
