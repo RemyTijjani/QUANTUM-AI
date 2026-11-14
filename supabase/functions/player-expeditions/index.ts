@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === "GET") {
       const { data: expeditions, error: expeditionError } = await admin
         .from("expeditions")
-        .select("id, slug, title, description, cover_image_url, category, access_mode, prerequisite_expedition_id, participation_mode, status, starts_at, ends_at, timezone, min_team_size, max_team_size, min_individual_contributions, require_shared_team_objectives, created_at")
+        .select("id, slug, title, description, cover_image_url, category, access_mode, prerequisite_expedition_id, participation_mode, status, starts_at, ends_at, registration_opens_at, registration_closes_at, timezone, min_team_size, max_team_size, min_individual_contributions, require_shared_team_objectives, created_at")
         .in("status", ["scheduled", "registration_open", "active"])
         .order("starts_at", { ascending: true, nullsFirst: false })
         .limit(100);
@@ -132,6 +132,23 @@ Deno.serve(async (req: Request) => {
         for (const row of prerequisiteRows ?? []) completedPrerequisites.add(row.expedition_id);
       }
 
+      const teamIds = [...new Set((participationRes.data ?? []).map((item) => item.team_id).filter((id): id is string => !!id))];
+      const [teamsRes, membersRes] = teamIds.length > 0 ? await Promise.all([
+        admin.from("expedition_teams").select("id, expedition_id, name, leader_player_id, status").in("id", teamIds),
+        admin.from("expedition_team_members").select("team_id, player_id, role, membership_status, joined_at").in("team_id", teamIds).eq("membership_status", "active"),
+      ]) : [{ data: [], error: null }, { data: [], error: null }];
+      if (teamsRes.error || membersRes.error) {
+        console.error("Expedition team details lookup failed:", teamsRes.error ?? membersRes.error);
+        return json({ error: "Could not load your Expedition team details." }, 500);
+      }
+      const teamsById = new Map((teamsRes.data ?? []).map((team) => [team.id, team]));
+      const membersByTeam = new Map<string, Array<Record<string, unknown>>>();
+      for (const member of membersRes.data ?? []) {
+        const list = membersByTeam.get(member.team_id) ?? [];
+        list.push({ playerId: member.player_id, role: member.role, joinedAt: member.joined_at });
+        membersByTeam.set(member.team_id, list);
+      }
+
       const now = Date.now();
       const result = (expeditions ?? []).map((item) => {
         const alreadyJoined = participationById.get(item.id) ?? null;
@@ -139,6 +156,9 @@ Deno.serve(async (req: Request) => {
           (!!item.prerequisite_expedition_id && completedPrerequisites.has(item.prerequisite_expedition_id));
         const notStarted = !!item.starts_at && new Date(item.starts_at).getTime() > now;
         const ended = !!item.ends_at && new Date(item.ends_at).getTime() <= now;
+        const registrationNotOpen = !!item.registration_opens_at && new Date(item.registration_opens_at).getTime() > now;
+        const registrationClosed = !!item.registration_closes_at && new Date(item.registration_closes_at).getTime() <= now;
+        const myTeam = alreadyJoined?.teamId ? teamsById.get(alreadyJoined.teamId) ?? null : null;
         return {
           ...item,
           objectives: objectivesById.get(item.id) ?? [],
@@ -146,10 +166,12 @@ Deno.serve(async (req: Request) => {
           myParticipation: alreadyJoined,
           isUnlocked: prerequisiteMet,
           lockedReason: prerequisiteMet ? null : "Complete the prerequisite Expedition first.",
-          canJoinSolo: prerequisiteMet && !alreadyJoined && !notStarted && !ended &&
-            (item.status === "registration_open" || (item.status === "scheduled" && !notStarted)) &&
+          canJoinSolo: prerequisiteMet && !alreadyJoined && !registrationNotOpen && !registrationClosed && !notStarted && !ended &&
+            (item.status === "registration_open" || item.status === "scheduled") &&
             (item.participation_mode === "solo" || item.participation_mode === "both"),
-          registrationOpensAt: notStarted ? item.starts_at : null,
+          registrationOpensAt: item.registration_opens_at ?? item.starts_at,
+          registrationClosesAt: item.registration_closes_at ?? item.starts_at,
+          myTeam: myTeam ? { ...myTeam, members: membersByTeam.get(myTeam.id) ?? [] } : null,
         };
       });
       return json({ expeditions: result });
@@ -163,13 +185,74 @@ Deno.serve(async (req: Request) => {
     } catch {
       return json({ error: "A valid JSON request body is required." }, 400);
     }
-    if (!isObject(body) || body.action !== "join" || typeof body.expeditionId !== "string" || !UUID_RE.test(body.expeditionId)) {
-      return json({ error: "A valid Expedition ID and join action are required." }, 400);
+    if (!isObject(body) || typeof body.action !== "string") {
+      return json({ error: "A valid Expedition action is required." }, 400);
+    }
+
+    if (body.action === "create_team") {
+      if (typeof body.expeditionId !== "string" || !UUID_RE.test(body.expeditionId) ||
+        typeof body.teamName !== "string" || body.teamName.trim().length < 1 || body.teamName.trim().length > 80) {
+        return json({ error: "Provide a valid Expedition ID and a team name between 1 and 80 characters." }, 400);
+      }
+      const inviteBytes = new Uint8Array(8);
+      crypto.getRandomValues(inviteBytes);
+      const inviteCode = Array.from(inviteBytes, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+      const { data, error } = await admin.rpc("create_expedition_team", {
+        p_expedition_id: body.expeditionId,
+        p_player_id: player.id,
+        p_team_name: body.teamName.trim(),
+        p_invite_code: inviteCode,
+      });
+      if (error) {
+        const message = error.message ?? "";
+        const status = /not found/i.test(message) ? 404 : /registration|already registered|already belongs|team|Expedition does not allow/i.test(message) ? 409 : 500;
+        if (status === 500) console.error("Expedition team creation failed:", error);
+        return json({ error: status === 500 ? "Could not create the team. Please try again." : message }, status);
+      }
+      return json({ success: true, team: data }, 201);
+    }
+
+    if (body.action === "join_team") {
+      if (typeof body.inviteCode !== "string" || !/^[A-Fa-f0-9]{16}$/.test(body.inviteCode.trim())) {
+        return json({ error: "Enter a valid 16-character team invitation code." }, 400);
+      }
+      const { data, error } = await admin.rpc("join_expedition_team", {
+        p_invite_code: body.inviteCode.trim().toUpperCase(),
+        p_player_id: player.id,
+      });
+      if (error) {
+        const message = error.message ?? "";
+        const status = /invalid or inactive/i.test(message) ? 404 : /registration|already|full|locked|allow|belongs/i.test(message) ? 409 : 500;
+        if (status === 500) console.error("Expedition team join failed:", error);
+        return json({ error: status === 500 ? "Could not join this team. Please try again." : message }, status);
+      }
+      return json({ success: true, team: data }, 200);
+    }
+
+    if (body.action === "leave_team") {
+      if (typeof body.expeditionId !== "string" || !UUID_RE.test(body.expeditionId)) {
+        return json({ error: "A valid Expedition ID is required." }, 400);
+      }
+      const { data, error } = await admin.rpc("leave_expedition_team", {
+        p_expedition_id: body.expeditionId,
+        p_player_id: player.id,
+      });
+      if (error) {
+        const message = error.message ?? "";
+        const status = /not found/i.test(message) ? 404 : /not active|locked|leader/i.test(message) ? 409 : 500;
+        if (status === 500) console.error("Expedition team leave failed:", error);
+        return json({ error: status === 500 ? "Could not leave this team. Please try again." : message }, status);
+      }
+      return json({ success: true, team: data }, 200);
+    }
+
+    if (body.action !== "join" || typeof body.expeditionId !== "string" || !UUID_RE.test(body.expeditionId)) {
+      return json({ error: "A valid Expedition ID and supported action are required." }, 400);
     }
 
     const { data: expedition, error: expeditionError } = await admin
       .from("expeditions")
-      .select("id, title, access_mode, prerequisite_expedition_id, participation_mode, status, starts_at, ends_at")
+      .select("id, title, access_mode, prerequisite_expedition_id, participation_mode, status, starts_at, ends_at, registration_opens_at, registration_closes_at")
       .eq("id", body.expeditionId)
       .maybeSingle();
     if (expeditionError) {
@@ -180,18 +263,24 @@ Deno.serve(async (req: Request) => {
       return json({ error: "This Expedition is not accepting registrations." }, 409);
     }
     if (expedition.participation_mode === "team") {
-      return json({ error: "This Expedition requires a team. Team registration is being added next." }, 409);
+      return json({ error: "This Expedition requires a team. Create a team or join using an invitation code." }, 409);
     }
     if (expedition.participation_mode !== "solo" && expedition.participation_mode !== "both") {
       return json({ error: "This Expedition does not support solo registration." }, 409);
     }
 
     const now = Date.now();
-    if (expedition.starts_at && new Date(expedition.starts_at).getTime() > now) {
-      return json({ error: "Registration has not opened yet.", opensAt: expedition.starts_at }, 409);
+    if (expedition.registration_opens_at && new Date(expedition.registration_opens_at).getTime() > now) {
+      return json({ error: "Registration has not opened yet.", opensAt: expedition.registration_opens_at }, 409);
+    }
+    if (expedition.registration_closes_at && new Date(expedition.registration_closes_at).getTime() <= now) {
+      return json({ error: "Registration has closed.", closesAt: expedition.registration_closes_at }, 409);
+    }
+    if (expedition.starts_at && new Date(expedition.starts_at).getTime() <= now) {
+      return json({ error: "Registration has closed because the Expedition has started." }, 409);
     }
     if (expedition.ends_at && new Date(expedition.ends_at).getTime() <= now) {
-      return json({ error: "Registration for this Expedition has closed." }, 409);
+      return json({ error: "This Expedition has ended." }, 409);
     }
 
     if (expedition.access_mode === "progressive") {
@@ -246,7 +335,7 @@ Deno.serve(async (req: Request) => {
 
     const { error: auditError } = await admin.from("expedition_audit_log").insert({
       expedition_id: expedition.id,
-      actor: player.id,
+      actor: "player:" + player.id,
       action: "player_registered",
       after_state: { participation_id: participation.id, status: participation.status },
     });
