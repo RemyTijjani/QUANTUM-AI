@@ -208,7 +208,31 @@ jobs:
                FROM pg_namespace n
                CROSS JOIN (VALUES ('anon'), ('authenticated'), ('service_role')) r(role_name)
                WHERE n.nspname IN ('auth', 'storage', 'realtime')
-              ) AS managed_schema_effective_privileges;
+              ) AS managed_schema_effective_privileges,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'schema_name', n.nspname,
+                'table_name', c.relname,
+                'row_security_enabled', c.relrowsecurity,
+                'force_row_security', c.relforcerowsecurity,
+                'policies', (
+                  SELECT coalesce(jsonb_agg(jsonb_build_object(
+                    'policy_name', p.policyname,
+                    'permissive', p.permissive,
+                    'roles', p.roles,
+                    'command', p.cmd,
+                    'using', p.qual,
+                    'with_check', p.with_check
+                  ) ORDER BY p.policyname), '[]'::jsonb)
+                  FROM pg_policies p
+                  WHERE p.schemaname = n.nspname
+                    AND p.tablename = c.relname
+                )
+              ) ORDER BY n.nspname, c.relname)
+               FROM pg_class c
+               JOIN pg_namespace n ON n.oid = c.relnamespace
+               WHERE n.nspname IN ('auth', 'storage', 'realtime')
+                 AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+              ) AS managed_schema_rls_policies;
           "
 
       - name: Audit Preview gameplay seed and reconciliation data (read only)
