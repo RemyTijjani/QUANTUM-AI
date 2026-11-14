@@ -116,8 +116,8 @@ interface MissionCardProps {
   mission: MissionSpec;
   status: 'claimed' | 'ready' | 'locked';
   progressLabel?: string;
-  notify: Notify;
-  onRefreshVerifiedEconomy: () => Promise<void>;
+  notify?: Notify;
+  onRefreshVerifiedEconomy?: () => Promise<void>;
 }
 
 function MissionCard({ mission, status, progressLabel, notify, onRefreshVerifiedEconomy }: MissionCardProps) {
@@ -138,7 +138,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
         </div>
         {mission.actionUrl && <a href={mission.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-cyan-300 underline">Open mission <ExternalLink size={10} /></a>}
         {mission.id === 'daily-uplink' ? (
-          <DailyUplinkClaim notify={notify} onClaimed={onRefreshVerifiedEconomy} />
+          <DailyUplinkClaim notify={notify!} onClaimed={onRefreshVerifiedEconomy!} />
         ) : (
           <p className="mt-2 font-mono text-[9px] text-amber-300">Trusted completion checks and reward claims are not available for this mission yet.</p>
         )}
