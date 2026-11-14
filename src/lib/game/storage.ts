@@ -32,6 +32,11 @@ export function restoreGameState(
   const merged: GameState = {
     ...fresh,
     ...parsed,
+    // Temporary reward timers are restored only from the authenticated server,
+    // never from localStorage or the client-controlled cloud game save.
+    temporaryAgentUntil: 0,
+    fragmentMiningBoostUntil: 0,
+    fragmentMiningBoostMultiplier: 1,
 
     referralCode:
       referralCode ?? parsed.referralCode ?? fresh.referralCode,
@@ -110,11 +115,23 @@ export function saveState(
   if (!playerId) return;
 
   try {
+    const {
+      temporaryAgentUntil: _temporaryAgentUntil,
+      fragmentMiningBoostUntil: _fragmentMiningBoostUntil,
+      fragmentMiningBoostMultiplier: _fragmentMiningBoostMultiplier,
+      ...persistedState
+    } = state;
     window.localStorage.setItem(
       getStorageKey(playerId),
-      JSON.stringify(state),
+      JSON.stringify(persistedState),
     );
   } catch {
     // Local storage may be unavailable or full.
   }
+}
+
+/** Remove server-owned reward timers before writing the client game snapshot. */
+export function persistableGameState(state: GameState): Omit<GameState, 'temporaryAgentUntil' | 'fragmentMiningBoostUntil' | 'fragmentMiningBoostMultiplier'> {
+  const { temporaryAgentUntil: _agent, fragmentMiningBoostUntil: _boost, fragmentMiningBoostMultiplier: _multiplier, ...persisted } = state;
+  return persisted;
 }
