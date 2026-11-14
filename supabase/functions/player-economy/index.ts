@@ -44,6 +44,33 @@ Deno.serve(async (req: Request) => {
       .from("players").select("id").eq("id", authData.user.id).maybeSingle();
     if (playerError || !player) return json({ error: "Player profile was not found." }, 403);
 
+    // Release any Fragment mining rewards whose six-hour hold has elapsed.
+    // The database routine is idempotent and records each credit in the verified ledger.
+    const { error: fragmentReleaseError } = await admin.rpc("release_matured_fragment_zp", {
+      p_player_id: player.id,
+    });
+    if (fragmentReleaseError) {
+      console.error("Matured Fragment mining reward release failed:", fragmentReleaseError);
+      return json({ error: "Could not refresh your verified ZP balance." }, 500);
+    }
+
+    const { data: pendingFragmentRows, error: pendingFragmentError } = await admin
+      .from("fragment_mining_rewards")
+      .select("amount, release_at")
+      .eq("player_id", player.id)
+      .is("credited_at", null)
+      .order("release_at", { ascending: true });
+    if (pendingFragmentError) {
+      console.error("Pending Fragment mining reward lookup failed:", pendingFragmentError);
+      return json({ error: "Could not load pending Fragment mining rewards." }, 500);
+    }
+
+    const pendingFragmentZp = (pendingFragmentRows ?? []).reduce(
+      (total, row) => total + Number(row.amount),
+      0,
+    );
+    const nextFragmentReleaseAt = pendingFragmentRows?.[0]?.release_at ?? null;
+
     const { data: economy, error: economyError } = await admin
       .from("player_economy")
       .select("zp_balance, lifetime_zp, pending_kickback, updated_at")
@@ -80,6 +107,8 @@ Deno.serve(async (req: Request) => {
       verifiedZpBalance: Number(economy?.zp_balance ?? 0),
       verifiedLifetimeZp: Number(economy?.lifetime_zp ?? 0),
       pendingKickback: Number(economy?.pending_kickback ?? 0),
+      pendingFragmentZp,
+      nextFragmentReleaseAt,
       updatedAt: economy?.updated_at ?? null,
       transactions,
       source: "server_player_economy",
