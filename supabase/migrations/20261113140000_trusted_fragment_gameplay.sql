@@ -290,7 +290,7 @@ begin
 
   update public.player_fragment_gameplay_state
     set status = 'fixed',
-        cooldown_until = now() + interval '3 hours',
+        cooldown_until = now() + interval '4 hours',
         core_mining_until = now() + interval '4 hours',
         updated_at = now()
     where player_id = p_player_id and fragment_id = p_fragment_id;
@@ -308,7 +308,7 @@ begin
     'actionEventId', v_event.id,
     'fragmentId', v_event.fragment_id,
     'createdAt', v_event.created_at,
-    'cooldownUntil', now() + interval '3 hours',
+    'cooldownUntil', now() + interval '4 hours',
     'coreMiningUntil', now() + interval '4 hours'
   );
 end;
