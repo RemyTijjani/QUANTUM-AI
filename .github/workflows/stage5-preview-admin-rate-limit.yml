@@ -29,7 +29,8 @@ jobs:
           for attempt in 1 2 3 4 5; do
             status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" \
               --request POST "$PREVIEW_ADMIN_API_URL" \
-              --header "Content-Type: application/json" \
+              --header "Content-Type: application/json" \\
+              --header "CF-Connecting-IP: 203.0.113.99" \\
               --data "{\"action\":\"fetch_dashboard\",\"adminUsername\":\"$TEST_ADMIN_USERNAME\",\"adminPassword\":\"definitely-invalid-preview-test-password\"}")"
             echo "Invalid attempt $attempt: HTTP $status"
             if [ "$status" != "401" ]; then
@@ -48,7 +49,7 @@ jobs:
             --request POST "$PREVIEW_ADMIN_API_URL" \
             --header "Content-Type: application/json" \
             --data "{\"action\":\"fetch_dashboard\",\"adminUsername\":\"$TEST_ADMIN_USERNAME\",\"adminPassword\":\"definitely-invalid-preview-test-password\"}")"
-          echo "Sixth invalid attempt: HTTP $status"
+          echo "Sixth invalid attempt with forged CF-Connecting-IP: HTTP $status"
           if [ "$status" != "429" ]; then
             echo "::error::Expected HTTP 429 after five failed attempts; received $status"
             cat "$response_file"
@@ -59,4 +60,4 @@ jobs:
             cat response_headers.txt
             exit 1
           fi
-          echo "PASS: five invalid attempts returned HTTP 401; the sixth was throttled with HTTP 429 and Retry-After."
+          echo "PASS: five invalid attempts returned HTTP 401; the sixth remained throttled with HTTP 429 despite a forged CF-Connecting-IP header."
