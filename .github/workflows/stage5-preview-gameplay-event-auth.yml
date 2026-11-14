@@ -1,0 +1,56 @@
+name: Stage 5 Preview Security - Gameplay and Event Authentication
+# Preview-only runtime checks. These requests do not mutate player balances or production data.
+
+on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - ".github/workflows/stage5-preview-gameplay-event-auth.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reject-unauthenticated-gameplay:
+    name: Reject unauthenticated gameplay actions (Preview)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Preview gameplay-actions without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request POST "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/gameplay-actions" --header "Content-Type: application/json" --data '{"action":"fix_fragment","fragmentId":"top","requestId":"11111111-1111-4111-8111-111111111111"}')"
+          echo "HTTP status: $status"
+          echo "Response:"
+          cat "$response_file"
+          if [ "$status" != "401" ]; then
+            rm -f "$response_file"
+            echo "::error::Expected HTTP 401 from unauthenticated gameplay-actions; received $status"
+            exit 1
+          fi
+          rm -f "$response_file"
+          echo "PASS: Preview gameplay-actions rejected unauthenticated gameplay."
+
+  reject-unauthenticated-event-participation:
+    name: Reject unauthenticated event participation (Preview)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Preview event-participation without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request POST "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/event-participation" --header "Content-Type: application/json" --data '{"eventId":"11111111-1111-4111-8111-111111111111"}')"
+          echo "HTTP status: $status"
+          echo "Response:"
+          cat "$response_file"
+          if [ "$status" != "401" ]; then
+            rm -f "$response_file"
+            echo "::error::Expected HTTP 401 from unauthenticated event-participation; received $status"
+            exit 1
+          fi
+          rm -f "$response_file"
+          echo "PASS: Preview event-participation rejected unauthenticated registration."
