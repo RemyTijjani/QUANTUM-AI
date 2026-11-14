@@ -47,51 +47,22 @@ export function getReferrerCodeFromUrl(): string | null {
   }
 }
 
-const REGISTERED_KEY = 'zord-referral-registered';
-
 /**
- * Registers the current player as a recruit under the referrer.
+ * Referral attribution is recorded by telegram-auth after it verifies
+ * Telegram's signed initData and start_param. The client must not create
+ * referral_sub_nodes rows or choose referrer_id/recruit_id values.
+ *
+ * Kept as a no-op for compatibility with existing callers.
  */
 export async function registerReferral(
-  myCode: string,
+  _myCode: string,
 ): Promise<void> {
-  const referrerCode = getReferrerCodeFromUrl();
-
-  if (!referrerCode || referrerCode === myCode) return;
-
-  if (window.localStorage.getItem(REGISTERED_KEY)) return;
-
-  const recruitName = generateRecruitName();
-
-  const { data: referrer } = await supabase
-    .from('player_referrals')
-    .select('id')
-    .eq('referral_code', referrerCode)
-    .maybeSingle();
-
-  const { error } = await supabase
-    .from('referral_sub_nodes')
-    .insert({
-      referrer_code: referrerCode,
-      referrer_id: referrer?.id ?? null,
-      recruit_code: myCode,
-      recruit_name: recruitName,
-      synced: false,
-    });
-
-  if (!error) {
-    window.localStorage.setItem(REGISTERED_KEY, '1');
-  } else {
-    console.error('Referral registration failed:', error);
-  }
+  // Trusted registration happens inside the telegram-auth Edge Function.
 }
 
 /**
- * Fetches ALL referrals for this referrer, including records already
- * marked as synced. This allows the game to recover referrals if its
- * local game save is missing or has been recreated.
- *
- * Duplicate recruits are filtered by gameReducer.
+ * Fetch referrals scoped by the database policy to the authenticated player.
+ * This is display/progress data only; it does not authorize or issue rewards.
  */
 export async function fetchUnsyncedReferrals(
   myCode: string,
@@ -112,22 +83,13 @@ export async function fetchUnsyncedReferrals(
 }
 
 /**
- * Kept for compatibility with any other existing code.
- * The game polling flow no longer needs to mark referrals as synced.
+ * Retained for compatibility. Referral rows are no longer mutated by clients;
+ * local game state filters duplicates without changing the server record.
  */
 export async function markReferralsSynced(
-  ids: string[],
+  _ids: string[],
 ): Promise<void> {
-  if (ids.length === 0) return;
-
-  const { error } = await supabase
-    .from('referral_sub_nodes')
-    .update({ synced: true })
-    .in('id', ids);
-
-  if (error) {
-    console.error('Could not mark referrals as synced:', error);
-  }
+  // No client-side UPDATE on referral_sub_nodes.
 }
 
 const NAME_PREFIXES = [
