@@ -10,6 +10,8 @@ import type { Notify } from '@/hooks/useToast';
 import { supabase } from '@/lib/supabase';
 import type { CreatorOpsSubmission } from '@/lib/supabase';
 import DailyUplinkClaim from '@/components/missions/DailyUplinkClaim';
+import Stage6EngagementHub from '@/components/missions/Stage6EngagementHub';
+import type { EngagementView } from '@/components/missions/Stage6EngagementHub';
 
 interface MissionsTabProps {
   state: GameState;
@@ -21,6 +23,7 @@ interface MissionsTabProps {
 
 export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRefreshVerifiedEconomy }: MissionsTabProps) {
   const now = Date.now();
+  const [activeView, setActiveView] = useState<EngagementView>('missions');
 
   const daily = missions.filter((m) => m.kind === 'daily');
   const social = missions.filter((m) => m.kind === 'social');
@@ -41,6 +44,9 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
         </div>
       </section>
 
+      <Stage6EngagementHub active={activeView} onChange={setActiveView} />
+
+      <div className={activeView === 'missions' ? 'space-y-6' : 'hidden'}>
       <section className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <CalendarCheck size={14} className="text-neon-400" />
@@ -77,15 +83,6 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center gap-2 px-1"><Clock size={14} className="text-cyan-300" /><p className="label">Special Operations</p></div>
-        <div className="panel border border-cyan-500/20 bg-cyan-500/5 p-4">
-          <h3 className="font-display text-xs font-bold uppercase text-cyan-300">Expeditions & intelligence briefings</h3>
-          <p className="mt-2 font-mono text-[10px] leading-relaxed text-neon-500">Special missions, expeditions and intelligence briefings will appear here when published by the operations team. No placeholder mission or reward is being counted.</p>
-          <p className="mt-2 font-mono text-[9px] uppercase tracking-wider text-neon-700">Awaiting published operations</p>
-        </div>
-      </section>
-
-      <section className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <Video size={14} className="text-neon-400" />
           <div className="flex flex-1 items-center justify-between">
@@ -108,6 +105,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
           />
         ))}
       </section>
+      </div>
     </div>
   );
 }
