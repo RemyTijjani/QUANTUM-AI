@@ -54,12 +54,34 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Could not load your verified ZP balance." }, 500);
     }
 
+    const { data: ledgerRows, error: ledgerError } = await admin
+      .from("economy_ledger")
+      .select("id, transaction_type, amount, balance_after, description, created_at")
+      .eq("player_id", player.id)
+      .order("created_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
+      .limit(50);
+    if (ledgerError) {
+      console.error("Verified player ledger lookup failed:", ledgerError);
+      return json({ error: "Could not load your verified transaction history." }, 500);
+    }
+
+    const transactions = (ledgerRows ?? []).map((row) => ({
+      id: row.id,
+      transactionType: row.transaction_type,
+      amount: Number(row.amount),
+      balanceAfter: Number(row.balance_after),
+      description: row.description,
+      createdAt: row.created_at,
+    }));
+
     return json({
       success: true,
       verifiedZpBalance: Number(economy?.zp_balance ?? 0),
       verifiedLifetimeZp: Number(economy?.lifetime_zp ?? 0),
       pendingKickback: Number(economy?.pending_kickback ?? 0),
       updatedAt: economy?.updated_at ?? null,
+      transactions,
       source: "server_player_economy",
     });
   } catch (error) {
