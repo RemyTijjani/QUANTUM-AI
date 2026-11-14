@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock3,
   Compass,
+  Gift,
   Radio,
   ShieldAlert,
   Sparkles,
@@ -16,7 +17,7 @@ export type EngagementView = 'missions' | 'streaks' | 'mystery' | 'briefings' | 
 const VIEWS: { id: EngagementView; label: string; icon: typeof Target }[] = [
   { id: 'missions', label: 'Missions', icon: Target },
   { id: 'streaks', label: 'Streaks', icon: CalendarDays },
-  { id: 'mystery', label: 'Mystery', icon: Gift },
+  { id: 'mystery', label: 'Boxes', icon: Gift },
   { id: 'briefings', label: 'Briefings', icon: Radio },
   { id: 'expeditions', label: 'Expeditions', icon: Compass },
 ];
