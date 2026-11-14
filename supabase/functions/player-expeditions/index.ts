@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
 
       const [objectivesRes, rewardsRes, participationRes] = await Promise.all([
         admin.from("expedition_objectives")
-          .select("id, expedition_id, objective_type, title, description, instructions, is_required, sort_order")
+          .select("id, expedition_id, objective_type, title, description, instructions, is_required, completion_scope, sort_order")
           .in("expedition_id", ids)
           .order("sort_order", { ascending: true }),
         admin.from("expedition_rewards")
@@ -96,6 +96,7 @@ Deno.serve(async (req: Request) => {
           description: objective.description,
           instructions: objective.instructions,
           required: objective.is_required,
+          completionScope: objective.completion_scope,
           order: objective.sort_order,
         });
         objectivesById.set(objective.expedition_id, list);
@@ -187,6 +188,89 @@ Deno.serve(async (req: Request) => {
     }
     if (!isObject(body) || typeof body.action !== "string") {
       return json({ error: "A valid Expedition action is required." }, 400);
+    }
+
+
+    if (body.action === "submit_objective") {
+      const expeditionId = typeof body.expeditionId === "string" ? body.expeditionId : "";
+      const objectiveId = typeof body.objectiveId === "string" ? body.objectiveId : "";
+      const scope = body.scope;
+      const evidence = body.evidence;
+      if (!UUID_RE.test(expeditionId) || !UUID_RE.test(objectiveId) ||
+        (scope !== "individual" && scope !== "team") || !isObject(evidence) ||
+        JSON.stringify(evidence).length > 4000) {
+        return json({ error: "Provide valid Expedition and objective IDs, a valid scope, and evidence under 4,000 characters." }, 400);
+      }
+
+      const [{ data: objective, error: objectiveError }, { data: participation, error: participationError },
+        { data: expedition, error: expeditionError }] = await Promise.all([
+        admin.from("expedition_objectives")
+          .select("id, expedition_id, completion_scope")
+          .eq("id", objectiveId).eq("expedition_id", expeditionId).maybeSingle(),
+        admin.from("expedition_participations")
+          .select("id, team_id, status")
+          .eq("expedition_id", expeditionId).eq("player_id", player.id).maybeSingle(),
+        admin.from("expeditions").select("status").eq("id", expeditionId).maybeSingle(),
+      ]);
+      if (objectiveError || participationError || expeditionError) {
+        console.error("Objective submission lookup failed:", objectiveError ?? participationError ?? expeditionError);
+        return json({ error: "Could not verify this objective submission." }, 500);
+      }
+      if (!objective || !participation || participation.status === "withdrawn") {
+        return json({ error: "Join this Expedition before submitting an objective." }, 403);
+      }
+      if (expedition?.status !== "active") return json({ error: "Objectives can only be submitted while the Expedition is active." }, 409);
+      if (scope === "individual" && !["individual", "both"].includes(objective.completion_scope)) {
+        return json({ error: "This objective is not configured for individual completion." }, 409);
+      }
+      if (scope === "team" && !["team", "both"].includes(objective.completion_scope)) {
+        return json({ error: "This objective is not configured for team completion." }, 409);
+      }
+
+      if (scope === "individual") {
+        const { data: existing, error: existingError } = await admin.from("expedition_objective_progress")
+          .select("id, status").eq("objective_id", objectiveId).eq("player_id", player.id).maybeSingle();
+        if (existingError) return json({ error: "Could not check existing objective progress." }, 500);
+        if (existing?.status === "verified") return json({ error: "This objective has already been verified." }, 409);
+        const { data, error } = await admin.from("expedition_objective_progress").upsert({
+          expedition_id: expeditionId, objective_id: objectiveId, player_id: player.id,
+          team_id: participation.team_id, status: "submitted", contribution_count: 1, evidence,
+          verified_by: null, verified_at: null, updated_at: new Date().toISOString(),
+        }, { onConflict: "objective_id,player_id" }).select("id, status, created_at, updated_at").single();
+        if (error || !data) {
+          console.error("Individual objective submission failed:", error);
+          return json({ error: "Could not submit this objective. Please try again." }, 500);
+        }
+        await admin.from("expedition_audit_log").insert({
+          expedition_id: expeditionId, actor: "player:" + player.id, action: "objective_individual_submitted",
+          after_state: { progress_id: data.id, objective_id: objectiveId },
+        });
+        return json({ success: true, scope, progress: data }, 201);
+      }
+
+      if (!participation.team_id) return json({ error: "Join an Expedition team before submitting shared progress." }, 403);
+      const { data: membership, error: membershipError } = await admin.from("expedition_team_members")
+        .select("id").eq("expedition_id", expeditionId).eq("team_id", participation.team_id)
+        .eq("player_id", player.id).eq("membership_status", "active").maybeSingle();
+      if (membershipError || !membership) return json({ error: "You are not an active member of this Expedition team." }, 403);
+      const { data: existingTeamProgress, error: existingTeamError } = await admin.from("expedition_team_objective_progress")
+        .select("id, status").eq("objective_id", objectiveId).eq("team_id", participation.team_id).maybeSingle();
+      if (existingTeamError) return json({ error: "Could not check existing team objective progress." }, 500);
+      if (existingTeamProgress?.status === "verified") return json({ error: "This team objective has already been verified." }, 409);
+      const { data, error } = await admin.from("expedition_team_objective_progress").upsert({
+        expedition_id: expeditionId, objective_id: objectiveId, team_id: participation.team_id,
+        status: "submitted", contribution_count: 1, evidence, verified_by: null, verified_at: null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "objective_id,team_id" }).select("id, status, created_at, updated_at").single();
+      if (error || !data) {
+        console.error("Team objective submission failed:", error);
+        return json({ error: "Could not submit this team objective. Please try again." }, 500);
+      }
+      await admin.from("expedition_audit_log").insert({
+        expedition_id: expeditionId, actor: "player:" + player.id, action: "objective_team_submitted",
+        after_state: { progress_id: data.id, objective_id: objectiveId, team_id: participation.team_id },
+      });
+      return json({ success: true, scope, progress: data }, 201);
     }
 
     if (body.action === "create_team") {
