@@ -1,8 +1,18 @@
+export interface VerifiedLedgerEntry {
+  id: string;
+  transactionType: string;
+  amount: number;
+  balanceAfter: number;
+  description: string | null;
+  createdAt: string | null;
+}
+
 export interface VerifiedEconomy {
   verifiedZpBalance: number;
   verifiedLifetimeZp: number;
   pendingKickback: number;
   updatedAt: string | null;
+  transactions: VerifiedLedgerEntry[];
 }
 
 export class VerifiedEconomyError extends Error {}
@@ -42,7 +52,7 @@ export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
   if (!body || typeof body !== 'object') {
     throw new VerifiedEconomyError('The verified economy service returned an invalid response.');
   }
-  const value = body as Partial<VerifiedEconomy>;
+  const value = body as Partial<VerifiedEconomy> & { transactions?: unknown };
   if (
     typeof value.verifiedZpBalance !== 'number' ||
     !Number.isFinite(value.verifiedZpBalance) ||
@@ -53,5 +63,33 @@ export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
   ) {
     throw new VerifiedEconomyError('The verified economy service returned invalid balance data.');
   }
-  return value as VerifiedEconomy;
+
+  const rawTransactions = Array.isArray(value.transactions) ? value.transactions : [];
+  const transactions: VerifiedLedgerEntry[] = rawTransactions.map((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      throw new VerifiedEconomyError('The verified economy service returned invalid transaction data.');
+    }
+    const row = entry as Partial<VerifiedLedgerEntry>;
+    if (
+      typeof row.id !== 'string' ||
+      typeof row.transactionType !== 'string' ||
+      typeof row.amount !== 'number' ||
+      !Number.isFinite(row.amount) ||
+      typeof row.balanceAfter !== 'number' ||
+      !Number.isFinite(row.balanceAfter) ||
+      !(row.description === null || typeof row.description === 'string') ||
+      !(row.createdAt === null || typeof row.createdAt === 'string')
+    ) {
+      throw new VerifiedEconomyError('The verified economy service returned invalid transaction data.');
+    }
+    return row as VerifiedLedgerEntry;
+  });
+
+  return {
+    verifiedZpBalance: value.verifiedZpBalance,
+    verifiedLifetimeZp: value.verifiedLifetimeZp,
+    pendingKickback: value.pendingKickback,
+    updatedAt: value.updatedAt ?? null,
+    transactions,
+  };
 }
