@@ -286,7 +286,6 @@ function GameApp({
         {tab === 'network' && (
           <NetworkTab
             state={state}
-            actions={actions}
             notify={notify}
           />
         )}
