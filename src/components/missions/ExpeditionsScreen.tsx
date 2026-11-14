@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
-  CalendarClock,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Clock3,
   Compass,
   Copy,
-  Crown,
   LockKeyhole,
   RefreshCw,
   ShieldCheck,
   Users,
   UserRound,
-  Zap,
 } from 'lucide-react';
 
 type Objective = {
@@ -342,7 +338,7 @@ export default function ExpeditionsScreen() {
                     {joined && hasTeam && (
                       <div className="space-y-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3">
                         <p className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase text-cyan-200"><Users size={13} /> {item.myTeam?.name ?? 'Your team'}</p>
-                        <p className="font-mono text-[8px] text-neon-600">{item.myTeam?.members.length ?? 0} active member(s) · {item.myTeam?.leader_player_id === item.myParticipation?.teamId ? 'Team' : 'Squad'} roster locked at Expedition start</p>
+                        <p className="font-mono text-[8px] text-neon-600">{item.myTeam?.members.length ?? 0} active member(s) · Roster locks at Expedition start</p>
                         {createdInvite[item.id] && <div className="flex items-center gap-2"><input readOnly value={createdInvite[item.id]} className="min-w-0 flex-1 rounded-lg border border-neon/20 bg-black/50 px-2 py-2 font-mono text-[10px] tracking-widest text-neon-200" /><button type="button" onClick={() => void copyInvite(createdInvite[item.id])} className="rounded-lg border border-neon/25 p-2 text-neon-300" aria-label="Copy team invite code"><Copy size={14} /></button></div>}
                         <button type="button" disabled={busy} onClick={() => void leaveTeam(item)} className="w-full rounded-lg border border-red-400/25 px-3 py-2 font-mono text-[9px] uppercase text-red-300 disabled:opacity-40">{busy ? 'Leaving…' : 'Leave team'}</button>
                       </div>
