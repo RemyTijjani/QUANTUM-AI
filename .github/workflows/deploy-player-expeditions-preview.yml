@@ -24,6 +24,14 @@ jobs:
         with:
           ref: security/trusted-gameplay-migration
 
+      - name: Set up Deno for type checking
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check player Expeditions function
+        run: deno check --no-config supabase/functions/player-expeditions/index.ts
+
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
         with:
