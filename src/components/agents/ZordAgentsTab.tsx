@@ -68,9 +68,10 @@ function AgentRentalCheckout() {
   const [sendAttempted, setSendAttempted] = useState(false);
   const [transactionSubmitted, setTransactionSubmitted] = useState(false);
 
-  // Real transfers remain disabled until the user explicitly enables them
-  // for Preview after wallet-connection testing is complete.
-  const paymentsEnabled = import.meta.env.VITE_TON_CONNECT_ENABLE_PAYMENTS === 'true';
+  // Hard safety lock: Preview must never initiate a real TON transfer.
+  // Do not replace this with an environment flag; enabling payments requires
+  // separate explicit approval and a reviewed release process.
+  const paymentsEnabled = false;
 
   useEffect(() => {
     let mounted = true;
