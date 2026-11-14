@@ -26,7 +26,7 @@ Each eligible daily claim selects exactly one outcome from this distribution:
 |---|---:|---|
 | ZAP | 35% | Random whole-number amount from 1 to 10 ZAP |
 | Boost | 34% | One boost entitlement: 2× Fragment Mining for 6 hours, starting on activation; boosts do not stack or extend an active boost |
-| Mystery Box | 30% | One box: 80% Standard / 20% Premium selection probability; box prizes exclude ZAP and temporary Agent 1 access |
+| Mystery Box | 30% | One box: 80% Standard / 20% Premium selection probability; Standard excludes ZAP, Premium has a 10% chance of 1–10 whole ZAP; both exclude temporary Agent 1 access |
 | Temporary mining agent | 1% | One free Agent 1 entitlement lasting 24 hours |
 
 The 1% chance is the chance of the temporary mining-agent outcome on each Day 8–30 reward draw. Other reward outcomes do not have to include ZAP.
@@ -117,7 +117,7 @@ Extend `gameplay-actions` with a minimal action such as `claim_daily_streak`.
 
 These are not invented by this specification:
 1. 1. The exact draw method for the approved 1–10 whole-ZAP range; uniform selection is proposed.
-2. The non-ZAP, non-Agent-1 contents and prize odds inside Standard and Premium boxes remain open. ZAP and free Agent 1 access are reserved for their respective Daily Streak outcomes, not Mystery Boxes. The tier-selection odds are approved: 80% Standard / 20% Premium.
+2. Standard Box excludes ZAP. Premium Box has a 10% chance to award 1–10 whole ZAP. Free Agent 1 remains exclusive to the 1% Daily Streak outcome. The remaining box contents and odds still require approval. Tier selection remains 80% Standard / 20% Premium.
 3. Boost rules are approved: 2× Fragment Mining for 6 hours from activation; no stacking and no extension of an active boost.
 4. Agent 1 is the approved free mining-agent type. Starting the 24-hour clock on activation is recommended, pending confirmation.
 5. A trusted ZAP wallet/ledger and credit RPC. Preview currently has no dedicated ZAP balance/ledger table.
