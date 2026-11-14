@@ -71,6 +71,19 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid gameplay request." }, 400);
     }
 
+    if (body.action === "claim_daily_uplink") {
+      // The database derives the UTC claim date and reads the reward from the
+      // published mission row. No client-supplied amount or date is accepted.
+      const { data, error } = await admin.rpc("claim_daily_uplink", {
+        p_player_id: player.id,
+      });
+      if (error) {
+        console.error("Daily Uplink claim failed:", error);
+        return json({ error: "Could not claim Daily Uplink right now." }, 409);
+      }
+      return json(data, data?.success === false ? 409 : 200);
+    }
+
     if (body.action === "begin_fragment_unlock") {
       if (typeof body.fragmentId !== "string" || !FRAGMENTS.includes(body.fragmentId as typeof FRAGMENTS[number])) {
         return json({ error: "Choose a valid fragment." }, 400);
