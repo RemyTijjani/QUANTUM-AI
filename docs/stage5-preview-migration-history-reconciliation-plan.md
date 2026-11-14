@@ -464,3 +464,40 @@ Observed current client grants are narrowly scoped:
 This is reassuring for **current public objects**: the broad default ACLs are not presently translating into broad client grants on the existing public tables/functions. The defaults remain a forward-looking risk for any future objects created by `postgres` or `supabase_admin`, especially if a new table is created without RLS or a SECURITY DEFINER function is created without an explicit revoke. The baseline and future migration standards must address this before sign-off.
 
 No privilege changes were made.
+
+
+## Default-privilege audit — active Preview state, 2026-11-14
+
+Read-only workflow run: [43573581263](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43573581263)  
+Result: **success**.
+
+The latest PostgreSQL catalog audit queried `pg_default_acl` directly. It confirms that broad default privileges are active in the Preview `public` schema for objects created by both `postgres` and `supabase_admin`:
+
+| Object type | Default privileges granted to `anon` and `authenticated` |
+|---|---|
+| Tables | SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER |
+| Sequences | USAGE, SELECT, UPDATE |
+| Functions | EXECUTE |
+
+These are defaults for future objects created by those owners; they do not establish that every existing table/function is currently accessible. The current migration baseline must **not** blindly reproduce these broad defaults. Before any change to Preview, the project needs a separate least-privilege design and an object-by-object impact review. No default privileges were changed.
+
+The same audit confirms:
+- No existing Supabase database branches are available under the linked Preview project.
+- The installed extensions are `pg_stat_statements`, `pgcrypto`, `plpgsql`, `supabase_vault`, and `uuid-ossp`.
+- `pg_cron` and its `cron.job` catalog are absent in this Preview.
+- The rental payment intent remains pending; no rental entitlement row is present.
+- The three critical referral/rental functions remain SECURITY DEFINER, pin `search_path` to `pg_catalog, public, pg_temp`, and grant EXECUTE only to `service_role` (plus owner `postgres`).
+
+## Baseline validation gate
+
+The branch-list command completed successfully and returned no existing branches. Creating a disposable Supabase project/branch or changing project configuration is outside the read-only authorization currently in effect. Therefore the baseline has not been created or tested. A clean isolated Supabase database/project must be explicitly provisioned or authorized before the baseline can be safely validated.
+
+## Current Stage 5 decision
+
+Stage 5 is **not signed off**. The Preview inventory and security checks are substantially complete, but two substantive gates remain:
+1. Resolve the broad active `public` default ACLs through a separately reviewed least-privilege change plan; do not silently carry them into a baseline.
+2. Obtain an isolated disposable Supabase project/database and validate the baseline there, including Supabase-managed dependencies, RLS, grants, constraints, functions, triggers, extensions, and required seed/data transformations.
+
+A further product/configuration question remains whether the `telegram-bot` entry in `supabase/config.toml` is intentionally reserved or stale; it has no local function source folder and is not deployed in Preview.
+
+All checks in run `43573581263` were read-only. No database write, ACL change, migration application/repair, Edge Function deployment, or Production operation occurred.
