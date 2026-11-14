@@ -28,6 +28,7 @@ interface CoreTabProps {
   onOpenEvents: () => void;
   onOpenMissions: () => void;
   onOpenStreaks: () => void;
+  onOpenMysteryBoxes: () => void;
 }
 
 export default function CoreTab({
@@ -39,6 +40,7 @@ export default function CoreTab({
   onOpenEvents,
   onOpenMissions,
   onOpenStreaks,
+  onOpenMysteryBoxes,
 }: CoreTabProps) {
   const now = Date.now();
   const tier = tierInfo(state.lifetimeZp);
@@ -135,11 +137,16 @@ export default function CoreTab({
             <div><h3 className="font-display text-xs font-bold uppercase text-orange-200">Daily Streaks</h3><p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-600">View your trusted streak count, claim today's reward and track milestones.</p></div>
             <div className="border-t border-orange-400/15 pt-2"><p className="font-mono text-[8px] uppercase text-orange-300">Daily claim · UTC reset</p><p className="mt-1 font-mono text-[8px] text-neon-700">Open your server-verified streak status.</p></div>
           </button>
-          <article className="panel space-y-3 border border-violet-400/25 bg-violet-400/5 p-3">
-            <div className="flex items-center justify-between"><Gift size={18} className="text-violet-300" /><span className="border border-amber-400/25 px-1.5 py-0.5 font-mono text-[8px] uppercase text-amber-300">In progress</span></div>
-            <div><h3 className="font-display text-xs font-bold uppercase text-violet-200">Mystery Discovery</h3><p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-600">Daily discovery, reveal animation and earned-item history.</p></div>
-            <div className="border-t border-violet-400/15 pt-2"><p className="font-mono text-[8px] uppercase text-amber-300">Reward pool not activated</p><p className="mt-1 font-mono text-[8px] text-neon-700">Opening and rewards are disabled.</p></div>
-          </article>
+          <button
+            type="button"
+            onClick={onOpenMysteryBoxes}
+            aria-label="Open Mystery Boxes"
+            className="panel group space-y-3 border border-violet-400/25 bg-violet-400/5 p-3 text-left transition hover:border-violet-300/55 hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+          >
+            <div className="flex items-center justify-between"><Gift size={18} className="text-violet-300 transition-transform group-hover:scale-110" /><span className="border border-emerald-400/25 px-1.5 py-0.5 font-mono text-[8px] uppercase text-emerald-300">Open boxes</span></div>
+            <div><h3 className="font-display text-xs font-bold uppercase text-violet-200">Mystery Boxes</h3><p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-600">Open earned boxes, claim daily rewards and view your reward history.</p></div>
+            <div className="border-t border-violet-400/15 pt-2"><p className="font-mono text-[8px] uppercase text-violet-300">Standard · Premium</p><p className="mt-1 font-mono text-[8px] text-neon-700">Tap to enter your reward inventory.</p></div>
+          </button>
         </div>
       </section>
 
