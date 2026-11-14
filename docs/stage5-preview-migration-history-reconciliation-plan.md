@@ -445,3 +445,22 @@ The same defaults are also granted to `service_role`; `postgres` and `supabase_a
 Read-only branch-list command completed in workflow run [43573527207](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43573527207). No Supabase preview branches currently exist under the dedicated `ZORD-PREVIEW` project. No branch was created or modified.
 
 A clean baseline test therefore cannot proceed in an existing isolated branch. Creating a disposable branch/project and applying a candidate baseline would be a database mutation and remains unapproved. Do not substitute the populated `ZORD-PREVIEW` database.
+
+
+## Current public-object effective privilege audit — 2026-11-14
+
+Read-only workflow run: [43573657011](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43573657011)  
+The audit query evaluated effective privileges for `anon`, `authenticated`, and `service_role` across all current public relations and function signatures.
+
+Observed current client grants are narrowly scoped:
+- `anon`: SELECT on `mission_tasks` only.
+- `authenticated`: SELECT on `creator_ops_submissions`, `game_event_participations`, `mission_tasks`, `player_game_states`, and `referral_sub_nodes`.
+- `authenticated` EXECUTE: `save_player_game_state(jsonb,bigint)` and `submit_creator_ops_submission(text,text)` only.
+- No `anon` EXECUTE grant was found among public functions.
+- No client INSERT/UPDATE/DELETE/TRUNCATE grants were found on public application tables.
+- All 23 public tables remain RLS-enabled.
+- There are 20 public function signatures; 19 are SECURITY DEFINER. Every SECURITY DEFINER function had a pinned search_path containing `pg_catalog`.
+
+This is reassuring for **current public objects**: the broad default ACLs are not presently translating into broad client grants on the existing public tables/functions. The defaults remain a forward-looking risk for any future objects created by `postgres` or `supabase_admin`, especially if a new table is created without RLS or a SECURITY DEFINER function is created without an explicit revoke. The baseline and future migration standards must address this before sign-off.
+
+No privilege changes were made.
