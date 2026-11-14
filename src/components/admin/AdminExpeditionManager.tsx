@@ -202,7 +202,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       <div className="rounded border border-neon/20 p-3"><p className="font-bold text-neon-100">{title || 'Untitled Expedition'}</p><p className="mt-1 text-neon-600">{description || 'No description added.'}</p></div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{[['Category',category],['Access',access],['Participation',participation],['Reward',rewardType==='none'?'None':rewardAmount+' '+rewardType]].map(([k,v]) => <div key={k} className="border border-neon/20 p-2"><p className="text-[9px] uppercase text-neon-700">{k}</p><p className="mt-1">{v}</p></div>)}</div>
       <p className="text-neon-600">{objectives.length} objectives · {startsAt ? new Date(startsAt).toLocaleString() : 'Start not set'} · {endsAt ? new Date(endsAt).toLocaleString() : 'End not set'}</p>
-      {objectives.map((o,i) => <p key={o.id} className="border-l border-neon/40 pl-2">{i+1}. {o.title} <span className="text-neon-700">({o.kind} · {o.scope})</span><span className="block text-[9px] text-emerald-300">{verificationSource(o.kind)}</span></p>)}
+      {objectives.map((o,i) => <p key={o.id} className="border-l border-neon/40 pl-2">{i+1}. {o.title} <span className="text-neon-700">({o.kind} · {o.scope})</span><span className="block text-[9px] text-emerald-300">{verificationSource(o.kind, o.scope)}</span></p>)}
       <p className="border border-amber-500/30 bg-amber-950/10 p-3 text-[10px] text-amber-200">Preview only. Publishing changes the admin lifecycle status; it does not make Expeditions visible to players or issue rewards.</p>
     </div>;
   };
