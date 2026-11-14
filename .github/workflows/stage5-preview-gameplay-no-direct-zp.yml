@@ -16,26 +16,26 @@ permissions:
 
 jobs:
   gameplay-source-boundary:
-    name: Verify gameplay route has no ZP write path
+    name: Verify gameplay route has no direct ZP write path
     runs-on: ubuntu-latest
     steps:
       - name: Check out Preview branch
         uses: actions/checkout@v4
         with:
           ref: security/trusted-gameplay-migration
-      - name: Assert gameplay-actions exposes only trusted fragment operations
+      - name: Assert gameplay-actions exposes only trusted gameplay operations
         shell: bash
         run: |
           set -euo pipefail
           file="supabase/functions/gameplay-actions/index.ts"
-          for action in begin_fragment_unlock complete_fragment_unlock fix_fragment; do
+          for action in begin_fragment_unlock complete_fragment_unlock fix_fragment claim_daily_uplink; do
             grep -Fq "body.action === \"$action\"" "$file" || {
               echo "::error::Expected trusted gameplay action missing: $action"
               exit 1
             }
           done
           action_count="$(grep -Fc 'if (body.action ===' "$file")"
-          if [ "$action_count" != "3" ]; then
+          if [ "$action_count" != "4" ]; then
             echo "::error::Unexpected gameplay action route count: $action_count"
             exit 1
           fi
@@ -43,7 +43,7 @@ jobs:
             echo "::error::Gameplay route contains a direct economy write or privileged reward reference."
             exit 1
           fi
-          echo "PASS: gameplay-actions contains only the three trusted fragment routes and no economy/reward write references."
+          echo "PASS: gameplay-actions contains only the three trusted fragment routes and the server-priced Daily Uplink claim route and no economy/reward write references."
       - name: Assert player-economy endpoint is read-only
         shell: bash
         run: |
