@@ -1,6 +1,6 @@
 # Stage 6 Daily Streaks — Backend Implementation Specification
 
-Status: Product rules approved; implementation not yet authorized or applied.
+Status: Product rules approved; source-only Mystery Box implementation committed. No migration has been applied and no Edge Function has been deployed.
 Target: Preview only, active branch `security/trusted-gameplay-migration`.
 Scope: Daily Streak reward claim and progression. Mystery Discovery and Expeditions are separate follow-on services.
 
