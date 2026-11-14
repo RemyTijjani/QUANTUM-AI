@@ -170,7 +170,9 @@ declare
   v_tier text := lower(btrim(p_box_tier));
 begin
   if p_player_id is null
+     or v_tier is null
      or v_tier not in ('standard', 'premium')
+     or p_source is null
      or p_source not in ('daily_streak', 'mystery_discovery', 'expedition', 'admin_compensation')
      or nullif(btrim(p_source_reference), '') is null
      or nullif(btrim(p_idempotency_key), '') is null
@@ -371,7 +373,9 @@ begin
   end loop;
   v_roll := (v_uint % 10000)::integer;
 
-  select c.*
+  select
+      c.pool_version, c.box_tier, c.reward_code, c.reward_type,
+      c.amount, c.weight_bps, c.created_at
     into v_prize
     from (
       select catalog.*,
