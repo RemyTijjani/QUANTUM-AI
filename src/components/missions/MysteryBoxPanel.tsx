@@ -122,8 +122,9 @@ export default function MysteryBoxPanel({
         <div className="flex items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-violet-300/30 bg-violet-400/10 text-violet-200"><Gift size={18} /></span>
           <div><p className="label">Reward inventory</p><h2 className="title mt-1">Mystery Boxes</h2></div>
-          <button type="button" onClick={() => void loadInventory(true)} disabled={refreshing || loading} aria-label="Refresh Mystery Box inventory" className="ml-auto rounded-lg border border-neon/20 p-2 text-neon-400 disabled:opacity-40">
+          <button type="button" onClick={() => void loadInventory(true)} disabled={refreshing || loading} aria-label="Refresh Mystery Box inventory" className="ml-auto inline-flex min-h-10 items-center gap-2 rounded-lg border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wide text-neon-200 shadow-[0_0_12px_rgba(34,211,238,0.12)] hover:bg-neon/20 disabled:opacity-50">
             {refreshing ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+            <span>{refreshing ? "Refreshing" : "Refresh"}</span>
           </button>
         </div>
         <p className="font-mono text-[10px] leading-relaxed text-neon-500">Your available boxes are loaded from the trusted reward service. The server selects the prize and records every opening.</p>
