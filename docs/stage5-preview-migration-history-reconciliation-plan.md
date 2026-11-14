@@ -214,3 +214,34 @@ This confirms that the Preview database does not currently expose `supabase_migr
 - Baseline creation/application: not authorized and not started.
 - Database writes or deployments: none.
 - Production: untouched.
+
+
+## Preview data reconciliation check — 2026-11-14
+
+Read-only workflow run: [43571556302](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43571556302)  
+Commit: `570a2bb371c7fc5727dbf1a0425a7045a75ed9be`  
+Result: data query passed.
+
+The query used the actual rental table names from migration `20261113300000` (`agent_rental_payment_intents` and `player_agent_rentals`). A previous attempt used the nonexistent name `agent_rental_payments`; that was an audit-query mistake, not a missing Preview table.
+
+Observed Preview counts and seed state:
+
+- `mission_tasks`: 8 rows; all 8 are `published` and use `ZP` rewards.
+- `vault_reserves`: exactly 1 row with id `global`; `zp_reserve = 0`, `ton_reserve = 0`.
+- Players with referral codes: 1.
+- Legacy `referrals`: 0 rows.
+- `referral_sub_nodes`: 0 rows.
+- `creator_ops_submissions`: 1 row.
+- `game_event_activities`: 1 row.
+- `game_event_participations`: 2 rows.
+- `gameplay_action_events`: 12 rows.
+- `agent_rental_payment_intents`: 1 row.
+- `player_agent_rentals`: 0 rows.
+
+These counts are a point-in-time snapshot, not proof of every historical backfill or runtime flow. The empty referral tables need to be reconciled with the active referral registration path and the one player referral code; do not populate them manually. The single rental payment intent and absence of a rental record also need state/status review before treating the rental feature as verified.
+
+## Preview deployment-target guard
+
+A recent successful `deploy-admin-api-preview` run logged the target project reference from `vars.SUPABASE_PROJECT_REF`, while the read-only migration workflow links using the dedicated `secrets.SUPABASE_PREVIEW_PROJECT_REF`. GitHub's connected read interface does not expose repository Actions variables/secrets directly, and the previous logs do not independently prove that these two references are equal.
+
+A new read-only assertion has therefore been added to the Stage 5 audit workflow. It compares the legacy repository variable with the dedicated Preview secret and emits only match/mismatch, never either value. Until that assertion passes, the five Preview-labelled workflows using `vars.SUPABASE_PROJECT_REF` remain a deployment-target blocker. No new function deployment was triggered as part of this check.
