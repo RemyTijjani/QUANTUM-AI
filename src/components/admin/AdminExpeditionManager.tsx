@@ -74,11 +74,17 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     finally { setReviewingId(null); }
   };
 
-  const verificationSource = (kind: ObjectiveKind) => ({
-    game: 'Automatic: server-verified Fragment fixes',
-    milestone: 'Automatic: successful Daily Uplink claims',
-    community: 'Automatic: admin-approved Creator Ops submissions',
-  } as Partial<Record<ObjectiveKind, string>>)[kind] ?? 'Manual review: admin/trusted-system verification required';
+  const verificationSource = (kind: ObjectiveKind, scope: Objective['scope']) => {
+    const source = ({
+      game: 'server-verified Fragment fixes',
+      milestone: 'successful Daily Uplink claims',
+      community: 'admin-approved Creator Ops submissions',
+    } as Partial<Record<ObjectiveKind, string>>)[kind];
+    if (!source) return 'Manual review: admin/trusted-system verification required';
+    if (scope === 'team') return 'Manual team review: trusted individual source does not verify shared team progress';
+    if (scope === 'both') return 'Automatic for individual progress: ' + source + ' · team progress still needs manual review';
+    return 'Automatic individual verification: ' + source;
+  };
 
   const reset = () => {
     setStep(0); setTitle(''); setDescription(''); setCategory('Community'); setAccess('open'); setParticipation('both'); setEditingId(null);
@@ -177,7 +183,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     if (step === 2) return <div className="space-y-4">
       <p className="text-[11px] text-neon-600">Combine different objective types. Add up to 20 objectives.</p>
       <div className="grid gap-2 md:grid-cols-[1fr_2fr_auto]"><select value={objectiveKind} onChange={e => setObjectiveKind(e.target.value as ObjectiveKind)} className="admin-field">{kinds.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}</select><input value={objectiveTitle} onChange={e => setObjectiveTitle(e.target.value)} maxLength={160} placeholder="Objective instruction" className="admin-field" /><button type="button" onClick={addObjective} disabled={!objectiveTitle.trim() || objectives.length>=20} className="border border-neon/40 px-3 py-2 text-xs text-neon-300 disabled:opacity-40"><Plus size={14}/></button></div>
-      {objectives.map((o,i) => { const k = kinds.find(x => x.value===o.kind)!; const Icon=k.icon; return <div key={o.id} className="grid gap-2 border border-neon/20 bg-black/30 p-3 md:grid-cols-[minmax(0,1fr)_150px_auto]"><div className="flex min-w-0 items-start gap-3"><span className="pt-1 text-[10px] text-neon-700">{i+1}</span><Icon size={15} className="mt-0.5 text-neon-400"/><div className="min-w-0"><p className="text-xs text-neon-200">{o.title}</p><p className="text-[9px] text-neon-700">{k.label} · Required</p><p className="mt-1 text-[9px] text-emerald-300">{verificationSource(o.kind)}</p></div></div><label className="admin-field-label">Completion scope<select value={o.scope} onChange={e => setObjectives(v => v.map(x => x.id===o.id ? { ...x, scope: e.target.value as Objective['scope'] } : x))} className="admin-field"><option value="individual">Individual</option><option value="team">Team</option><option value="both">Both</option></select></label><button type="button" onClick={() => setObjectives(v => v.filter(x => x.id!==o.id))} className="text-left text-[10px] text-red-300">Remove</button></div>; })}
+      {objectives.map((o,i) => { const k = kinds.find(x => x.value===o.kind)!; const Icon=k.icon; return <div key={o.id} className="grid gap-2 border border-neon/20 bg-black/30 p-3 md:grid-cols-[minmax(0,1fr)_150px_auto]"><div className="flex min-w-0 items-start gap-3"><span className="pt-1 text-[10px] text-neon-700">{i+1}</span><Icon size={15} className="mt-0.5 text-neon-400"/><div className="min-w-0"><p className="text-xs text-neon-200">{o.title}</p><p className="text-[9px] text-neon-700">{k.label} · Required</p><p className="mt-1 text-[9px] text-emerald-300">{verificationSource(o.kind, o.scope)}</p></div></div><label className="admin-field-label">Completion scope<select value={o.scope} onChange={e => setObjectives(v => v.map(x => x.id===o.id ? { ...x, scope: e.target.value as Objective['scope'] } : x))} className="admin-field"><option value="individual">Individual</option><option value="team">Team</option><option value="both">Both</option></select></label><button type="button" onClick={() => setObjectives(v => v.filter(x => x.id!==o.id))} className="text-left text-[10px] text-red-300">Remove</button></div>; })}
       {!objectives.length && <p className="border border-dashed border-neon/20 p-6 text-center text-xs text-neon-700">No objectives added yet.</p>}
       <p className="text-[10px] text-neon-700">Automatic source matching applies only to the source shown above. Other objective evidence remains in the manual review queue. Briefings are not automatically verified yet.</p>
     </div>;
