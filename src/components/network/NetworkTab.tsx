@@ -1,24 +1,21 @@
 import { Copy, Share2, Users } from 'lucide-react';
-import { KICKBACK_RATE, MILESTONES, SUB_NODE_RATE } from '@/lib/game/config';
+import { SUB_NODE_RATE } from '@/lib/game/config';
 import { formatZp, formatRate } from '@/lib/format';
 import { buildReferralLink } from '@/lib/referral';
 import { openTelegramLink } from '@/lib/telegram';
 import type { GameState } from '@/lib/game/state';
-import type { GameActions } from '@/hooks/useGame';
 import type { Notify } from '@/hooks/useToast';
 import MilestonesList from '@/components/network/MilestonesList';
 
 interface NetworkTabProps {
   state: GameState;
-  actions: GameActions;
   notify: Notify;
 }
 
 const SHARE_TEXT = 'Mine ZP with me in ZORD Autonomous Agent — Total Group Dominion';
 
-export default function NetworkTab({ state, actions, notify }: NetworkTabProps) {
+export default function NetworkTab({ state, notify }: NetworkTabProps) {
   const link = buildReferralLink(state.referralCode);
-  const kickbackWhole = Math.floor(state.kickbackPending);
   const subNodeTotal = state.subNodes.reduce((sum, node) => sum + node.generated, 0);
 
   const copyLink = async () => {
@@ -35,12 +32,6 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
     openTelegramLink(url);
   };
 
-  const claimKickback = () => {
-    const amount = kickbackWhole;
-    actions.claimKickback();
-    notify(`Kickback claimed. +${formatZp(amount)} ZP`);
-  };
-
   return (
     <div className="space-y-6 pb-2">
       <section className="panel space-y-4 p-5">
@@ -48,7 +39,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
           <p className="label">Referral uplink</p>
           <h2 className="title mt-1">Recruit operatives</h2>
           <p className="mt-2 font-mono text-[11px] leading-relaxed text-neon-500">
-            Earn {Math.round(KICKBACK_RATE * 100)}% of every ZP your sub-nodes generate.
+            Share your referral link to invite new operatives. Referral rewards are awaiting trusted backend integration.
           </p>
         </div>
 
@@ -69,18 +60,11 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
           </button>
         </div>
 
-        <div className="rounded-lg border border-neon/20 bg-black/40 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="label">Pending kickback</p>
-              <p className="mt-1 font-display text-xl font-bold tabular-nums text-neon-300">
-                {formatZp(state.kickbackPending)} <span className="text-xs text-neon-500">ZP</span>
-              </p>
-            </div>
-            <button type="button" onClick={claimKickback} disabled={kickbackWhole < 1} className="btn-primary shrink-0">
-              Claim Kickback
-            </button>
-          </div>
+        <div className="rounded-lg border border-amber-400/25 bg-amber-400/5 p-4">
+          <p className="label text-amber-300">Referral rewards</p>
+          <p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-400">
+            Kickbacks are not yet connected to the verified economy. No ZP is claimable from this screen.
+          </p>
         </div>
       </section>
 
@@ -89,15 +73,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
           <p className="label">Network milestones</p>
           <h2 className="title mt-1">Drop rewards</h2>
         </div>
-        <MilestonesList
-          subNodeCount={state.subNodes.length}
-          claimed={state.claimedMilestones}
-          onClaim={(threshold) => {
-            const reward = MILESTONES.find((m) => m.threshold === threshold)?.reward ?? 0;
-            actions.claimMilestone(threshold);
-            notify(`Milestone cleared. +${formatZp(reward)} ZP`);
-          }}
-        />
+        <MilestonesList subNodeCount={state.subNodes.length} />
       </section>
 
       <section className="space-y-3">
@@ -129,7 +105,7 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
                     </p>
                   </div>
                   <span className="shrink-0 font-mono text-xs tabular-nums text-neon-400">
-                    {formatZp(node.generated)} ZP
+                    {formatZp(node.generated)} ZP estimate
                   </span>
                 </li>
               ))}
@@ -137,9 +113,10 @@ export default function NetworkTab({ state, actions, notify }: NetworkTabProps) 
           )}
           <div className="flex items-center justify-between gap-3 border-t border-neon/15 px-4 py-3">
             <span className="font-mono text-[10px] uppercase tracking-wider text-neon-500">
-              Network total {formatZp(subNodeTotal)} ZP
+              Local activity estimate {formatZp(subNodeTotal)} ZP
             </span>
           </div>
+          <p className="border-t border-amber-400/20 px-4 py-3 font-mono text-[9px] leading-relaxed text-amber-300">Referral counts and generated amounts shown here are legacy local estimates, not verified rewards.</p>
         </div>
       </section>
     </div>
