@@ -177,7 +177,7 @@ export default function MysteryBoxPanel({
     <section className="space-y-3">
       <div className="panel space-y-3 border border-violet-400/25 bg-gradient-to-br from-violet-500/10 via-black/50 to-cyan-500/5 p-4">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-violet-300/30 bg-violet-400/10 text-violet-200"><Gift size={18} /></span>
+          <span className="mystery-box-art flex h-9 w-9 items-center justify-center rounded-lg border border-violet-300/30 bg-violet-400/10 text-violet-200"><Gift size={18} /></span>
           <div><p className="label">Reward inventory</p><h2 className="title mt-1">Mystery Boxes</h2></div>
           <button type="button" onClick={() => void loadInventory(true)} disabled={refreshing || loading} aria-label="Refresh Mystery Box inventory" className="ml-auto inline-flex min-h-10 items-center gap-2 rounded-lg border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wide text-neon-200 shadow-[0_0_12px_rgba(34,211,238,0.12)] hover:bg-neon/20 disabled:opacity-50">
             {refreshing ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
@@ -195,7 +195,7 @@ export default function MysteryBoxPanel({
 
       <div className="panel space-y-3 border border-amber-300/20 bg-gradient-to-br from-amber-400/10 via-black/40 to-violet-500/5 p-4">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-amber-300/25 bg-amber-300/10 text-amber-200"><Gift size={18} /></span>
+          <span className="mystery-box-art mystery-box-art--premium flex h-9 w-9 items-center justify-center rounded-lg border border-amber-300/25 bg-amber-300/10 text-amber-200"><Gift size={18} /></span>
           <div><p className="label">Repeat opening</p><h3 className="title mt-1">Mystery Box Refill</h3></div>
           <span className="ml-auto rounded-md border border-amber-300/20 px-2 py-1 font-mono text-[8px] uppercase text-amber-200">500 ZP</span>
         </div>
@@ -240,7 +240,7 @@ export default function MysteryBoxPanel({
           <div className="py-6 text-center"><Gift size={25} className="mx-auto text-neon-700" /><p className="mt-2 font-mono text-[10px] text-neon-400">No boxes available yet</p><p className="mt-1 font-mono text-[9px] text-neon-700">Boxes will appear here when earned through an enabled reward activity.</p></div>
         ) : inventory.availableBoxes.map((box) => (
           <article key={box.entitlementId} className="flex items-center gap-3 border border-neon/15 bg-black/20 p-3">
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${box.boxTier === 'premium' ? 'border-violet-300/30 text-violet-200' : 'border-neon/25 text-neon-300'}`}><Gift size={19} /></span>
+            <span className={`mystery-box-art flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${box.boxTier === 'premium' ? 'mystery-box-art--premium border-violet-300/30 text-violet-200' : 'border-neon/25 text-neon-300'} ${openingId === box.entitlementId ? 'mystery-box-art--opening' : ''}`}><Gift size={19} /></span>
             <div className="min-w-0 flex-1"><p className="font-display text-xs font-bold uppercase text-neon-200">{box.boxTier} Box</p><p className="mt-1 font-mono text-[8px] text-neon-700">Received {formatDate(box.grantedAt)}</p></div>
             <button type="button" onClick={() => void openBox(box)} disabled={openingId !== null} className="rounded-lg border border-neon/30 bg-neon/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-neon-200 disabled:opacity-50">
               {openingId === box.entitlementId ? <Loader2 size={13} className="animate-spin" /> : 'Open'}
