@@ -132,8 +132,6 @@ jobs:
               (SELECT jsonb_agg(extname ORDER BY extname)
                FROM pg_extension) AS installed_extensions,
               to_regclass('cron.job')::text AS cron_job_catalog,
-              CASE WHEN to_regclass('cron.job') IS NULL THEN NULL
-                ELSE (SELECT count(*) FROM cron.job) END AS scheduled_job_count,
               (SELECT jsonb_agg(jsonb_build_object(
                 'schema_name', table_schema, 'role_name', grantee,
                 'privilege_type', privilege_type
