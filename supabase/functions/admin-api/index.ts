@@ -196,7 +196,7 @@ Deno.serve(async (req: Request) => {
     });
 
     const { data: rateLimit, error: rateLimitError } = await db.rpc(
-      "admin_check_login_rate_limit",
+      "admin_begin_login_attempt",
       { p_key_hash: rateLimitKey },
     );
     if (rateLimitError || !rateLimit) {
@@ -205,7 +205,7 @@ Deno.serve(async (req: Request) => {
     }
     if (rateLimit.allowed !== true) {
       const retryAfter = Math.max(1, Number(rateLimit.retryAfterSeconds) || 900);
-      return new Response(JSON.stringify({ error: "Too many failed login attempts. Try again later." }), {
+      return new Response(JSON.stringify({ error: "Too many login attempts. Try again later." }), {
         status: 429,
         headers: {
           ...corsHeaders,
@@ -222,14 +222,6 @@ Deno.serve(async (req: Request) => {
       body.adminPassword === ADMIN_PASSWORD;
 
     if (!isAdmin) {
-      const { error: recordError } = await db.rpc(
-        "admin_record_login_failure",
-        { p_key_hash: rateLimitKey },
-      );
-      if (recordError) {
-        console.error("Admin login failure could not be recorded:", recordError);
-        return json({ error: "Admin authentication temporarily unavailable" }, 503);
-      }
       return json({ error: "Unauthorized" }, 401);
     }
 
