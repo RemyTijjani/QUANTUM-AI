@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/useToast';
 import { AuthProvider, useAuth } from '@/hooks/useTelegramAuth';
 import { useMissions } from '@/hooks/useMissions';
 import { fetchVerifiedEconomy } from '@/lib/economy/verifiedEconomy';
+import type { VerifiedLedgerEntry } from '@/lib/economy/verifiedEconomy';
 
 import type { MissionSpec } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
@@ -131,14 +132,17 @@ function GameApp({
 
   const { auth } = useAuth();
   const [verifiedZpBalance, setVerifiedZpBalance] = useState<number | null>(null);
+  const [verifiedTransactions, setVerifiedTransactions] = useState<VerifiedLedgerEntry[]>([]);
 
   const refreshVerifiedBalance = useCallback(async () => {
     try {
       const economy = await fetchVerifiedEconomy();
       setVerifiedZpBalance(economy.verifiedZpBalance);
+      setVerifiedTransactions(economy.transactions);
     } catch (error) {
       console.error('Verified ZP balance load failed:', error);
       setVerifiedZpBalance(null);
+      setVerifiedTransactions([]);
     }
   }, []);
 
@@ -302,7 +306,7 @@ function GameApp({
         {tab === 'events' && <EventsTab />}
 
         {tab === 'vault' && (
-          <VaultTab verifiedZpBalance={verifiedZpBalance} />
+          <VaultTab verifiedZpBalance={verifiedZpBalance} transactions={verifiedTransactions} />
         )}
       </main>
 
