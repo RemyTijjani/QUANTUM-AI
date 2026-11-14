@@ -103,7 +103,10 @@ export default function MysteryBoxPanel({
     });
     setOpeningId(null);
     if (error || !data?.success) {
-      notify(error?.message || 'The box could not be opened. Please refresh and try again.', 'error');
+      notify(error?.message || 'The box could not be opened. Checking your inventory status…', 'error');
+      // A response can be lost after the server has committed the opening.
+      // Refresh so the UI does not leave a consumed box looking available.
+      await loadInventory(true);
       return;
     }
 
@@ -140,7 +143,7 @@ export default function MysteryBoxPanel({
         <div role="status" aria-live="polite" className="panel space-y-2 border border-emerald-400/30 bg-emerald-400/5 p-4">
           <div className="flex items-center gap-2 text-emerald-300"><Sparkles size={16} /><p className="label">Recorded reward</p></div>
           <p className="font-display text-lg font-bold text-emerald-200">{lastReward.rewardLabel || (lastReward.rewardType === 'zp' ? `${lastReward.zpAmount} ZP` : lastReward.rewardType === 'zap' ? `${lastReward.zapAmount} ZAP` : '2× Fragment Mining boost · 6 hours')}</p>
-          <p className="font-mono text-[9px] text-neon-600">The server has recorded this result. A boost is stored as an entitlement; its mining effect is not active until the mining service is connected.</p>
+          <p className="font-mono text-[9px] text-neon-600">The server has recorded this boost as an activation reward. Open ZORD Agents → Temporary Activations to activate it; the six-hour timer starts only when you activate it. It changes the in-game mining estimate, not your verified ZP balance.</p>
         </div>
       )}
 
@@ -170,7 +173,7 @@ export default function MysteryBoxPanel({
           <summary className="cursor-pointer list-none font-mono text-[10px] font-bold uppercase text-violet-200">Premium Box · ZP, ZAP or boost</summary>
           <div className="mt-3 space-y-2">{PREMIUM_ODDS.map(([prize, chance]) => <div key={prize} className="flex justify-between gap-3 font-mono text-[9px] text-neon-500"><span>{prize}</span><span className="shrink-0 text-right">{chance}</span></div>)}</div>
         </details>
-        <p className="font-mono text-[8px] leading-relaxed text-neon-700">ZAP amounts 1–10 each have an equal 1% overall chance in a Premium Box. The 2× boost lasts six hours after activation; activation and its actual mining effect are not yet connected.</p>
+        <p className="font-mono text-[8px] leading-relaxed text-neon-700">ZAP amounts 1–10 each have an equal 1% overall chance in a Premium Box. A Premium Box boost appears under ZORD Agents → Temporary Activations. Activate it there; its six-hour timer starts on activation and it affects the in-game mining estimate only.</p>
       </div>
 
       {inventory.recentOpenings.length > 0 && (
