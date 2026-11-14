@@ -62,7 +62,7 @@ create table app_private.mystery_box_reward_catalog (
   created_at timestamptz not null default now(),
   primary key (pool_version, box_tier, reward_code),
   check (
-    (reward_type = 'zp' and amount between 100 and 1000 and amount % 100 = 0)
+    (reward_type = 'zp' and amount is not null and amount between 100 and 1000 and amount % 100 = 0)
     or (reward_type = 'zap' and box_tier = 'premium' and amount = 0)
     or (reward_type = 'boost' and box_tier = 'premium' and amount = 0)
   )
@@ -83,8 +83,8 @@ create table app_private.mystery_box_openings (
   zap_balance_after numeric(20,0),
   opened_at timestamptz not null default now(),
   check (
-    (reward_type = 'zp' and zp_amount between 100 and 1000 and zap_amount is null and boost_entitlement_id is null)
-    or (reward_type = 'zap' and zap_amount between 1 and 10 and zp_amount is null and boost_entitlement_id is null)
+    (reward_type = 'zp' and zp_amount is not null and zp_amount between 100 and 1000 and zap_amount is null and boost_entitlement_id is null)
+    or (reward_type = 'zap' and zap_amount is not null and zap_amount between 1 and 10 and zp_amount is null and boost_entitlement_id is null)
     or (reward_type = 'boost' and zp_amount is null and zap_amount is null and boost_entitlement_id is not null)
   )
 );
