@@ -537,7 +537,7 @@ export async function approveEventParticipantReward(
 }
 
 
-export interface AdminExpeditionDraftInput {
+export interface AdminExpeditionDraftInput {\n  id?: string;
   title: string;
   description: string;
   category: 'Open' | 'Progressive' | 'Seasonal' | 'Community' | 'Competitive' | 'Team' | 'Special limited-time';
@@ -558,7 +558,7 @@ export async function saveExpeditionDraft(
   creds: AdminCredentials,
   expedition: AdminExpeditionDraftInput,
 ): Promise<{ id: string; slug: string }> {
-  const body = await callAdminApi(creds, { action: 'save_expedition_draft', expedition });
+  const body = await callAdminApi(creds, { action: 'save_expedition_draft', expeditionId: expedition.id, expedition });
   if (!body || typeof body !== 'object') {
     throw new AdminApiError('The Expedition draft response could not be verified.');
   }
@@ -567,4 +567,31 @@ export async function saveExpeditionDraft(
     throw new AdminApiError('The Expedition draft could not be verified. Refresh the admin page before retrying.');
   }
   return { id: result.id, slug: result.slug };
+}
+
+
+export interface AdminExpeditionRecord {
+  id: string; slug: string; title: string; description: string; category: string;
+  access_mode: 'open' | 'progressive'; participation_mode: 'solo' | 'team' | 'both';
+  status: 'draft' | 'scheduled' | 'registration_open' | 'active' | 'paused' | 'completed' | 'closed' | 'cancelled';
+  starts_at: string | null; ends_at: string | null; timezone: string;
+  min_team_size: number; max_team_size: number; min_individual_contributions: number;
+  objectives: Array<{ id: string; objective_type: AdminExpeditionDraftInput['objectives'][number]['kind']; title: string; sort_order: number }>;
+  reward: { reward_type: 'zp' | 'zap' | 'none'; amount: number; recipient_scope: string } | null;
+}
+export async function listAdminExpeditions(creds: AdminCredentials): Promise<AdminExpeditionRecord[]> {
+  const body = await callAdminApi(creds, { action: 'list_expeditions' });
+  if (!body || typeof body !== 'object' || !Array.isArray((body as { expeditions?: unknown }).expeditions)) {
+    throw new AdminApiError('Could not verify the saved Expeditions list.');
+  }
+  return (body as { expeditions: AdminExpeditionRecord[] }).expeditions;
+}
+export async function publishAdminExpedition(creds: AdminCredentials, id: string): Promise<{ status: 'scheduled' | 'registration_open' }> {
+  const body = await callAdminApi(creds, { action: 'publish_expedition', expeditionId: id });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The publish response could not be verified.');
+  const result = body as { success?: unknown; status?: unknown };
+  if (result.success !== true || !['scheduled', 'registration_open'].includes(String(result.status))) {
+    throw new AdminApiError('Expedition publishing could not be verified.');
+  }
+  return { status: result.status as 'scheduled' | 'registration_open' };
 }
