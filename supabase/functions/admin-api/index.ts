@@ -102,6 +102,27 @@ function json(body: unknown, status = 200) {
   });
 }
 
+async function hashAdminRateLimitKey(clientIp: string): Promise<string> {
+  // HMAC prevents stored IP-derived identifiers from being trivially reversed.
+  // The service-role key is already a server-only secret and is never persisted.
+  const encoder = new TextEncoder();
+  const hmacKey = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(SERVICE_ROLE_KEY),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    hmacKey,
+    encoder.encode(`${ADMIN_USERNAME.toLowerCase()}:${clientIp}`),
+  );
+  return Array.from(new Uint8Array(signature), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
+
 function slugify(value: string): string {
   return value
     .toLowerCase()
@@ -166,6 +187,34 @@ Deno.serve(async (req: Request) => {
   try {
     const body: AdminRequestBody = await req.json();
 
+    // Supabase's Cloudflare gateway supplies cf-connecting-ip. Do not trust
+    // caller-controlled X-Forwarded-For values for the rate-limit identity.
+    const clientIp = req.headers.get("cf-connecting-ip")?.trim() || "unknown";
+    const rateLimitKey = await hashAdminRateLimitKey(clientIp);
+    const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    });
+
+    const { data: rateLimit, error: rateLimitError } = await db.rpc(
+      "admin_check_login_rate_limit",
+      { p_key_hash: rateLimitKey },
+    );
+    if (rateLimitError || !rateLimit) {
+      console.error("Admin login rate-limit check failed:", rateLimitError);
+      return json({ error: "Admin authentication temporarily unavailable" }, 503);
+    }
+    if (rateLimit.allowed !== true) {
+      const retryAfter = Math.max(1, Number(rateLimit.retryAfterSeconds) || 900);
+      return new Response(JSON.stringify({ error: "Too many failed login attempts. Try again later." }), {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Retry-After": String(retryAfter),
+        },
+      });
+    }
+
     const isAdmin =
       ADMIN_USERNAME !== "" &&
       ADMIN_PASSWORD !== "" &&
@@ -173,12 +222,25 @@ Deno.serve(async (req: Request) => {
       body.adminPassword === ADMIN_PASSWORD;
 
     if (!isAdmin) {
+      const { error: recordError } = await db.rpc(
+        "admin_record_login_failure",
+        { p_key_hash: rateLimitKey },
+      );
+      if (recordError) {
+        console.error("Admin login failure could not be recorded:", recordError);
+        return json({ error: "Admin authentication temporarily unavailable" }, 503);
+      }
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-      auth: { persistSession: false },
-    });
+    const { error: clearError } = await db.rpc(
+      "admin_clear_login_failures",
+      { p_key_hash: rateLimitKey },
+    );
+    if (clearError) {
+      console.error("Admin login rate-limit reset failed:", clearError);
+      return json({ error: "Admin authentication temporarily unavailable" }, 503);
+    }
 
     // FETCH ADMIN DASHBOARD
     if (body.action === "fetch_dashboard") {
