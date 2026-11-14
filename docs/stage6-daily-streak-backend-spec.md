@@ -1,6 +1,6 @@
 # Stage 6 Daily Streaks — Backend Implementation Specification
 
-Status: Product rules approved; source-only Mystery Box implementation committed. No migration has been applied and no Edge Function has been deployed.
+Status: Product rules approved; Daily Streak migration, trusted gameplay action, and UI source are committed on the active branch. The new migration has not been applied and the updated gameplay Edge Function has not been deployed.
 Target: Preview only, active branch `security/trusted-gameplay-migration`.
 Scope: Daily Streak reward claim and progression. Mystery Discovery and Expeditions are separate follow-on services.
 
@@ -37,7 +37,7 @@ The 1% chance is the chance of the temporary mining-agent outcome on each Day 8�
 - Day 30 completes the cycle; the next eligible daily claim begins a new cycle at Day 1.
 - The client never supplies the player ID, claim date, streak day, reward type, reward amount, odds, or expiry.
 
-UTC is the proposed implementation timezone because the existing trusted Daily Uplink claim derives its claim date in UTC. If the product requires each player's local midnight instead, that is a separate product decision and needs a trusted timezone source.
+UTC midnight is approved. The database derives the claim date from its UTC clock; the client cannot supply or override the timezone or claim date.
 
 ## 2. Preview schema findings
 
@@ -47,7 +47,7 @@ Read-only inspection of Preview project `lchkctclxzwwvfwosava` found:
 - Existing temporary/paid agent rental records: `player_agent_rentals` and `agent_rental_payment_intents`.
 - Existing event participation has a `progress jsonb` field and event definitions include `reward_zap`.
 
-No dedicated Daily Streak, ZAP wallet/ledger, boost inventory, or Mystery Box inventory table was found in the Preview public schema. The current `player_economy` only exposes ZP balance fields. A paid agent rental row is not, by itself, a safe representation of a free 24-hour reward.
+No dedicated Daily Streak state or claim ledger was found. The Mystery Box migration has since created the private ZAP wallet/ledger, reward entitlement, and box inventory tables. Paid agent rental rows remain unsuitable for representing a free 24-hour Agent 1 reward.
 
 ## 3. Proposed trusted data model
 
@@ -67,7 +67,7 @@ Create an immutable streak claim ledger:
 - Unique constraint on `(player_id, claim_date)` to prevent duplicate daily claims.
 - Unique claim reference used by downstream reward/inventory writes.
 
-Reward grants and claim records must commit atomically. For Days 1–7, credit ZP and insert the existing `economy_ledger` row in the same database transaction. For Days 8–30, store the server-selected outcome and create a corresponding reward entitlement. ZAP must not be credited until an authoritative ZAP wallet/ledger and trusted credit function exist. Boost, box, and free-agent outcomes need explicit entitlement records with expiry and redemption/activation state; do not fake these as ZP or as paid rental payments.
+Reward grants and claim records must commit atomically. For Days 1–7, credit ZP and insert the existing `economy_ledger` row in the same database transaction. For Days 8–30, store the server-selected outcome and create a corresponding reward entitlement. ZAP is credited through the private ZAP wallet and ledger created by the Mystery Box migration, in the same transaction as the Daily Streak claim. Boost, box, and free-agent outcomes need explicit entitlement records with expiry and redemption/activation state; do not fake these as ZP or as paid rental payments.
 
 All new tables in the exposed `public` schema must have RLS enabled and direct client writes revoked. Do not expose service-role credentials. Keep privileged RPC execution restricted to `service_role`, called only after the Edge Function authenticates the bearer token and derives the player ID from the authenticated user's player profile.
 
@@ -116,7 +116,7 @@ Extend `gameplay-actions` with a minimal action such as `claim_daily_streak`.
 ## 7. Decisions/prerequisites still open
 
 These are not invented by this specification:
-1. The exact draw method for the approved 1–10 whole-ZAP range; uniform selection is proposed.
+1. The 1–10 whole-ZAP amount is uniformly selected; each amount has equal probability.
 2. Standard Box excludes ZAP. Premium Box has a 10% chance to award 1–10 whole ZAP. Free Agent 1 remains exclusive to the 1% Daily Streak outcome. A Fragment reward is available in Premium Boxes only, with a 10% prize chance. It is a 2× multiplier on the player's current Fragment Mining rate for six hours from activation. Standard Boxes do not contain this boost. It is not a fixed fragment amount; the extra mining output can contribute toward both unlocking new fragments and repairing damaged fragments. It follows the same no-stacking/no-extension rule as the approved boost. Both Standard and Premium Boxes may award one of ten ZP prizes: 100, 200, 300, 400, 500, 600, 700, 800, 900, or 1,000 ZP. The approved Premium Box distribution is:
 
 | Premium Box prize | Probability |
@@ -156,8 +156,17 @@ The approved Standard Box distribution is:
 Standard excludes ZAP and the Fragment Mining boost. It has an 11% chance of an 800–1,000 ZP prize, compared with 42% for Premium. This makes larger ZP rewards materially more likely in Premium Boxes. Tier selection remains 80% Standard / 20% Premium when a Daily Streak draw awards a box.
 3. Boost rules are approved: 2× Fragment Mining for 6 hours from activation; no stacking and no extension of an active boost.
 4. Agent 1 is the approved free mining-agent type. Starting the 24-hour clock on activation is recommended, pending confirmation.
-5. A trusted ZAP wallet/ledger and credit RPC. Preview currently has no dedicated ZAP balance/ledger table.
-6. The canonical boost, box, and temporary-agent entitlement model.
+5. ZAP wallet/ledger are now present in the Preview schema from the Mystery Box migration and are reused by the Daily Streak claim.
+6. Boost, box, and temporary Agent 1 rewards use the private entitlement model. Activation and the corresponding live mining/agent effects remain separate integration work.
 7. The ad provider will be supplied later; design an ad reward slot, but do not integrate a provider until selected.
 
 No migration, database write, reward claim, Edge Function deployment, or Production change is authorized or performed by this specification commit.
+
+
+## 8. Current source implementation notes
+
+The source-only migration `20261114180000_trusted_daily_streak_rewards.sql` creates private UTC streak state and immutable claim records, extends reward entitlements with a Daily Streak Agent 1 type, and provides service-role-only claim/state RPCs. The claim RPC uses a row lock to serialize claims, applies ZP/ZAP credits and ledgers atomically, and calls the existing idempotent Mystery Box grant RPC for box outcomes. Boost and Agent 1 are issued as activation entitlements with six-hour and 24-hour durations respectively.
+
+The `gameplay-actions` Edge Function source exposes `get_daily_streak_state` and `claim_daily_streak`, deriving the player ID from the verified Supabase session. The Stage 6 Streaks screen source calls these actions and refreshes verified ZP after ZP rewards.
+
+The new migration, Edge Function source update, and UI source have not been deployed or applied. No streak claim or reward transaction has been run. The 2× boost mining effect and temporary Agent 1 runtime activation are not claimed to be live until their activation integrations are implemented and verified.
