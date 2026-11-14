@@ -187,3 +187,30 @@ A viable proposal must first:
 - compare a fresh database's schema and required seed data to Preview.
 
 Until these checks pass, the safest action is **no migration repair and no baseline file**.
+
+
+## Fresh Preview migration-ledger verification — 2026-11-14
+
+Workflow run: [43571024432](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43571024432)  
+Commit inspected: `800fc1625f0eda6cb1058b713863f0c83690d3a1`  
+Result: **success**. Supabase CLI was pinned to 3.1.0. The workflow linked the project using `SUPABASE_PREVIEW_PROJECT_REF` and executed only read-only commands.
+
+The fresh `supabase migration list --remote` output showed all 48 local migration versions with blank Remote entries. A separate `supabase db query --remote --read-only` catalog query returned:
+
+- `database_name = postgres`
+- `database_role = supabase_read_only_user`
+- `ledger_table = null`
+- `ledger_columns = null`
+
+This confirms that the Preview database does not currently expose `supabase_migrations.schema_migrations`; it is not merely an empty migration ledger. No migration history rows were created or changed. No SQL write, migration repair, migration execution, schema change, or function deployment occurred.
+
+**Consequence:** do not use migration repair to mark the 48 files applied until a separately reviewed, tested migration-history strategy exists. Do not replay the files against the populated Preview database. The live schema must remain the source of truth while we prepare and validate a safe baseline strategy in an isolated disposable project.
+
+## Current execution status
+
+- Read-only Preview ledger verification: complete.
+- Ledger catalog existence check: complete; table absent.
+- Full migration-by-migration reconciliation: preliminary review complete; data/backfill and external dependency checks remain.
+- Baseline creation/application: not authorized and not started.
+- Database writes or deployments: none.
+- Production: untouched.
