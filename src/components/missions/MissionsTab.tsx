@@ -25,6 +25,9 @@ interface MissionsTabProps {
 export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRefreshVerifiedEconomy, initialView = 'missions' }: MissionsTabProps) {
   const now = Date.now();
   const [activeView, setActiveView] = useState<EngagementView>(initialView);
+  useEffect(() => {
+    setActiveView(initialView);
+  }, [initialView]);
 
   const daily = missions.filter((m) => m.kind === 'daily');
   const social = missions.filter((m) => m.kind === 'social');
