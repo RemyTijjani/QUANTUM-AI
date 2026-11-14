@@ -169,7 +169,23 @@ A box is an entitlement to open a versioned reward pool. Opening it is a separat
 
 The ZP prize probabilities total 80%. The ZP prize average, conditional on receiving a ZP prize, is 755 ZP. Premium Box ZP probabilities intentionally favor larger prizes.
 
-The Standard Box probability distribution remains unapproved; it must be less generous than Premium for the higher ZP amounts. Standard Box excludes ZAP and the Fragment Mining boost. Premium retains the 10% ZAP and 10% Fragment Mining boost prizes shown above.
+The approved Standard Box probability distribution is:
+
+| Standard Box prize | Probability |
+|---|---:|
+| 100 ZP | 20% |
+| 200 ZP | 18% |
+| 300 ZP | 15% |
+| 400 ZP | 12% |
+| 500 ZP | 10% |
+| 600 ZP | 8% |
+| 700 ZP | 6% |
+| 800 ZP | 5% |
+| 900 ZP | 3% |
+| 1,000 ZP | 3% |
+| **Total** | **100%** |
+
+Standard Boxes exclude ZAP and the Fragment Mining boost. The Standard Box has an 11% chance of an 800–1,000 ZP prize, compared with 42% for Premium, so Premium clearly favors larger ZP rewards. Premium retains the 10% ZAP and 10% Fragment Mining boost prizes shown above.
 
 ### Free 24-hour mining agent
 Keep this distinct from paid `player_agent_rentals` and `agent_rental_payment_intents`. Grant a `temporary_mining_agent` entitlement, then activate through a trusted agent-entitlement service. The approved eligible agent is Agent 1. Recommended timer policy (not yet explicitly approved): start the 24-hour timer when the player activates the entitlement. It must not create a payment intent, fabricate a payment reference, or imply that the player paid.
