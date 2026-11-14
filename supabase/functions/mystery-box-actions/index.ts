@@ -22,6 +22,23 @@ function json(body: unknown, status = 200) {
   });
 }
 
+async function getInventory(admin: ReturnType<typeof createClient>, playerId: string) {
+  const [inventoryResult, repeatStateResult] = await Promise.all([
+    admin.rpc("get_mystery_box_inventory", { p_player_id: playerId }),
+    admin.rpc("get_mystery_box_repeat_state", { p_player_id: playerId }),
+  ]);
+
+  if (inventoryResult.error || repeatStateResult.error) {
+    console.error("Mystery Box inventory lookup failed:", inventoryResult.error ?? repeatStateResult.error);
+    throw new Error("Could not load Mystery Box inventory.");
+  }
+
+  return {
+    inventory: inventoryResult.data,
+    repeatBox: repeatStateResult.data,
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -35,7 +52,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const authorization = req.headers.get("Authorization") ?? "";
-  const tokenMatch = authorization.match(/^Bearer\s+(.+)$/i);
+  const tokenMatch = authorization.match(/^Bearer\\s+(.+)$/i);
   if (!tokenMatch) {
     return json({ error: "Sign in to access Mystery Boxes." }, 401);
   }
@@ -64,14 +81,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (req.method === "GET") {
-      const { data, error } = await admin.rpc("get_mystery_box_inventory", {
-        p_player_id: player.id,
-      });
-      if (error) {
-        console.error("Mystery Box inventory lookup failed:", error);
-        return json({ error: "Could not load Mystery Box inventory." }, 500);
-      }
-      return json({ success: true, inventory: data });
+      const result = await getInventory(admin, player.id);
+      return json({ success: true, ...result });
     }
 
     const rawBody = await req.text();
@@ -91,14 +102,38 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body.action === "get_inventory") {
-      const { data, error } = await admin.rpc("get_mystery_box_inventory", {
+      const result = await getInventory(admin, player.id);
+      return json({ success: true, ...result });
+    }
+
+    if (body.action === "open_repeat_mystery_box") {
+      if (
+        (body.method !== "zp" && body.method !== "ad") ||
+        typeof body.requestId !== "string" ||
+        !UUID_PATTERN.test(body.requestId)
+      ) {
+        return json({ error: "A valid repeat Mystery Box request is required." }, 400);
+      }
+
+      // Price, player identity, tier, and reward are never accepted from the client.
+      // The database serializes repeat openings, charges ZP, rolls the tier and
+      // grants the reward atomically. The ad path remains server-disabled until
+      // AdsGram provider verification is implemented.
+      const { data, error } = await admin.rpc("open_repeat_mystery_box", {
         p_player_id: player.id,
+        p_method: body.method,
+        p_request_id: body.requestId,
       });
       if (error) {
-        console.error("Mystery Box inventory lookup failed:", error);
-        return json({ error: "Could not load Mystery Box inventory." }, 500);
+        console.error("Repeat Mystery Box opening failed:", error);
+        return json({ error: "Could not open a repeat Mystery Box. Refresh and try again." }, 409);
       }
-      return json({ success: true, inventory: data });
+
+      if (data?.success === false) {
+        const status = data.code === "insufficient_zp" ? 402 : data.code === "cooldown_active" ? 429 : 409;
+        return json(data, status);
+      }
+      return json(data);
     }
 
     if (body.action !== "open_mystery_box" ||
@@ -122,6 +157,6 @@ Deno.serve(async (req: Request) => {
     return json(data, data?.success === false ? 409 : 200);
   } catch (error) {
     console.error("Mystery Box request failed:", error);
-    return json({ error: "Mystery Box action could not be completed." }, 500);
+    return json({ error: error instanceof Error ? error.message : "Mystery Box action could not be completed." }, 500);
   }
 });
