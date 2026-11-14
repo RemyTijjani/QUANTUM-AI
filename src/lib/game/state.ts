@@ -135,7 +135,7 @@ export const isAgentActive = (
   s: GameState,
   id: AgentId,
   now: number
-) => s.agents[id] > now;
+) => s.agents[id] > now || (id === 'alpha' && s.temporaryAgentUntil > now);
 
 export const fragmentCooldownRemaining = (
   s: GameState,
