@@ -36,7 +36,7 @@ export default function CoreTab({ state, notify, onWatchAd, onFixFragment, verif
         return;
       }
       void onFixFragment(id).then(() => {
-        notify(`${FRAGMENT_NAMES[id]} fixed into the circuit. Core mining started`);
+        notify(`${FRAGMENT_NAMES[id]} fixed in the trusted gameplay record. Verified ZP accrual is not enabled yet.`, 'info');
       }).catch((error) => {
         notify(error instanceof Error ? error.message : 'Could not verify this fragment action', 'error');
       });
@@ -78,11 +78,11 @@ export default function CoreTab({ state, notify, onWatchAd, onFixFragment, verif
       />
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
         {miningLeft > 0
-          ? `Core mining: ${formatRemaining(miningLeft)} left`
-          : 'Core offline. Fix a fragment to restart mining.'}
+          ? `Core timer: ${formatRemaining(miningLeft)} left`
+          : 'Core timer inactive. Fix a fragment to restart the local game timer.'}
       </p>
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
-        Complete the timed unlock, then fix the fragment into the core (+0.02 ZP/sec).
+        Complete the timed unlock, then fix the fragment into the core. The displayed rate is a local game estimate, not verified ZP accrual.
         {' '}
         {fixedCount(state)} of {FRAGMENT_IDS.length} fragments fixed.
       </p>
