@@ -29,7 +29,9 @@ interface AdminRequestBody {
     | "save_vault_reserves"
     | "save_event"
     | "delete_event"
-    | "save_expedition_draft"\n    | "list_expeditions"\n    | "publish_expedition"
+    | "save_expedition_draft"
+    | "list_expeditions"
+    | "publish_expedition"
     | "list_players"
     | "get_player_economy"
     | "list_event_participants"
@@ -78,7 +80,9 @@ interface AdminRequestBody {
     requirements?: unknown;
     participationRules?: unknown;
   };
-  expeditionId?: string;\n  expedition?: {\n    id?: string;
+  expeditionId?: string;
+  expedition?: {
+    id?: string;
     title?: string; description?: string; category?: string; accessMode?: string; participationMode?: string;
     minTeamSize?: number; maxTeamSize?: number; minIndividualContributions?: number;
     startsAt?: string | null; endsAt?: string | null; timezone?: string;
@@ -858,7 +862,13 @@ Deno.serve(async (req: Request) => {
           .select("id", { count: "exact", head: true }).eq("expedition_id", expeditionId!);
         if (participationError || (count ?? 0) > 0) return json({ error: "This Expedition already has participation and can no longer be edited as a draft" }, 409);
         slug = current.slug;
-        beforeState = { title: current.title, status: current.status };
+        beforeState = {
+          title: current.title, description: current.description, category: current.category,
+          access_mode: current.access_mode, participation_mode: current.participation_mode,
+          starts_at: current.starts_at, ends_at: current.ends_at, timezone: current.timezone,
+          min_team_size: current.min_team_size, max_team_size: current.max_team_size,
+          min_individual_contributions: current.min_individual_contributions, status: current.status,
+        };
         const { error: updateError } = await db.from("expeditions").update({
           title, description, category: categories[expedition.category], access_mode: accessMode,
           participation_mode: participationMode, starts_at: startsAt?.toISOString() ?? null,
@@ -914,7 +924,12 @@ Deno.serve(async (req: Request) => {
           if (oldObjectives?.length) await db.from("expedition_objectives").insert(oldObjectives.map((item) => ({ ...item, expedition_id: expeditionId })));
           if (oldReward) await db.from("expedition_rewards").upsert({ expedition_id: expeditionId, ...oldReward }, { onConflict: "expedition_id" });
           await db.from("expeditions").update({
-            title: beforeState.title, updated_by: ADMIN_USERNAME,
+            title: beforeState.title, description: beforeState.description, category: beforeState.category,
+            access_mode: beforeState.access_mode, participation_mode: beforeState.participation_mode,
+            starts_at: beforeState.starts_at, ends_at: beforeState.ends_at, timezone: beforeState.timezone,
+            min_team_size: beforeState.min_team_size, max_team_size: beforeState.max_team_size,
+            min_individual_contributions: beforeState.min_individual_contributions,
+            status: "draft", updated_by: ADMIN_USERNAME,
           }).eq("id", expeditionId!);
         } else {
           await db.from("expeditions").delete().eq("id", expeditionId!);
