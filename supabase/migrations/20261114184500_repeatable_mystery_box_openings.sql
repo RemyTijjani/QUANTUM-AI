@@ -94,6 +94,7 @@ declare
 begin
   if p_player_id is null
      or p_request_id is null
+     or p_method is null
      or p_method not in ('zp', 'ad')
      or not exists (select 1 from public.players p where p.id = p_player_id)
   then
