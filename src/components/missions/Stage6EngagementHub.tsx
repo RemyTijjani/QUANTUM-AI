@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import MysteryBoxPanel from '@/components/missions/MysteryBoxPanel';
 import type { Notify } from '@/hooks/useToast';
@@ -140,7 +140,7 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState('');
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
       body: { action: 'get_daily_streak_state' },
@@ -153,11 +153,11 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
     setStatus(data.streak as DailyStreakStatus);
     setError('');
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [refresh]);
 
   const claim = async () => {
     setClaiming(true);
