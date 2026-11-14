@@ -193,18 +193,19 @@ as $function$
 begin
   if new.status = 'approved'
      and new.reviewed_at is not null
-     and new.player_id is not null
-     and (tg_op = 'INSERT' or old.status is distinct from 'approved') then
-    perform public.record_trusted_expedition_evidence(
-      new.player_id, 'creator_ops_approved', new.id::text, new.reviewed_at,
-      jsonb_build_object(
-        'submissionId', new.id,
-        'missionId', new.mission_id,
-        'platform', new.platform,
-        'contentId', new.content_id,
-        'reviewedAt', new.reviewed_at
-      )
-    );
+     and new.player_id is not null then
+    if tg_op = 'INSERT' or old.status is distinct from 'approved' then
+      perform public.record_trusted_expedition_evidence(
+        new.player_id, 'creator_ops_approved', new.id::text, new.reviewed_at,
+        jsonb_build_object(
+          'submissionId', new.id,
+          'missionId', new.mission_id,
+          'platform', new.platform,
+          'contentId', new.content_id,
+          'reviewedAt', new.reviewed_at
+        )
+      );
+    end if;
   end if;
   return new;
 end;
