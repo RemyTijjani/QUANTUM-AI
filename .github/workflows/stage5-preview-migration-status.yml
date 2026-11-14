@@ -67,16 +67,32 @@ jobs:
           PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
         run: |
           echo "Listing deployed Edge Functions for the Preview project (read only)."
-          supabase functions list --project-ref "$PREVIEW_PROJECT_REF"
+          supabase functions list --project-ref "$PREVIEW_PROJECT_REF" > /tmp/preview-functions.txt
+          cat /tmp/preview-functions.txt
+          missing_functions=0
+          for name in telegram-auth admin-api telegram-bot public-events event-participation gameplay-actions player-economy agent-rental-payments; do
+            if grep -Fq "$name" /tmp/preview-functions.txt; then
+              echo "$name: deployed"
+            else
+              echo "$name: NOT FOUND"
+              missing_functions=1
+            fi
+          done
           echo "Checking only the names of required custom Edge Function secrets; values and digests are not printed."
           supabase secrets list --project-ref "$PREVIEW_PROJECT_REF" > /tmp/preview-secret-list.txt
+          missing_secrets=0
           for name in TONCENTER_API_KEY ZORD_GRAM_TREASURY_ADDRESS; do
             if grep -Eq "^\\s*${name}([[:space:]|]|$)" /tmp/preview-secret-list.txt; then
               echo "$name: present"
             else
               echo "$name: NOT FOUND"
+              missing_secrets=1
             fi
           done
+          if [ "$missing_functions" -ne 0 ] || [ "$missing_secrets" -ne 0 ]; then
+            echo "Preview Edge Function deployment/configuration requires review."
+            exit 1
+          fi
       - name: List local versus Preview migration history (read only)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
