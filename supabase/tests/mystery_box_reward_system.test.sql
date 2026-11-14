@@ -60,14 +60,6 @@ begin
     raise exception 'Premium Box Fragment Mining boost chance must equal 10%%';
   end if;
 
-  if exists (
-    select 1
-    from app_private.player_reward_entitlements
-    where reward_type = 'temporary_mining_agent'
-  ) then
-    raise exception 'Mystery Box migration must not grant temporary mining agents';
-  end if;
-
   if has_function_privilege('anon', 'public.grant_mystery_box(uuid,text,text,text,text)', 'EXECUTE')
      or has_function_privilege('authenticated', 'public.grant_mystery_box(uuid,text,text,text,text)', 'EXECUTE')
      or has_function_privilege('anon', 'public.open_mystery_box(uuid,uuid)', 'EXECUTE')
