@@ -21,3 +21,6 @@ verify_jwt = false
 
 [functions.agent-rental-payments]
 verify_jwt = false
+
+[functions.mystery-box-actions]
+verify_jwt = false
