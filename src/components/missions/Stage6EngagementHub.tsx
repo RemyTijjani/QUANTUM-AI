@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import MysteryBoxPanel from '@/components/missions/MysteryBoxPanel';
+import ExpeditionsScreen from '@/components/missions/ExpeditionsScreen';
 import type { Notify } from '@/hooks/useToast';
 import {
   CalendarDays,
@@ -90,19 +91,6 @@ function FeatureHeader({
   );
 }
 
-function ServiceNotice({ title }: { title: string }) {
-  return (
-    <div className="panel flex items-start gap-3 border border-amber-400/25 bg-amber-400/5 p-3">
-      <ShieldAlert size={16} className="mt-0.5 shrink-0 text-amber-300" />
-      <div>
-        <p className="font-mono text-[10px] font-bold uppercase text-amber-200">{title}</p>
-        <p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-600">
-          This experience is being prepared. It will become active only after its trusted service and reward rules are connected. Nothing here can currently issue or change ZP.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 type DailyStreakStatus = {
   currentStreakDay: number;
@@ -266,24 +254,3 @@ function BriefingsScreen() {
   );
 }
 
-function ExpeditionsScreen() {
-  return (
-    <section className="space-y-3">
-      <FeatureHeader
-        eyebrow="Special operations"
-        title="Expeditions"
-        description="A dedicated space for time-limited objectives, coordinated player activities and verified expedition outcomes."
-        icon={Compass}
-      />
-      <div className="panel space-y-3 p-4">
-        <div className="flex items-center justify-between"><p className="label">Available expeditions</p><span className="font-mono text-[8px] uppercase text-neon-700">0 published</span></div>
-        <div className="py-8 text-center">
-          <Compass size={28} className="mx-auto text-neon-700" />
-          <h3 className="mt-3 font-display text-xs font-bold uppercase tracking-wider text-neon-300">No active expeditions</h3>
-          <p className="mx-auto mt-2 max-w-xs font-mono text-[9px] leading-relaxed text-neon-700">New expeditions will appear here after they are published by operations. Progress and completion will be verified by the server.</p>
-        </div>
-      </div>
-      <ServiceNotice title="Expedition service is not active yet" />
-    </section>
-  );
-}
