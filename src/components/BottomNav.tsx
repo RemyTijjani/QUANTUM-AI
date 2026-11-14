@@ -17,7 +17,7 @@ interface BottomNavProps {
 
 export default function BottomNav({ active, onChange }: BottomNavProps) {
   return (
-    <nav className="relative z-20 grid grid-cols-6 border-t border-neon/20 bg-obsidian/95 px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 backdrop-blur">
+    <nav className="relative z-20 grid grid-cols-5 border-t border-neon/20 bg-obsidian/95 px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 backdrop-blur">
       {TABS.map(({ id, label, icon }) => {
         const isActive = id === active;
         return (
