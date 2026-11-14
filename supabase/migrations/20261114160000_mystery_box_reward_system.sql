@@ -205,7 +205,7 @@ begin
         and idempotency_key = p_idempotency_key;
 
     if v_entitlement.reward_type <> 'mystery_box'
-       or v_entitlement.reward_code <> v_tier || '_mystery_box'
+       or v_entitlement.reward_code <> (v_tier || '_mystery_box')
        or v_entitlement.source <> p_source
        or v_entitlement.source_reference <> p_source_reference
     then
@@ -357,7 +357,7 @@ begin
   v_tier := v_box.metadata ->> 'box_tier';
   v_pool_version := coalesce((v_box.metadata ->> 'pool_version')::integer, 0);
 
-  if v_tier not in ('standard', 'premium') or v_pool_version <= 0 then
+  if v_tier is null or v_tier not in ('standard', 'premium') or v_pool_version <= 0 then
     raise exception 'Mystery Box reward configuration is invalid';
   end if;
 
