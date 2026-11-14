@@ -73,7 +73,7 @@ function FragmentBay({
       <span className="font-mono text-[10px] uppercase tracking-wider opacity-90">{label}</span>
       {status === 'fixed' && (
         <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-yellow-500/90">
-          +{FRAGMENT_ZP_PER_SEC.toFixed(2)} ZP/sec
+          +{FRAGMENT_ZP_PER_SEC.toFixed(2)} ZP/sec estimate
         </span>
       )}
     </button>
