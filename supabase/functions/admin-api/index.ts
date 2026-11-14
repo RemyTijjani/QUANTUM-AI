@@ -29,6 +29,7 @@ interface AdminRequestBody {
     | "save_vault_reserves"
     | "save_event"
     | "delete_event"
+    | "save_expedition_draft"
     | "list_players"
     | "get_player_economy"
     | "list_event_participants"
@@ -76,6 +77,13 @@ interface AdminRequestBody {
     objectives?: unknown;
     requirements?: unknown;
     participationRules?: unknown;
+  };
+  expedition?: {
+    title?: string; description?: string; category?: string; accessMode?: string; participationMode?: string;
+    minTeamSize?: number; maxTeamSize?: number; minIndividualContributions?: number;
+    startsAt?: string | null; endsAt?: string | null; timezone?: string;
+    rewardType?: string; rewardAmount?: number;
+    objectives?: Array<{ kind?: string; title?: string }>;
   };
   eventId?: string;
   participationId?: string;
@@ -719,6 +727,89 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Bulk approval could not be completed." }, 500);
       }
       return json(data);
+    }
+
+    // CREATE AN UNPUBLISHED EXPEDITION DRAFT. All writes use the service-role client
+    // only after the existing server-side admin credential and rate-limit checks.
+    if (body.action === "save_expedition_draft") {
+      const expedition = body.expedition;
+      if (!expedition || typeof expedition !== "object") return json({ error: "Expedition details are required" }, 400);
+      const title = typeof expedition.title === "string" ? expedition.title.trim() : "";
+      const description = typeof expedition.description === "string" ? expedition.description.trim() : "";
+      const categories: Record<string, string> = {
+        "Open": "open", "Progressive": "progressive", "Seasonal": "seasonal", "Community": "community",
+        "Competitive": "competitive", "Team": "team", "Special limited-time": "special_limited_time",
+      };
+      const objectiveKinds = ["briefing", "quiz", "game", "community", "external", "milestone"];
+      const accessMode = expedition.accessMode;
+      const participationMode = expedition.participationMode;
+      const rewardType = expedition.rewardType;
+      const rewardAmount = expedition.rewardAmount;
+      const objectives = expedition.objectives;
+      if (!title || title.length > 160) return json({ error: "Expedition name must be between 1 and 160 characters" }, 400);
+      if (description.length > 2000) return json({ error: "Description must be 2,000 characters or fewer" }, 400);
+      if (!expedition.category || !categories[expedition.category]) return json({ error: "Invalid Expedition category" }, 400);
+      if (accessMode !== "open" && accessMode !== "progressive") return json({ error: "Invalid access mode" }, 400);
+      if (!["solo", "team", "both"].includes(String(participationMode))) return json({ error: "Invalid participation mode" }, 400);
+      const minTeam = expedition.minTeamSize;
+      const maxTeam = expedition.maxTeamSize;
+      const minContributions = expedition.minIndividualContributions;
+      if (![minTeam, maxTeam, minContributions].every(Number.isSafeInteger) ||
+          Number(minTeam) < 2 || Number(maxTeam) > 100 || Number(maxTeam) < Number(minTeam) || Number(minContributions) < 0) {
+        return json({ error: "Invalid team size or contribution requirements" }, 400);
+      }
+      if (!["zp", "zap", "none"].includes(String(rewardType))) return json({ error: "Invalid reward type" }, 400);
+      if (rewardType === "none" ? rewardAmount !== 0 : (!Number.isSafeInteger(rewardAmount) || Number(rewardAmount) <= 0)) {
+        return json({ error: "Reward amount must be a positive whole number, or zero for no reward" }, 400);
+      }
+      if (!Array.isArray(objectives) || objectives.length < 1 || objectives.length > 20 ||
+          objectives.some((item) => !item || !objectiveKinds.includes(String(item.kind)) ||
+            typeof item.title !== "string" || !item.title.trim() || item.title.trim().length > 160)) {
+        return json({ error: "Add between 1 and 20 valid objectives (maximum 160 characters each)" }, 400);
+      }
+      const startsAt = expedition.startsAt ? new Date(expedition.startsAt) : null;
+      const endsAt = expedition.endsAt ? new Date(expedition.endsAt) : null;
+      if ((expedition.startsAt && (!startsAt || Number.isNaN(startsAt.getTime()))) ||
+          (expedition.endsAt && (!endsAt || Number.isNaN(endsAt.getTime()))) ||
+          (startsAt && endsAt && startsAt >= endsAt)) {
+        return json({ error: "Expedition schedule dates are invalid" }, 400);
+      }
+      const timezone = typeof expedition.timezone === "string" && expedition.timezone.trim() ? expedition.timezone.trim() : "UTC";
+      try { new Intl.DateTimeFormat("en-US", { timeZone: timezone }); }
+      catch { return json({ error: "Timezone must be a valid IANA timezone" }, 400); }
+
+      const slugBase = slugify(title).slice(0, 60) || "expedition";
+      const slug = `${slugBase}-${crypto.randomUUID().slice(0, 8)}`;
+      const { data: created, error: createError } = await db.from("expeditions").insert({
+        slug, title, description, category: categories[expedition.category], access_mode: accessMode,
+        participation_mode: participationMode, status: "draft",
+        starts_at: startsAt?.toISOString() ?? null, ends_at: endsAt?.toISOString() ?? null, timezone,
+        min_team_size: minTeam, max_team_size: maxTeam, min_individual_contributions: minContributions,
+        require_shared_team_objectives: true, created_by: ADMIN_USERNAME, updated_by: ADMIN_USERNAME,
+      }).select("id, slug").single();
+      if (createError || !created) {
+        console.error("Expedition draft creation failed:", createError);
+        return json({ error: "Could not create the Expedition draft" }, 500);
+      }
+
+      const objectiveRows = objectives.map((item, index) => ({
+        expedition_id: created.id, objective_type: item.kind, title: item.title!.trim(), sort_order: index,
+      }));
+      const { error: objectiveError } = await db.from("expedition_objectives").insert(objectiveRows);
+      const { error: rewardError } = objectiveError ? { error: null } : await db.from("expedition_rewards").insert({
+        expedition_id: created.id, reward_type: rewardType, amount: rewardAmount,
+        recipient_scope: participationMode === "solo" ? "each_eligible_participant" : "each_eligible_team_member",
+      });
+      const { error: auditError } = objectiveError || rewardError ? { error: null } : await db.from("expedition_audit_log").insert({
+        expedition_id: created.id, actor: ADMIN_USERNAME, action: "draft_created",
+        after_state: { title, category: categories[expedition.category], status: "draft", objective_count: objectives.length },
+      });
+      if (objectiveError || rewardError || auditError) {
+        console.error("Expedition draft detail save failed:", objectiveError || rewardError || auditError);
+        await db.from("expeditions").delete().eq("id", created.id);
+        return json({ error: "Expedition draft could not be saved completely; the incomplete draft was rolled back" }, 500);
+      }
+      return json({ success: true, id: created.id, slug: created.slug, status: "draft" });
     }
 
     // SAVE OR UPDATE TASK
