@@ -221,7 +221,7 @@ export default function MysteryBoxPanel({
             {repeatBox.zpBalance < 500 && <p className="font-mono text-[8px] text-red-300">You need {500 - repeatBox.zpBalance} more ZP for another opening.</p>}
           </>
         ) : (
-          <div className="flex items-center gap-2 py-2 font-mono text-[9px] text-neon-700"><Loader2 size={13} className="animate-spin" /> Loading repeat-opening status…</div>
+          <p className="rounded-lg border border-neon/15 bg-black/20 p-3 font-mono text-[9px] text-neon-700">Repeat openings are waiting for the Preview database and trusted service update. Your existing free Mystery Box openings remain available.</p>
         )}
         <p className="font-mono text-[8px] leading-relaxed text-neon-700">The ZP and future AdsGram methods share one server-enforced 2-hour cooldown. AdsGram is intentionally disabled until its reward verification is implemented; no ad-view reward can be claimed yet.</p>
       </div>
