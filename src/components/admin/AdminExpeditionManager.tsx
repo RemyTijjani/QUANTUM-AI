@@ -227,6 +227,39 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
         <div className="flex flex-wrap items-center gap-2"><span className="text-[10px] text-neon-400">{d.reward?.amount ? d.reward.amount+' '+d.reward.reward_type.toUpperCase() : 'No reward'}</span>{d.status==='draft' && <><button type="button" onClick={() => editDraft(d)} className="border border-neon/30 px-2 py-1 text-[10px] text-neon-300">Edit</button><button type="button" disabled={publishingId===d.id} onClick={() => void publishDraft(d)} className="border border-amber-400/40 px-2 py-1 text-[10px] text-amber-200 disabled:opacity-40">{publishingId===d.id?'Publishing…':'Publish'}</button></>}</div>
       </div>)}
     </div>
-    <p className="text-[10px] leading-relaxed text-neon-800">Legacy Events data is preserved. This first UI pass does not modify, delete or publish existing Events. Drafts can be loaded, edited and moved through the admin publishing lifecycle. Player visibility, objective verification and reward issuance remain disabled.</p>
+    <section className="space-y-3 border border-neon/25 bg-black/30 p-3 sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div><h3 className="text-[10px] font-bold uppercase tracking-widest text-neon-300">Objective verification queue</h3><p className="mt-1 text-[10px] text-neon-700">Review player and team evidence that needs an admin decision.</p></div>
+        <button type="button" onClick={() => void loadReviews()} disabled={loadingReviews} className="border border-neon/20 px-2 py-1 text-[10px] text-neon-400 disabled:opacity-40">{loadingReviews ? 'Refreshing…' : 'Refresh queue'}</button>
+      </div>
+      {reviewMessage && <p role="status" className="border-l-2 border-neon/40 bg-neon/5 px-3 py-2 text-[10px] text-neon-300">{reviewMessage}</p>}
+      {loadingReviews ? <p className="p-4 text-center text-xs text-neon-700">Loading review submissions…</p> : (
+        <>
+          {(['individual','team'] as const).map(scope => {
+            const items = scope === 'individual' ? reviewQueue.individualSubmissions : reviewQueue.teamSubmissions;
+            return <div key={scope} className="space-y-2">
+              <div className="flex items-center justify-between border-b border-neon/15 pb-1"><h4 className="text-[10px] font-bold uppercase tracking-wider text-neon-500">{scope === 'individual' ? 'Individual submissions' : 'Team submissions'}</h4><span className="text-[10px] text-neon-700">{items.length} pending</span></div>
+              {items.length === 0 ? <p className="border border-dashed border-neon/15 p-3 text-[10px] text-neon-800">No pending {scope} reviews.</p> : items.map(item => {
+                const key = scope + ':' + item.id;
+                return <article key={key} className="space-y-2 border border-neon/20 bg-black/40 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0"><p className="text-xs text-neon-200">{item.expedition_objectives?.title ?? 'Expedition objective'}</p><p className="mt-1 text-[9px] text-neon-700">{item.expedition_objectives?.objective_type ?? 'objective'} · {scope} · submitted {new Date(item.created_at).toLocaleString()}</p><p className="mt-1 break-all text-[9px] text-neon-600">{scope === 'team' ? 'Team: ' + (item.expedition_teams?.name ?? item.team_id ?? 'Unknown') : 'Player ID: ' + (item.player_id ?? 'Unknown')}</p></div>
+                    <span className="border border-amber-400/30 px-2 py-1 text-[9px] text-amber-200">Pending review</span>
+                  </div>
+                  <details className="text-[10px] text-neon-500"><summary className="cursor-pointer">View submitted evidence</summary><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words border border-neon/10 bg-black/50 p-2 text-[9px] text-neon-300">{JSON.stringify(item.evidence ?? {}, null, 2)}</pre></details>
+                  <label className="admin-field-label">Review reason {scope === 'team' ? '(optional for approval, required for rejection)' : '(optional for approval, required for rejection)'}<input value={reviewReasons[key] ?? ''} onChange={e => setReviewReasons(v => ({ ...v, [key]: e.target.value }))} maxLength={500} placeholder="Explain the decision…" className="admin-field"/></label>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" disabled={reviewingId === key} onClick={() => void submitReview(item, scope, 'verified')} className="border border-emerald-400/40 bg-emerald-950/20 px-3 py-2 text-[10px] text-emerald-200 disabled:opacity-40">{reviewingId === key ? 'Saving…' : 'Verify submission'}</button>
+                    <button type="button" disabled={reviewingId === key} onClick={() => void submitReview(item, scope, 'rejected')} className="border border-red-400/30 px-3 py-2 text-[10px] text-red-200 disabled:opacity-40">Reject</button>
+                  </div>
+                </article>;
+              })}
+            </div>;
+          })}
+        </>
+      )}
+      <p className="text-[9px] leading-relaxed text-neon-800">Verifying evidence updates Expedition completion and eligibility only. It does not issue ZP/ZAP or change player balances.</p>
+    </section>
+    <p className="text-[10px] leading-relaxed text-neon-800">Legacy Events data is preserved. This admin screen does not modify or delete existing Events. Player visibility and real reward issuance remain separate, disabled steps.</p>
   </section>;
 }
