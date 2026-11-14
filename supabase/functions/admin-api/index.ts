@@ -30,6 +30,9 @@ interface AdminRequestBody {
     | "save_event"
     | "delete_event"
     | "save_expedition_draft"
+    | "list_expedition_objective_reviews"
+    | "review_expedition_objective"
+    | "prepare_expedition_rewards"
     | "list_expeditions"
     | "publish_expedition"
     | "list_players"
@@ -81,13 +84,17 @@ interface AdminRequestBody {
     participationRules?: unknown;
   };
   expeditionId?: string;
+  progressId?: string;
+  progressScope?: "individual" | "team";
+  objectiveDecision?: "verified" | "rejected";
+  reviewReason?: string;
   expedition?: {
     id?: string;
     title?: string; description?: string; category?: string; accessMode?: string; participationMode?: string;
     minTeamSize?: number; maxTeamSize?: number; minIndividualContributions?: number;
     startsAt?: string | null; endsAt?: string | null; timezone?: string;
     rewardType?: string; rewardAmount?: number;
-    objectives?: Array<{ kind?: string; title?: string }>;
+    objectives?: Array<{ kind?: string; title?: string; scope?: string }>;
   };
   eventId?: string;
   participationId?: string;
@@ -745,7 +752,7 @@ Deno.serve(async (req: Request) => {
       }
       const ids = (rows ?? []).map((row) => row.id);
       const [objectivesRes, rewardsRes] = ids.length ? await Promise.all([
-        db.from("expedition_objectives").select("id, expedition_id, objective_type, title, sort_order").in("expedition_id", ids).order("sort_order"),
+        db.from("expedition_objectives").select("id, expedition_id, objective_type, title, completion_scope, sort_order").in("expedition_id", ids).order("sort_order"),
         db.from("expedition_rewards").select("expedition_id, reward_type, amount, recipient_scope").in("expedition_id", ids),
       ]) : [{ data: [], error: null }, { data: [], error: null }];
       if (objectivesRes.error || rewardsRes.error) {
@@ -755,7 +762,7 @@ Deno.serve(async (req: Request) => {
       const objectivesById = new Map<string, unknown[]>();
       for (const item of objectivesRes.data ?? []) {
         const current = objectivesById.get(item.expedition_id) ?? [];
-        current.push({ id: item.id, objective_type: item.objective_type, title: item.title, sort_order: item.sort_order });
+        current.push({ id: item.id, objective_type: item.objective_type, title: item.title, completion_scope: item.completion_scope, sort_order: item.sort_order });
         objectivesById.set(item.expedition_id, current);
       }
       const rewardById = new Map((rewardsRes.data ?? []).map((item) => [item.expedition_id, {
@@ -902,7 +909,8 @@ Deno.serve(async (req: Request) => {
         if (deleteError) return json({ error: "Could not replace draft objectives" }, 500);
       }
       const objectiveRows = objectives.map((item, index) => ({
-        expedition_id: expeditionId, objective_type: item.kind, title: item.title!.trim(), sort_order: index,
+        expedition_id: expeditionId, objective_type: item.kind, title: item.title!.trim(),
+        completion_scope: item.scope === "team" || item.scope === "both" ? item.scope : "individual", sort_order: index,
       }));
       const { error: objectiveError } = await db.from("expedition_objectives").insert(objectiveRows);
       const rewardPayload = {
