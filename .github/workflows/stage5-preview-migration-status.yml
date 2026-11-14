@@ -31,12 +31,15 @@ jobs:
           fi
           echo "Credentials are present. Target is the Preview project secret."
 
-      - name: List local versus Preview migration history (read only)
+      - name: Link only the Preview project
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          echo "Running read-only migration list against the Preview project."
+          supabase link --project-ref "$PREVIEW_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: List local versus Preview migration history (read only)
+        run: |
+          echo "Running read-only migration list against the linked Preview project."
           echo "This workflow does not run db push, migration repair, migration up, or SQL writes."
-          supabase migration list --remote="$PREVIEW_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          supabase migration list --linked
