@@ -1,0 +1,94 @@
+name: Stage 5 Preview Security - No Direct Gameplay ZP Awards
+# Preview-only security regression checks. No valid player credentials, balances, or Production resources are used.
+
+on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - ".github/workflows/stage5-preview-gameplay-no-direct-zp.yml"
+      - "supabase/functions/gameplay-actions/index.ts"
+      - "supabase/functions/player-economy/index.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gameplay-source-boundary:
+    name: Verify gameplay route has no ZP write path
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: security/trusted-gameplay-migration
+      - name: Assert gameplay-actions exposes only trusted fragment operations
+        shell: bash
+        run: |
+          set -euo pipefail
+          file="supabase/functions/gameplay-actions/index.ts"
+          for action in begin_fragment_unlock complete_fragment_unlock fix_fragment; do
+            grep -Fq "body.action === \"$action\"" "$file" || {
+              echo "::error::Expected trusted gameplay action missing: $action"
+              exit 1
+            }
+          done
+          action_count="$(grep -Fc 'if (body.action ===' "$file")"
+          if [ "$action_count" != "3" ]; then
+            echo "::error::Unexpected gameplay action route count: $action_count"
+            exit 1
+          fi
+          if grep -Eiq 'player_economy|economy_ledger|admin_approve_event_participant_reward|admin_review_creator_submission|admin_bulk_approve_creator_submissions|zp_balance|lifetime_zp' "$file"; then
+            echo "::error::Gameplay route contains a direct economy write or privileged reward reference."
+            exit 1
+          fi
+          echo "PASS: gameplay-actions contains only the three trusted fragment routes and no economy/reward write references."
+      - name: Assert player-economy endpoint is read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          file="supabase/functions/player-economy/index.ts"
+          grep -Fq 'if (req.method !== "GET")' "$file"
+          if grep -Eiq '\.from\("player_economy"\)\.(insert|update|upsert|delete)' "$file"; then
+            echo "::error::Player economy endpoint contains a write operation."
+            exit 1
+          fi
+          echo "PASS: player-economy accepts GET only and contains no balance write operation."
+
+  preview-forged-gameplay-award:
+    name: Reject forged ordinary gameplay ZP award (Preview)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attempt forged ZP award through gameplay-actions without authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request POST "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/gameplay-actions" --header "Content-Type: application/json" --data '{"action":"award_zp","amount":999999,"playerId":"00000000-0000-0000-0000-000000000000","reason":"forged_gameplay_reward"}')"
+          echo "HTTP status: $status"
+          echo "Response:"
+          cat "$response_file"
+          if [ "$status" != "401" ]; then
+            rm -f "$response_file"
+            echo "::error::Expected HTTP 401 for forged unauthenticated gameplay award; received $status"
+            exit 1
+          fi
+          rm -f "$response_file"
+          echo "PASS: Preview gameplay-actions rejected the forged ZP award request."
+      - name: Confirm player-economy rejects write methods
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request POST "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/player-economy" --header "Content-Type: application/json" --data '{"action":"award_zp","amount":999999}')"
+          echo "HTTP status: $status"
+          echo "Response:"
+          cat "$response_file"
+          if [ "$status" != "405" ]; then
+            rm -f "$response_file"
+            echo "::error::Expected HTTP 405 from read-only player-economy endpoint; received $status"
+            exit 1
+          fi
+          rm -f "$response_file"
+          echo "PASS: Preview player-economy rejected POST; endpoint is read-only."
