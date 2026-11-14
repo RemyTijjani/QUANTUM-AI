@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Compass, Plus, ChevronLeft, ChevronRight, Save, Users, BookOpen, Gamepad2, Globe, Trophy, CalendarDays, Sparkles, Layers, ShieldCheck, Clock3 } from 'lucide-react';
-import { listAdminExpeditions, publishAdminExpedition, saveExpeditionDraft, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput, type AdminExpeditionRecord } from '@/lib/admin/adminApi';
+import { listAdminExpeditions, publishAdminExpedition, saveExpeditionDraft, listAdminExpeditionObjectiveReviews, reviewAdminExpeditionObjective, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput, type AdminExpeditionRecord, type AdminExpeditionObjectiveReview } from '@/lib/admin/adminApi';
 
 type ObjectiveKind = 'briefing' | 'quiz' | 'game' | 'community' | 'external' | 'milestone';
-type Objective = { id: number; kind: ObjectiveKind; title: string };
+type Objective = { id: number; kind: ObjectiveKind; title: string; scope: 'individual' | 'team' | 'both' };
 type LocalDraft = AdminExpeditionRecord;
 const steps = ['Basics', 'Access', 'Objectives', 'Rewards', 'Schedule & rules', 'Preview'];
 const kinds: { value: ObjectiveKind; label: string; icon: typeof BookOpen }[] = [
@@ -36,6 +36,11 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [reviewQueue, setReviewQueue] = useState<{ individualSubmissions: AdminExpeditionObjectiveReview[]; teamSubmissions: AdminExpeditionObjectiveReview[] }>({ individualSubmissions: [], teamSubmissions: [] });
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [reviewReasons, setReviewReasons] = useState<Record<string, string>>({});
+  const [reviewMessage, setReviewMessage] = useState('');
   const counts = useMemo(() => ({ legacy: events.length, active: drafts.filter(e => e.status === 'registration_open' || e.status === 'active').length, drafts: drafts.filter(e => e.status === 'draft').length }), [events, drafts]);
 
   const loadDrafts = useCallback(async () => {
@@ -46,6 +51,35 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   }, [creds.username, creds.password]);
   useEffect(() => { void loadDrafts(); }, [loadDrafts]);
 
+  const loadReviews = useCallback(async () => {
+    setLoadingReviews(true);
+    try { setReviewQueue(await listAdminExpeditionObjectiveReviews(creds)); setReviewMessage(''); }
+    catch (error) { setReviewMessage(error instanceof Error ? error.message : 'Could not load objective reviews.'); }
+    finally { setLoadingReviews(false); }
+  }, [creds.username, creds.password]);
+  useEffect(() => { void loadReviews(); }, [loadReviews]);
+
+  const submitReview = async (item: AdminExpeditionObjectiveReview, scope: 'individual' | 'team', decision: 'verified' | 'rejected') => {
+    const key = scope + ':' + item.id;
+    const reason = (reviewReasons[key] ?? '').trim();
+    if (decision === 'rejected' && !reason) { setReviewMessage('Add a reason before rejecting a submission.'); return; }
+    if (reason.length > 500) { setReviewMessage('Review reasons must be 500 characters or fewer.'); return; }
+    setReviewingId(key); setReviewMessage('');
+    try {
+      await reviewAdminExpeditionObjective(creds, { progressId: item.id, progressScope: scope, decision, reason });
+      setReviewMessage(decision === 'verified' ? 'Submission verified.' : 'Submission rejected.');
+      setReviewReasons(v => ({ ...v, [key]: '' }));
+      await Promise.all([loadReviews(), loadDrafts()]);
+    } catch (error) { setReviewMessage(error instanceof Error ? error.message : 'Could not review this submission.'); }
+    finally { setReviewingId(null); }
+  };
+
+  const verificationSource = (kind: ObjectiveKind) => ({
+    game: 'Automatic: server-verified Fragment fixes',
+    milestone: 'Automatic: successful Daily Uplink claims',
+    community: 'Automatic: admin-approved Creator Ops submissions',
+  } as Partial<Record<ObjectiveKind, string>>)[kind] ?? 'Manual review: admin/trusted-system verification required';
+
   const reset = () => {
     setStep(0); setTitle(''); setDescription(''); setCategory('Community'); setAccess('open'); setParticipation('both'); setEditingId(null);
     setRewardType('ZP'); setRewardAmount('100'); setTeamMin('2'); setTeamMax('5'); setContribution('1');
@@ -53,7 +87,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   };
   const addObjective = () => {
     if (!objectiveTitle.trim() || objectives.length >= 20) return;
-    setObjectives(v => [...v, { id: Date.now(), kind: objectiveKind, title: objectiveTitle.trim() }]);
+    setObjectives(v => [...v, { id: Date.now(), kind: objectiveKind, title: objectiveTitle.trim(), scope: 'individual' }]);
     setObjectiveTitle('');
   };
   const validReward = rewardType === 'none' || (Number.isSafeInteger(Number(rewardAmount)) && Number(rewardAmount) > 0);
@@ -87,7 +121,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
         timezone,
         rewardType: rewardType === 'none' ? 'none' : rewardType.toLowerCase() as 'zp' | 'zap',
         rewardAmount: rewardType === 'none' ? 0 : Number(rewardAmount),
-        objectives: objectives.map(({ kind, title }) => ({ kind, title })),
+        objectives: objectives.map(({ kind, title, scope }) => ({ kind, title, scope })), 
       });
       
       setSavedMessage(`Draft saved securely to Preview database (ID: ${saved.id}). It remains unpublished.`);
@@ -109,7 +143,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     setEndsAt(draft.ends_at ? new Date(draft.ends_at).toISOString().slice(0,16) : '');
     setRewardType(draft.reward?.reward_type === 'none' ? 'none' : (draft.reward?.reward_type ?? 'zp').toUpperCase());
     setRewardAmount(String(draft.reward?.amount ?? 0));
-    setObjectives(draft.objectives.map((o,i) => ({ id: i+1, kind: o.objective_type, title: o.title })));
+    setObjectives(draft.objectives.map((o,i) => ({ id: i+1, kind: o.objective_type, title: o.title, scope: o.completion_scope ?? 'individual' })));
     setStep(0); setCreating(true); setSavedMessage('');
   };
   const publishDraft = async (draft: AdminExpeditionRecord) => {
@@ -143,9 +177,9 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     if (step === 2) return <div className="space-y-4">
       <p className="text-[11px] text-neon-600">Combine different objective types. Add up to 20 objectives.</p>
       <div className="grid gap-2 md:grid-cols-[1fr_2fr_auto]"><select value={objectiveKind} onChange={e => setObjectiveKind(e.target.value as ObjectiveKind)} className="admin-field">{kinds.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}</select><input value={objectiveTitle} onChange={e => setObjectiveTitle(e.target.value)} maxLength={160} placeholder="Objective instruction" className="admin-field" /><button type="button" onClick={addObjective} disabled={!objectiveTitle.trim() || objectives.length>=20} className="border border-neon/40 px-3 py-2 text-xs text-neon-300 disabled:opacity-40"><Plus size={14}/></button></div>
-      {objectives.map((o,i) => { const k = kinds.find(x => x.value===o.kind)!; const Icon=k.icon; return <div key={o.id} className="flex items-center gap-3 border border-neon/20 bg-black/30 p-3"><span className="text-[10px] text-neon-700">{i+1}</span><Icon size={15} className="text-neon-400"/><div className="min-w-0 flex-1"><p className="text-xs text-neon-200">{o.title}</p><p className="text-[9px] text-neon-700">{k.label} · Required</p></div><button type="button" onClick={() => setObjectives(v => v.filter(x => x.id!==o.id))} className="text-[10px] text-red-300">Remove</button></div>; })}
+      {objectives.map((o,i) => { const k = kinds.find(x => x.value===o.kind)!; const Icon=k.icon; return <div key={o.id} className="grid gap-2 border border-neon/20 bg-black/30 p-3 md:grid-cols-[minmax(0,1fr)_150px_auto]"><div className="flex min-w-0 items-start gap-3"><span className="pt-1 text-[10px] text-neon-700">{i+1}</span><Icon size={15} className="mt-0.5 text-neon-400"/><div className="min-w-0"><p className="text-xs text-neon-200">{o.title}</p><p className="text-[9px] text-neon-700">{k.label} · Required</p><p className="mt-1 text-[9px] text-emerald-300">{verificationSource(o.kind)}</p></div></div><label className="admin-field-label">Completion scope<select value={o.scope} onChange={e => setObjectives(v => v.map(x => x.id===o.id ? { ...x, scope: e.target.value as Objective['scope'] } : x))} className="admin-field"><option value="individual">Individual</option><option value="team">Team</option><option value="both">Both</option></select></label><button type="button" onClick={() => setObjectives(v => v.filter(x => x.id!==o.id))} className="text-left text-[10px] text-red-300">Remove</button></div>; })}
       {!objectives.length && <p className="border border-dashed border-neon/20 p-6 text-center text-xs text-neon-700">No objectives added yet.</p>}
-      <p className="text-[10px] text-neon-700">Previously completed Briefings are intended to count automatically; backend verification is not connected yet.</p>
+      <p className="text-[10px] text-neon-700">Automatic source matching applies only to the source shown above. Other objective evidence remains in the manual review queue. Briefings are not automatically verified yet.</p>
     </div>;
     if (step === 3) return <div className="grid gap-4 md:grid-cols-2">
       <label className="admin-field-label">Reward type<select value={rewardType} onChange={e => setRewardType(e.target.value)} className="admin-field"><option value="ZP">ZP</option><option value="ZAP">ZAP</option><option value="none">No reward</option></select></label>
@@ -162,7 +196,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       <div className="rounded border border-neon/20 p-3"><p className="font-bold text-neon-100">{title || 'Untitled Expedition'}</p><p className="mt-1 text-neon-600">{description || 'No description added.'}</p></div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{[['Category',category],['Access',access],['Participation',participation],['Reward',rewardType==='none'?'None':rewardAmount+' '+rewardType]].map(([k,v]) => <div key={k} className="border border-neon/20 p-2"><p className="text-[9px] uppercase text-neon-700">{k}</p><p className="mt-1">{v}</p></div>)}</div>
       <p className="text-neon-600">{objectives.length} objectives · {startsAt ? new Date(startsAt).toLocaleString() : 'Start not set'} · {endsAt ? new Date(endsAt).toLocaleString() : 'End not set'}</p>
-      {objectives.map((o,i) => <p key={o.id} className="border-l border-neon/40 pl-2">{i+1}. {o.title} <span className="text-neon-700">({o.kind})</span></p>)}
+      {objectives.map((o,i) => <p key={o.id} className="border-l border-neon/40 pl-2">{i+1}. {o.title} <span className="text-neon-700">({o.kind} · {o.scope})</span><span className="block text-[9px] text-emerald-300">{verificationSource(o.kind)}</span></p>)}
       <p className="border border-amber-500/30 bg-amber-950/10 p-3 text-[10px] text-amber-200">Preview only. Publishing changes the admin lifecycle status; it does not make Expeditions visible to players or issue rewards.</p>
     </div>;
   };
