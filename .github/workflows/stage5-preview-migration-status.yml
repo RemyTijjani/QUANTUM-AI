@@ -171,7 +171,44 @@ jobs:
                FROM information_schema.role_table_grants
                WHERE table_schema IN ('auth', 'storage', 'realtime')
                  AND grantee IN ('anon', 'authenticated', 'service_role')
-              ) AS managed_schema_grants;
+              ) AS managed_schema_grants,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'schema_name', n.nspname,
+                'role_name', r.role_name,
+                'schema_usage', has_schema_privilege(r.role_name, n.oid, 'USAGE'),
+                'schema_create', has_schema_privilege(r.role_name, n.oid, 'CREATE'),
+                'table_privileges', (
+                  SELECT jsonb_agg(jsonb_build_object(
+                    'object_name', c.relname,
+                    'object_type', c.relkind,
+                    'select', has_table_privilege(r.role_name, c.oid, 'SELECT'),
+                    'insert', has_table_privilege(r.role_name, c.oid, 'INSERT'),
+                    'update', has_table_privilege(r.role_name, c.oid, 'UPDATE'),
+                    'delete', has_table_privilege(r.role_name, c.oid, 'DELETE'),
+                    'truncate', has_table_privilege(r.role_name, c.oid, 'TRUNCATE'),
+                    'references', has_table_privilege(r.role_name, c.oid, 'REFERENCES'),
+                    'trigger', has_table_privilege(r.role_name, c.oid, 'TRIGGER')
+                  ) ORDER BY c.relname)
+                  FROM pg_class c
+                  WHERE c.relnamespace = n.oid
+                    AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+                ),
+                'sequence_privileges', (
+                  SELECT jsonb_agg(jsonb_build_object(
+                    'object_name', c.relname,
+                    'select', has_sequence_privilege(r.role_name, c.oid, 'SELECT'),
+                    'usage', has_sequence_privilege(r.role_name, c.oid, 'USAGE'),
+                    'update', has_sequence_privilege(r.role_name, c.oid, 'UPDATE')
+                  ) ORDER BY c.relname)
+                  FROM pg_class c
+                  WHERE c.relnamespace = n.oid
+                    AND c.relkind = 'S'
+                )
+              ) ORDER BY n.nspname, r.role_name)
+               FROM pg_namespace n
+               CROSS JOIN (VALUES ('anon'), ('authenticated'), ('service_role')) r(role_name)
+               WHERE n.nspname IN ('auth', 'storage', 'realtime')
+              ) AS managed_schema_effective_privileges;
           "
 
       - name: Audit Preview gameplay seed and reconciliation data (read only)
