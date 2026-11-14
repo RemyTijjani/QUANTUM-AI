@@ -189,17 +189,11 @@ export default function MysteryBoxPanel({
           <div className="rounded-lg border border-neon/20 bg-black/30 p-3"><p className="label">Standard</p><p className="mt-1 font-display text-2xl text-neon-200">{counts.standard}</p><p className="font-mono text-[8px] uppercase text-neon-700">Available</p></div>
           <div className="rounded-lg border border-violet-300/25 bg-black/30 p-3"><p className="label">Premium</p><p className="mt-1 font-display text-2xl text-violet-200">{counts.premium}</p><p className="font-mono text-[8px] uppercase text-violet-400/70">Available</p></div>
         </div>
-      </div>
-
-      {errorMessage && <div role="alert" className="panel border border-red-400/25 bg-red-400/5 p-3 font-mono text-[10px] text-red-300">{errorMessage} <button type="button" onClick={() => void loadInventory()} className="ml-2 underline">Retry</button></div>}
-
-      <div className="panel space-y-3 border border-amber-300/20 bg-gradient-to-br from-amber-400/10 via-black/40 to-violet-500/5 p-4">
-        <div className="flex items-center gap-2">
-          <span className="mystery-box-art mystery-box-art--premium flex h-9 w-9 items-center justify-center rounded-lg border border-amber-300/25 bg-amber-300/10 text-amber-200"><Gift size={18} /></span>
-          <div><p className="label">Repeat opening</p><h3 className="title mt-1">Mystery Box Refill</h3></div>
-          <span className="ml-auto rounded-md border border-amber-300/20 px-2 py-1 font-mono text-[8px] uppercase text-amber-200">500 ZP</span>
+      <div className="mt-4 space-y-3 border-t border-neon/15 pt-4">
+        <div className="flex items-center justify-between gap-2">
+          <div><p className="label">Open another box</p><p className="mt-1 font-mono text-[9px] text-neon-600">After your free daily claim, use either option below.</p></div>
+          <span className="rounded-md border border-amber-300/20 px-2 py-1 font-mono text-[8px] uppercase text-amber-200">500 ZP</span>
         </div>
-        <p className="font-mono text-[9px] leading-relaxed text-neon-500">After claiming today's Daily Streak reward, open another box for 500 ZP. Each paid opening randomly gives a Standard Box (80%) or Premium Box (20%), using the published reward odds.</p>
         {repeatBox ? (
           <>
             <div className="grid grid-cols-2 gap-2">
@@ -207,24 +201,29 @@ export default function MysteryBoxPanel({
               <div className="rounded-lg border border-neon/15 bg-black/30 p-3"><p className="label">Next opening</p><p className="mt-1 font-mono text-sm font-bold text-amber-200">{repeatBox.cooldownUntil && new Date(repeatBox.cooldownUntil).getTime() > nowMs ? formatCountdown(new Date(repeatBox.cooldownUntil).getTime() - nowMs) : 'Ready'}</p></div>
             </div>
             {!repeatBox.dailyClaimedToday ? (
-              <p className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 font-mono text-[9px] text-amber-200">Claim today's Daily Streak reward first to unlock repeat openings.</p>
+              <p className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 font-mono text-[9px] text-amber-200">Claim your free daily Mystery Box first to unlock another opening.</p>
             ) : repeatBox.cooldownUntil && new Date(repeatBox.cooldownUntil).getTime() > nowMs ? (
-              <p className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 font-mono text-[9px] text-amber-200">Your shared 2-hour cooldown is active. Both ZP and rewarded-ad openings will remain locked until it ends.</p>
+              <p className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 font-mono text-[9px] text-amber-200">Your shared 2-hour cooldown is active. Both options unlock when it ends.</p>
             ) : null}
             {repeatMessage && <p role="alert" className="rounded-lg border border-red-400/20 bg-red-400/5 p-3 font-mono text-[9px] text-red-300">{repeatMessage}</p>}
             <div className="grid grid-cols-2 gap-2">
+              <button type="button" disabled className="min-h-11 rounded-lg border border-neon/15 bg-black/20 px-3 py-2 font-mono text-[9px] font-bold uppercase text-neon-700 disabled:opacity-70" title="AdsGram integration is not enabled yet">Watch Ad · coming soon</button>
               <button type="button" onClick={() => void openRepeatBox()} disabled={repeatBusy || !repeatBox.dailyClaimedToday || (repeatBox.cooldownUntil !== null && new Date(repeatBox.cooldownUntil).getTime() > nowMs) || repeatBox.zpBalance < 500} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-amber-100 disabled:opacity-40">
                 {repeatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Open for 500 ZP'}
               </button>
-              <button type="button" disabled className="min-h-11 rounded-lg border border-neon/15 bg-black/20 px-3 py-2 font-mono text-[9px] font-bold uppercase text-neon-700 disabled:opacity-70" title="AdsGram integration is not enabled yet">Watch ad · coming soon</button>
             </div>
             {repeatBox.zpBalance < 500 && <p className="font-mono text-[8px] text-red-300">You need {500 - repeatBox.zpBalance} more ZP for another opening.</p>}
           </>
         ) : (
-          <p className="rounded-lg border border-neon/15 bg-black/20 p-3 font-mono text-[9px] text-neon-700">Repeat openings are waiting for the Preview database and trusted service update. Your existing free Mystery Box openings remain available.</p>
+          <p className="rounded-lg border border-neon/15 bg-black/20 p-3 font-mono text-[9px] text-neon-700">Another opening will be available here after your free daily claim.</p>
         )}
-        <p className="font-mono text-[8px] leading-relaxed text-neon-700">The ZP and future AdsGram methods share one server-enforced 2-hour cooldown. AdsGram is intentionally disabled until its reward verification is implemented; no ad-view reward can be claimed yet.</p>
+        <p className="font-mono text-[8px] leading-relaxed text-neon-700">Both options share one server-enforced 2-hour cooldown. AdsGram remains disabled until reward verification is implemented.</p>
       </div>
+      </div>
+
+      {errorMessage && <div role="alert" className="panel border border-red-400/25 bg-red-400/5 p-3 font-mono text-[10px] text-red-300">{errorMessage} <button type="button" onClick={() => void loadInventory()} className="ml-2 underline">Retry</button></div>}
+
+
 
       {lastReward && (
         <div role="status" aria-live="polite" className="panel space-y-2 border border-emerald-400/30 bg-emerald-400/5 p-4">
