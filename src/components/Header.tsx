@@ -24,7 +24,7 @@ export default function Header({ zp, verifiedZpBalance, onOpenProfile, onOpenLea
           <h1 className="title glow-text leading-none">ZORD</h1>
           <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-neon-500">
             <span className="h-1.5 w-1.5 shrink-0 animate-soft-pulse rounded-full bg-neon shadow-glow" />
-            <span className="truncate">AUTONOMOUS AGENT // ZP MINING ACTIVE</span>
+            <span className="truncate">AUTONOMOUS AGENT // GAME STATE PREVIEW</span>
           </p>
         </div>
       </div>
