@@ -100,12 +100,12 @@ Deno.serve(async (req: Request) => {
         });
         objectivesById.set(objective.expedition_id, list);
       }
-      const rewardById = new Map((rewardsRes.data ?? []).map((reward) => [reward.expedition_id, {
+      const rewardById = new Map<string, { type: string; amount: number; recipientScope: string }>((rewardsRes.data ?? []).map((reward): [string, { type: string; amount: number; recipientScope: string }] => [reward.expedition_id, {
         type: reward.reward_type,
         amount: Number(reward.amount),
         recipientScope: reward.recipient_scope,
       }]));
-      const participationById = new Map((participationRes.data ?? []).map((item) => [item.expedition_id, {
+      const participationById = new Map<string, { status: string; teamId: string | null; individualContributionCount: number; rewardEligible: boolean; registeredAt: string; completedAt: string | null }>((participationRes.data ?? []).map((item): [string, { status: string; teamId: string | null; individualContributionCount: number; rewardEligible: boolean; registeredAt: string; completedAt: string | null }] => [item.expedition_id, {
         status: item.status,
         teamId: item.team_id,
         individualContributionCount: item.individual_contribution_count,
