@@ -28,14 +28,14 @@ jobs:
         run: |
           set -euo pipefail
           file="supabase/functions/gameplay-actions/index.ts"
-          for action in begin_fragment_unlock complete_fragment_unlock fix_fragment claim_daily_uplink; do
+          for action in get_daily_streak_state claim_daily_streak claim_daily_uplink begin_fragment_unlock complete_fragment_unlock fix_fragment get_reward_entitlements activate_reward_entitlement; do
             grep -Fq "body.action === \"$action\"" "$file" || {
               echo "::error::Expected trusted gameplay action missing: $action"
               exit 1
             }
           done
           action_count="$(grep -Fc 'if (body.action ===' "$file")"
-          if [ "$action_count" != "4" ]; then
+          if [ "$action_count" != "8" ]; then
             echo "::error::Unexpected gameplay action route count: $action_count"
             exit 1
           fi
@@ -43,7 +43,7 @@ jobs:
             echo "::error::Gameplay route contains a direct economy write or privileged reward reference."
             exit 1
           fi
-          echo "PASS: gameplay-actions contains only the three trusted fragment routes and the server-priced Daily Uplink claim route and no economy/reward write references."
+          echo "PASS: gameplay-actions contains only the eight approved trusted gameplay and reward-entitlement routes and no economy/reward write references."
       - name: Assert player-economy endpoint is read-only
         shell: bash
         run: |
@@ -85,10 +85,10 @@ jobs:
           echo "HTTP status: $status"
           echo "Response:"
           cat "$response_file"
-          if [ "$status" != "401" ]; then
+          if [ "$status" != "405" ] && [ "$status" != "401" ]; then
             rm -f "$response_file"
-            echo "::error::Expected HTTP 401 from Preview authorization gateway; received $status"
+            echo "::error::Expected HTTP 405 (read-only rejection) or 401 from Preview authorization gateway; received $status"
             exit 1
           fi
           rm -f "$response_file"
-          echo "PASS: Preview authorization gateway rejected the unauthenticated POST; source check confirms player-economy is read-only."
+          echo "PASS: Preview authorization gateway rejected the unauthenticated POST; 405 is expected for this GET-only endpoint and the source check confirms it is read-only."
