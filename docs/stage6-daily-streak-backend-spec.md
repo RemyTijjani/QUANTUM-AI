@@ -117,7 +117,7 @@ Extend `gameplay-actions` with a minimal action such as `claim_daily_streak`.
 
 These are not invented by this specification:
 1. 1. The exact draw method for the approved 1–10 whole-ZAP range; uniform selection is proposed.
-2. Standard Box excludes ZAP. Premium Box has a 10% chance to award 1–10 whole ZAP. Free Agent 1 remains exclusive to the 1% Daily Streak outcome. The remaining box contents and odds still require approval. Tier selection remains 80% Standard / 20% Premium.
+2. Standard Box excludes ZAP. Premium Box has a 10% chance to award 1–10 whole ZAP. Free Agent 1 remains exclusive to the 1% Daily Streak outcome. Fragment rewards from either box tier are intended to support both unlocking new fragments and repairing damaged fragments. Exact fragment amounts and mechanics, plus the remaining box contents and odds, still require approval. Tier selection remains 80% Standard / 20% Premium.
 3. Boost rules are approved: 2× Fragment Mining for 6 hours from activation; no stacking and no extension of an active boost.
 4. Agent 1 is the approved free mining-agent type. Starting the 24-hour clock on activation is recommended, pending confirmation.
 5. A trusted ZAP wallet/ledger and credit RPC. Preview currently has no dedicated ZAP balance/ledger table.
