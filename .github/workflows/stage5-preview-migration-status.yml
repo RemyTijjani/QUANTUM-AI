@@ -240,7 +240,24 @@ jobs:
                JOIN pg_namespace n ON n.oid = c.relnamespace
                WHERE n.nspname IN ('auth', 'storage', 'realtime')
                  AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
-              ) AS managed_schema_rls_policies;
+              ) AS managed_schema_rls_policies,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'owner', pg_get_userbyid(d.defaclrole),
+                'schema_name', CASE WHEN d.defaclnamespace = 0 THEN 'global' ELSE n.nspname END,
+                'object_type', CASE d.defaclobjtype
+                  WHEN 'r' THEN 'tables'
+                  WHEN 'S' THEN 'sequences'
+                  WHEN 'f' THEN 'functions'
+                  WHEN 'T' THEN 'types'
+                  WHEN 'n' THEN 'schemas'
+                  ELSE d.defaclobjtype::text
+                END,
+                'default_acl', d.defaclacl::text
+              ) ORDER BY pg_get_userbyid(d.defaclrole), d.defaclnamespace, d.defaclobjtype)
+               FROM pg_default_acl d
+               LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace
+               WHERE d.defaclnamespace = 0 OR n.nspname = 'public'
+              ) AS default_privilege_acls;
           "
 
       - name: Audit Preview gameplay seed and reconciliation data (read only)
