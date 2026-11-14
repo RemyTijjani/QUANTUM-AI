@@ -1,0 +1,39 @@
+name: Stage 5 Preview - Block unauthorized reward approval
+
+on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - ".github/workflows/stage5-preview-unauthorized-reward.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unauthorized-reward-must-not-run:
+    name: Reject unauthorized reward approval (Preview)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attempt event reward approval with invalid admin credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request POST "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/admin-api" --header "Content-Type: application/json" --data '{"action":"approve_event_participant_reward","participationId":"00000000-0000-4000-8000-000000000000","adminUsername":"stage5-invalid-user","adminPassword":"stage5-invalid-password"}')"
+          echo "HTTP status: $status"
+          echo "Response:"
+          cat "$response_file"
+          if [ "$status" != "401" ]; then
+            rm -f "$response_file"
+            echo "::error::Expected HTTP 401 before reward approval; received $status"
+            exit 1
+          fi
+          if ! grep -q '"error":"Unauthorized"' "$response_file"; then
+            rm -f "$response_file"
+            echo "::error::Unexpected response body for unauthorized reward attempt"
+            exit 1
+          fi
+          rm -f "$response_file"
+          echo "PASS: Unauthorized reward approval was rejected before the privileged RPC could run."
