@@ -135,9 +135,9 @@ jobs:
               CASE WHEN to_regclass('cron.job') IS NULL THEN NULL
                 ELSE (SELECT count(*) FROM cron.job) END AS scheduled_job_count,
               (SELECT jsonb_agg(jsonb_build_object(
-                'schema_name', schema_name, 'role_name', role_name,
+                'schema_name', table_schema, 'role_name', grantee,
                 'privilege_type', privilege_type
-              ) ORDER BY schema_name, role_name, privilege_type)
+              ) ORDER BY table_schema, grantee, privilege_type)
                FROM information_schema.role_table_grants
                WHERE table_schema IN ('auth', 'storage', 'realtime')
                  AND grantee IN ('anon', 'authenticated', 'service_role')
