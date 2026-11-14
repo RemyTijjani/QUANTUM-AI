@@ -29,7 +29,7 @@ interface AdminRequestBody {
     | "save_vault_reserves"
     | "save_event"
     | "delete_event"
-    | "save_expedition_draft"
+    | "save_expedition_draft"\n    | "list_expeditions"\n    | "publish_expedition"
     | "list_players"
     | "get_player_economy"
     | "list_event_participants"
@@ -78,7 +78,7 @@ interface AdminRequestBody {
     requirements?: unknown;
     participationRules?: unknown;
   };
-  expedition?: {
+  expeditionId?: string;\n  expedition?: {\n    id?: string;
     title?: string; description?: string; category?: string; accessMode?: string; participationMode?: string;
     minTeamSize?: number; maxTeamSize?: number; minIndividualContributions?: number;
     startsAt?: string | null; endsAt?: string | null; timezone?: string;
@@ -731,6 +731,70 @@ Deno.serve(async (req: Request) => {
 
     // CREATE AN UNPUBLISHED EXPEDITION DRAFT. All writes use the service-role client
     // only after the existing server-side admin credential and rate-limit checks.
+    if (body.action === "list_expeditions") {
+      const { data: rows, error } = await db.from("expeditions")
+        .select("id, slug, title, description, category, access_mode, participation_mode, status, starts_at, ends_at, timezone, min_team_size, max_team_size, min_individual_contributions")
+        .order("created_at", { ascending: false }).limit(100);
+      if (error) {
+        console.error("Expedition list failed:", error);
+        return json({ error: "Could not load saved Expeditions" }, 500);
+      }
+      const ids = (rows ?? []).map((row) => row.id);
+      const [objectivesRes, rewardsRes] = ids.length ? await Promise.all([
+        db.from("expedition_objectives").select("id, expedition_id, objective_type, title, sort_order").in("expedition_id", ids).order("sort_order"),
+        db.from("expedition_rewards").select("expedition_id, reward_type, amount, recipient_scope").in("expedition_id", ids),
+      ]) : [{ data: [], error: null }, { data: [], error: null }];
+      if (objectivesRes.error || rewardsRes.error) {
+        console.error("Expedition detail list failed:", objectivesRes.error || rewardsRes.error);
+        return json({ error: "Could not load Expedition details" }, 500);
+      }
+      const objectivesById = new Map<string, unknown[]>();
+      for (const item of objectivesRes.data ?? []) {
+        const current = objectivesById.get(item.expedition_id) ?? [];
+        current.push({ id: item.id, objective_type: item.objective_type, title: item.title, sort_order: item.sort_order });
+        objectivesById.set(item.expedition_id, current);
+      }
+      const rewardById = new Map((rewardsRes.data ?? []).map((item) => [item.expedition_id, {
+        reward_type: item.reward_type, amount: Number(item.amount), recipient_scope: item.recipient_scope,
+      }]));
+      return json({ success: true, expeditions: (rows ?? []).map((row) => ({
+        ...row, objectives: objectivesById.get(row.id) ?? [], reward: rewardById.get(row.id) ?? null,
+      })) });
+    }
+
+    if (body.action === "publish_expedition") {
+      const id = body.expeditionId;
+      if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "A valid Expedition ID is required" }, 400);
+      const { data: current, error: readError } = await db.from("expeditions").select("id, status, title, starts_at").eq("id", id).maybeSingle();
+      if (readError || !current) return json({ error: "Expedition not found" }, 404);
+      if (current.status !== "draft") return json({ error: "Only an unpublished draft can be published" }, 409);
+      const [{ count: objectiveCount, error: objectiveError }, { data: reward, error: rewardError }] = await Promise.all([
+        db.from("expedition_objectives").select("id", { count: "exact", head: true }).eq("expedition_id", id),
+        db.from("expedition_rewards").select("reward_type, amount").eq("expedition_id", id).maybeSingle(),
+      ]);
+      if (objectiveError || rewardError) return json({ error: "Could not validate Expedition before publishing" }, 500);
+      if (!objectiveCount || !reward) return json({ error: "Add objectives and reward configuration before publishing" }, 400);
+      // Publish changes only the admin lifecycle state. No player-facing read/claim path is enabled by this action.
+      const nextStatus = current.starts_at && new Date(current.starts_at).getTime() > Date.now() ? "scheduled" : "registration_open";
+      const { error: updateError } = await db.from("expeditions").update({
+        status: nextStatus, updated_by: ADMIN_USERNAME, updated_at: new Date().toISOString(),
+      }).eq("id", id).eq("status", "draft");
+      if (updateError) {
+        console.error("Expedition publish failed:", updateError);
+        return json({ error: "Could not publish this Expedition" }, 500);
+      }
+      const { error: auditError } = await db.from("expedition_audit_log").insert({
+        expedition_id: id, actor: ADMIN_USERNAME, action: "published",
+        before_state: { status: "draft" }, after_state: { status: nextStatus },
+      });
+      if (auditError) {
+        console.error("Expedition publish audit failed:", auditError);
+        await db.from("expeditions").update({ status: "draft", updated_by: ADMIN_USERNAME }).eq("id", id).eq("status", nextStatus);
+        return json({ error: "Publishing was rolled back because its audit record could not be saved" }, 500);
+      }
+      return json({ success: true, status: nextStatus, playerVisibility: false });
+    }
+
     if (body.action === "save_expedition_draft") {
       const expedition = body.expedition;
       if (!expedition || typeof expedition !== "object") return json({ error: "Expedition details are required" }, 400);
@@ -780,38 +844,84 @@ Deno.serve(async (req: Request) => {
       try { new Intl.DateTimeFormat("en-US", { timeZone: timezone }); }
       catch { return json({ error: "Timezone must be a valid IANA timezone" }, 400); }
 
-      const slugBase = slugify(title).slice(0, 60) || "expedition";
-      const slug = `${slugBase}-${crypto.randomUUID().slice(0, 8)}`;
-      const { data: created, error: createError } = await db.from("expeditions").insert({
-        slug, title, description, category: categories[expedition.category], access_mode: accessMode,
-        participation_mode: participationMode, status: "draft",
-        starts_at: startsAt?.toISOString() ?? null, ends_at: endsAt?.toISOString() ?? null, timezone,
-        min_team_size: minTeam, max_team_size: maxTeam, min_individual_contributions: minContributions,
-        require_shared_team_objectives: true, created_by: ADMIN_USERNAME, updated_by: ADMIN_USERNAME,
-      }).select("id, slug").single();
-      if (createError || !created) {
-        console.error("Expedition draft creation failed:", createError);
-        return json({ error: "Could not create the Expedition draft" }, 500);
+      const isUpdate = typeof body.expeditionId === "string" && /^[0-9a-f-]{36}$/i.test(body.expeditionId);
+      let expeditionId = body.expeditionId;
+      let slug = "";
+      let beforeState: Record<string, unknown> = {};
+      if (isUpdate) {
+        const { data: current, error: currentError } = await db.from("expeditions")
+          .select("id, slug, status, title, description, category, access_mode, participation_mode, starts_at, ends_at, timezone, min_team_size, max_team_size, min_individual_contributions")
+          .eq("id", expeditionId!).maybeSingle();
+        if (currentError || !current) return json({ error: "Expedition draft not found" }, 404);
+        if (current.status !== "draft") return json({ error: "Only unpublished drafts can be edited" }, 409);
+        const { count, error: participationError } = await db.from("expedition_participations")
+          .select("id", { count: "exact", head: true }).eq("expedition_id", expeditionId!);
+        if (participationError || (count ?? 0) > 0) return json({ error: "This Expedition already has participation and can no longer be edited as a draft" }, 409);
+        slug = current.slug;
+        beforeState = { title: current.title, status: current.status };
+        const { error: updateError } = await db.from("expeditions").update({
+          title, description, category: categories[expedition.category], access_mode: accessMode,
+          participation_mode: participationMode, starts_at: startsAt?.toISOString() ?? null,
+          ends_at: endsAt?.toISOString() ?? null, timezone, min_team_size: minTeam, max_team_size: maxTeam,
+          min_individual_contributions: minContributions, updated_by: ADMIN_USERNAME, updated_at: new Date().toISOString(),
+        }).eq("id", expeditionId!).eq("status", "draft");
+        if (updateError) return json({ error: "Could not update the Expedition draft" }, 500);
+      } else {
+        const slugBase = slugify(title).slice(0, 60) || "expedition";
+        slug = `${slugBase}-${crypto.randomUUID().slice(0, 8)}`;
+        const { data: created, error: createError } = await db.from("expeditions").insert({
+          slug, title, description, category: categories[expedition.category], access_mode: accessMode,
+          participation_mode: participationMode, status: "draft",
+          starts_at: startsAt?.toISOString() ?? null, ends_at: endsAt?.toISOString() ?? null, timezone,
+          min_team_size: minTeam, max_team_size: maxTeam, min_individual_contributions: minContributions,
+          require_shared_team_objectives: true, created_by: ADMIN_USERNAME, updated_by: ADMIN_USERNAME,
+        }).select("id, slug").single();
+        if (createError || !created) {
+          console.error("Expedition draft creation failed:", createError);
+          return json({ error: "Could not create the Expedition draft" }, 500);
+        }
+        expeditionId = created.id;
       }
 
+      const { data: oldObjectives } = isUpdate ? await db.from("expedition_objectives")
+        .select("id, objective_type, title, sort_order").eq("expedition_id", expeditionId!) : { data: [] };
+      const { data: oldReward } = isUpdate ? await db.from("expedition_rewards")
+        .select("reward_type, amount, recipient_scope").eq("expedition_id", expeditionId!).maybeSingle() : { data: null };
+      if (isUpdate) {
+        const { error: deleteError } = await db.from("expedition_objectives").delete().eq("expedition_id", expeditionId!);
+        if (deleteError) return json({ error: "Could not replace draft objectives" }, 500);
+      }
       const objectiveRows = objectives.map((item, index) => ({
-        expedition_id: created.id, objective_type: item.kind, title: item.title!.trim(), sort_order: index,
+        expedition_id: expeditionId, objective_type: item.kind, title: item.title!.trim(), sort_order: index,
       }));
       const { error: objectiveError } = await db.from("expedition_objectives").insert(objectiveRows);
-      const { error: rewardError } = objectiveError ? { error: null } : await db.from("expedition_rewards").insert({
-        expedition_id: created.id, reward_type: rewardType, amount: rewardAmount,
+      const rewardPayload = {
+        expedition_id: expeditionId, reward_type: rewardType, amount: rewardAmount,
         recipient_scope: participationMode === "team" ? "each_eligible_team_member" : "each_eligible_participant",
-      });
+        updated_at: new Date().toISOString(),
+      };
+      const { error: rewardError } = objectiveError ? { error: null } :
+        await db.from("expedition_rewards").upsert(rewardPayload, { onConflict: "expedition_id" });
       const { error: auditError } = objectiveError || rewardError ? { error: null } : await db.from("expedition_audit_log").insert({
-        expedition_id: created.id, actor: ADMIN_USERNAME, action: "draft_created",
+        expedition_id: expeditionId, actor: ADMIN_USERNAME, action: isUpdate ? "draft_updated" : "draft_created",
+        before_state: beforeState,
         after_state: { title, category: categories[expedition.category], status: "draft", objective_count: objectives.length },
       });
       if (objectiveError || rewardError || auditError) {
         console.error("Expedition draft detail save failed:", objectiveError || rewardError || auditError);
-        await db.from("expeditions").delete().eq("id", created.id);
-        return json({ error: "Expedition draft could not be saved completely; the incomplete draft was rolled back" }, 500);
+        if (isUpdate) {
+          await db.from("expedition_objectives").delete().eq("expedition_id", expeditionId!);
+          if (oldObjectives?.length) await db.from("expedition_objectives").insert(oldObjectives.map((item) => ({ ...item, expedition_id: expeditionId })));
+          if (oldReward) await db.from("expedition_rewards").upsert({ expedition_id: expeditionId, ...oldReward }, { onConflict: "expedition_id" });
+          await db.from("expeditions").update({
+            title: beforeState.title, updated_by: ADMIN_USERNAME,
+          }).eq("id", expeditionId!);
+        } else {
+          await db.from("expeditions").delete().eq("id", expeditionId!);
+        }
+        return json({ error: "Expedition draft could not be saved completely; changes were rolled back where possible" }, 500);
       }
-      return json({ success: true, id: created.id, slug: created.slug, status: "draft" });
+      return json({ success: true, id: expeditionId, slug, status: "draft" });
     }
 
     // SAVE OR UPDATE TASK
