@@ -68,7 +68,6 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin }: Mi
             key={mission.id}
             mission={mission}
             status={missionStatus(state, mission, now)}
-            verifiable
           />
         ))}
       </section>
@@ -113,7 +112,6 @@ interface MissionCardProps {
   mission: MissionSpec;
   status: 'claimed' | 'ready' | 'locked';
   progressLabel?: string;
-  verifiable?: boolean;
 }
 
 function MissionCard({ mission, status, progressLabel, verifiable }: MissionCardProps) {
@@ -129,13 +127,13 @@ function MissionCard({ mission, status, progressLabel, verifiable }: MissionCard
         <h3 className="font-display text-xs font-bold uppercase tracking-wide text-neon-300">{mission.title}</h3>
         <p className="mt-1 font-mono text-[11px] leading-relaxed text-neon-500">{mission.description}</p>
         <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[11px] tabular-nums">
-          <span className="text-neon-400">Potential reward: {formatZp(mission.reward)} ZP</span>
-          {progressLabel && <span className="text-cyan-300">{progressLabel}</span>}
+          <span className="text-neon-400">Configured reward (not claimable): {formatZp(mission.reward)} ZP</span>
+          {progressLabel && <span className="text-cyan-300">Local game estimate: {progressLabel}</span>}
         </div>
         {mission.actionUrl && <a href={mission.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-cyan-300 underline">Open mission <ExternalLink size={10} /></a>}
-        <p className="mt-2 font-mono text-[9px] text-amber-300">{verifiable ? 'External activity verification is not connected for this mission yet.' : 'Secure mission reward claims are pending backend integration.'}</p>
+        <p className="mt-2 font-mono text-[9px] text-amber-300">Trusted completion checks and reward claims are not available for this mission yet.</p>
       </div>
-      <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-neon-600">{legacyClaimed ? 'Legacy record' : status === 'ready' ? 'Ready to verify' : 'In progress'}</span>
+      <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-neon-600">{legacyClaimed ? 'Legacy local record' : 'Not claimable'}</span>
     </div>
   );
 }
