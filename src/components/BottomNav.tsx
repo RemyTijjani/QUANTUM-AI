@@ -1,6 +1,6 @@
 import FaIcon from '@/components/FaIcon';
 
-export type TabId = 'missions' | 'agents' | 'core' | 'network' | 'vault' | 'events';
+export type TabId = 'missions' | 'agents' | 'core' | 'network' | 'vault';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'missions', label: 'Missions', icon: 'fa-bullseye' },
