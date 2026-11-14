@@ -2,6 +2,11 @@ name: Stage 5 Preview Schema Snapshot (Read Only)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - .github/workflows/stage5-preview-schema-snapshot.yml
 
 permissions:
   contents: read
