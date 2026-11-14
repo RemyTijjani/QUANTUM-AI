@@ -44,7 +44,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
         </div>
       </section>
 
-      <Stage6EngagementHub active={activeView} onChange={setActiveView} />
+      <Stage6EngagementHub active={activeView} onChange={setActiveView} onZpReward={onRefreshVerifiedEconomy} notify={notify} />
 
       <div className={activeView === 'missions' ? 'space-y-6' : 'hidden'}>
       <section className="space-y-3">
