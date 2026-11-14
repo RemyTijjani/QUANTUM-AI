@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import Header from '@/components/Header';
@@ -132,26 +132,25 @@ function GameApp({
   const { auth } = useAuth();
   const [verifiedZpBalance, setVerifiedZpBalance] = useState<number | null>(null);
 
+  const refreshVerifiedBalance = useCallback(async () => {
+    try {
+      const economy = await fetchVerifiedEconomy();
+      setVerifiedZpBalance(economy.verifiedZpBalance);
+    } catch (error) {
+      console.error('Verified ZP balance load failed:', error);
+      setVerifiedZpBalance(null);
+    }
+  }, []);
+
   useEffect(() => {
-    let cancelled = false;
-    const refreshVerifiedBalance = async () => {
-      try {
-        const economy = await fetchVerifiedEconomy();
-        if (!cancelled) setVerifiedZpBalance(economy.verifiedZpBalance);
-      } catch (error) {
-        console.error('Verified ZP balance load failed:', error);
-        if (!cancelled) setVerifiedZpBalance(null);
-      }
-    };
     void refreshVerifiedBalance();
     const interval = window.setInterval(() => void refreshVerifiedBalance(), 60000);
     window.addEventListener('focus', refreshVerifiedBalance);
     return () => {
-      cancelled = true;
       window.clearInterval(interval);
       window.removeEventListener('focus', refreshVerifiedBalance);
     };
-  }, [playerId]);
+  }, [playerId, refreshVerifiedBalance]);
 
   const identity = resolveIdentity(
     auth,
@@ -296,6 +295,7 @@ function GameApp({
             notify={notify}
             missions={missions}
             onOpenAdmin={() => setOverlay('admin')}
+            onRefreshVerifiedEconomy={refreshVerifiedBalance}
           />
         )}
 
