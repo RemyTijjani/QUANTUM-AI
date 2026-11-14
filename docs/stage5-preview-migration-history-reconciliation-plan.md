@@ -275,3 +275,60 @@ Stage 5 is **not ready to be marked complete** yet. The remaining hard blockers 
 5. A fresh schema snapshot comparison and external dependency inventory (managed schemas/roles, extensions, Edge Function configuration/secrets, scheduled jobs) remain outstanding.
 
 No database writes, migration repair, migration application, function deployment, or Production changes were performed during this reconciliation. These remaining checks should be completed before any Stage 5 sign-off. Any migration ledger or schema mutation still requires a separate explicit approval after the exact plan is reviewed.
+
+
+## Latest Preview dependency and seed audit — 2026-11-14
+
+Read-only workflow run: [43572116029](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43572116029)  
+Commit: `24e5a7f63200a64cd13fcbc0929e1506f8513055`  
+Result: **success**. All ten audit steps completed. The workflow linked only the dedicated Preview project and performed no writes, migrations, repairs, or deployments.
+
+### Migration history and ledger
+
+- All 48 local migration versions again appeared with blank Remote entries.
+- The read-only catalog query again returned no `supabase_migrations.schema_migrations` table or columns.
+- This confirms the earlier finding; do not replay or bulk-mark the 48 migrations.
+
+### Referral, rental, and function security
+
+- `register_referral`, `create_agent_rental_payment_intent`, and `confirm_agent_rental_payment` are SECURITY DEFINER functions with pinned `search_path = pg_catalog, public, pg_temp`.
+- Their observed EXECUTE ACLs grant execution to `postgres` and `service_role`; no `anon` or `authenticated` execute grant was present.
+- The one rental payment intent is still `pending`, for `alpha_miner`, and its payment window had elapsed at the time of this audit. There are zero player rental entitlement rows. Source review shows the Edge Function verifies a TON mainnet inbound transfer against the expected destination, exact amount, unique payment comment, and intent time window before calling the service-role-only confirmation RPC. If no matching transfer is found after the additional ten-minute indexing grace period, the Edge Function marks the intent expired on the next verification request. Therefore the stale pending row is consistent with lazy expiry; it is not evidence that a rental was paid or activated. It should be checked again during a later controlled Preview test.
+- The referral tables remain empty while one player has a referral code. This is a data observation, not proof of a defect: no referred signup may have occurred. The live registration function remains the `referral_sub_nodes` implementation; do not replay the conflicting legacy referral migration.
+
+### Platform dependencies
+
+- Installed extensions observed: `pg_stat_statements`, `pgcrypto`, `plpgsql`, `supabase_vault`, and `uuid-ossp`.
+- `cron.job` is absent; no `pg_cron` job catalog is available in this Preview database. The four-hour fragment cooldown is enforced in the trusted database function itself; do not infer that a cron job is required from the migration filename.
+- The read-only role returned no rows for the managed-schema table-grant view (`auth`, `storage`, `realtime`). This does **not** establish that those schemas have no grants; the role's catalog visibility is insufficient to certify their permissions. A privileged, read-only review is still required.
+- The agent rental Edge Function source requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `TONCENTER_API_KEY`, and `ZORD_GRAM_TREASURY_ADDRESS`. GitHub's connected read interface cannot confirm the presence or values of deployed Edge Function secrets. Never print or expose those values. The Preview deployment workflow is present, but secret configuration and deployed-function version remain to be confirmed through an authorized Supabase configuration view.
+
+### Seed and data snapshot
+
+- Eight mission rows are present; all are published and reward in ZP.
+- One global Vault reserve row is present, with both reserves at zero.
+- Point-in-time counts: one player with a referral code; zero rows in `referrals` and `referral_sub_nodes`; one Creator Ops submission; one event activity; two event participations; twelve gameplay action events; one rental payment intent; zero rental entitlements.
+
+### Corrections to the audit process
+
+The first dependency-audit query assumed `cron.job` existed and failed because the relation is absent. The query was corrected to inspect catalog presence only; the subsequent full read-only audit succeeded. A separate transient CLI authentication failure also cleared on the next run; no credential or database setting was changed.
+
+## Updated Stage 5 closure assessment
+
+Verified:
+- Preview-only project target and legacy deployment-target equality.
+- Fresh migration list and absence of the migration ledger table.
+- Function security metadata for referral and rental RPCs.
+- Installed extension inventory and absence of the cron job catalog.
+- Mission seed and Vault singleton data.
+- Point-in-time counts for referrals, Creator Ops, events, gameplay evidence, and rental records.
+- Source-level review of the agent rental Edge Function's authentication and TON mainnet verification path.
+
+Still required before Stage 5 sign-off:
+1. Capture a fresh Preview public-schema snapshot and compare it with the prior snapshot and the complete migration inventory.
+2. Obtain a privileged read-only view of Supabase-managed schema grants and verify deployed Edge Function versions and required secrets are configured, without disclosing secret values.
+3. Complete the migration-by-migration final-state and historical data-effect matrix.
+4. Validate a canonical baseline in a disposable Supabase project or clean database. No disposable environment has been authorized or used yet. If one is not available, stop; do not experiment on Preview.
+5. Produce the baseline dry-run diff, backup/restore plan, and exact Preview-only execution plan for separate approval.
+
+Stage 5 remains **open**. Stage 6 frontend work remains paused. No database writes, migration repair/application, function deployment, or Production changes occurred in this audit.
