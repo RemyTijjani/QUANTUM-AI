@@ -537,7 +537,8 @@ export async function approveEventParticipantReward(
 }
 
 
-export interface AdminExpeditionDraftInput {\n  id?: string;
+export interface AdminExpeditionDraftInput {
+  id?: string;
   title: string;
   description: string;
   category: 'Open' | 'Progressive' | 'Seasonal' | 'Community' | 'Competitive' | 'Team' | 'Special limited-time';
