@@ -332,3 +332,21 @@ Still required before Stage 5 sign-off:
 5. Produce the baseline dry-run diff, backup/restore plan, and exact Preview-only execution plan for separate approval.
 
 Stage 5 remains **open**. Stage 6 frontend work remains paused. No database writes, migration repair/application, function deployment, or Production changes occurred in this audit.
+
+
+## Fresh Preview schema snapshot comparison — 2026-11-14
+
+Read-only workflow run: [43572247637](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43572247637)  
+Artifact: `preview-public-schema` (artifact ID `14104289196`)  
+SHA-256: `f4cef38b775728149559b38f0ca7e17463bd8c59ad91494e8d903a13975146aa`  
+Result: **success**.
+
+The fresh public-schema dump is 91,925 bytes. I downloaded both the November 14 reference artifact and this fresh artifact and compared the extracted SQL byte-for-byte. They are identical: both have SHA-256 `f4cef38b775728149559b38f0ca7e17463bd8c59ad91494e8d903a13975146aa`. This is stronger than matching object counts: there is no public-schema DDL drift between the two captured snapshots. It does not prove that data or Supabase-managed schemas/roles/configuration are unchanged.
+
+The artifact is a schema-only export and is retained by GitHub Actions until November 21, 2026. No database writes or deployment occurred.
+
+## Edge Function and custom-secret audit enhancement
+
+The status workflow now includes a read-only check of deployed Preview Edge Functions and the presence of the two custom secrets required by the rental verifier (`TONCENTER_API_KEY` and `ZORD_GRAM_TREASURY_ADDRESS`). It prints only function names and secret names/presence; it does not print secret values or digests. The required built-in Supabase Edge Function environment variables are not treated as user-managed custom secrets. The new audit run must finish before reporting those deployment/configuration checks as verified.
+
+The current read-only database role still cannot certify grants on Supabase-managed schemas. No privileged DB connection has been attempted. A separately authorized privileged read-only inspection remains outstanding.
