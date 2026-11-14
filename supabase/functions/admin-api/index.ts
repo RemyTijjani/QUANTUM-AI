@@ -821,23 +821,29 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const { error } = await db
+      const { data, error } = await db
         .from("vault_reserves")
-        .update({
-          ton_reserve: ton,
-          zp_reserve: zp,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", "global");
+        .upsert(
+          {
+            id: "global",
+            ton_reserve: ton,
+            zp_reserve: zp,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" },
+        )
+        .select("id")
+        .single();
 
-      if (error) {
+      if (error || data?.id !== "global") {
+        console.error("Vault reserve upsert failed:", error);
         return json(
           { error: "Failed to update vault reserves" },
           500
         );
       }
 
-      return json({ success: true });
+      return json({ success: true, id: data.id });
     }
 
     // CREATE OR UPDATE EVENT
