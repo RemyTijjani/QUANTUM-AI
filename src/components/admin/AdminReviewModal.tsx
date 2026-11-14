@@ -671,7 +671,7 @@ function AdminConsole({
       )}
 
       {activeTab === 'expeditions' && (
-        <AdminExpeditionManager events={data.events} />
+        <AdminExpeditionManager events={data.events} creds={creds} />
       )}
 
       {activeTab === 'events' && (
