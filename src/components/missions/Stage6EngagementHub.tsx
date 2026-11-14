@@ -1,9 +1,10 @@
+import MysteryBoxPanel from '@/components/missions/MysteryBoxPanel';
+import type { Notify } from '@/hooks/useToast';
 import {
   CalendarDays,
   CheckCircle2,
   Clock3,
   Compass,
-  Gift,
   Radio,
   ShieldAlert,
   Sparkles,
@@ -23,9 +24,13 @@ const VIEWS: { id: EngagementView; label: string; icon: typeof Target }[] = [
 export default function Stage6EngagementHub({
   active,
   onChange,
+  onZpReward,
+  notify,
 }: {
   active: EngagementView;
   onChange: (view: EngagementView) => void;
+  onZpReward: () => Promise<void>;
+  notify: Notify;
 }) {
   return (
     <>
@@ -49,7 +54,7 @@ export default function Stage6EngagementHub({
       </nav>
 
       {active === 'streaks' && <DailyStreakScreen />}
-      {active === 'mystery' && <MysteryDiscoveryScreen />}
+      {active === 'mystery' && <MysteryBoxPanel onZpReward={onZpReward} notify={notify} />}
       {active === 'briefings' && <BriefingsScreen />}
       {active === 'expeditions' && <ExpeditionsScreen />}
     </>
@@ -135,40 +140,6 @@ function DailyStreakScreen() {
         ))}
       </div>
       <ServiceNotice title="Streak tracking is not active yet" />
-    </section>
-  );
-}
-
-function MysteryDiscoveryScreen() {
-  return (
-    <section className="space-y-3">
-      <FeatureHeader
-        eyebrow="Discovery protocol"
-        title="Mystery Discovery"
-        description="A daily discovery experience for uncovering eligible rewards and collectibles. The reward pool and odds will be published before this feature opens."
-        icon={Gift}
-      />
-      <div className="panel relative overflow-hidden border border-violet-400/25 bg-gradient-to-br from-violet-500/10 via-black/50 to-cyan-500/5 p-5 text-center">
-        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl border border-violet-300/30 bg-violet-400/10 text-violet-200 shadow-[0_0_35px_rgba(167,139,250,0.12)]">
-          <Gift size={42} strokeWidth={1.3} />
-        </div>
-        <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.25em] text-violet-300">Unknown signal detected</p>
-        <h3 className="mt-2 font-display text-lg font-bold uppercase tracking-wider text-neon-200">Discovery chamber</h3>
-        <p className="mx-auto mt-2 max-w-xs font-mono text-[10px] leading-relaxed text-neon-600">Your discovery slot and eligibility will appear here when the server-side schedule is enabled.</p>
-        <button type="button" disabled className="mt-5 w-full cursor-not-allowed rounded-lg border border-violet-300/20 bg-violet-300/5 px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-widest text-violet-300/50">
-          Discovery offline
-        </button>
-      </div>
-      <div className="panel space-y-2 p-4">
-        <p className="label">Possible discovery categories</p>
-        <div className="grid grid-cols-2 gap-2">
-          {['ZP rewards', 'Core materials', 'Temporary boosts', 'Collectibles'].map((item) => (
-            <div key={item} className="border border-neon/15 bg-black/30 p-3 font-mono text-[9px] text-neon-500">{item}</div>
-          ))}
-        </div>
-        <p className="font-mono text-[8px] leading-relaxed text-neon-700">Categories are illustrative only. Final contents, eligibility, quantities and probabilities must be configured and disclosed before activation.</p>
-      </div>
-      <ServiceNotice title="No discovery can be opened or claimed yet" />
     </section>
   );
 }
