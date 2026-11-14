@@ -1,6 +1,7 @@
-import { ArrowLeftRight, Coins, History, Image, Landmark, Wallet } from 'lucide-react';
+import { ArrowLeftRight, Coins, History, Image, Wallet } from 'lucide-react';
 import { formatZp } from '@/lib/format';
 import type { VerifiedLedgerEntry } from '@/lib/economy/verifiedEconomy';
+import TonWalletConnection from './TonWalletConnection';
 
 export default function VaultTab({
   verifiedZpBalance,
@@ -17,14 +18,7 @@ export default function VaultTab({
         <p className="font-mono text-[10px] leading-relaxed text-neon-500">Wallet connection, ZP/ZAP operations, transaction records and future collectibles will be managed here.</p>
       </header>
 
-      <section className="panel space-y-3 p-4">
-        <div className="flex items-center gap-2"><Landmark size={16} className="text-neon-400" /><p className="label">Wallet connection</p></div>
-        <div className="flex items-center justify-between border border-amber-500/25 bg-amber-500/5 p-3">
-          <div><p className="font-display text-xs text-amber-200">TON Connect</p><p className="mt-1 font-mono text-[9px] text-amber-300">Not connected</p></div>
-          <span className="border border-amber-500/30 px-2 py-1 font-mono text-[9px] uppercase text-amber-300">Integration pending</span>
-        </div>
-        <p className="font-mono text-[9px] leading-relaxed text-neon-600">The previous faucet and wallet-link controls were simulations. They have been removed from the active wallet flow; no real funds were moved.</p>
-      </section>
+      <TonWalletConnection />
 
       <section className="grid grid-cols-2 gap-3">
         <div className="panel p-4"><div className="flex items-center gap-2 text-neon-500"><Coins size={14} /><p className="label">Verified ZP</p></div><p className="mt-3 font-display text-xl text-neon-300">{verifiedZpBalance === null ? 'Unavailable' : formatZp(verifiedZpBalance)}</p></div>
