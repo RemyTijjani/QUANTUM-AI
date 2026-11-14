@@ -55,6 +55,10 @@ export interface GameState {
   wallet: WalletState;
   referralCode: string;
   coreMiningUntil: number;
+  /** Server-sourced temporary reward timers; excluded from saved game state. */
+  temporaryAgentUntil: number;
+  fragmentMiningBoostUntil: number;
+  fragmentMiningBoostMultiplier: number;
   lastTick: number;
 }
 
@@ -74,7 +78,8 @@ export type Command =
   | { type: 'claimMilestone'; threshold: number }
   | { type: 'recruitSubNode'; id: string; name: string }
   | { type: 'claimMission'; mission: MissionSpec }
-  | { type: 'creditZp'; amount: number };
+  | { type: 'creditZp'; amount: number }
+  | { type: 'setTemporaryRewards'; agentUntil: number; fragmentBoostUntil: number; fragmentBoostMultiplier: number };
 
 export type GameAction = Command & { now: number };
 
@@ -113,6 +118,9 @@ export function createInitialState(
     },
     referralCode: referralCode ?? makeReferralCode(),
     coreMiningUntil: 0,
+    temporaryAgentUntil: 0,
+    fragmentMiningBoostUntil: 0,
+    fragmentMiningBoostMultiplier: 1,
     lastTick: now,
   };
 }
@@ -121,7 +129,7 @@ export const fixedCount = (s: GameState) =>
   FRAGMENT_IDS.filter((id) => s.fragments[id] === 'fixed').length;
 
 export const activeAgents = (s: GameState, now: number) =>
-  AGENT_IDS.filter((id) => s.agents[id] > now);
+  AGENT_IDS.filter((id) => s.agents[id] > now || (id === 'alpha' && s.temporaryAgentUntil > now));
 
 export const isAgentActive = (
   s: GameState,
@@ -140,9 +148,14 @@ export function passiveRate(s: GameState, now: number) {
   const runningAgents = activeAgents(s, now);
   // A fixed fragment maintains the rented agent; it does not add a separate
   // fragment rate while an agent is active.
-  const fragmentRate = runningAgents.length > 0
+  const baseFragmentRate = runningAgents.length > 0
     ? 0
     : fixedCount(s) * FRAGMENT_ZP_PER_SEC;
+  const fragmentRate = baseFragmentRate * (
+    s.fragmentMiningBoostUntil > now
+      ? Math.max(1, s.fragmentMiningBoostMultiplier)
+      : 1
+  );
   const agentRate = runningAgents.reduce(
     (sum, id) => sum + AGENTS[id].zpPerSec,
     0
@@ -275,6 +288,8 @@ export function advance(s: GameState, now: number): GameState {
     ...AGENT_IDS.map((id) => next.agents[id]),
     next.coreMiningUntil,
     ...FRAGMENT_IDS.map((id) => next.fragmentCooldowns[id]),
+    next.temporaryAgentUntil,
+    next.fragmentMiningBoostUntil,
   ].filter((end) => end > next.lastTick && end <= now);
 
   const boundaries = [...new Set([...expiries, now])].sort(
@@ -316,6 +331,16 @@ export function gameReducer(
   switch (action.type) {
     case 'tick':
       return s;
+
+    case 'setTemporaryRewards': {
+      const agentUntil = Number.isFinite(action.agentUntil) && action.agentUntil > now ? action.agentUntil : 0;
+      const fragmentBoostUntil = Number.isFinite(action.fragmentBoostUntil) && action.fragmentBoostUntil > now ? action.fragmentBoostUntil : 0;
+      const fragmentBoostMultiplier = fragmentBoostUntil > now && Number.isFinite(action.fragmentBoostMultiplier)
+        ? Math.max(1, Math.min(2, action.fragmentBoostMultiplier))
+        : 1;
+      if (s.temporaryAgentUntil === agentUntil && s.fragmentMiningBoostUntil === fragmentBoostUntil && s.fragmentMiningBoostMultiplier === fragmentBoostMultiplier) return s;
+      return { ...s, temporaryAgentUntil: agentUntil, fragmentMiningBoostUntil: fragmentBoostUntil, fragmentMiningBoostMultiplier: fragmentBoostMultiplier };
+    }
 
     case 'unlockFragment': {
       if (s.fragments[action.id] !== 'locked') return s;
