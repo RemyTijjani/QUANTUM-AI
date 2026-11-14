@@ -114,7 +114,7 @@ interface MissionCardProps {
   progressLabel?: string;
 }
 
-function MissionCard({ mission, status, progressLabel, verifiable }: MissionCardProps) {
+function MissionCard({ mission, status, progressLabel }: MissionCardProps) {
   const Icon = mission.kind === 'daily' ? CalendarCheck : Megaphone;
   const legacyClaimed = status === 'claimed';
 
