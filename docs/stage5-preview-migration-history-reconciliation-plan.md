@@ -423,3 +423,25 @@ This is not evidence of an unauthorized public data path. It does mean Storage c
 
 Workflow run: [43573448464](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43573448464)  
 Result: **success**. All audit steps completed against the dedicated `ZORD-PREVIEW` project. The workflow verified the Preview target guard, seven deployed function names and two custom rental secret names, repeated the migration list and missing-ledger check, inspected referral/rental/function security and managed-schema effective privileges/RLS, and repeated the gameplay seed/data audit. No SQL writes, migrations, repair, function deployment, or Production-target command was run.
+
+
+## Live Preview default-privilege verification — 2026-11-14
+
+Read-only workflow run: [43573581263](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43573581263)  
+Result: **success**.
+
+The read-only query of `pg_default_acl` confirms the broad defaults are active in the live Preview database, not merely present in the schema dump. For both object owners `postgres` and `supabase_admin`, the `public` schema default ACLs include:
+
+- Tables: `anon` and `authenticated` receive `arwdDxtm` (broad table privileges, including SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER and MAINTAIN).
+- Functions: `anon` and `authenticated` receive `X` (EXECUTE).
+- Sequences: `anon` and `authenticated` receive `rwU` (SELECT/UPDATE/USAGE).
+
+The same defaults are also granted to `service_role`; `postgres` and `supabase_admin` remain owners/administrative roles. These default ACLs apply to future objects created by those owners. They do not by themselves prove current data exposure, because existing object ACLs and RLS still govern existing objects. They are nevertheless a serious least-privilege defect: future tables/functions/sequences can become client-accessible unless each object is explicitly hardened.
+
+**Baseline rule:** never reproduce these broad default ACLs in a clean baseline. The baseline must establish restrictive defaults (or explicitly revoke client defaults) before creating application objects, then grant only the specific permissions required by each object. Do not change the live Preview defaults until a separate exact remediation plan and approval exist.
+
+## Existing disposable branch inventory — 2026-11-14
+
+Read-only branch-list command completed in workflow run [43573527207](https://github.com/RemyTijjani/QUANTUM-AI/actions/runs/43573527207). No Supabase preview branches currently exist under the dedicated `ZORD-PREVIEW` project. No branch was created or modified.
+
+A clean baseline test therefore cannot proceed in an existing isolated branch. Creating a disposable branch/project and applying a candidate baseline would be a database mutation and remains unapproved. Do not substitute the populated `ZORD-PREVIEW` database.
