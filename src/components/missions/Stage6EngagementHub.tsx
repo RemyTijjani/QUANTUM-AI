@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import MysteryBoxPanel from '@/components/missions/MysteryBoxPanel';
 import type { Notify } from '@/hooks/useToast';
 import {
@@ -54,7 +56,7 @@ export default function Stage6EngagementHub({
         ))}
       </nav>
 
-      {active === 'streaks' && <DailyStreakScreen />}
+      {active === 'streaks' && <DailyStreakScreen onZpReward={onZpReward} notify={notify} />}
       {active === 'mystery' && <MysteryBoxPanel onZpReward={onZpReward} notify={notify} />}
       {active === 'briefings' && <BriefingsScreen />}
       {active === 'expeditions' && <ExpeditionsScreen />}
@@ -103,44 +105,142 @@ function ServiceNotice({ title }: { title: string }) {
   );
 }
 
-function DailyStreakScreen() {
-  const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+type DailyStreakStatus = {
+  currentStreakDay: number;
+  bestStreakDay: number;
+  claimedToday: boolean;
+  nextStreakDay: number;
+  claimDate: string;
+  lastClaimDate?: string | null;
+};
+
+type DailyStreakClaim = {
+  streakDay: number;
+  rewardType: 'zp' | 'zap' | 'boost' | 'mystery_box' | 'temporary_agent';
+  rewardAmount?: number | null;
+  rewardMetadata?: Record<string, unknown>;
+  alreadyClaimed?: boolean;
+};
+
+function streakRewardLabel(claim: DailyStreakClaim) {
+  if (claim.rewardType === 'zp') return `+${claim.rewardAmount ?? 0} ZP`;
+  if (claim.rewardType === 'zap') return `+${claim.rewardAmount ?? 0} ZAP`;
+  if (claim.rewardType === 'boost') return '2× Fragment Mining boost — 6 hours after activation';
+  if (claim.rewardType === 'mystery_box') {
+    const tier = claim.rewardMetadata?.boxTier;
+    return `${typeof tier === 'string' ? tier.toUpperCase() : 'MYSTERY'} BOX`;
+  }
+  return 'Free Agent 1 — 24 hours after activation';
+}
+
+function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<void>; notify: Notify }) {
+  const [status, setStatus] = useState<DailyStreakStatus | null>(null);
+  const [lastClaim, setLastClaim] = useState<DailyStreakClaim | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [claiming, setClaiming] = useState(false);
+  const [error, setError] = useState('');
+
+  const refresh = async () => {
+    setLoading(true);
+    const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
+      body: { action: 'get_daily_streak_state' },
+    });
+    if (requestError || !data?.streak) {
+      setError('Could not load your trusted streak status.');
+      setLoading(false);
+      return;
+    }
+    setStatus(data.streak as DailyStreakStatus);
+    setError('');
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const claim = async () => {
+    setClaiming(true);
+    const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
+      body: { action: 'claim_daily_streak' },
+    });
+    setClaiming(false);
+
+    if (requestError || !data?.success) {
+      notify(data?.error || 'Daily Streak claim failed. Please try again.', 'error');
+      return;
+    }
+
+    const result = data as DailyStreakClaim & {
+      currentStreakDay?: number;
+      bestStreakDay?: number;
+      alreadyClaimed?: boolean;
+    };
+    setLastClaim(result);
+    if (result.rewardType === 'zp') await onZpReward();
+    await refresh();
+    notify(result.alreadyClaimed
+      ? 'Today’s Daily Streak reward was already claimed.'
+      : `Day ${result.streakDay} claimed: ${streakRewardLabel(result)}`);
+  };
+
+  const currentDay = status?.currentStreakDay ?? 0;
+  const nextDay = status?.nextStreakDay ?? 1;
+  const claimedToday = status?.claimedToday ?? false;
+
   return (
     <section className="space-y-3">
       <FeatureHeader
         eyebrow="Retention protocol"
         title="Daily Streaks"
-        description="Build a consistent activity streak, track your milestones and view eligible rewards once the trusted streak service is live."
+        description="Claim once per UTC day. Miss a UTC calendar day and your next claim restarts at Day 1."
         icon={CalendarDays}
       />
       <div className="panel space-y-3 p-4">
         <div className="flex items-center justify-between">
-          <div><p className="label">Current streak</p><p className="mt-1 font-display text-3xl text-neon-200">— <span className="text-xs text-neon-600">days</span></p></div>
-          <div className="text-right"><p className="label">Best streak</p><p className="mt-1 font-display text-xl text-cyan-200">—</p></div>
+          <div><p className="label">Current streak</p><p className="mt-1 font-display text-3xl text-neon-200">{loading ? '—' : currentDay} <span className="text-xs text-neon-600">days</span></p></div>
+          <div className="text-right"><p className="label">Best streak</p><p className="mt-1 font-display text-xl text-cyan-200">{loading ? '—' : status?.bestStreakDay ?? 0}</p></div>
         </div>
         <div className="grid grid-cols-7 gap-1.5">
-          {days.map((day) => (
-            <div key={day} className="rounded-lg border border-neon/15 bg-black/30 px-1 py-3 text-center">
-              <p className="font-mono text-[8px] text-neon-600">{day}</p>
-              <div className="mx-auto mt-2 flex h-7 w-7 items-center justify-center rounded-full border border-neon/20 text-neon-700"><Clock3 size={12} /></div>
-            </div>
-          ))}
+          {Array.from({ length: 7 }, (_, index) => index + 1).map((day) => {
+            const completed = day <= currentDay;
+            return (
+              <div key={day} className={`rounded-lg border px-1 py-3 text-center ${completed ? 'border-neon/40 bg-neon/10' : 'border-neon/15 bg-black/30'}`}>
+                <p className="font-mono text-[8px] text-neon-600">DAY {day}</p>
+                <div className={`mx-auto mt-2 flex h-7 w-7 items-center justify-center rounded-full border ${completed ? 'border-neon/50 text-neon-300' : 'border-neon/20 text-neon-700'}`}>
+                  {completed ? <CheckCircle2 size={13} /> : <Clock3 size={12} />}
+                </div>
+                <p className="mt-1 font-mono text-[8px] text-neon-500">{day * 100} ZP</p>
+              </div>
+            );
+          })}
         </div>
-        <div className="flex items-center justify-between border-t border-neon/10 pt-3 font-mono text-[9px] text-neon-600">
-          <span>Activity calendar</span><span>Awaiting trusted sync</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neon/10 pt-3 font-mono text-[9px] text-neon-600">
+          <span>UTC claim date: {status?.claimDate ?? '—'}</span>
+          <span>{claimedToday ? 'Claimed today' : `Next reward: Day ${nextDay}`}</span>
         </div>
-      </div>
-      <div className="panel space-y-3 p-4">
-        <div className="flex items-center justify-between"><p className="label">Streak milestones</p><Sparkles size={15} className="text-cyan-300" /></div>
-        {['First milestone', 'Consistency milestone', 'Long-run milestone'].map((label) => (
-          <div key={label} className="flex items-center gap-3 border-b border-neon/10 pb-3 last:border-0 last:pb-0">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-neon/20 text-neon-700"><CheckCircle2 size={15} /></span>
-            <div className="min-w-0 flex-1"><p className="font-mono text-[10px] text-neon-300">{label}</p><p className="mt-1 font-mono text-[8px] text-neon-700">Milestone conditions and rewards pending approval</p></div>
-            <span className="font-mono text-[8px] uppercase text-amber-300">Locked</span>
+        {error && <p className="font-mono text-[10px] text-amber-300">{error}</p>}
+        <button
+          type="button"
+          onClick={() => void claim()}
+          disabled={loading || claiming || claimedToday || Boolean(error)}
+          className="btn-primary w-full py-3 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {claiming ? 'Claiming securely…' : claimedToday ? 'Daily reward claimed' : `Claim Day ${nextDay} reward`}
+        </button>
+        {lastClaim && (
+          <div className="rounded-lg border border-neon/25 bg-neon/5 p-3">
+            <p className="label">Latest reward — Day {lastClaim.streakDay}</p>
+            <p className="mt-1 font-display text-sm text-neon-200">{streakRewardLabel(lastClaim)}</p>
+            <p className="mt-1 font-mono text-[8px] text-neon-600">Reward selected and recorded by the trusted server.</p>
           </div>
-        ))}
+        )}
       </div>
-      <ServiceNotice title="Streak tracking is not active yet" />
+      <div className="panel space-y-2 p-4">
+        <p className="label">Days 8–30 reward pool</p>
+        <p className="font-mono text-[9px] leading-relaxed text-neon-500">35%: 1–10 ZAP · 34%: 2× Fragment Mining boost · 30%: Mystery Box (80% Standard / 20% Premium) · 1%: Free Agent 1 for 24 hours after activation.</p>
+        <p className="font-mono text-[8px] leading-relaxed text-neon-700">Boost and Agent 1 rewards are issued as activation entitlements. Their active gameplay effects require their respective activation integrations.</p>
+      </div>
     </section>
   );
 }
