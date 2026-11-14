@@ -158,6 +158,33 @@ Deno.serve(async (req: Request) => {
       return json(data, data?.success === false ? 409 : 200);
     }
 
+    if (body.action === "get_reward_entitlements") {
+      const { data, error } = await admin.rpc("get_player_reward_entitlements", {
+        p_player_id: player.id,
+      });
+      if (error) {
+        console.error("Reward entitlement lookup failed:", error);
+        return json({ error: "Could not load your reward entitlements." }, 500);
+      }
+      return json(data);
+    }
+
+    if (body.action === "activate_reward_entitlement") {
+      if (typeof body.entitlementId !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.entitlementId)) {
+        return json({ error: "A valid reward entitlement is required." }, 400);
+      }
+      const { data, error } = await admin.rpc("activate_player_reward", {
+        p_player_id: player.id,
+        p_entitlement_id: body.entitlementId,
+      });
+      if (error) {
+        console.error("Reward activation failed:", error);
+        return json({ error: "This reward could not be activated. Refresh your rewards and try again." }, 409);
+      }
+      return json(data, data?.success === false ? 409 : 200);
+    }
+
     return json({ error: "Unknown gameplay action." }, 400);
   } catch (error) {
     console.error("Trusted gameplay request failed:", error);
