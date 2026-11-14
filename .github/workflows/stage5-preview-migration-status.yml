@@ -24,7 +24,7 @@ jobs:
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v3
         with:
-          version: v2.stable
+          version: 3.1.0
 
       - name: Validate Preview-only credentials
         env:
@@ -52,4 +52,28 @@ jobs:
         run: |
           echo "Running read-only migration list against the linked Preview project."
           echo "This workflow does not run db push, migration repair, migration up, or SQL writes."
-          supabase migration list --linked
+          supabase migration list --remote
+
+      - name: Inspect Preview migration ledger catalog (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db query --remote --read-only --output json "
+            SELECT
+              current_database() AS database_name,
+              current_user AS database_role,
+              to_regclass('supabase_migrations.schema_migrations')::text AS ledger_table,
+              (
+                SELECT jsonb_agg(
+                  jsonb_build_object(
+                    'column_name', column_name,
+                    'data_type', data_type,
+                    'ordinal_position', ordinal_position
+                  )
+                  ORDER BY ordinal_position
+                )
+                FROM information_schema.columns
+                WHERE table_schema = 'supabase_migrations'
+                  AND table_name = 'schema_migrations'
+              ) AS ledger_columns;
+          "
