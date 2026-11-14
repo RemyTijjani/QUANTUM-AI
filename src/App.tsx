@@ -270,6 +270,7 @@ function GameApp({
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
             verifiedZpBalance={verifiedZpBalance}
             onOpenEvents={() => setTab('events')}
+            onOpenMissions={() => setTab('missions')}
             onFixFragment={async (id) => {
               try {
                 await trustedGameplay.fixFragment(id);
