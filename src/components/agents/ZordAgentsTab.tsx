@@ -13,6 +13,7 @@ import { AGENTS, AGENT_IDS } from '@/lib/game/config';
 import type { AgentId } from '@/lib/game/config';
 import { activeAgents } from '@/lib/game/state';
 import type { GameState } from '@/lib/game/state';
+import TemporaryRewardPanel from './TemporaryRewardPanel';
 import { formatRate, formatRemaining } from '@/lib/format';
 import {
   encodeTonCommentPayload,
@@ -388,6 +389,8 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
         <h1 className="title">ZORD Agents</h1>
         <p className="font-mono text-[11px] leading-relaxed text-neon-500">Community agents and mining operations share the ZORD platform. Each rented service tier will have isolated community settings and permissions.</p>
       </header>
+
+      <TemporaryRewardPanel />
 
       <AgentRentalCheckout />
 
