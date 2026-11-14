@@ -841,7 +841,8 @@ Deno.serve(async (req: Request) => {
       }
       if (!Array.isArray(objectives) || objectives.length < 1 || objectives.length > 20 ||
           objectives.some((item) => !item || !objectiveKinds.includes(String(item.kind)) ||
-            typeof item.title !== "string" || !item.title.trim() || item.title.trim().length > 160)) {
+            typeof item.title !== "string" || !item.title.trim() || item.title.trim().length > 160 ||
+            (item.scope !== undefined && !["individual", "team", "both"].includes(String(item.scope))))) {
         return json({ error: "Add between 1 and 20 valid objectives (maximum 160 characters each)" }, 400);
       }
       const startsAt = expedition.startsAt ? new Date(expedition.startsAt) : null;
