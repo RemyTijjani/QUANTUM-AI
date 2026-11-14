@@ -433,16 +433,17 @@ begin
       where w.player_id = p_player_id
       for update;
 
-    v_prize.amount := 1 + floor(
-      (extensions.gen_random_bytes(4)::text::bytea is null)::integer
-    );
-    -- Draw a whole-number ZAP amount from 1 through 10 using secure bytes.
-    v_bytes := extensions.gen_random_bytes(4);
-    v_uint :=
-        get_byte(v_bytes, 0)::bigint * 16777216
-      + get_byte(v_bytes, 1)::bigint * 65536
-      + get_byte(v_bytes, 2)::bigint * 256
-      + get_byte(v_bytes, 3)::bigint;
+    -- Draw a uniform whole-number ZAP amount from 1 through 10.
+    -- Rejection sampling avoids modulo bias.
+    loop
+      v_bytes := extensions.gen_random_bytes(4);
+      v_uint :=
+          get_byte(v_bytes, 0)::bigint * 16777216
+        + get_byte(v_bytes, 1)::bigint * 65536
+        + get_byte(v_bytes, 2)::bigint * 256
+        + get_byte(v_bytes, 3)::bigint;
+      exit when v_uint < 4294967290;
+    end loop;
     v_prize.amount := 1 + (v_uint % 10)::integer;
     v_zap_balance := v_zap_balance + v_prize.amount;
 
