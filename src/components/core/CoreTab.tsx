@@ -1,5 +1,5 @@
 import { FRAGMENT_IDS, FRAGMENT_NAMES } from '@/lib/game/config';
-import { Store, ArrowRightLeft } from 'lucide-react';
+import { Store, ArrowRightLeft, CalendarDays, ArrowUpRight } from 'lucide-react';
 import type { FragmentId } from '@/lib/game/config';
 import { fixedCount, fragmentCooldownRemaining, passiveRate, tierInfo } from '@/lib/game/state';
 import type { GameState, FragmentStatus } from '@/lib/game/state';
@@ -16,9 +16,10 @@ interface CoreTabProps {
   onWatchAd: (id: FragmentId) => void;
   onFixFragment: (id: FragmentId) => Promise<void>;
   verifiedZpBalance: number | null;
+  onOpenEvents: () => void;
 }
 
-export default function CoreTab({ state, notify, onWatchAd, onFixFragment, verifiedZpBalance }: CoreTabProps) {
+export default function CoreTab({ state, notify, onWatchAd, onFixFragment, verifiedZpBalance, onOpenEvents }: CoreTabProps) {
   const now = Date.now();
   const tier = tierInfo(state.lifetimeZp);
   const rate = passiveRate(state, now);
@@ -46,6 +47,27 @@ export default function CoreTab({ state, notify, onWatchAd, onFixFragment, verif
 
   return (
     <div className="space-y-5 pb-2">
+      <button
+        type="button"
+        onClick={onOpenEvents}
+        className="group relative flex w-full items-center justify-between overflow-hidden rounded-xl border border-cyan-400/35 bg-gradient-to-r from-cyan-500/10 via-neon/5 to-transparent p-3 text-left shadow-[0_0_22px_rgba(34,211,238,0.07)] transition hover:border-cyan-300/60 hover:bg-cyan-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+        aria-label="Open Events"
+      >
+        <span className="pointer-events-none absolute -right-5 -top-8 h-24 w-24 rounded-full border border-cyan-300/10" />
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-cyan-300/30 bg-cyan-300/10 text-cyan-200">
+            <CalendarDays size={19} />
+          </span>
+          <span className="min-w-0">
+            <span className="flex items-center gap-2">
+              <span className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-200">Events</span>
+              <span className="rounded border border-cyan-300/25 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-cyan-300">Operations</span>
+            </span>
+            <span className="mt-1 block truncate font-mono text-[9px] text-neon-500">Challenges, competitions & community activity</span>
+          </span>
+        </span>
+        <ArrowUpRight size={17} className="ml-2 shrink-0 text-cyan-300 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+      </button>
       <LevelBanner tier={tier} rate={rate} />
       <CoreCircuit fragments={state.fragments} rate={rate} />
       <FragmentBays
