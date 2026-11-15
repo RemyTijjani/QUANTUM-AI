@@ -94,6 +94,16 @@ Deno.serve(async (req: Request) => {
         if (!leaderboard) return json({ error: "Could not load the ZAP leaderboard." }, 500);
         return json({ success: true, leaderboard, source: "server_zap_earnings_leaderboard" });
       }
+      if (action === "achievements") {
+        const { data: achievements, error: achievementsError } = await admin.rpc("get_player_zap_achievements", {
+          p_player_id: player.id,
+        });
+        if (achievementsError || !achievements) {
+          console.error("ZAP achievements lookup failed:", achievementsError);
+          return json({ error: "Could not load your ZAP achievements." }, 500);
+        }
+        return json({ success: true, achievements, source: "server_zap_ring_achievements" });
+      }
       const wallet = await readWallet(admin, player.id);
       if (!wallet) return json({ error: "Could not load your ZAP wallet." }, 500);
       const leaderboard = await readLeaderboard(admin, player.id);
