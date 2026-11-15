@@ -83,23 +83,33 @@ export default function AdminExternalZapFunding({ creds }: { creds: AdminCredent
             <h2 className="text-xs uppercase tracking-widest text-emerald-300 font-bold flex items-center gap-2">
               <ArrowDownToLine size={15} /> External ZAP funding
             </h2>
-            <p className="text-[10px] text-slate-400 mt-1">Record deposits that have been independently checked outside ZORD.</p>
+            <p className="text-[10px] text-slate-400 mt-1">Record each deposit only after you have checked it independently outside ZORD.</p>
           </div>
           <button type="button" onClick={() => void refresh()} disabled={loading} className="p-2 border border-white/10 text-emerald-300 disabled:opacity-50" aria-label="Refresh funding records">
             {loading ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="border border-white/10 bg-[#0b120e] p-3">
-            <p className="text-[10px] uppercase tracking-wider text-slate-400">Verified raffle reserve</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="border border-emerald-400/20 bg-emerald-400/5 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-emerald-200">Available ZAP reserve</p>
             <p className="text-2xl font-display font-bold text-emerald-300 tabular-nums mt-1">{loading && !summary ? '...' : `${formatZap(summary?.availableReserve ?? 0)} ZAP`}</p>
-            <p className="text-[10px] text-slate-400 mt-1">Separate from player wallets. Available for prize reservations.</p>
+            <p className="text-[10px] text-slate-400 mt-1">Confirmed funds currently available to reserve for raffle prizes. Not player wallet funds.</p>
+          </div>
+          <div className="border border-white/10 bg-[#0b120e] p-3">
+            <p className="text-[10px] uppercase tracking-wider text-slate-300">Verified deposits</p>
+            <p className="mt-2 text-sm font-semibold text-white">{loading && !summary ? 'Loading…' : `${summary?.funding.length ?? 0} confirmed record(s)`}</p>
+            <p className="text-[10px] text-slate-400 mt-1">See the history below for each amount, reference, confirming Admin and time.</p>
           </div>
           <div className="border border-amber-400/20 bg-amber-400/5 p-3">
-            <p className="text-[10px] uppercase tracking-wider text-amber-300 flex items-center gap-1"><ShieldCheck size={12} /> Manual verification</p>
-            <p className="text-[11px] text-slate-300 mt-2">Check the external deposit and transaction reference yourself before confirming. Confirmation immediately increases the raffle reserve.</p>
+            <p className="text-[10px] uppercase tracking-wider text-amber-200">Reserved for raffles</p>
+            <p className="mt-2 text-sm font-semibold text-amber-100">Tracked per raffle</p>
+            <p className="text-[10px] text-slate-400 mt-1">This screen does not receive a total reserved amount. Check each raffle in Raffle Manager; no total is estimated here.</p>
           </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+          <p className="text-[10px] font-semibold text-slate-200">Before confirming a deposit</p>
+          <p className="mt-1 text-[10px] leading-relaxed text-slate-400">Verify the transfer outside ZORD, then enter its exact amount and transaction reference. One Admin confirmation records the deposit and increases the available reserve. It does not publish a raffle or pay a winner.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3 border-t border-white/10 pt-3">
@@ -128,7 +138,7 @@ export default function AdminExternalZapFunding({ creds }: { creds: AdminCredent
 
       <section className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between border-b border-white/10 pb-2">
-          <h3 className="text-xs uppercase tracking-widest text-slate-300 font-bold">Funding history</h3>
+          <h3 className="text-xs uppercase tracking-widest text-slate-300 font-bold">Verified deposit history</h3>
           <span className="text-[10px] text-slate-400">{summary?.funding.length ?? 0} records shown</span>
         </div>
         {loading && !summary ? (
@@ -150,7 +160,7 @@ export default function AdminExternalZapFunding({ creds }: { creds: AdminCredent
           </div>
         )}
       </section>
-      <p className="text-[10px] text-slate-500 flex items-center gap-1"><ExternalLink size={11} /> External deposit verification is manual; ZORD records the Admin confirmation and does not independently inspect the external payment source.</p>
+      <p className="text-[10px] text-slate-500 flex items-center gap-1"><ExternalLink size={11} /> Verification is performed by the confirming Admin outside ZORD. ZORD records who confirmed the deposit, its reference, amount and time; it does not independently inspect the external payment source.</p>
     </div>
   );
 }
