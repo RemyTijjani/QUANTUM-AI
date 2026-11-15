@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { BookOpen, CheckCircle2, ChevronDown, ChevronUp, Lock, Radio, RefreshCw, Trophy } from 'lucide-react';
+import { CheckCircle2, Lock, Radio, RefreshCw, Trophy } from 'lucide-react';
 
 type BriefingContentBlock = {
   type?: 'text' | 'image' | 'video';
