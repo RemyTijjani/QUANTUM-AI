@@ -6,7 +6,7 @@ create table if not exists app_private.zap_transfers (
   id uuid primary key default gen_random_uuid(),
   sender_id uuid not null references public.players(id),
   recipient_id uuid not null references public.players(id),
-  amount numeric not null check (amount > 0 and amount = trunc(amount)),
+  amount numeric(20,0) not null check (amount > 0 and amount = trunc(amount)),
   recipient_identifier text not null,
   idempotency_key text not null,
   created_at timestamptz not null default now(),
@@ -116,7 +116,8 @@ begin
   if p_amount is null
      or p_amount <= 0
      or p_amount::text in ('NaN', 'Infinity', '-Infinity')
-     or p_amount <> trunc(p_amount) then
+     or p_amount <> trunc(p_amount)
+     or p_amount > 99999999999999999999 then
     raise exception 'Enter a positive whole-number ZAP amount';
   end if;
 
