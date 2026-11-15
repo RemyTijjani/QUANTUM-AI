@@ -360,10 +360,7 @@ function GameApp({
       )}
 
       {overlay === 'leaderboard' && (
-        <LeaderboardModal
-          lifetimeZp={state.lifetimeZp}
-          onClose={() => setOverlay(null)}
-        />
+        <LeaderboardModal onClose={() => setOverlay(null)} />
       )}
 
       {overlay === 'admin' && (
