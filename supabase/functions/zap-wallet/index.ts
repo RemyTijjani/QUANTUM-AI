@@ -74,7 +74,19 @@ Deno.serve(async (req: Request) => {
     if (req.method === "GET") {
       const wallet = await readWallet(admin, player.id);
       if (!wallet) return json({ error: "Could not load your ZAP wallet." }, 500);
-      return json({ success: true, wallet, source: "server_player_zap_wallet" });
+      // Ranking counts earned ZAP rewards, excluding ZP-to-ZAP conversions.
+      const { data: earnedRows, error: earnedError } = await admin
+        .from("zap_ledger")
+        .select("amount")
+        .eq("player_id", player.id)
+        .eq("entry_type", "credit")
+        .neq("source", "zp_conversion");
+      if (earnedError) {
+        console.error("ZAP ranking total lookup failed:", earnedError);
+        return json({ error: "Could not load your ZAP earnings total." }, 500);
+      }
+      const rankingEarned = (earnedRows ?? []).reduce((total, row) => total + Number(row.amount || 0), 0);
+      return json({ success: true, wallet: { ...wallet, rankingEarned }, source: "server_player_zap_wallet" });
     }
 
     let body: { amountZp?: unknown; idempotencyKey?: unknown };
