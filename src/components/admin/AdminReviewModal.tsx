@@ -114,13 +114,12 @@ function AdminConsole({
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
 
 
-  const [logs, setLogs] = useState<string[]>([
-    '[INIT] ZORD Admin Workspace online.',
-    '[SYS] Administration cluster synced.',
-    '[AUTH] Administrator credentials verified.',
-  ]);
+  const [logs, setLogs] = useState<{ message: string; createdAt: string }[]>([]);
 
-  const addLog = (line: string) => setLogs((prev) => [line, ...prev]);
+  const addLog = (message: string) => setLogs((prev) => [
+    { message, createdAt: new Date().toISOString() },
+    ...prev,
+  ]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -579,19 +578,24 @@ function AdminConsole({
             <div className="rounded-2xl border border-white/10 bg-[#111a14] lg:col-span-2 p-4 flex flex-col gap-3">
               <h2 className="text-xs uppercase tracking-widest text-slate-300 font-bold flex items-center gap-2 border-b border-white/10 pb-2">
                 <Activity size={14} />
-                Live Audit Log & Activity Stream
+                Admin Session Activity
               </h2>
 
+              <p className="text-[10px] text-slate-400">Successful actions performed since this dashboard was opened. This is a session-only display, not a historical audit record.</p>
               <div className="bg-[#080e0a] border border-white/10 p-3 h-44 overflow-y-auto text-[11px] flex flex-col gap-1.5 font-mono">
-                {logs.map((log, idx) => (
+                {logs.length === 0 ? (
+                  <p className="py-3 text-center text-slate-500">
+                    No admin actions yet in this session. Completed actions will appear here.
+                  </p>
+                ) : logs.map((log, idx) => (
                   <div
-                    key={idx}
+                    key={`${log.createdAt}-${idx}`}
                     className="text-slate-300/90 border-l-2 border-emerald-400/30 pl-2"
                   >
                     <span className="text-slate-400">
-                      [{new Date().toLocaleTimeString()}]
+                      [{new Date(log.createdAt).toLocaleTimeString()}]
                     </span>{' '}
-                    {log}
+                    {log.message}
                   </div>
                 ))}
               </div>
