@@ -154,16 +154,23 @@ export default function ZapWalletPanel({
     try {
       const result = await convertZpToZap(amountZp, key);
       setWallet(result.wallet);
-      setSuccess(`You converted ${formatZp(result.conversion.zpDebited)} ZP into ${result.conversion.zapCredited} ZAP.`);
+      const confirmationMessage = `You converted ${formatZp(result.conversion.zpDebited)} ZP into ${result.conversion.zapCredited} ZAP.`;
+      setSuccess(confirmationMessage);
       setAmountZp('1000');
       setPendingKey(null);
       setPendingAmount(null);
-      await onConversionComplete();
+
+      // The conversion is already confirmed by the server. A dashboard refresh
+      // failure must not be reported as a failed conversion.
+      try {
+        await onConversionComplete();
+      } catch {
+        setSuccess(`${confirmationMessage} Your wallet is updated, but the dashboard could not refresh. Please refresh the page.`);
+      }
     } catch (conversionError) {
       const message = conversionError instanceof Error ? conversionError.message : 'Conversion could not be completed.';
       await loadWallet();
       setError(message);
-      await onConversionComplete();
     } finally {
       setSubmitting(false);
     }
