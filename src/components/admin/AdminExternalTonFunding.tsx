@@ -127,11 +127,11 @@ export default function AdminExternalTonFunding({ creds }: { creds: AdminCredent
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="text-[10px] uppercase tracking-wider text-slate-400">
               Deposit amount (Gram)
-              <input type="number" min="0.000000001" step="0.000000001" required value={amount} onChange={(e) => setAmount(e.target.value)} disabled={saving} placeholder="e.g. 10.5" className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-slate-100 normal-case" />
+              <input type="number" min="0.000000001" step="0.000000001" required value={amount} onChange={(e) => setAmount(e.target.value)} disabled={saving} placeholder="e.g. 10.5" className="admin-field normal-case" />
             </label>
             <label className="text-[10px] uppercase tracking-wider text-slate-400">
               Gram transaction hash / reference
-              <input type="text" minLength={32} maxLength={200} required value={reference} onChange={(e) => setReference(e.target.value)} disabled={saving} placeholder="Paste transaction hash" className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-slate-100 normal-case" />
+              <input type="text" minLength={32} maxLength={200} required value={reference} onChange={(e) => setReference(e.target.value)} disabled={saving} placeholder="Paste transaction hash" className="admin-field normal-case" />
             </label>
           </div>
           <label className="flex items-start gap-2 text-[11px] text-amber-200/90">
