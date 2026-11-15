@@ -197,6 +197,39 @@ export default function RafflesScreen() {
         </div>
       )}
 
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div><h3 className="text-sm font-semibold text-neon-100">Your raffle history</h3><p className="mt-1 text-[10px] text-neon-600">Entries you have made, including the ZAP stake and tickets recorded.</p></div>
+          <span className="rounded-full border border-neon/20 bg-white/[0.03] px-2.5 py-1 text-[10px] text-neon-400">{entries.length} entr{entries.length === 1 ? 'y' : 'ies'}</span>
+        </div>
+        {entries.length === 0 ? (
+          <div className="rounded-xl border border-neon/15 bg-black/20 p-4 text-center">
+            <Ticket size={22} className="mx-auto text-neon-500"/>
+            <p className="mt-2 text-xs font-semibold text-neon-200">No raffle entries yet</p>
+            <p className="mt-1 text-[10px] text-neon-600">When you enter a raffle, your stake and ticket details will appear here.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {[...entries].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((entry) => {
+              const raffle = raffles.find((item) => item.id === entry.raffle_id);
+              return (
+                <article key={entry.id} className="flex items-center justify-between gap-3 rounded-xl border border-neon/15 bg-black/25 p-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-neon-200">{raffle?.title ?? 'Raffle entry'}</p>
+                    <p className="mt-1 text-[10px] text-neon-600">{new Date(entry.created_at).toLocaleString()}</p>
+                    <p className="mt-1 text-[10px] text-neon-500">{fmt(entry.stake_zap)} ZAP staked</p>
+                  </div>
+                  <div className="shrink-0 rounded-lg bg-cyan-300/5 px-3 py-2 text-right">
+                    <p className="text-[9px] text-neon-600">Tickets</p>
+                    <p className="text-sm font-bold text-cyan-200">{entry.ticket_count}</p>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
       {selected && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/80 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="raffle-entry-title">
           <div className="w-full max-w-md space-y-4 rounded-2xl border border-cyan-300/30 bg-[#07100d] p-4 shadow-2xl sm:p-5">
