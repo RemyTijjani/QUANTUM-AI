@@ -43,6 +43,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const [editingId, setEditingId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
+  const [savedMessageKind, setSavedMessageKind] = useState<'success' | 'error' | 'info'>('info');
   const [saving, setSaving] = useState(false);
   const [reviewQueue, setReviewQueue] = useState<{ individualSubmissions: AdminExpeditionObjectiveReview[]; teamSubmissions: AdminExpeditionObjectiveReview[] }>({ individualSubmissions: [], teamSubmissions: [] });
   const [loadingReviews, setLoadingReviews] = useState(true);
@@ -54,7 +55,10 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const loadDrafts = useCallback(async () => {
     setLoadingDrafts(true);
     try { setDrafts(await listAdminExpeditions(creds)); }
-    catch (error) { setSavedMessage(error instanceof Error ? error.message : 'Could not load saved Expeditions.'); }
+    catch (error) {
+      setSavedMessage(error instanceof Error ? error.message : 'Could not load saved Expeditions.');
+      setSavedMessageKind('error');
+    }
     finally { setLoadingDrafts(false); }
   }, [creds.username, creds.password]);
   useEffect(() => { void loadDrafts(); }, [loadDrafts]);
@@ -108,16 +112,22 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const validDates = (!startsAt || Number.isFinite(new Date(startsAt).getTime())) && (!endsAt || Number.isFinite(new Date(endsAt).getTime())) && (!startsAt || !endsAt || new Date(startsAt).getTime() < new Date(endsAt).getTime());
   const canSave = !!title.trim() && validReward && validDates && objectives.length > 0;
   const saveDraft = async () => {
-    if (!canSave || saving) return;
+    if (saving) return;
+    if (!title.trim()) { setSavedMessage('Add an Expedition name before saving.'); setSavedMessageKind('error'); return; }
+    if (!validReward) { setSavedMessage('Enter a whole-number reward greater than zero, or select No reward.'); setSavedMessageKind('error'); return; }
+    if (!validDates) { setSavedMessage('The end date must be later than the start date.'); setSavedMessageKind('error'); return; }
+    if (objectives.length === 0) { setSavedMessage('Add at least one objective before saving.'); setSavedMessageKind('error'); return; }
     const min = Number(teamMin);
     const max = Number(teamMax);
     const minContributions = Number(contribution);
     if (participation !== 'solo' && (!Number.isInteger(min) || !Number.isInteger(max) || min < 2 || max > 100 || min > max || !Number.isInteger(minContributions) || minContributions < 0)) {
       setSavedMessage('Check the team size and individual contribution settings.');
+      setSavedMessageKind('error');
       return;
     }
     setSaving(true);
     setSavedMessage('');
+    setSavedMessageKind('info');
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       const saved = await saveExpeditionDraft(creds, {
@@ -138,10 +148,13 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
         objectives: objectives.map(({ kind, title, scope }) => ({ kind, title, scope })), 
       });
       
-      setSavedMessage(`Draft saved securely to Preview database (ID: ${saved.id}). It remains unpublished.`);
+      setSavedMessage(`Saved successfully: ${title.trim()} is now in Saved Expeditions. Draft ID: ${saved.id}. It has not been published.`);
+      setSavedMessageKind('success');
       setCreating(false);
+      await loadDrafts();
     } catch (error) {
       setSavedMessage(error instanceof Error ? error.message : 'Could not save the Expedition draft.');
+      setSavedMessageKind('error');
     } finally {
       setSaving(false);
     }
@@ -158,17 +171,24 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     setRewardType(draft.reward?.reward_type === 'none' ? 'none' : (draft.reward?.reward_type ?? 'zp').toUpperCase());
     setRewardAmount(String(draft.reward?.amount ?? 0));
     setObjectives(draft.objectives.map((o,i) => ({ id: i+1, kind: o.objective_type, title: o.title, scope: o.completion_scope ?? 'individual' })));
-    setStep(0); setCreating(true); setSavedMessage('');
+    setStep(0); setCreating(true); setSavedMessage(''); setSavedMessageKind('info');
   };
   const publishDraft = async (draft: AdminExpeditionRecord) => {
     if (draft.status !== 'draft' || publishingId) return;
-    if (!window.confirm('Move this Expedition out of Draft? This updates its admin lifecycle status only. It will NOT appear to players yet, and no rewards will be issued.')) return;
-    setPublishingId(draft.id); setSavedMessage('');
+    const rewardWarning = draft.reward && draft.reward.reward_type !== 'none'
+      ? '\\n\\nImportant: ZP/ZAP reward payouts are not active yet. Publishing will make this Expedition visible, but it will not pay the configured reward.'
+      : '';
+    if (!window.confirm('Publish this Expedition? It will become visible in the Player Expeditions list. You can no longer edit it as a draft.' + rewardWarning)) return;
+    setPublishingId(draft.id); setSavedMessage(''); setSavedMessageKind('info');
     try {
       const result = await publishAdminExpedition(creds, draft.id);
-      setSavedMessage(`Expedition moved to ${result.status.replace('_',' ')}. Player visibility and reward issuance remain disabled.`);
+      setSavedMessage(`Published successfully. This Expedition is now visible to players (${result.status.replace('_',' ')}).${draft.reward && draft.reward.reward_type !== 'none' ? ' Reward payouts are not active yet.' : ''}`);
+      setSavedMessageKind('success');
       await loadDrafts();
-    } catch (error) { setSavedMessage(error instanceof Error ? error.message : 'Could not publish Expedition.'); }
+    } catch (error) {
+      setSavedMessage(error instanceof Error ? error.message : 'Could not publish Expedition.');
+      setSavedMessageKind('error');
+    }
     finally { setPublishingId(null); }
   };
 
@@ -226,12 +246,12 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     <style>{'.admin-field{display:block;width:100%;margin-top:6px;background:#020503;border:1px solid rgba(80,255,150,.25);padding:10px;color:#d1fae5;font-size:12px;outline:none}.admin-field:focus{border-color:rgba(80,255,150,.7)}.admin-field-label{display:block;font-size:11px;color:#70d99b}'}</style>
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{metrics.map(([label,value,Icon]) => <div key={label} className="border border-white/10 bg-[#101a14] p-3"><Icon size={16} className="mb-2 text-slate-400"/><p className="text-xl font-bold text-slate-100">{value}</p><p className="text-[9px] uppercase tracking-wider text-slate-500">{label}</p></div>)}</div>
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3"><div><h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-300"><Compass size={15}/> Expedition Command</h2><p className="mt-1 text-[10px] text-slate-500">Build structured solo, team and mixed-objective Expeditions.</p></div>{!creating && <button type="button" onClick={() => {reset();setCreating(true);}} className="flex items-center gap-2 border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-slate-100"><Plus size={14}/> Create Expedition</button>}</div>
-    {savedMessage && <p role="status" className="border-l-2 border-emerald-400/40 bg-emerald-400/5 px-3 py-2 text-[10px] text-emerald-300">{savedMessage}</p>}
+    {savedMessage && <p role={savedMessageKind === 'error' ? 'alert' : 'status'} aria-live="polite" className={'border-l-2 px-3 py-3 text-xs ' + (savedMessageKind === 'success' ? 'border-emerald-400/60 bg-emerald-400/10 text-emerald-200' : savedMessageKind === 'error' ? 'border-red-400/60 bg-red-400/10 text-red-200' : 'border-sky-400/50 bg-sky-400/10 text-sky-200')}>{savedMessage}</p>}
     {creating && <div className="space-y-4 border border-white/10 bg-[#0b120e] p-3 sm:p-5">
       <div className="flex items-center justify-between gap-2"><div><p className="text-[10px] uppercase tracking-widest text-slate-400">Expedition Builder</p><h3 className="mt-1 text-sm font-bold text-slate-100">Step {step+1}: {steps[step]}</h3></div><button type="button" onClick={() => setCreating(false)} className="text-[10px] text-slate-500">Close</button></div>
       <div className="grid grid-cols-6 gap-1">{steps.map((name,i) => <button key={name} type="button" onClick={() => setStep(i)} title={name} className={'h-1.5 '+(i<=step?'bg-emerald-400':'bg-emerald-400/10')}/>)}</div>
       {content()}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3"><button type="button" disabled={step===0} onClick={() => setStep(v => Math.max(0,v-1))} className="flex items-center gap-1 border border-white/10 px-3 py-2 text-xs text-slate-400 disabled:opacity-30"><ChevronLeft size={14}/> Back</button>{step<5 ? <button type="button" onClick={() => setStep(v => Math.min(5,v+1))} className="flex items-center gap-1 border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-slate-100">Continue <ChevronRight size={14}/></button> : <button type="button" onClick={saveDraft} disabled={!canSave || saving} className="flex items-center gap-2 border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-slate-100 disabled:opacity-40"><Save size={14}/> {saving ? 'Saving…' : 'Save database draft'}</button>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3"><button type="button" disabled={step===0} onClick={() => setStep(v => Math.max(0,v-1))} className="flex items-center gap-1 border border-white/10 px-3 py-2 text-xs text-slate-400 disabled:opacity-30"><ChevronLeft size={14}/> Back</button>{step<5 ? <button type="button" onClick={() => setStep(v => Math.min(5,v+1))} className="flex items-center gap-1 border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-slate-100">Continue <ChevronRight size={14}/></button> : <button type="button" onClick={saveDraft} disabled={saving} className="flex items-center gap-2 border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-slate-100 disabled:opacity-40"><Save size={14}/> {saving ? 'Saving…' : 'Save database draft'}</button>}</div>
       {!validDates && <p role="alert" className="text-[10px] text-red-300">The end date must be after the start date.</p>}{!validReward && <p role="alert" className="text-[10px] text-red-300">Enter a whole-number reward greater than zero, or select No reward.</p>}
     </div>}
     <div className="space-y-2">
