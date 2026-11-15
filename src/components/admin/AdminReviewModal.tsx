@@ -327,8 +327,8 @@ function AdminConsole({
           onClick={() => setActiveTab('stats')}
           className={`flex min-h-10 shrink-0 items-center rounded-xl px-3 py-2 text-xs font-medium transition md:w-full ${
             activeTab === 'stats'
-              ? 'border-neon bg-neon/20 text-neon-300 font-bold'
-              : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
+              ? 'bg-emerald-400/15 text-emerald-300 ring-1 ring-inset ring-emerald-400/25'
+              : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
           }`}
         >
           System & Telemetry
@@ -337,7 +337,7 @@ function AdminConsole({
         <button
           type="button"
           onClick={() => setActiveTab('tasks')}
-          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
+          className={`flex min-h-10 shrink-0 items-center rounded-xl px-3 py-2 text-xs font-medium transition md:w-full ${
             activeTab === 'tasks'
               ? 'border-neon bg-neon/20 text-neon-300 font-bold'
               : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
