@@ -40,7 +40,7 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {tasks.map((task) => (
-            <div key={task.id} className="panel p-3 border border-white/10 bg-[#0b120e] flex justify-between items-start">
+            <div key={task.id} className="rounded-xl border border-white/10 bg-[#101a14] p-3 flex justify-between items-start">
               <div>
                 <span className="text-[10px] uppercase px-1.5 py-0.5 rounded border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
                   {task.kind}
