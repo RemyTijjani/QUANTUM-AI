@@ -1,14 +1,17 @@
-import { ArrowLeftRight, Coins, History, Image, Wallet } from 'lucide-react';
+import { Coins, History, Image, Wallet } from 'lucide-react';
 import { formatZp } from '@/lib/format';
 import type { VerifiedLedgerEntry } from '@/lib/economy/verifiedEconomy';
 import TonWalletConnection from './TonWalletConnection';
+import ZapWalletPanel from './ZapWalletPanel';
 
 export default function VaultTab({
   verifiedZpBalance,
   transactions,
+  onRefreshVerifiedEconomy,
 }: {
   verifiedZpBalance: number | null;
   transactions: VerifiedLedgerEntry[];
+  onRefreshVerifiedEconomy: () => Promise<void> | void;
 }) {
   return (
     <div className="space-y-5 pb-3">
@@ -20,17 +23,15 @@ export default function VaultTab({
 
       <TonWalletConnection />
 
-      <section className="grid grid-cols-2 gap-3">
-        <div className="panel p-4"><div className="flex items-center gap-2 text-neon-500"><Coins size={14} /><p className="label">Verified ZP</p></div><p className="mt-3 font-display text-xl text-neon-300">{verifiedZpBalance === null ? 'Unavailable' : formatZp(verifiedZpBalance)}</p></div>
-        <div className="panel p-4"><div className="flex items-center gap-2 text-cyan-400"><ArrowLeftRight size={14} /><p className="label">ZAP balance</p></div><p className="mt-3 font-display text-xl text-cyan-300">Not enabled</p></div>
+      <section className="panel p-4">
+        <div className="flex items-center gap-2 text-neon-500"><Coins size={14} /><p className="label">Verified ZP balance</p></div>
+        <p className="mt-3 font-display text-xl text-neon-300">{verifiedZpBalance === null ? 'Unavailable' : formatZp(verifiedZpBalance)}</p>
       </section>
 
-      <section className="panel space-y-2 p-4">
-        <h2 className="title">Conversion & transfers</h2>
-        <div className="flex justify-between gap-2 font-mono text-[10px] text-neon-400"><span>1,000 ZP</span><span>1 ZAP</span></div>
-        <div className="flex justify-between gap-2 font-mono text-[10px] text-neon-400"><span>Minimum ZAP transfer</span><span>100 ZAP</span></div>
-        <p className="font-mono text-[9px] leading-relaxed text-amber-300">Conversion and transfers are not active. ZAP is not currently held in the verified economy ledger.</p>
-      </section>
+      <ZapWalletPanel
+        verifiedZpBalance={verifiedZpBalance}
+        onConversionComplete={onRefreshVerifiedEconomy}
+      />
 
       <section className="panel space-y-3 p-4">
         <div className="flex items-center gap-2"><History size={15} className="text-neon-400" /><h2 className="title">Verified ZP history</h2></div>
