@@ -598,6 +598,14 @@ export async function publishAdminExpedition(creds: AdminCredentials, id: string
   }
   return { status: result.status as 'scheduled' | 'registration_open' };
 }
+export async function rescheduleAdminExpedition(
+  creds: AdminCredentials, id: string, startsAt: string, endsAt: string,
+): Promise<void> {
+  const body = await callAdminApi(creds, { action: 'reschedule_expedition', expeditionId: id, startsAt, endsAt });
+  if (!body || typeof body !== 'object' || (body as { success?: unknown }).success !== true) {
+    throw new AdminApiError('The Expedition schedule could not be verified.');
+  }
+}
 
 
 export interface AdminExpeditionObjectiveReview {
