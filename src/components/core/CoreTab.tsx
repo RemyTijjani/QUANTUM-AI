@@ -75,7 +75,7 @@ export default function CoreTab({
         return;
       }
       void onFixFragment(id).then(() => {
-        notify(`${FRAGMENT_NAMES[id]} fixed. Its mining reward will enter Verified ZP after the six-hour hold.`, 'info');
+        notify(`${FRAGMENT_NAMES[id]} mining has started. ZP accrues from server-recorded mining time and each earned amount stays pending for six hours.`, 'info');
       }).catch((error) => {
         notify(error instanceof Error ? error.message : 'Could not verify this fragment action', 'error');
       });
@@ -255,7 +255,7 @@ export default function CoreTab({
         {miningLeft > 0 ? `Core timer: ${formatRemaining(miningLeft)} left` : 'Core timer inactive. Fix a fragment to restart the local game timer.'}
       </p>
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
-        Complete the timed unlock, then fix the fragment into the core. The displayed rate is a local game estimate, not verified ZP accrual. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
+        Complete the timed unlock, then fix the fragment into the core. Pending ZP is calculated from server-recorded mining time; each earned amount becomes Verified ZP six hours after it is mined. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
       </p>
       <CharacterCard fixed={fixed} lifetimeZp={formatZp(state.lifetimeZp)} rate={formatRate(rate)} />
 
