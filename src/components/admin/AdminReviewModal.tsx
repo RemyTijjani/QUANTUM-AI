@@ -41,6 +41,7 @@ import AdminRaffleManager from '@/components/admin/AdminRaffleManager';
 import AdminPlayerManager from '@/components/admin/AdminPlayerManager';
 import AdminExternalZapFunding from '@/components/admin/AdminExternalZapFunding';
 import AdminExternalTonFunding from '@/components/admin/AdminExternalTonFunding';
+import AdminTonWithdrawals from '@/components/admin/AdminTonWithdrawals';
 import VaultReservesCard from '@/components/admin/VaultReservesCard';
 import { NeonSpinner } from '@/components/NeonSpinner';
 
@@ -96,7 +97,7 @@ function AdminConsole({
   onApproveSubmission: (rewardZp: number) => void;
 }) {
   const [data, setData] = useState<AdminDashboardData>(initialData);
-  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'expeditions' | 'players' | 'raffles' | 'raffle-funding'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'expeditions' | 'players' | 'raffles' | 'raffle-funding' | 'ton-withdrawals'>('queue');
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -383,6 +384,18 @@ function AdminConsole({
 
         <button
           type="button"
+          onClick={() => setActiveTab('ton-withdrawals')}
+          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
+            activeTab === 'ton-withdrawals'
+              ? 'border-neon bg-neon/20 text-neon-300 font-bold'
+              : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
+          }`}
+        >
+          TON Withdrawals
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('expeditions')}
           className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
             activeTab === 'expeditions'
@@ -640,6 +653,8 @@ function AdminConsole({
           <AdminExternalZapFunding creds={creds} />
         </div>
       )}
+
+      {activeTab === 'ton-withdrawals' && <AdminTonWithdrawals creds={creds} />}
 
       {activeTab === 'expeditions' && (
         <AdminExpeditionManager events={data.events} creds={creds} />
