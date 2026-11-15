@@ -42,7 +42,7 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
       if (action === 'paid') {
         const hash = (hashes[request.id] ?? '').trim();
         if (hash.length < 32 || hash.length > 200 || /\s/.test(hash)) {
-          setError('Enter the transaction hash/reference from the completed TON transfer (32–200 characters, no spaces).');
+          setError('Enter the transaction hash/reference from the completed Gram transfer (32–200 characters, no spaces).');
           return;
         }
       }
@@ -53,10 +53,10 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
         ...(action === 'paid' ? { transactionHash: hashes[request.id] } : {}),
       });
       const messages: Record<AdminTonWithdrawalAction, string> = {
-        approve: 'Withdrawal approved. The TON remains reserved until payment is recorded.',
-        reject: 'Withdrawal rejected. The reserved TON has been returned to the player’s available balance.',
+        approve: 'Withdrawal approved. The Gram remains reserved until payment is recorded.',
+        reject: 'Withdrawal rejected. The reserved Gram has been returned to the player’s available balance.',
         processing: 'Withdrawal moved to processing. Complete the transfer outside ZORD before marking it paid.',
-        paid: 'Payment recorded. The reserved TON has been settled in the player ledger.',
+        paid: 'Payment recorded. The reserved Gram has been settled in the player ledger.',
       };
       setNotice(messages[action]);
       await refresh();
@@ -75,8 +75,8 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
     <section className="space-y-4">
       <div className="rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-cyan-400/10 via-black/50 to-neon/5 p-4">
         <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-300">Admin workspace</p>
-        <h2 className="mt-1 font-display text-xl font-bold text-white">TON withdrawals</h2>
-        <p className="mt-2 text-xs leading-relaxed text-slate-300">Review player requests, approve or reject them, then record the transaction after an external TON transfer is completed.</p>
+        <h2 className="mt-1 font-display text-xl font-bold text-white">Gram withdrawals</h2>
+        <p className="mt-2 text-xs leading-relaxed text-slate-300">Review player requests, approve or reject them, then record the transaction after an external Gram transfer is completed.</p>
         <div className="mt-4 grid grid-cols-3 gap-2">
           <div className="rounded-xl border border-white/10 bg-[#101a14] p-3"><p className="text-[9px] text-slate-400">Pending</p><p className="mt-1 font-display text-xl text-amber-200">{pending}</p></div>
           <div className="rounded-xl border border-white/10 bg-[#101a14] p-3"><p className="text-[9px] text-slate-400">Approved</p><p className="mt-1 font-display text-xl text-emerald-200">{approved}</p></div>
@@ -89,7 +89,7 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
 
       <div className="flex items-center justify-between gap-3">
         <div><h3 className="text-sm font-semibold text-slate-100">Open requests</h3><p className="mt-1 text-[10px] text-slate-400">Oldest requests appear first.</p></div>
-        <button type="button" onClick={() => void refresh()} disabled={loading} className="rounded-lg border border-white/10 p-2 text-emerald-300 disabled:opacity-40" aria-label="Refresh TON withdrawals"><RefreshCw size={14} className={loading ? 'animate-spin' : ''}/></button>
+        <button type="button" onClick={() => void refresh()} disabled={loading} className="rounded-lg border border-white/10 p-2 text-emerald-300 disabled:opacity-40" aria-label="Refresh Gram withdrawals"><RefreshCw size={14} className={loading ? 'animate-spin' : ''}/></button>
       </div>
 
       {loading ? (
@@ -118,20 +118,20 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
             </div>}
 
             {request.status === 'approved' && <div className="space-y-2">
-              <p className="text-[10px] leading-relaxed text-amber-200">Next, arrange the TON transfer to the payout wallet using your external wallet. Only mark it paid after the transfer is confirmed.</p>
+              <p className="text-[10px] leading-relaxed text-amber-200">Next, arrange the Gram transfer to the payout wallet using your external wallet. Only mark it paid after the transfer is confirmed.</p>
               <button type="button" disabled={workingId !== null} onClick={() => void act(request, 'processing')} className="w-full rounded-lg border border-violet-400/25 bg-violet-400/10 px-3 py-2.5 text-[10px] font-semibold text-violet-200 disabled:opacity-40">{workingId === request.id ? 'Updating…' : 'Move to processing'}</button>
             </div>}
 
             {request.status === 'processing' && <div className="space-y-2">
-              <p className="text-[10px] leading-relaxed text-amber-200">After sending TON externally, enter its transaction hash below. ZORD does not send the transfer automatically.</p>
-              <input value={hashes[request.id] ?? ''} onChange={(event) => setHashes((current) => ({ ...current, [request.id]: event.target.value }))} maxLength={200} placeholder="TON transaction hash / reference" className="w-full rounded-lg border border-emerald-400/40/15 bg-[#0b120e] px-3 py-2 font-mono text-[10px] text-white outline-none focus:border-emerald-400/40"/>
+              <p className="text-[10px] leading-relaxed text-amber-200">After sending Gram externally, enter its transaction hash below. ZORD does not send the transfer automatically.</p>
+              <input value={hashes[request.id] ?? ''} onChange={(event) => setHashes((current) => ({ ...current, [request.id]: event.target.value }))} maxLength={200} placeholder="Gram transaction hash / reference" className="w-full rounded-lg border border-emerald-400/40/15 bg-[#0b120e] px-3 py-2 font-mono text-[10px] text-white outline-none focus:border-emerald-400/40"/>
               <button type="button" disabled={workingId !== null} onClick={() => void act(request, 'paid')} className="w-full rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2.5 text-[10px] font-semibold text-emerald-200 disabled:opacity-40">{workingId === request.id ? 'Recording…' : 'Mark as paid'}</button>
             </div>}
           </article>
         );
       })}
 
-      <p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-[10px] leading-relaxed text-amber-200">Important: ZORD records approvals and transaction references. It does not hold a private key or automatically send TON. Rejecting a request releases its reserved amount back to the player.</p>
+      <p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-[10px] leading-relaxed text-amber-200">Important: ZORD records approvals and transaction references. It does not hold a private key or automatically send Gram. Rejecting a request releases its reserved amount back to the player.</p>
     </section>
   );
 }
