@@ -6,6 +6,7 @@ import {
   listAdminRaffles,
   saveAdminRaffleDraft,
   reserveAdminRafflePrize,
+  publishAdminRaffle,
 } from '@/lib/admin/adminApi';
 import type { AdminCredentials, AdminRaffleRecord } from '@/lib/admin/adminApi';
 
@@ -23,6 +24,7 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [reservingId, setReservingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [reservedIds, setReservedIds] = useState<Record<string, boolean>>({});
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -94,6 +96,24 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
       setError(errorText(reserveError));
     } finally {
       setReservingId(null);
+    }
+  };
+
+  const publishRaffle = async (raffle: AdminRaffleRecord) => {
+    setError('');
+    setNotice('');
+    setPublishingId(raffle.id);
+    try {
+      const result = await publishAdminRaffle(creds, raffle.id);
+      setNotice(`Published "${raffle.title}". It is now visible to players.`);
+      if (result.status !== 'published') {
+        setError('The server did not confirm that this raffle was published. Refresh the list before retrying.');
+      }
+      await refresh();
+    } catch (publishError) {
+      setError(errorText(publishError));
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -210,7 +230,7 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
             <label className="block"><span className="mb-1 block text-[10px] text-slate-400">Filter by status</span><select value={raffleStatusFilter} onChange={(event) => setRaffleStatusFilter(event.target.value)} className="admin-field"><option value="all">All statuses ({raffles.length})</option><option value="draft">Draft</option><option value="published">Published</option></select></label>
           </div>
         )}
-        {loading ? <div role="status" className="py-8 text-center text-xs text-slate-400">Loading your raffle drafts…</div> : raffles.length === 0 ? <div className="rounded-xl border border-white/10 bg-[#101a14] py-9 text-center"><CircleDollarSign size={25} className="mx-auto text-slate-400"/><p className="mt-2 text-xs text-emerald-300">No raffles created yet</p><p className="mt-1 text-[10px] text-slate-400">Create your first draft to get started.</p></div> : visibleRaffles.length === 0 ? <div className="rounded-xl border border-dashed border-white/15 py-9 text-center"><p className="text-xs font-semibold text-slate-200">No matching raffles</p><p className="mt-1 text-[10px] text-slate-400">Try another title or change the status filter.</p><button type="button" onClick={() => { setRaffleSearch(''); setRaffleStatusFilter('all'); }} className="mt-3 text-xs text-emerald-300">Clear search and filters</button></div> : visibleRaffles.map((raffle) => <article key={raffle.id} className="rounded-xl border border-white/10 bg-[#101a14] p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h4 className="text-sm font-semibold text-slate-100">{raffle.title}</h4><p className="mt-1 text-[10px] text-slate-400">{money(raffle.prize_pool_amount, raffle.prize_currency)} · {raffle.winner_count} winner(s)</p></div><span className={`rounded-full border px-2.5 py-1 text-[9px] uppercase ${raffle.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : 'border-amber-400/25 bg-amber-400/5 text-amber-200'}`}>{raffle.status}</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-slate-400"><span>Minimum: {money(raffle.min_bet_zap, 'ZAP')}</span><span>{raffle.entry_mode === 'proportional' ? 'Proportional tickets' : 'One bet, one ticket'}</span></div>{raffle.status === 'draft' && <div className="mt-3 flex flex-wrap gap-2">{reservedIds[raffle.id] ? <span role="status" className="rounded-lg border border-emerald-400/25 bg-emerald-400/5 px-3 py-2 text-[10px] font-semibold text-emerald-200">Prize reserved</span> : <button type="button" onClick={() => void reservePrize(raffle)} disabled={reservingId !== null} className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[10px] font-semibold text-emerald-100 hover:bg-cyan-300/20 disabled:opacity-40">{reservingId === raffle.id ? 'Checking reserve…' : 'Lock prize funds'}</button>}<button type="button" onClick={() => editDraft(raffle)} disabled={!!reservedIds[raffle.id]} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-40">Edit draft</button></div>}</article>)}
+        {loading ? <div role="status" className="py-8 text-center text-xs text-slate-400">Loading your raffle drafts…</div> : raffles.length === 0 ? <div className="rounded-xl border border-white/10 bg-[#101a14] py-9 text-center"><CircleDollarSign size={25} className="mx-auto text-slate-400"/><p className="mt-2 text-xs text-emerald-300">No raffles created yet</p><p className="mt-1 text-[10px] text-slate-400">Create your first draft to get started.</p></div> : visibleRaffles.length === 0 ? <div className="rounded-xl border border-dashed border-white/15 py-9 text-center"><p className="text-xs font-semibold text-slate-200">No matching raffles</p><p className="mt-1 text-[10px] text-slate-400">Try another title or change the status filter.</p><button type="button" onClick={() => { setRaffleSearch(''); setRaffleStatusFilter('all'); }} className="mt-3 text-xs text-emerald-300">Clear search and filters</button></div> : visibleRaffles.map((raffle) => <article key={raffle.id} className="rounded-xl border border-white/10 bg-[#101a14] p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h4 className="text-sm font-semibold text-slate-100">{raffle.title}</h4><p className="mt-1 text-[10px] text-slate-400">{money(raffle.prize_pool_amount, raffle.prize_currency)} · {raffle.winner_count} winner(s)</p></div><span className={`rounded-full border px-2.5 py-1 text-[9px] uppercase ${raffle.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : 'border-amber-400/25 bg-amber-400/5 text-amber-200'}`}>{raffle.status}</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-slate-400"><span>Minimum: {money(raffle.min_bet_zap, 'ZAP')}</span><span>{raffle.entry_mode === 'proportional' ? 'Proportional tickets' : 'One bet, one ticket'}</span></div>{raffle.status === 'draft' && <div className="mt-3 flex flex-wrap gap-2">{reservedIds[raffle.id] ? <span role="status" className="rounded-lg border border-emerald-400/25 bg-emerald-400/5 px-3 py-2 text-[10px] font-semibold text-emerald-200">Prize reserved</span> : <button type="button" onClick={() => void reservePrize(raffle)} disabled={reservingId !== null || publishingId !== null} className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[10px] font-semibold text-emerald-100 hover:bg-cyan-300/20 disabled:opacity-40">{reservingId === raffle.id ? 'Checking reserve…' : 'Lock prize funds'}</button>}<button type="button" onClick={() => void publishRaffle(raffle)} disabled={publishingId !== null || reservingId !== null} className="rounded-lg border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-40">{publishingId === raffle.id ? 'Publishing…' : 'Publish raffle'}</button><button type="button" onClick={() => editDraft(raffle)} disabled={!!reservedIds[raffle.id] || publishingId !== null} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-40">Edit draft</button></div>}</article>)}
       </div>
       <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3"><p className="text-[10px] font-semibold text-amber-200">Publishing is protected</p><p className="mt-1 text-[10px] leading-relaxed text-amber-100/70">A raffle must have its full prize pool reserved and verified before it can go live. Gram prizes also require the funding wallet and player withdrawal process to be ready. Drawing winners and delivering prizes are separate Admin-controlled steps.</p></div>
     </section>
