@@ -115,7 +115,7 @@ export default function AdminPlayerManager({ creds }: Props) {
             </thead>
             <tbody>
               {players.map((player) => (
-                <tr key={player.id} className="border-b border-emerald-400/40/10 text-[11px] text-emerald-300">
+                <tr key={player.id} className="border-b border-white/10 text-[11px] text-emerald-300">
                   <td className="px-3 py-3">
                     <div className="font-semibold">{player.first_name || 'Unnamed player'}</div>
                     <div className="mt-1 text-[10px] text-slate-400">
