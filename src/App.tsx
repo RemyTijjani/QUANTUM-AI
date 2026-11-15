@@ -317,7 +317,7 @@ function GameApp({
         )}
 
         {tab === 'vault' && (
-          <VaultTab verifiedZpBalance={verifiedZpBalance} transactions={verifiedTransactions} />
+          <VaultTab verifiedZpBalance={verifiedZpBalance} transactions={verifiedTransactions} onRefreshVerifiedEconomy={refreshVerifiedBalance} />
         )}
       </main>
 
