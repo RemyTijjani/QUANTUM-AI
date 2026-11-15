@@ -42,8 +42,8 @@ export default function RafflesScreen() {
     if (quiet) setRefreshing(true); else setLoading(true);
     setError('');
     const [raffleResult, walletResult] = await Promise.all([
-      supabase.functions.invoke('raffle-actions'),
-      supabase.functions.invoke('zap-wallet'),
+      supabase.functions.invoke('raffle-actions', { method: 'GET' }),
+      supabase.functions.invoke('zap-wallet', { method: 'GET' }),
     ]);
     if (raffleResult.error || !raffleResult.data?.success) {
       setError(raffleResult.data?.error || raffleResult.error?.message || 'We could not load raffles. Please try again.');
