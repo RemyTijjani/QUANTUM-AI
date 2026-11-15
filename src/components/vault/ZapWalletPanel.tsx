@@ -27,7 +27,7 @@ export default function ZapWalletPanel({
   const maxConvertibleZp = verifiedZpBalance === null || !Number.isFinite(verifiedZpBalance)
     ? 0
     : Math.floor(verifiedZpBalance / 1000) * 1000;
-  const parsedAmount = /^\\d+$/.test(amountZp) ? Number(amountZp) : 0;
+  const parsedAmount = /^\d+$/.test(amountZp) ? Number(amountZp) : 0;
   const validAmount = Number.isSafeInteger(parsedAmount) &&
     parsedAmount >= 1000 &&
     parsedAmount % 1000 === 0 &&
