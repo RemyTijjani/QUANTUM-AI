@@ -24,7 +24,9 @@ interface Inventory {
   recentOpenings: Opening[];
 }
 interface RepeatBoxState {
-  dailyClaimedToday: boolean;
+  freeClaimAvailable: boolean;
+  lastFreeClaimAt: string | null;
+  nextFreeClaimAt: string | null;
   cooldownUntil: string | null;
   zpBalance: number;
   costZp: number;
@@ -84,6 +86,7 @@ export default function MysteryBoxPanel({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [repeatBox, setRepeatBox] = useState<RepeatBoxState | null>(null);
   const [repeatBusy, setRepeatBusy] = useState(false);
+  const [dailyClaimBusy, setDailyClaimBusy] = useState(false);
   const [repeatMessage, setRepeatMessage] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
@@ -122,9 +125,32 @@ export default function MysteryBoxPanel({
     premium: inventory.availableBoxes.filter((box) => box.boxTier === 'premium').length,
   }), [inventory.availableBoxes]);
 
+  const claimDailyBox = async () => {
+    if (dailyClaimBusy || !repeatBox?.freeClaimAvailable) return;
+    setDailyClaimBusy(true);
+    setOpeningId('daily-claim');
+    setRepeatMessage(null);
+    const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
+      body: { action: 'claim_daily_mystery_box' },
+    });
+    if (error || !data?.success) {
+      setDailyClaimBusy(false);
+      setOpeningId(null);
+      setRepeatMessage(data?.message || error?.message || 'Your free Mystery Box could not be claimed. Please try again.');
+      await loadInventory(true);
+      return;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 850));
+    setDailyClaimBusy(false);
+    setOpeningId(null);
+    notify(data.alreadyClaimed ? 'Your free daily Mystery Box is already claimed.' : 'Your free daily Mystery Box has been added to your inventory.');
+    await loadInventory(true);
+  };
+
   const openRepeatBox = async () => {
-    if (repeatBusy || !repeatBox?.dailyClaimedToday || !repeatBox || repeatBox.zpBalance < 500) return;
+    if (repeatBusy || !repeatBox || repeatBox.zpBalance < 500) return;
     setRepeatBusy(true);
+    setOpeningId('repeat');
     setRepeatMessage(null);
     setLastReward(null);
     const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
@@ -134,14 +160,18 @@ export default function MysteryBoxPanel({
         requestId: crypto.randomUUID(),
       },
     });
-    setRepeatBusy(false);
 
     if (error || !data?.success) {
+      setRepeatBusy(false);
+      setOpeningId(null);
       setRepeatMessage(data?.message || error?.message || 'The repeat box could not be opened. Refreshing your status…');
       await loadInventory(true);
       return;
     }
 
+    await new Promise((resolve) => window.setTimeout(resolve, 1600));
+    setRepeatBusy(false);
+    setOpeningId(null);
     setLastReward(data as OpenResult);
     notify('Repeat Mystery Box opened. 500 ZP was charged and the reward was recorded.');
     await loadInventory(true);
@@ -155,8 +185,8 @@ export default function MysteryBoxPanel({
     const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
       body: { action: 'open_mystery_box', entitlementId: box.entitlementId },
     });
-    setOpeningId(null);
     if (error || !data?.success) {
+      setOpeningId(null);
       notify(error?.message || 'The box could not be opened. Checking your inventory status…', 'error');
       // A response can be lost after the server has committed the opening.
       // Refresh so the UI does not leave a consumed box looking available.
@@ -164,6 +194,8 @@ export default function MysteryBoxPanel({
       return;
     }
 
+    await new Promise((resolve) => window.setTimeout(resolve, 1600));
+    setOpeningId(null);
     const result = data as OpenResult;
     setLastReward(result);
     notify(result.alreadyOpened ? 'This box was already opened; its recorded reward is shown.' : 'Mystery Box opened successfully.');
@@ -177,7 +209,7 @@ export default function MysteryBoxPanel({
     <section className="space-y-3">
       <div className="panel space-y-3 border border-violet-400/25 bg-gradient-to-br from-violet-500/10 via-black/50 to-cyan-500/5 p-4">
         <div className="flex items-center gap-2">
-          <span className="mystery-box-art flex h-9 w-9 items-center justify-center rounded-lg border border-violet-300/30 bg-violet-400/10 text-violet-200"><Gift size={18} /></span>
+          <span className={"mystery-box-art flex h-9 w-9 items-center justify-center rounded-lg border border-violet-300/30 bg-violet-400/10 text-violet-200 " + (openingId ? "mystery-box-art--opening" : "")}><Gift size={18} /></span>
           <div><p className="label">Reward inventory</p><h2 className="title mt-1">Mystery Boxes</h2></div>
           <button type="button" onClick={() => void loadInventory(true)} disabled={refreshing || loading} aria-label="Refresh Mystery Box inventory" className="ml-auto inline-flex min-h-10 items-center gap-2 rounded-lg border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wide text-neon-200 shadow-[0_0_12px_rgba(34,211,238,0.12)] hover:bg-neon/20 disabled:opacity-50">
             {refreshing ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
@@ -189,35 +221,47 @@ export default function MysteryBoxPanel({
           <div className="rounded-lg border border-neon/20 bg-black/30 p-3"><p className="label">Standard</p><p className="mt-1 font-display text-2xl text-neon-200">{counts.standard}</p><p className="font-mono text-[8px] uppercase text-neon-700">Available</p></div>
           <div className="rounded-lg border border-violet-300/25 bg-black/30 p-3"><p className="label">Premium</p><p className="mt-1 font-display text-2xl text-violet-200">{counts.premium}</p><p className="font-mono text-[8px] uppercase text-violet-400/70">Available</p></div>
         </div>
-      <div className="mt-4 space-y-3 border-t border-neon/15 pt-4">
-        <div className="flex items-center justify-between gap-2">
-          <div><p className="label">Open another box</p><p className="mt-1 font-mono text-[9px] text-neon-600">After your free daily claim, use either option below.</p></div>
-          <span className="rounded-md border border-amber-300/20 px-2 py-1 font-mono text-[8px] uppercase text-amber-200">500 ZP</span>
+      <div className="space-y-3 rounded-lg border border-violet-300/20 bg-violet-400/5 p-3">
+          <div><p className="label">Daily free box</p><p className="mt-1 font-mono text-[9px] text-neon-500">One free Mystery Box every 24 hours. This is separate from Daily Streak.</p></div>
+          {repeatBox?.freeClaimAvailable ? (
+            <button type="button" onClick={() => void claimDailyBox()} disabled={dailyClaimBusy || loading} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-violet-300/35 bg-violet-300/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-violet-100 disabled:opacity-50">
+              {dailyClaimBusy ? <Loader2 size={14} className="animate-spin" /> : <Gift size={14} />}
+              {dailyClaimBusy ? 'Claiming your free box…' : 'Claim free daily box'}
+            </button>
+          ) : repeatBox?.nextFreeClaimAt ? (
+            <p className="rounded-lg border border-violet-300/20 bg-black/20 p-3 font-mono text-[9px] text-violet-200">Next free box in {formatCountdown(new Date(repeatBox.nextFreeClaimAt).getTime() - nowMs)}</p>
+          ) : (
+            <p className="font-mono text-[9px] text-neon-700">Daily box availability is loading. Refresh if this message remains.</p>
+          )}
         </div>
-        {repeatBox ? (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-neon/15 bg-black/30 p-3"><p className="label">Your ZP balance</p><p className="mt-1 font-display text-xl text-neon-200">{Number(repeatBox.zpBalance || 0).toLocaleString()}</p></div>
-              <div className="rounded-lg border border-neon/15 bg-black/30 p-3"><p className="label">Next opening</p><p className="mt-1 font-mono text-sm font-bold text-amber-200">{repeatBox.cooldownUntil && new Date(repeatBox.cooldownUntil).getTime() > nowMs ? formatCountdown(new Date(repeatBox.cooldownUntil).getTime() - nowMs) : 'Ready'}</p></div>
-            </div>
-            {!repeatBox.dailyClaimedToday ? (
-              <p className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 font-mono text-[9px] text-amber-200">Claim your free daily Mystery Box first to unlock another opening.</p>
-            ) : repeatBox.cooldownUntil && new Date(repeatBox.cooldownUntil).getTime() > nowMs ? (
-              <p className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 font-mono text-[9px] text-amber-200">Your shared 2-hour cooldown is active. Both options unlock when it ends.</p>
-            ) : null}
-            {repeatMessage && <p role="alert" className="rounded-lg border border-red-400/20 bg-red-400/5 p-3 font-mono text-[9px] text-red-300">{repeatMessage}</p>}
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" disabled className="min-h-11 rounded-lg border border-neon/15 bg-black/20 px-3 py-2 font-mono text-[9px] font-bold uppercase text-neon-700 disabled:opacity-70" title="AdsGram integration is not enabled yet">Watch Ad · coming soon</button>
-              <button type="button" onClick={() => void openRepeatBox()} disabled={repeatBusy || !repeatBox.dailyClaimedToday || (repeatBox.cooldownUntil !== null && new Date(repeatBox.cooldownUntil).getTime() > nowMs) || repeatBox.zpBalance < 500} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-amber-100 disabled:opacity-40">
-                {repeatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Open for 500 ZP'}
-              </button>
-            </div>
-            {repeatBox.zpBalance < 500 && <p className="font-mono text-[8px] text-red-300">You need {500 - repeatBox.zpBalance} more ZP for another opening.</p>}
-          </>
-        ) : (
-          <p className="rounded-lg border border-neon/15 bg-black/20 p-3 font-mono text-[9px] text-neon-700">Another opening will be available here after your free daily claim.</p>
-        )}
-        <p className="font-mono text-[8px] leading-relaxed text-neon-700">Both options share one server-enforced 2-hour cooldown. AdsGram remains disabled until reward verification is implemented.</p>
+        <div className="space-y-3 border-t border-neon/15 pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <div><p className="label">Open another box</p><p className="mt-1 font-mono text-[9px] text-neon-600">Choose 500 ZP or a verified rewarded ad.</p></div>
+            <span className="rounded-md border border-amber-300/20 px-2 py-1 font-mono text-[8px] uppercase text-amber-200">500 ZP</span>
+          </div>
+          {repeatBox ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-neon/15 bg-black/30 p-3"><p className="label">Your ZP balance</p><p className="mt-1 font-display text-xl text-neon-200">{Number(repeatBox.zpBalance || 0).toLocaleString()}</p></div>
+                <div className="rounded-lg border border-neon/15 bg-black/30 p-3"><p className="label">Next opening</p><p className="mt-1 font-mono text-sm font-bold text-amber-200">{repeatBox.cooldownUntil && new Date(repeatBox.cooldownUntil).getTime() > nowMs ? formatCountdown(new Date(repeatBox.cooldownUntil).getTime() - nowMs) : 'Ready'}</p></div>
+              </div>
+              {repeatBox.cooldownUntil && new Date(repeatBox.cooldownUntil).getTime() > nowMs && (
+                <p className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 font-mono text-[9px] text-amber-200">Your shared 2-hour cooldown is active. Both repeat options unlock when it ends.</p>
+              )}
+              {repeatMessage && <p role="alert" className="rounded-lg border border-red-400/20 bg-red-400/5 p-3 font-mono text-[9px] text-red-300">{repeatMessage}</p>}
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" disabled className="min-h-11 rounded-lg border border-neon/15 bg-black/20 px-3 py-2 font-mono text-[9px] font-bold uppercase text-neon-700 disabled:opacity-70" title="AdsGram integration is not enabled yet">Watch Ad · coming soon</button>
+                <button type="button" onClick={() => void openRepeatBox()} disabled={repeatBusy || (repeatBox.cooldownUntil !== null && new Date(repeatBox.cooldownUntil).getTime() > nowMs) || repeatBox.zpBalance < 500} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-amber-100 disabled:opacity-40">
+                  {repeatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Open for 500 ZP'}
+                </button>
+              </div>
+              {repeatBox.zpBalance < 500 && <p className="font-mono text-[8px] text-red-300">You need {500 - repeatBox.zpBalance} more ZP for another opening.</p>}
+            </>
+          ) : (
+            <p className="rounded-lg border border-neon/15 bg-black/20 p-3 font-mono text-[9px] text-neon-700">Repeat opening status is loading. Refresh if this message remains.</p>
+          )}
+          <p className="font-mono text-[8px] leading-relaxed text-neon-700">Both repeat options share one server-enforced 2-hour cooldown. AdsGram stays disabled until provider verification is implemented.</p>
+        </div>
       </div>
       </div>
 
@@ -226,7 +270,7 @@ export default function MysteryBoxPanel({
 
 
       {lastReward && (
-        <div role="status" aria-live="polite" className="panel space-y-2 border border-emerald-400/30 bg-emerald-400/5 p-4">
+        <div role="status" aria-live="polite" className="mystery-reward-reveal panel space-y-2 border border-emerald-400/30 bg-emerald-400/5 p-4">
           <div className="flex items-center gap-2 text-emerald-300"><Sparkles size={16} /><p className="label">Recorded reward</p></div>
           <p className="font-display text-lg font-bold text-emerald-200">{lastReward.rewardLabel || (lastReward.rewardType === 'zp' ? `${lastReward.zpAmount} ZP` : lastReward.rewardType === 'zap' ? `${lastReward.zapAmount} ZAP` : '2× Fragment Mining boost · 6 hours')}</p>
           <p className="font-mono text-[9px] text-neon-600">The server has recorded this boost as an activation reward. Open ZORD Agents → Temporary Activations to activate it; the six-hour timer starts only when you activate it. It changes the in-game mining estimate, not your verified ZP balance.</p>
