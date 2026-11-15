@@ -13,7 +13,7 @@ import {
 } from '@/lib/economy/tonWallet';
 
 function rawTonAddress(value: string): string {
-  const raw = value.match(/^(-?\\d+):([0-9a-fA-F]{64})$/);
+  const raw = value.match(/^(-?\d+):([0-9a-fA-F]{64})$/);
   if (raw) return `${Number(raw[1])}:${raw[2].toLowerCase()}`;
   try {
     const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
