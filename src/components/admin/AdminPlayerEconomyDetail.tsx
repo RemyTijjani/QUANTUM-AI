@@ -63,15 +63,15 @@ export default function AdminPlayerEconomyDetail({ creds, playerId, playerLabel 
       ) : (
         <>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <div className="border border-emerald-400/40/15 p-3">
+            <div className="border border-white/10 p-3">
               <p className="text-[9px] uppercase tracking-wider text-slate-400">Current ZP</p>
               <p className="mt-1 text-lg font-bold text-slate-100">{amount(detail?.economy?.zp_balance)}</p>
             </div>
-            <div className="border border-emerald-400/40/15 p-3">
+            <div className="border border-white/10 p-3">
               <p className="text-[9px] uppercase tracking-wider text-slate-400">Lifetime ZP</p>
               <p className="mt-1 text-lg font-bold text-slate-100">{amount(detail?.economy?.lifetime_zp)}</p>
             </div>
-            <div className="border border-emerald-400/40/15 p-3">
+            <div className="border border-white/10 p-3">
               <p className="text-[9px] uppercase tracking-wider text-slate-400">Pending kickback</p>
               <p className="mt-1 text-lg font-bold text-slate-100">{amount(detail?.economy?.pending_kickback)}</p>
             </div>
@@ -94,7 +94,7 @@ export default function AdminPlayerEconomyDetail({ creds, playerId, playerLabel 
                   </tr></thead>
                   <tbody>
                     {detail.ledger.map((entry) => (
-                      <tr key={entry.id} className="border-b border-emerald-400/40/10 text-[10px] text-emerald-300">
+                      <tr key={entry.id} className="border-b border-white/10 text-[10px] text-emerald-300">
                         <td className="px-2 py-2">{entry.transaction_type}</td>
                         <td className="px-2 py-2 font-mono">{amount(entry.amount)}</td>
                         <td className="px-2 py-2 font-mono">{amount(entry.balance_after)}</td>
