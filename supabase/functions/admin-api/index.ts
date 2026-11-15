@@ -536,7 +536,7 @@ function validateTask(
 
   if (task.telegramChatId) {
     const chatId = task.telegramChatId.trim();
-    if (!/^(?:-?\\d+|@[A-Za-z0-9_]{5,})$/.test(chatId)) {
+    if (!/^(?:-?[0-9]+|@[A-Za-z0-9_]{5,})$/.test(chatId)) {
       return "Telegram chat ID must be a numeric chat ID or public @username";
     }
     if (task.kind !== "social") return "Telegram membership verification is only available for social missions";
