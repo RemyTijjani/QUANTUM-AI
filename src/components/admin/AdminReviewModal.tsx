@@ -37,7 +37,7 @@ import type {
 import AdminLogin from '@/components/admin/AdminLogin';
 import AdminTaskManager from '@/components/admin/AdminTaskManager';
 import AdminExpeditionManager from '@/components/admin/AdminExpeditionManager';
-import AdminBriefingManager from '@/components/admin/AdminBriefingManager';
+import AdminRaffleManager from '@/components/admin/AdminRaffleManager';
 import AdminPlayerManager from '@/components/admin/AdminPlayerManager';
 import AdminExternalZapFunding from '@/components/admin/AdminExternalZapFunding';
 import VaultReservesCard from '@/components/admin/VaultReservesCard';
@@ -95,7 +95,7 @@ function AdminConsole({
   onApproveSubmission: (rewardZp: number) => void;
 }) {
   const [data, setData] = useState<AdminDashboardData>(initialData);
-  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'expeditions' | 'players' | 'briefings' | 'raffle-funding'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'expeditions' | 'players' | 'raffles' | 'raffle-funding'>('queue');
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -358,14 +358,14 @@ function AdminConsole({
 
         <button
           type="button"
-          onClick={() => setActiveTab('briefings')}
+          onClick={() => setActiveTab('raffles')}
           className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
             activeTab === 'briefings'
               ? 'border-neon bg-neon/20 text-neon-300 font-bold'
               : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
           }`}
         >
-          Briefings
+          Raffles
         </button>
 
         <button
@@ -631,7 +631,7 @@ function AdminConsole({
         />
       )}
 
-      {activeTab === 'briefings' && <AdminBriefingManager creds={creds} />}
+      {activeTab === 'raffles' && <AdminRaffleManager creds={creds} />}
 
       {activeTab === 'raffle-funding' && <AdminExternalZapFunding creds={creds} />}
 
