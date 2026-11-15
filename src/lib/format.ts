@@ -2,7 +2,7 @@ export const pad = (value: number) => String(value).padStart(2, '0');
 
 export const formatZp = (value: number | string) => {
   if (typeof value === 'string') {
-    return /^\\d+$/.test(value) ? BigInt(value).toLocaleString('en-US') : '0';
+    return /^\d+$/.test(value) ? BigInt(value).toLocaleString('en-US') : '0';
   }
   return Math.floor(value).toLocaleString('en-US');
 };
