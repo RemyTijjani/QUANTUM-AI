@@ -46,7 +46,7 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
           return;
         }
       }
-      const result = await reviewAdminTonWithdrawal(creds, {
+      await reviewAdminTonWithdrawal(creds, {
         requestId: request.id,
         action,
         note: notes[request.id] ?? '',
