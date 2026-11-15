@@ -246,6 +246,21 @@ function AdminConsole({
   const statValue = (value: number) =>
     refreshing ? '...' : value.toLocaleString();
 
+  const navGroups = [
+    { label: 'Overview', items: [{ id: 'stats', label: 'Overview', icon: LayoutDashboard }] },
+    { label: 'Review & build', items: [
+      { id: 'queue', label: 'Review queue', icon: ClipboardCheck, count: data.submissions.length },
+      { id: 'tasks', label: 'Task manager', icon: ListTodo, count: data.tasks.length },
+      { id: 'expeditions', label: 'Expeditions', icon: Compass },
+      { id: 'raffles', label: 'Raffles', icon: Ticket },
+    ] },
+    { label: 'Players & funds', items: [
+      { id: 'players', label: 'Players', icon: Users },
+      { id: 'raffle-funding', label: 'Raffle funding', icon: Wallet },
+      { id: 'ton-withdrawals', label: 'GRAM withdrawals', icon: ArrowDownToLine },
+    ] },
+  ] as const;
+
   return (
     <div className="fixed inset-0 z-50 box-border flex h-dvh w-full min-w-0 max-w-full flex-col overflow-hidden gap-4 bg-[#080e0a] p-3 font-sans text-slate-100 sm:p-5">
       <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
@@ -316,105 +331,41 @@ function AdminConsole({
         </div>
       )}
 
-      <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-[#111a14] p-2 md:w-60 md:p-3"><p className="hidden px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 md:block">Workspace</p><nav aria-label="Admin sections" className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-        <button
-          type="button"
-          onClick={() => setActiveTab('queue')}
-          className={`flex min-h-10 shrink-0 items-center rounded-xl px-3 py-2 text-xs font-medium transition md:w-full ${
-            activeTab === 'queue'
-              ? 'bg-emerald-400/15 text-emerald-300 ring-1 ring-inset ring-emerald-400/25'
-              : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
-          }`}
-        >
-          <ClipboardCheck size={15} className="shrink-0" /> Review queue <span className="ml-auto">{data.submissions.length}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('stats')}
-          className={`flex min-h-10 shrink-0 items-center rounded-xl px-3 py-2 text-xs font-medium transition md:w-full ${
-            activeTab === 'stats'
-              ? 'bg-emerald-400/15 text-emerald-300 ring-1 ring-inset ring-emerald-400/25'
-              : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
-          }`}
-        >
-          <LayoutDashboard size={15} className="shrink-0" /> Overview
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('tasks')}
-          className={`flex min-h-10 shrink-0 items-center rounded-xl px-3 py-2 text-xs font-medium transition md:w-full ${
-            activeTab === 'tasks'
-              ? 'bg-emerald-400/15 text-emerald-300 ring-1 ring-inset ring-emerald-400/25'
-              : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
-          }`}
-        >
-          <ListTodo size={15} className="shrink-0" /> Task manager <span className="ml-auto">{data.tasks.length}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('players')}
-          className={`flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium transition md:w-full ${
-            activeTab === 'players'
-              ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-300 font-bold'
-              : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
-          }`}
-        >
-          <Users size={15} className="shrink-0" /> Players
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('raffles')}
-          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
-            activeTab === 'raffles'
-              ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-300 font-bold'
-              : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
-          }`}
-        >
-          <Ticket size={15} className="shrink-0" /> Raffles
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('raffle-funding')}
-          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
-            activeTab === 'raffle-funding'
-              ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-300 font-bold'
-              : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
-          }`}
-        >
-          <Wallet size={15} className="shrink-0" /> Raffle funding
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('ton-withdrawals')}
-          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
-            activeTab === 'ton-withdrawals'
-              ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-300 font-bold'
-              : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
-          }`}
-        >
-          <ArrowDownToLine size={15} className="shrink-0" /> Gram withdrawals
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('expeditions')}
-          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
-            activeTab === 'expeditions'
-              ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-300 font-bold'
-              : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
-          }`}
-        >
-          <Compass size={15} className="shrink-0" /> Expeditions
-        </button>
-
-
-      </nav></aside><main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-[#0d1510] p-3 sm:p-5"><div className="mb-5 border-b border-white/10 pb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Management</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-white">{{ queue: 'Review queue', stats: 'Overview', tasks: 'Task manager', players: 'Player management', raffles: 'Raffle management', 'raffle-funding': 'Raffle funding', 'ton-withdrawals': 'Gram withdrawals', expeditions: 'Expeditions' }[activeTab]}</h2><p className="mt-1 text-xs text-slate-400">Manage ZORD operations from one place.</p></div>
+      <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-[#111a14] p-2 md:w-60 md:p-3">
+        <p className="hidden px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 md:block">Admin workspace</p>
+        <nav aria-label="Admin sections" className="flex gap-3 overflow-x-auto md:flex-col md:overflow-visible">
+          {navGroups.map((group) => (
+            <div key={group.label} className="flex shrink-0 flex-col gap-1">
+              <p className="hidden px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500 md:block">{group.label}</p>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const selected = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveTab(item.id)}
+                    aria-current={selected ? 'page' : undefined}
+                    className={`flex min-h-10 shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-medium transition md:w-full ${
+                      selected
+                        ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                        : 'border-transparent text-slate-400 hover:border-white/10 hover:bg-white/5 hover:text-slate-100'
+                    }`}
+                  >
+                    <Icon size={15} className="shrink-0" />
+                    <span className="whitespace-nowrap">{item.label}</span>
+                    {'count' in item && (
+                      <span className={`ml-auto rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${
+                        selected ? 'bg-emerald-300/15 text-emerald-200' : 'bg-white/5 text-slate-400'
+                      }`}>{item.count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+      </aside><main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-[#0d1510] p-3 sm:p-5"><div className="mb-5 border-b border-white/10 pb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Management</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-white">{{ queue: 'Review queue', stats: 'Overview', tasks: 'Task manager', players: 'Player management', raffles: 'Raffle management', 'raffle-funding': 'Raffle funding', 'ton-withdrawals': 'Gram withdrawals', expeditions: 'Expeditions' }[activeTab]}</h2><p className="mt-1 text-xs text-slate-400">Manage ZORD operations from one place.</p></div>
 
       {activeTab === 'queue' && (
         <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm space-y-4">
