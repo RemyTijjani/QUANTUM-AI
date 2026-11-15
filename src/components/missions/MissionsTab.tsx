@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock } from 'lucide-react';
+import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock, Search, Target } from 'lucide-react';
 import { AD_QUOTA_TARGET } from '@/lib/game/config';
 import type { MissionSpec } from '@/lib/game/config';
 import { adsWatchedToday, missionStatus } from '@/lib/game/state';
@@ -29,29 +29,69 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
     setActiveView(initialView);
   }, [initialView]);
 
-  const daily = missions.filter((m) => m.kind === 'daily');
-  const social = missions.filter((m) => m.kind === 'social');
-  const creator = missions.filter((m) => m.kind === 'creator');
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<'all' | 'daily' | 'social' | 'creator'>('all');
+  const searchTerm = search.trim().toLowerCase();
+  const visibleMissions = missions.filter((mission) => {
+    const matchesSearch = !searchTerm || mission.title.toLowerCase().includes(searchTerm) || mission.description.toLowerCase().includes(searchTerm);
+    return matchesSearch && (category === 'all' || mission.kind === category);
+  });
+  const daily = visibleMissions.filter((m) => m.kind === 'daily');
+  const social = visibleMissions.filter((m) => m.kind === 'social');
+  const creator = visibleMissions.filter((m) => m.kind === 'creator');
+  const readyCount = missions.filter((mission) => missionStatus(state, mission, now) === 'ready').length;
+  const claimedCount = missions.filter((mission) => missionStatus(state, mission, now) === 'claimed').length;
 
   return (
     <div className="space-y-6 pb-2">
-      <section className="panel flex items-center justify-between gap-4 p-5">
-        <div>
-          <p className="label">Task-to-Earn protocol</p>
-          <h2 className="title mt-1">Mission control</h2>
+      <section className="relative overflow-hidden rounded-2xl border border-neon/25 bg-gradient-to-br from-neon/10 via-[#07110d] to-cyan-500/5 p-5">
+        <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-neon/10 blur-3xl" />
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-neon-300"><Target size={16} /><p className="label">Task-to-Earn</p></div>
+            <h2 className="mt-2 font-display text-2xl font-bold tracking-wide text-white">Your Missions</h2>
+            <p className="mt-1 max-w-[260px] text-[11px] leading-relaxed text-neon-500">Complete activities, verify your progress and collect eligible rewards.</p>
+          </div>
+          <div className="shrink-0 rounded-xl border border-neon/20 bg-black/30 px-3 py-2 text-right">
+            <p className="label">Daily reset</p>
+            <p className="mt-1 font-display text-sm font-bold tabular-nums text-neon-200">{formatClock(msUntilNextDay(now))}</p>
+          </div>
         </div>
-        <div className="text-right">
-          <p className="label">Resets in</p>
-          <p className="mt-1 font-display text-sm font-bold tabular-nums text-neon-300">
-            {formatClock(msUntilNextDay(now))}
-          </p>
+        <div className="relative mt-5 grid grid-cols-3 gap-2">
+          <div className="rounded-xl border border-white/10 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Available</p><p className="mt-1 font-display text-xl text-white">{missions.length - claimedCount}</p></div>
+          <div className="rounded-xl border border-neon/20 bg-neon/5 p-3"><p className="font-mono text-[9px] uppercase text-neon-500">Ready</p><p className="mt-1 font-display text-xl text-neon-200">{readyCount}</p></div>
+          <div className="rounded-xl border border-white/10 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Claimed</p><p className="mt-1 font-display text-xl text-cyan-200">{claimedCount}</p></div>
         </div>
       </section>
 
       <Stage6EngagementHub active={activeView} onChange={setActiveView} onZpReward={onRefreshVerifiedEconomy} notify={notify} />
 
-      <div className={activeView === 'missions' ? 'space-y-6' : 'hidden'}>
+      <div className={activeView === 'missions' ? 'space-y-5' : 'hidden'}>
       <section className="space-y-3">
+        <div className="rounded-xl border border-neon/15 bg-black/25 p-3">
+          <label className="flex items-center gap-2 rounded-lg border border-neon/20 bg-black/35 px-3 py-2.5">
+            <Search size={14} className="shrink-0 text-neon-600" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a mission…" className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-neon-200 outline-none placeholder:text-neon-700" />
+            {search && <button type="button" onClick={() => setSearch('')} className="text-[10px] text-neon-400">Clear</button>}
+          </label>
+          <div className="mt-3 grid grid-cols-4 gap-1.5">
+            {([{ id: 'all', label: 'All' }, { id: 'daily', label: 'Daily' }, { id: 'social', label: 'Social' }, { id: 'creator', label: 'Creator' }] as const).map((item) => (
+              <button key={item.id} type="button" onClick={() => setCategory(item.id)} aria-pressed={category === item.id} className={`rounded-lg border px-2 py-2 font-mono text-[9px] uppercase tracking-wide transition ${category === item.id ? 'border-neon/40 bg-neon/10 text-neon-200' : 'border-white/10 bg-white/[0.02] text-neon-600 hover:text-neon-300'}`}>
+                {item.label}<span className="ml-1 opacity-70">{item.id === 'all' ? missions.length : missions.filter((mission) => mission.kind === item.id).length}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        {visibleMissions.length === 0 && (
+          <div className="rounded-xl border border-dashed border-neon/20 bg-black/20 px-4 py-10 text-center">
+            <Search size={22} className="mx-auto text-neon-700" />
+            <p className="mt-3 text-sm font-semibold text-neon-200">No missions found</p>
+            <p className="mt-1 text-[10px] text-neon-600">Try another search or choose a different category.</p>
+            <button type="button" onClick={() => { setSearch(''); setCategory('all'); }} className="mt-3 text-[10px] font-mono uppercase text-neon-300">Reset filters</button>
+          </div>
+        )}
+      </section>
+      {daily.length > 0 && <section className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <CalendarCheck size={14} className="text-neon-400" />
           <p className="label">Daily Protocols</p>
@@ -70,9 +110,9 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             }
           />
         ))}
-      </section>
+      </section>}
 
-      <section className="space-y-3">
+      {social.length > 0 && <section className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <Megaphone size={14} className="text-neon-400" />
           <p className="label">Social Raids</p>
@@ -86,9 +126,9 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             onRefreshVerifiedEconomy={onRefreshVerifiedEconomy}
           />
         ))}
-      </section>
+      </section>}
 
-      <section className="space-y-3">
+      {creator.length > 0 && <section className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <Video size={14} className="text-neon-400" />
           <div className="flex flex-1 items-center justify-between">
@@ -110,7 +150,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             notify={notify}
           />
         ))}
-      </section>
+      </section>}
       </div>
     </div>
   );
