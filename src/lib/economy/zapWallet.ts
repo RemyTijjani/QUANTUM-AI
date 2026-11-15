@@ -77,7 +77,7 @@ export interface ZapTransferResult {
 
 
 function exactIntegerString(value: unknown): string | null {
-  if (typeof value === 'string' && /^\\d+$/.test(value)) return value;
+  if (typeof value === 'string' && /^\d+$/.test(value)) return value;
   if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) return String(value);
   return null;
 }
