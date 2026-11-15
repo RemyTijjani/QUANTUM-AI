@@ -748,6 +748,56 @@ export async function confirmExternalZapFunding(
 }
 
 
+export interface AdminExternalTonFundingRecord {
+  id: string;
+  amount: number | string;
+  transaction_reference: string;
+  destination_wallet: string;
+  verification_method: string;
+  confirmed_by: string;
+  confirmed_at: string;
+}
+export interface AdminExternalTonFundingSummary {
+  walletAddress: string;
+  availableReserve: number;
+  updatedAt: string | null;
+  funding: AdminExternalTonFundingRecord[];
+}
+export async function listExternalTonFunding(
+  creds: AdminCredentials,
+): Promise<AdminExternalTonFundingSummary> {
+  const body = await callAdminApi(creds, { action: 'list_external_ton_funding' });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('Could not load external TON funding records.');
+  }
+  const result = body as Partial<AdminExternalTonFundingSummary>;
+  if (typeof result.walletAddress !== 'string' || typeof result.availableReserve !== 'number' || !Array.isArray(result.funding)) {
+    throw new AdminApiError('The external TON funding response could not be verified.');
+  }
+  return result as AdminExternalTonFundingSummary;
+}
+export async function confirmExternalTonFunding(
+  creds: AdminCredentials,
+  input: { amount: number; transactionReference: string },
+): Promise<{ fundingId: string; amount: number; transactionReference: string; destinationWallet: string; confirmedBy: string; confirmedAt: string; availableReserve: number }> {
+  const body = await callAdminApi(creds, {
+    action: 'confirm_external_ton_funding',
+    tonAmount: input.amount,
+    transactionReference: input.transactionReference,
+  });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('The external TON funding confirmation could not be verified.');
+  }
+  const result = body as Record<string, unknown>;
+  if (result.success !== true || typeof result.fundingId !== 'string' ||
+      typeof result.availableReserve !== 'number' || typeof result.confirmedAt !== 'string' ||
+      typeof result.destinationWallet !== 'string') {
+    throw new AdminApiError('The external TON funding confirmation could not be verified.');
+  }
+  return result as { fundingId: string; amount: number; transactionReference: string; destinationWallet: string; confirmedBy: string; confirmedAt: string; availableReserve: number };
+}
+
+
 export interface AdminRaffleRecord {
   id: string;
   title: string;
