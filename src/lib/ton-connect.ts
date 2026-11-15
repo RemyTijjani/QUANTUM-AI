@@ -50,6 +50,39 @@ const TON_CONNECT_MANIFEST_URL =
   'https://zord-autonomous-agent.vercel.app/tonconnect-manifest.json';
 
 let tonConnectUI: TonConnectUIInstance | null = null;
+let tonConnectScriptPromise: Promise<void> | null = null;
+
+export async function loadTonConnectUI(): Promise<TonConnectUIInstance> {
+  if (window.TON_CONNECT_UI?.TonConnectUI) return getTonConnectUI();
+
+  if (!tonConnectScriptPromise) {
+    tonConnectScriptPromise = new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>('script[data-zord-ton-connect]');
+      const script = existing ?? document.createElement('script');
+
+      const onLoad = () => {
+        if (window.TON_CONNECT_UI?.TonConnectUI) resolve();
+        else reject(new Error('TON Connect loaded but its interface was unavailable. Please reload the Mini App.'));
+      };
+      const onError = () => reject(new Error('TON Connect could not be downloaded. Check your connection and reload the Mini App.'));
+
+      script.addEventListener('load', onLoad, { once: true });
+      script.addEventListener('error', onError, { once: true });
+      if (!existing) {
+        script.src = 'https://unpkg.com/@tonconnect/ui@5.0.1/dist/tonconnect-ui.min.js';
+        script.async = true;
+        script.dataset.zordTonConnect = 'true';
+        document.head.appendChild(script);
+      }
+    }).catch((error: unknown) => {
+      tonConnectScriptPromise = null;
+      throw error;
+    });
+  }
+
+  await tonConnectScriptPromise;
+  return getTonConnectUI();
+}
 
 export function getTonConnectUI(): TonConnectUIInstance {
   if (!window.TON_CONNECT_UI?.TonConnectUI) {
