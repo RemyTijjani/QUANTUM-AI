@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock } from 'lucide-react';
+import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock, Target } from 'lucide-react';
 import { AD_QUOTA_TARGET } from '@/lib/game/config';
 import type { MissionSpec } from '@/lib/game/config';
 import { adsWatchedToday, missionStatus } from '@/lib/game/state';
