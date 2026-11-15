@@ -188,7 +188,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
   return (
     <article className="panel flex items-start gap-3 p-4 transition-colors hover:border-neon/25 sm:gap-4">
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${legacyClaimed || claimed ? 'border-cyan-300/30 bg-cyan-300/5 text-cyan-200' : 'border-neon/30 bg-neon/5 text-neon-300'}`}>
-        {legacyClaimed ? <Check size={20} /> : <Icon size={20} />}
+        {legacyClaimed || claimed ? <Check size={20} /> : <Icon size={20} />}
       </div>
       <div className="min-w-0 flex-1">
         <h3 className="font-display text-sm font-bold tracking-wide text-white">{mission.title}</h3>
@@ -213,7 +213,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           <p className="mt-2 font-mono text-[9px] text-amber-300">Reward is not claimable yet. Admin must configure trusted verification for this mission.</p>
         )}
       </div>
-      <span className={`shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed ? 'Claimed' : mission.telegramChatId ? 'Verify' : legacyClaimed ? 'Completed' : 'Unavailable'}</span>
+      <span className={`shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : mission.telegramChatId ? 'Verify' : 'Unavailable'}</span>
     </article>
   );
 }
