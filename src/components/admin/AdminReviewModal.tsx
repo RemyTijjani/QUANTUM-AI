@@ -37,6 +37,7 @@ import type {
 import AdminLogin from '@/components/admin/AdminLogin';
 import AdminTaskManager from '@/components/admin/AdminTaskManager';
 import AdminExpeditionManager from '@/components/admin/AdminExpeditionManager';
+import AdminBriefingManager from '@/components/admin/AdminBriefingManager';
 import AdminPlayerManager from '@/components/admin/AdminPlayerManager';
 import VaultReservesCard from '@/components/admin/VaultReservesCard';
 import { NeonSpinner } from '@/components/NeonSpinner';
@@ -93,7 +94,7 @@ function AdminConsole({
   onApproveSubmission: (rewardZp: number) => void;
 }) {
   const [data, setData] = useState<AdminDashboardData>(initialData);
-  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'expeditions' | 'players'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'expeditions' | 'players' | 'briefings'>('queue');
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -356,6 +357,18 @@ function AdminConsole({
 
         <button
           type="button"
+          onClick={() => setActiveTab('briefings')}
+          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
+            activeTab === 'briefings'
+              ? 'border-neon bg-neon/20 text-neon-300 font-bold'
+              : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
+          }`}
+        >
+          Briefings
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('expeditions')}
           className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
             activeTab === 'expeditions'
@@ -604,6 +617,8 @@ function AdminConsole({
           onDelete={handleDeleteTask}
         />
       )}
+
+      {activeTab === 'briefings' && <AdminBriefingManager creds={creds} />}
 
       {activeTab === 'expeditions' && (
         <AdminExpeditionManager events={data.events} creds={creds} />
