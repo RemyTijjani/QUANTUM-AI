@@ -151,11 +151,11 @@ function TaskFormModal({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="text-[11px] text-slate-400 uppercase">Mission name</label>
-          <input name="title" defaultValue={task?.title ?? ''} required disabled={saving} placeholder="e.g. Join Telegram Channel" className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+          <input name="title" defaultValue={task?.title ?? ''} required disabled={saving} placeholder="e.g. Join Telegram Channel" className="admin-field" />
         </div>
         <div>
           <label className="text-[11px] text-slate-400 uppercase">What should players know?</label>
-          <input name="description" defaultValue={task?.description ?? ''} required disabled={saving} placeholder="Subscribe to our official channel" className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+          <input name="description" defaultValue={task?.description ?? ''} required disabled={saving} placeholder="Subscribe to our official channel" className="admin-field" />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -164,7 +164,7 @@ function TaskFormModal({
               value={kind}
               onChange={(e) => setKind(e.target.value as AdminTask['kind'])}
               disabled={saving}
-              className="w-full mt-1 bg-black border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50"
+              className="admin-field"
             >
               <option value="daily">Daily</option>
               <option value="social">Social</option>
@@ -173,25 +173,25 @@ function TaskFormModal({
           </div>
           <div>
             <label className="text-[11px] text-slate-400 uppercase">Reward amount</label>
-            <input type="number" name="reward" min={0} step={1} defaultValue={task?.reward ?? 100} required disabled={saving} className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+            <input type="number" name="reward" min={0} step={1} defaultValue={task?.reward ?? 100} required disabled={saving} className="admin-field" />
           </div>
           <div>
             <label className="text-[11px] text-slate-400 uppercase">Reward type</label>
-            <select value={rewardCurrency} onChange={(e) => setRewardCurrency(e.target.value as 'ZP' | 'ZAP')} disabled={saving} className="w-full mt-1 bg-black border border-white/10 p-2 text-xs text-emerald-300"><option value="ZP">ZP</option><option value="ZAP">ZAP (configuration only)</option></select>
+            <select value={rewardCurrency} onChange={(e) => setRewardCurrency(e.target.value as 'ZP' | 'ZAP')} disabled={saving} className="admin-field"><option value="ZP">ZP</option><option value="ZAP">ZAP (configuration only)</option></select>
           </div>
           <div>
             <label className="text-[11px] text-slate-400 uppercase">ZP cost to unlock</label>
-            <input type="number" name="unlockCostZp" min={0} step={1} defaultValue={task?.unlockCostZp ?? 0} required disabled={saving} className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+            <input type="number" name="unlockCostZp" min={0} step={1} defaultValue={task?.unlockCostZp ?? 0} required disabled={saving} className="admin-field" />
           </div>
           <div>
             <label className="text-[11px] text-slate-400 uppercase">Mission visibility</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as AdminTask['status'])} disabled={saving} className="w-full mt-1 bg-black border border-white/10 p-2 text-xs text-emerald-300"><option value="draft">Draft</option><option value="published">Published</option><option value="paused">Paused</option><option value="archived">Archived</option></select>
+            <select value={status} onChange={(e) => setStatus(e.target.value as AdminTask['status'])} disabled={saving} className="admin-field"><option value="draft">Draft</option><option value="published">Published</option><option value="paused">Paused</option><option value="archived">Archived</option></select>
           </div>
         </div>
         {kind === 'creator' && (
           <div>
             <label className="text-[11px] text-slate-400 uppercase">Content platform</label>
-            <select name="platform" defaultValue={task?.platform ?? 'tiktok'} disabled={saving} className="w-full mt-1 bg-black border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50">
+            <select name="platform" defaultValue={task?.platform ?? 'tiktok'} disabled={saving} className="admin-field">
               <option value="tiktok">TikTok</option>
               <option value="youtube">YouTube</option>
             </select>
@@ -199,25 +199,25 @@ function TaskFormModal({
         )}
         <div>
           <label className="text-[11px] text-slate-400 uppercase">What must the player do?</label>
-          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\n') ?? ''} disabled={saving} placeholder="Write one simple task per line. Example: Submit a ZORD video link for review." className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\n') ?? ''} disabled={saving} placeholder="Write one simple task per line. Example: Submit a ZORD video link for review." className="admin-field" />
           <p className="text-[10px] text-slate-400 mt-1">Beginner tip: use normal sentences, one task per line. You do not need JSON, code, or special formatting.</p>
         </div>
         <div>
           <label className="text-[11px] text-slate-400 uppercase">What does the player need before starting?</label>
-          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\n') ?? ''} disabled={saving} placeholder="Write one requirement per line. Example: Have access to the official ZORD Telegram channel." className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\n') ?? ''} disabled={saving} placeholder="Write one requirement per line. Example: Have access to the official ZORD Telegram channel." className="admin-field" />
           <p className="text-[10px] text-slate-400 mt-1">Beginner tip: describe the requirement in plain language, one per line. No code or JSON is needed.</p>
         </div>
         {kind === 'social' && (
           <div>
             <label className="text-[11px] text-slate-400 uppercase">Telegram chat ID (for automatic membership checks)</label>
-            <input name="telegramChatId" defaultValue={task?.telegramChatId ?? ''} disabled={saving} placeholder="-1001234567890 or @publicchannel" className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+            <input name="telegramChatId" defaultValue={task?.telegramChatId ?? ''} disabled={saving} placeholder="-1001234567890 or @publicchannel" className="admin-field" />
             <p className="text-[10px] text-slate-400 mt-1">Required for Telegram rewards. Use the channel/group ID (not the invite link). The ZORD bot must be an administrator there. Leave blank for missions that are not Telegram membership missions.</p>
           </div>
         )}
         <p className="text-[10px] text-amber-300">Reward safety: ZAP is configuration only and cannot be paid yet. ZP unlock cost is also only a setting; players are not charged. Mission rewards must not be treated as earned until the relevant activity has a trusted server-side verification and payout flow.</p>
         <div>
           <label className="text-[11px] text-slate-400 uppercase">Link for the player (optional)</label>
-          <input name="actionUrl" type="url" defaultValue={task?.actionUrl ?? ''} disabled={saving} placeholder="https://t.me/..." className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+          <input name="actionUrl" type="url" defaultValue={task?.actionUrl ?? ''} disabled={saving} placeholder="https://t.me/..." className="admin-field" />
         </div>
 
         {error && (
