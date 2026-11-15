@@ -19,6 +19,7 @@ type Raffle = {
   ends_at: string | null;
 };
 type Entry = { id: string; raffle_id: string; stake_zap: number | string; ticket_count: number; created_at: string };
+type RaffleHistory = { id: string; title: string; status: string; prize_pool_amount: number | string; prize_currency: 'TON' | 'ZAP' | 'AGENT'; closed_at: string | null; drawn_at: string | null; myPrize: null | { id: string; prize_amount: number | string; prize_currency: 'TON' | 'ZAP' | 'AGENT'; reward_code: string | null; selection_method: 'random' | 'admin'; selected_at: string; delivery_status: 'pending' | 'credited' | 'withdrawable' | 'delivered' | 'failed' } };
 type WalletResponse = { balance?: number | string };
 const number = (value: number | string | null | undefined) => Number(value ?? 0);
 const fmt = (value: number | string) => number(value).toLocaleString(undefined, { maximumFractionDigits: 4 });
@@ -27,6 +28,7 @@ const rewardLabel = (raffle: Raffle) => `${fmt(raffle.prize_pool_amount)} ${raff
 export default function RafflesScreen() {
   const [raffles, setRaffles] = useState<Raffle[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [raffleHistory, setRaffleHistory] = useState<RaffleHistory[]>([]);
   const [balance, setBalance] = useState<number | null>(null);
   const [selected, setSelected] = useState<Raffle | null>(null);
   const [stake, setStake] = useState('');
@@ -48,6 +50,7 @@ export default function RafflesScreen() {
     } else {
       setRaffles(Array.isArray(raffleResult.data.raffles) ? raffleResult.data.raffles : []);
       setEntries(Array.isArray(raffleResult.data.myEntries) ? raffleResult.data.myEntries : []);
+      setRaffleHistory(Array.isArray(raffleResult.data.myRaffleHistory) ? raffleResult.data.myRaffleHistory : []);
     }
     if (!walletResult.error && walletResult.data?.wallet) {
       const wallet = walletResult.data.wallet as WalletResponse;
@@ -212,17 +215,40 @@ export default function RafflesScreen() {
           <div className="space-y-2">
             {[...entries].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((entry) => {
               const raffle = raffles.find((item) => item.id === entry.raffle_id);
+              const result = raffleHistory.find((item) => item.id === entry.raffle_id);
+              const prize = result?.myPrize;
+              const outcome = prize
+                ? 'Winner'
+                : result?.status === 'drawn' || result?.status === 'settled'
+                  ? 'Draw complete · not selected'
+                  : result?.status === 'cancelled'
+                    ? 'Raffle cancelled'
+                    : result?.status === 'closed'
+                      ? 'Draw pending'
+                      : 'Result pending';
+              const delivery = prize?.delivery_status === 'credited' ? 'Prize credited'
+                : prize?.delivery_status === 'withdrawable' ? 'Ready to withdraw'
+                : prize?.delivery_status === 'delivered' ? 'Prize delivered'
+                : prize?.delivery_status === 'failed' ? 'Contact Admin about prize'
+                : prize ? 'Prize pending' : '';
               return (
-                <article key={entry.id} className="flex items-center justify-between gap-3 rounded-xl border border-neon/15 bg-black/25 p-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-neon-200">{raffle?.title ?? 'Raffle entry'}</p>
-                    <p className="mt-1 text-[10px] text-neon-600">{new Date(entry.created_at).toLocaleString()}</p>
-                    <p className="mt-1 text-[10px] text-neon-500">{fmt(entry.stake_zap)} ZAP staked</p>
+                <article key={entry.id} className="space-y-2 rounded-xl border border-neon/15 bg-black/25 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-neon-200">{result?.title ?? raffle?.title ?? 'Raffle entry'}</p>
+                      <p className="mt-1 text-[10px] text-neon-600">{new Date(entry.created_at).toLocaleString()}</p>
+                      <p className="mt-1 text-[10px] text-neon-500">{fmt(entry.stake_zap)} ZAP staked</p>
+                    </div>
+                    <div className="shrink-0 rounded-lg bg-cyan-300/5 px-3 py-2 text-right">
+                      <p className="text-[9px] text-neon-600">Tickets</p>
+                      <p className="text-sm font-bold text-cyan-200">{entry.ticket_count}</p>
+                    </div>
                   </div>
-                  <div className="shrink-0 rounded-lg bg-cyan-300/5 px-3 py-2 text-right">
-                    <p className="text-[9px] text-neon-600">Tickets</p>
-                    <p className="text-sm font-bold text-cyan-200">{entry.ticket_count}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neon/10 pt-2">
+                    <span className={`text-[10px] font-semibold ${prize ? 'text-emerald-300' : 'text-neon-400'}`}>{outcome}</span>
+                    {prize && <span className="text-[10px] font-semibold text-emerald-200">{fmt(prize.prize_amount)} {prize.prize_currency}{prize.reward_code ? ` · ${prize.reward_code === 'alpha' ? 'Alpha Miner' : 'Overclocked Core'}` : ''}</span>}
                   </div>
+                  {delivery && <p className="text-[10px] text-neon-500">{delivery}</p>}
                 </article>
               );
             })}
