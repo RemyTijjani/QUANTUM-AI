@@ -398,6 +398,8 @@ interface AdminRequestBody {
     | "publish_briefing"
     | "confirm_external_zap_funding"
     | "list_external_zap_funding"
+    | "confirm_external_ton_funding"
+    | "list_external_ton_funding"
     | "list_raffles"
     | "save_raffle_draft"
     | "reserve_raffle_prize";
@@ -405,6 +407,7 @@ interface AdminRequestBody {
   search?: string;
   playerId?: string;
   zapAmount?: number;
+  tonAmount?: number;
   transactionReference?: string;
   raffle?: {
     id?: string;
@@ -1955,6 +1958,42 @@ Deno.serve(async (req: Request) => {
       if (error || !data || typeof data !== "object") {
         console.error("External ZAP funding history lookup failed:", error);
         return json({ error: "Could not load external ZAP funding records" }, 500);
+      }
+      return json(data);
+    }
+
+    if (body.action === "confirm_external_ton_funding") {
+      const amount = body.tonAmount;
+      const reference = typeof body.transactionReference === "string"
+        ? body.transactionReference.trim()
+        : "";
+      if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0 ||
+          Number(amount.toFixed(9)) !== amount) {
+        return json({ error: "Enter a positive TON amount with up to 9 decimal places" }, 400);
+      }
+      if (reference.length < 32 || reference.length > 200) {
+        return json({ error: "Enter the TON transaction hash/reference (32–200 characters)" }, 400);
+      }
+      const { data, error } = await db.rpc("confirm_external_raffle_ton_funding", {
+        p_amount: amount,
+        p_transaction_reference: reference,
+        p_confirmed_by: ADMIN_USERNAME,
+      });
+      if (error) {
+        if (error.code === "23505") {
+          return json({ error: "This TON transaction reference has already been recorded" }, 409);
+        }
+        console.error("External TON funding confirmation failed:", error);
+        return json({ error: "Could not confirm external TON funding" }, 500);
+      }
+      return json(data);
+    }
+
+    if (body.action === "list_external_ton_funding") {
+      const { data, error } = await db.rpc("get_external_raffle_ton_funding");
+      if (error || !data || typeof data !== "object") {
+        console.error("External TON funding history lookup failed:", error);
+        return json({ error: "Could not load external TON funding records" }, 500);
       }
       return json(data);
     }
