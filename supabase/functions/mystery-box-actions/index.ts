@@ -106,6 +106,17 @@ Deno.serve(async (req: Request) => {
       return json({ success: true, ...result });
     }
 
+    if (body.action === "claim_daily_mystery_box") {
+      const { data, error } = await admin.rpc("claim_daily_mystery_box", {
+        p_player_id: player.id,
+      });
+      if (error) {
+        console.error("Daily Mystery Box claim failed:", error);
+        return json({ error: "Could not claim your free Mystery Box. Please refresh and try again." }, 409);
+      }
+      return json(data, data?.success === false ? 429 : 200);
+    }
+
     if (body.action === "open_repeat_mystery_box") {
       if (
         (body.method !== "zp" && body.method !== "ad") ||
