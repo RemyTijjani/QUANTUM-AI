@@ -24,14 +24,6 @@ import {
   saveTask,
   deleteTask,
   saveVaultReserves,
-  saveEvent,
-  deleteEvent,
-  listEventParticipants,
-  updateEventParticipantStatus,
-  approveEventParticipantReward,
-  listEventActivities,
-  saveEventActivity,
-  deleteEventActivity,
 } from '@/lib/admin/adminApi';
 
 import type {
@@ -40,14 +32,10 @@ import type {
   AdminSubmission,
   AdminTaskInput,
   AdminVaultReserves,
-  AdminEventInput,
-  AdminEventParticipantStatus,
-  AdminEventActivityInput,
 } from '@/lib/admin/adminApi';
 
 import AdminLogin from '@/components/admin/AdminLogin';
 import AdminTaskManager from '@/components/admin/AdminTaskManager';
-import AdminEventManager from '@/components/admin/AdminEventManager';
 import AdminExpeditionManager from '@/components/admin/AdminExpeditionManager';
 import AdminPlayerManager from '@/components/admin/AdminPlayerManager';
 import VaultReservesCard from '@/components/admin/VaultReservesCard';
@@ -105,7 +93,7 @@ function AdminConsole({
   onApproveSubmission: (rewardZp: number) => void;
 }) {
   const [data, setData] = useState<AdminDashboardData>(initialData);
-  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'events' | 'expeditions' | 'players'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'expeditions' | 'players'>('queue');
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -239,49 +227,6 @@ function AdminConsole({
     );
 
     await refresh();
-  };
-
-  const handleSaveEvent = async (event: AdminEventInput) => {
-    await saveEvent(creds, event);
-    addLog(`[EVENT] ${event.status === 'published' ? 'Saved/published' : 'Saved'} event: ${event.title}`);
-    await refresh();
-  };
-
-  const handleDeleteEvent = async (eventId: string) => {
-    await deleteEvent(creds, eventId);
-    addLog(`[EVENT] Deleted event: ${eventId}`);
-    await refresh();
-  };
-
-  const handleListEventParticipants = async (eventId: string) => {
-    const participants = await listEventParticipants(creds, eventId);
-    addLog(`[EVENT] Loaded ${participants.length} participant record(s) for ${eventId}`);
-    return participants;
-  };
-
-  const handleListEventActivities = async (eventId: string) => {
-    return await listEventActivities(creds, eventId);
-  };
-
-  const handleSaveEventActivity = async (activity: AdminEventActivityInput) => {
-    await saveEventActivity(creds, activity);
-    addLog(`[EVENT] ${activity.id ? 'Updated' : 'Created'} activity: ${activity.title}`);
-  };
-
-  const handleDeleteEventActivity = async (eventId: string, activityId: string) => {
-    await deleteEventActivity(creds, eventId, activityId);
-    addLog(`[EVENT] Deleted activity ${activityId} from ${eventId}`);
-  };
-
-  const handleUpdateEventParticipantStatus = async (participationId: string, status: AdminEventParticipantStatus) => {
-    await updateEventParticipantStatus(creds, participationId, status);
-    addLog(`[EVENT] Participant ${participationId} status updated to ${status}; no reward issued.`);
-  };
-
-  const handleApproveEventReward = async (participationId: string) => {
-    const result = await approveEventParticipantReward(creds, participationId);
-    addLog(`[EVENT] Approved ${result.rewardZp.toLocaleString()} ZP for participation ${participationId}.`);
-    if (result.zapRewardDeferred) addLog('[EVENT] Any configured ZAP reward remains deferred to the separate ZAP economy stage.');
   };
 
   const missionTitle = (id: string) =>
@@ -421,17 +366,7 @@ function AdminConsole({
           Expeditions
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('events')}
-          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
-            activeTab === 'events'
-              ? 'border-neon bg-neon/20 text-neon-300 font-bold'
-              : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
-          }`}
-        >
-          Events ({data.events.length})
-        </button>
+
       </div>
 
       {activeTab === 'queue' && (
@@ -674,20 +609,6 @@ function AdminConsole({
         <AdminExpeditionManager events={data.events} creds={creds} />
       )}
 
-      {activeTab === 'events' && (
-        <AdminEventManager
-          events={data.events}
-          missions={data.tasks}
-          onListActivities={handleListEventActivities}
-          onSaveActivity={handleSaveEventActivity}
-          onDeleteActivity={handleDeleteEventActivity}
-          onSave={handleSaveEvent}
-          onDelete={handleDeleteEvent}
-          onListParticipants={handleListEventParticipants}
-          onUpdateParticipantStatus={handleUpdateEventParticipantStatus}
-          onApproveEventReward={handleApproveEventReward}
-        />
-      )}
 
       {activeTab === 'players' && <AdminPlayerManager creds={creds} />}
     </div>
