@@ -40,6 +40,7 @@ export default function ZapWalletPanel({
   const [transferRequestKey, setTransferRequestKey] = useState<string | null>(null);
   const [transferRequestSignature, setTransferRequestSignature] = useState<string | null>(null);
   const [copiedReceiveCode, setCopiedReceiveCode] = useState(false);
+  const [confirmingTransfer, setConfirmingTransfer] = useState(false);
 
   const maxConvertibleZp = verifiedZpBalance === null || !Number.isFinite(verifiedZpBalance)
     ? 0
@@ -80,6 +81,7 @@ export default function ZapWalletPanel({
     setTransferError(null);
     setTransferSuccess(null);
     setRecipientPreview(null);
+    setConfirmingTransfer(false);
     setTransferRequestKey(null);
     setTransferRequestSignature(null);
     try {
@@ -114,6 +116,7 @@ export default function ZapWalletPanel({
       setTransferSuccess(`Sent ${formatZp(result.transfer.amount)} ZAP to ${result.recipient.displayName}.`);
       setRecipientIdentifier('');
       setTransferAmount('1');
+      setConfirmingTransfer(false);
       setRecipientPreview(null);
       setTransferRequestKey(null);
       setTransferRequestSignature(null);
@@ -306,17 +309,55 @@ export default function ZapWalletPanel({
         <div className="space-y-2">
           <label htmlFor="zap-recipient" className="text-xs font-semibold text-neon-200">Recipient username or referral code</label>
           <div className="flex gap-2">
-            <input id="zap-recipient" value={recipientIdentifier} onChange={(event) => { setRecipientIdentifier(event.target.value); setRecipientPreview(null); setTransferError(null); setTransferSuccess(null); setTransferRequestKey(null); setTransferRequestSignature(null); }} disabled={lookingUpRecipient || transferring} placeholder="@username or ZORD-..." className="min-w-0 flex-1 rounded-lg border border-neon/20 bg-black/30 px-3 py-3 text-xs text-white outline-none focus:border-cyan-300/60 disabled:opacity-50" />
+            <input id="zap-recipient" value={recipientIdentifier} onChange={(event) => { setRecipientIdentifier(event.target.value); setRecipientPreview(null); setConfirmingTransfer(false); setTransferError(null); setTransferSuccess(null); setTransferRequestKey(null); setTransferRequestSignature(null); }} disabled={lookingUpRecipient || transferring} placeholder="@username or ZORD-..." className="min-w-0 flex-1 rounded-lg border border-neon/20 bg-black/30 px-3 py-3 text-xs text-white outline-none focus:border-cyan-300/60 disabled:opacity-50" />
             <button type="button" onClick={() => void handleLookupRecipient()} disabled={recipientIdentifier.trim().length < 3 || lookingUpRecipient || transferring} className="rounded-lg border border-cyan-300/30 px-3 text-[10px] font-semibold text-cyan-200 disabled:opacity-40">{lookingUpRecipient ? 'Checking…' : 'Find'}</button>
           </div>
           {recipientPreview && <p className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-[10px] text-emerald-300">Recipient found: {recipientPreview.displayName}{recipientPreview.username ? ` (@${recipientPreview.username})` : ''}</p>}
         </div>
         <div className="space-y-2">
           <label htmlFor="zap-transfer-amount" className="text-xs font-semibold text-neon-200">Amount to send (whole ZAP)</label>
-          <input id="zap-transfer-amount" type="number" min="1" step="1" inputMode="numeric" value={transferAmount} onChange={(event) => { setTransferAmount(event.target.value); setTransferError(null); setTransferSuccess(null); setTransferRequestKey(null); setTransferRequestSignature(null); }} disabled={transferring} className="w-full rounded-lg border border-neon/20 bg-black/30 px-3 py-3 text-sm text-white outline-none focus:border-cyan-300/60 disabled:opacity-50" />
+          <input id="zap-transfer-amount" type="number" min="1" step="1" inputMode="numeric" value={transferAmount} onChange={(event) => { setTransferAmount(event.target.value); setConfirmingTransfer(false); setTransferError(null); setTransferSuccess(null); setTransferRequestKey(null); setTransferRequestSignature(null); }} disabled={transferring} className="w-full rounded-lg border border-neon/20 bg-black/30 px-3 py-3 text-sm text-white outline-none focus:border-cyan-300/60 disabled:opacity-50" />
           <p className="text-[9px] text-neon-700">Available: {wallet ? `${formatZp(wallet.balance)} ZAP` : '—'}</p>
         </div>
-        <button type="button" onClick={() => void handleTransfer()} disabled={!recipientPreview || !/^[1-9][0-9]{0,19}$/.test(transferAmount) || transferring || !wallet} className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-xs font-bold text-[#041016] hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"><Send size={14} />{transferring ? 'Sending…' : 'Confirm and send ZAP'}</button>
+        {!confirmingTransfer ? (
+          <button
+            type="button"
+            onClick={() => setConfirmingTransfer(true)}
+            disabled={!recipientPreview || !/^[1-9][0-9]{0,19}$/.test(transferAmount) || transferring || !wallet}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-xs font-bold text-[#041016] hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Send size={14} />Review transfer
+          </button>
+        ) : (
+          <div className="space-y-3 rounded-lg border border-amber-300/30 bg-amber-300/5 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-200">Confirm this transfer</p>
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="text-neon-600">Recipient</span>
+              <span className="text-right font-semibold text-white">{recipientPreview?.displayName}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="text-neon-600">You are sending</span>
+              <span className="font-display text-lg font-bold text-cyan-200">{transferAmount} ZAP</span>
+            </div>
+            <p className="text-[9px] leading-relaxed text-amber-200/80">This transfer cannot be reversed. It will also move net-ZAP ranking and achievement progress to the recipient.</p>
+            <button
+              type="button"
+              onClick={() => void handleTransfer()}
+              disabled={transferring}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-xs font-bold text-[#041016] hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Send size={14} />{transferring ? 'Sending…' : 'Confirm and send'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingTransfer(false)}
+              disabled={transferring}
+              className="w-full rounded-lg border border-neon/20 px-4 py-2 text-xs font-semibold text-neon-300 disabled:opacity-40"
+            >
+              Go back
+            </button>
+          </div>
+        )}
         {transferError && <p role="alert" className="rounded-lg border border-red-400/25 bg-red-400/5 p-3 text-[10px] text-red-300">{transferError}</p>}
         {transferSuccess && <p role="status" className="flex items-start gap-2 rounded-lg border border-emerald-400/25 bg-emerald-400/5 p-3 text-[10px] text-emerald-300"><CheckCircle2 size={14} className="shrink-0" />{transferSuccess}</p>}
         <p className="text-[9px] leading-relaxed text-neon-700">Transfers are final. Check the recipient carefully before confirming. Each transfer moves net-ZAP ranking and achievement progress from sender to recipient.</p>
