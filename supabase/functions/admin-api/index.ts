@@ -1146,10 +1146,10 @@ Deno.serve(async (req: Request) => {
       const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (expeditionId && !validUuid.test(expeditionId)) return json({ error: "A valid Expedition ID is required" }, 400);
       let individualQuery = db.from("expedition_objective_progress")
-        .select("id, expedition_id, objective_id, player_id, status, evidence, created_at, expedition_objectives!inner(title, objective_type, completion_scope)")
+        .select("id, expedition_id, objective_id, player_id, status, evidence, created_at, expedition_objectives!inner(title, objective_type, completion_scope), expeditions!inner(title)")
         .eq("status", "submitted").order("created_at", { ascending: true }).limit(100);
       let teamQuery = db.from("expedition_team_objective_progress")
-        .select("id, expedition_id, objective_id, team_id, status, evidence, created_at, expedition_objectives!inner(title, objective_type, completion_scope), expedition_teams!inner(name)")
+        .select("id, expedition_id, objective_id, team_id, status, evidence, created_at, expedition_objectives!inner(title, objective_type, completion_scope), expeditions!inner(title), expedition_teams!inner(name)")
         .eq("status", "submitted").order("created_at", { ascending: true }).limit(100);
       if (expeditionId) {
         individualQuery = individualQuery.eq("expedition_id", expeditionId);
