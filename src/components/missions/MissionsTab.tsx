@@ -153,6 +153,15 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
   };
   const Icon = mission.kind === 'daily' ? CalendarCheck : Megaphone;
   const legacyClaimed = status === 'claimed';
+  const unavailableReason = mission.id === 'ad-quota'
+    ? 'Secure ad-view verification and reward claiming are not connected yet. Your progress is shown, but rewards remain locked.'
+    : mission.id === 'agent-uptime'
+      ? 'Secure agent-uptime verification and reward claiming are not connected yet. Rewards remain locked.'
+      : mission.id === 'follow-signal'
+        ? 'Automatic X follow verification is not connected yet. Rewards remain locked until a trusted verification method is available.'
+        : mission.actionUrl?.includes('t.me/')
+          ? 'Telegram membership verification is not configured. An Admin must add the Telegram chat ID and make the ZORD bot an administrator.'
+          : 'A trusted verification method has not been configured for this mission. Its reward remains locked.';
 
   return (
     <article className="panel flex items-start gap-3 p-4 transition-colors hover:border-neon/25 sm:gap-4">
@@ -179,10 +188,10 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
             {claiming ? 'Checking membership...' : claimed ? 'Claim checked' : `Verify & claim +${formatZp(mission.reward)} ZP`}
           </button>
         ) : (
-          <p className="mt-2 font-mono text-[9px] text-amber-300">Reward is not claimable yet. Admin must configure trusted verification for this mission.</p>
+          <p className="mt-2 font-mono text-[9px] leading-relaxed text-amber-300">{unavailableReason}</p>
         )}
       </div>
-      <span className={`shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : mission.telegramChatId ? 'Verify' : 'Unavailable'}</span>
+      <span className={`shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : mission.telegramChatId ? 'Verify' : 'Setup needed'}</span>
     </article>
   );
 }
