@@ -130,7 +130,7 @@ export default function CoreTab({
                 </div>
               </div>
               <p className="mt-2 text-[10px] font-semibold text-neon-200">Lifetime ZP earned</p>
-              <p className="mt-1 text-[8px] text-neon-700">{verifiedZpLifetime === null ? '—' : formatZp(verifiedZpLifetime)} / next 1,000</p>
+              <p className="mt-1 text-[8px] text-neon-700">{verifiedZpLifetime === null ? '—' : `${formatZp(verifiedZpLifetime % 1000)} / 1,000 · next ${formatZp((Math.floor(verifiedZpLifetime / 1000) + 1) * 1000)}`} ZP</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="grid h-24 w-24 place-items-center rounded-full" style={{background: `conic-gradient(#67ddff ${zapProgress}%, rgba(103,221,255,0.12) 0)`}}>
