@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import MysteryBoxPanel from '@/components/missions/MysteryBoxPanel';
 import ExpeditionsScreen from '@/components/missions/ExpeditionsScreen';
-import IntelligenceBriefingsScreen from '@/components/missions/IntelligenceBriefingsScreen';
+import RafflesScreen from '@/components/missions/RafflesScreen';
 import type { Notify } from '@/hooks/useToast';
 import {
   CalendarDays,
@@ -10,17 +10,17 @@ import {
   Clock3,
   Compass,
   Gift,
-  Radio,
+  Trophy,
   Target,
 } from 'lucide-react';
 
-export type EngagementView = 'missions' | 'streaks' | 'mystery' | 'briefings' | 'expeditions';
+export type EngagementView = 'missions' | 'streaks' | 'mystery' | 'raffles' | 'expeditions';
 
 const VIEWS: { id: EngagementView; label: string; icon: typeof Target }[] = [
   { id: 'missions', label: 'Missions', icon: Target },
   { id: 'streaks', label: 'Streaks', icon: CalendarDays },
   { id: 'mystery', label: 'Boxes', icon: Gift },
-  { id: 'briefings', label: 'Briefings', icon: Radio },
+  { id: 'raffles', label: 'Raffles', icon: Trophy },
   { id: 'expeditions', label: 'Expeditions', icon: Compass },
 ];
 
@@ -58,7 +58,7 @@ export default function Stage6EngagementHub({
 
       {active === 'streaks' && <DailyStreakScreen onZpReward={onZpReward} notify={notify} />}
       {active === 'mystery' && <MysteryBoxPanel onZpReward={onZpReward} notify={notify} />}
-      {active === 'briefings' && <IntelligenceBriefingsScreen />}
+      {active === 'raffles' && <RafflesScreen />}
       {active === 'expeditions' && <ExpeditionsScreen />}
     </>
   );
