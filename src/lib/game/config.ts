@@ -87,6 +87,7 @@ export interface MissionSpec {
   reward: number;
   platform?: 'tiktok' | 'youtube';
   actionUrl?: string;
+  telegramChatId?: string;
 }
 
 export const AD_QUOTA_TARGET = 3;
