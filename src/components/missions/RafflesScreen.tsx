@@ -24,7 +24,7 @@ const number = (value: number | string | null | undefined) => Number(value ?? 0)
 const fmt = (value: number | string) => number(value).toLocaleString(undefined, { maximumFractionDigits: 4 });
 const rewardLabel = (raffle: Raffle) => raffle.reward_type === 'agent'
   ? raffle.reward_code === 'alpha' ? 'ZORD Alpha Miner Agent' : 'ZORD Overclocked Core Agent'
-  : raffle.reward_type === 'agent' ? 'Agent reward' : `${fmt(raffle.prize_pool_amount)} ${raffle.prize_currency}`;
+  : `${fmt(raffle.prize_pool_amount)} ${raffle.prize_currency}`;
 
 export default function RafflesScreen() {
   const [raffles, setRaffles] = useState<Raffle[]>([]);
