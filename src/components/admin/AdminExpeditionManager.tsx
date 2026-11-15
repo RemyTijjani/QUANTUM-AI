@@ -6,6 +6,14 @@ type ObjectiveKind = 'briefing' | 'quiz' | 'game' | 'community' | 'external' | '
 type Objective = { id: number; kind: ObjectiveKind; title: string; scope: 'individual' | 'team' | 'both' };
 type LocalDraft = AdminExpeditionRecord;
 const steps = ['Basics', 'Access', 'Objectives', 'Rewards', 'Schedule & rules', 'Preview'];
+function toLocalDateTimeInput(value: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
 const kinds: { value: ObjectiveKind; label: string; icon: typeof BookOpen }[] = [
   { value: 'briefing', label: 'Briefing', icon: BookOpen }, { value: 'quiz', label: 'Knowledge challenge', icon: ShieldCheck },
   { value: 'game', label: 'Game mission', icon: Gamepad2 }, { value: 'community', label: 'Community activity', icon: Users },
@@ -97,7 +105,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     setObjectiveTitle('');
   };
   const validReward = rewardType === 'none' || (Number.isSafeInteger(Number(rewardAmount)) && Number(rewardAmount) > 0);
-  const validDates = !startsAt || !endsAt || new Date(startsAt).getTime() < new Date(endsAt).getTime();
+  const validDates = (!startsAt || Number.isFinite(new Date(startsAt).getTime())) && (!endsAt || Number.isFinite(new Date(endsAt).getTime())) && (!startsAt || !endsAt || new Date(startsAt).getTime() < new Date(endsAt).getTime());
   const canSave = !!title.trim() && validReward && validDates && objectives.length > 0;
   const saveDraft = async () => {
     if (!canSave || saving) return;
@@ -145,8 +153,8 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     const categoryLabels: Record<string, string> = { open:'Open', progressive:'Progressive', seasonal:'Seasonal', community:'Community', competitive:'Competitive', team:'Team', special_limited_time:'Special limited-time' };
     setCategory(categoryLabels[draft.category] ?? 'Community'); setAccess(draft.access_mode); setParticipation(draft.participation_mode);
     setTeamMin(String(draft.min_team_size)); setTeamMax(String(draft.max_team_size)); setContribution(String(draft.min_individual_contributions));
-    setStartsAt(draft.starts_at ? new Date(draft.starts_at).toISOString().slice(0,16) : '');
-    setEndsAt(draft.ends_at ? new Date(draft.ends_at).toISOString().slice(0,16) : '');
+    setStartsAt(toLocalDateTimeInput(draft.starts_at));
+    setEndsAt(toLocalDateTimeInput(draft.ends_at));
     setRewardType(draft.reward?.reward_type === 'none' ? 'none' : (draft.reward?.reward_type ?? 'zp').toUpperCase());
     setRewardAmount(String(draft.reward?.amount ?? 0));
     setObjectives(draft.objectives.map((o,i) => ({ id: i+1, kind: o.objective_type, title: o.title, scope: o.completion_scope ?? 'individual' })));
