@@ -32,6 +32,25 @@ export interface ZapLeaderboard {
   limit: number;
 }
 
+export interface ZapAchievement {
+  level: number;
+  requiredNetZap: number;
+  isUnlocked: boolean;
+  isMinted: boolean;
+  unlockedAt: string | null;
+  mintedAt: string | null;
+  nftCollectionAddress: string | null;
+  nftItemAddress: string | null;
+  nftTokenId: string | null;
+}
+
+export interface ZapAchievements {
+  netZap: number;
+  currentLevel: number;
+  nextLevelAt: number;
+  achievements: ZapAchievement[];
+}
+
 export interface ZapConversionResult {
   success: boolean;
   alreadyApplied: boolean;
@@ -95,6 +114,18 @@ export async function fetchZapLeaderboard(): Promise<ZapLeaderboard> {
     throw new Error('Could not load the ZAP leaderboard.');
   }
   return result.leaderboard;
+}
+
+export async function fetchZapAchievements(): Promise<ZapAchievements> {
+  const result = await request<{ success: boolean; achievements: ZapAchievements }>(
+    'GET',
+    undefined,
+    '?action=achievements',
+  );
+  if (!result.success || !result.achievements || !Array.isArray(result.achievements.achievements)) {
+    throw new Error('Could not load your ZAP achievements.');
+  }
+  return result.achievements;
 }
 
 export async function convertZpToZap(
