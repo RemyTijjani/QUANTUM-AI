@@ -746,3 +746,57 @@ export async function confirmExternalZapFunding(
   }
   return result as { fundingId: string; amount: number; transactionReference: string; confirmedBy: string; confirmedAt: string; availableReserve: number };
 }
+
+
+export interface AdminRaffleRecord {
+  id: string;
+  title: string;
+  description: string;
+  reward_type: 'ton' | 'zap' | 'agent';
+  reward_code: string | null;
+  prize_pool_amount: number | string;
+  prize_currency: 'TON' | 'ZAP' | 'AGENT';
+  funding_source: 'treasury' | 'external';
+  min_bet_zap: number | string;
+  entry_mode: 'one_bet_one_entry' | 'proportional';
+  winner_count: number;
+  winner_method: 'random' | 'admin';
+  status: 'draft' | 'published' | 'closed' | 'drawn' | 'settled' | 'cancelled';
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+}
+
+export interface AdminRaffleDraftInput {
+  id?: string;
+  title: string;
+  description: string;
+  rewardType: 'ton' | 'zap' | 'agent';
+  rewardCode: 'alpha' | 'overclock' | null;
+  prizePoolAmount: number;
+  fundingSource: 'treasury' | 'external';
+  minBetZap: number;
+  entryMode: 'one_bet_one_entry' | 'proportional';
+  winnerCount: number;
+  winnerMethod: 'random' | 'admin';
+  startsAt: string | null;
+  endsAt: string | null;
+}
+
+export async function listAdminRaffles(creds: AdminCredentials): Promise<AdminRaffleRecord[]> {
+  const body = await callAdminApi(creds, { action: 'list_raffles' });
+  if (!body || typeof body !== 'object' || !Array.isArray((body as { raffles?: unknown }).raffles)) {
+    throw new AdminApiError('Could not load the raffle list.');
+  }
+  return (body as { raffles: AdminRaffleRecord[] }).raffles;
+}
+
+export async function saveAdminRaffleDraft(creds: AdminCredentials, raffle: AdminRaffleDraftInput): Promise<AdminRaffleRecord> {
+  const body = await callAdminApi(creds, { action: 'save_raffle_draft', raffle });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The raffle draft response could not be verified.');
+  const result = body as { success?: unknown; raffle?: AdminRaffleRecord };
+  if (result.success !== true || !result.raffle || typeof result.raffle.id !== 'string' || result.raffle.status !== 'draft') {
+    throw new AdminApiError('The raffle draft could not be verified. Refresh the list before retrying.');
+  }
+  return result.raffle;
+}
