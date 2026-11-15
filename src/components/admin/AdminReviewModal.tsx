@@ -360,7 +360,7 @@ function AdminConsole({
           type="button"
           onClick={() => setActiveTab('raffles')}
           className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
-            activeTab === 'briefings'
+            activeTab === 'raffles'
               ? 'border-neon bg-neon/20 text-neon-300 font-bold'
               : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
           }`}
