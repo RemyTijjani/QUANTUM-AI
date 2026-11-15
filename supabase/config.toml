@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.player-expeditions]
 verify_jwt = false
+
+[functions.intelligence-briefings]
+verify_jwt = false
