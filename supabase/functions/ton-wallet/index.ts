@@ -203,31 +203,16 @@ async function verifyTonProof(body: Record<string, unknown>, expectedPayload: st
     publicKey: new Uint8Array(publicKey),
     domain: signatureDomain(network),
   });
-  return valid ? { address: address.toString({ bounceable: false }), publicKey: publicKey.toString("hex"), timestamp } : null;
+  return valid ? { address: addressText, publicKey: publicKey.toString("hex"), timestamp } : null;
 }
 
 async function readWallet(admin: ReturnType<typeof createClient>, playerId: string) {
-  const db = admin.schema("app_private");
-  const [walletResult, balanceResult, ledgerResult, requestsResult] = await Promise.all([
-    db.from("player_ton_wallets").select("id,wallet_address,network,verification_status,verified_at").eq("player_id", playerId).maybeSingle(),
-    db.from("player_ton_balances").select("available_nano,reserved_nano,updated_at").eq("player_id", playerId).maybeSingle(),
-    db.from("player_ton_ledger").select("id,entry_type,direction,amount_nano,available_after_nano,reference_type,created_at").eq("player_id", playerId).order("created_at", { ascending: false }).limit(10),
-    db.from("ton_withdrawal_requests").select("id,amount_nano,status,wallet_address,transaction_hash,admin_note,created_at,updated_at,paid_at").eq("player_id", playerId).order("created_at", { ascending: false }).limit(10),
-  ]);
-  if (walletResult.error || balanceResult.error || ledgerResult.error || requestsResult.error) {
-    console.error("TON wallet read failed", walletResult.error ?? balanceResult.error ?? ledgerResult.error ?? requestsResult.error);
+  const { data, error } = await admin.rpc("ton_wallet_get_data", { p_player_id: playerId });
+  if (error || !data) {
+    console.error("TON wallet read failed", error);
     throw new Error("Could not load the TON wallet.");
   }
-  return {
-    wallet: walletResult.data,
-    balance: {
-      availableNano: balanceResult.data?.available_nano ?? "0",
-      reservedNano: balanceResult.data?.reserved_nano ?? "0",
-      updatedAt: balanceResult.data?.updated_at ?? null,
-    },
-    transactions: ledgerResult.data ?? [],
-    withdrawals: requestsResult.data ?? [],
-  };
+  return data;
 }
 
 Deno.serve(async (req: Request) => {
@@ -239,7 +224,6 @@ Deno.serve(async (req: Request) => {
     const identity = await authenticate(req);
     if ("response" in identity) return identity.response;
     const { admin, player } = identity;
-    const db = admin.schema("app_private");
 
     if (req.method === "GET") {
       return json({ success: true, ...(await readWallet(admin, player.id)) });
@@ -258,25 +242,18 @@ Deno.serve(async (req: Request) => {
 
     const action = typeof body.action === "string" ? body.action : "";
     if (action === "challenge") {
-      const { count, error: countError } = await db.from("ton_wallet_proof_challenges")
-        .select("id", { count: "exact", head: true })
-        .eq("player_id", player.id)
-        .is("consumed_at", null)
-        .gt("expires_at", new Date().toISOString());
-      if (countError) return json({ error: "Could not prepare wallet verification." }, 500);
-      if ((count ?? 0) >= 3) return json({ error: "Please wait for an existing wallet verification attempt to expire." }, 429);
-
       const payload = randomPayload();
       const payloadHash = await sha256Hex(payload);
       const expiresAt = new Date(Date.now() + CHALLENGE_TTL_SECONDS * 1000).toISOString();
-      const { error } = await db.from("ton_wallet_proof_challenges").insert({
-        player_id: player.id,
-        payload_hash: payloadHash,
-        expires_at: expiresAt,
+      const { error } = await admin.rpc("ton_wallet_create_challenge", {
+        p_player_id: player.id,
+        p_payload_hash: payloadHash,
+        p_expires_at: expiresAt,
       });
       if (error) {
+        const status = /too many active/i.test(error.message) ? 429 : 500;
         console.error("TON challenge creation failed", error);
-        return json({ error: "Could not prepare wallet verification. Please try again." }, 500);
+        return json({ error: status === 429 ? "Please wait for an existing wallet verification attempt to expire." : "Could not prepare wallet verification. Please try again." }, status);
       }
       return json({ success: true, payload, expiresAt });
     }
@@ -289,39 +266,21 @@ Deno.serve(async (req: Request) => {
       if (!/^[a-f0-9]{64}$/.test(payload)) return json({ error: "The wallet proof is missing or invalid. Reconnect and try again." }, 400);
 
       const payloadHash = await sha256Hex(payload);
-      const { data: challenge, error: challengeError } = await db.from("ton_wallet_proof_challenges")
-        .select("id")
-        .eq("player_id", player.id)
-        .eq("payload_hash", payloadHash)
-        .is("consumed_at", null)
-        .gt("expires_at", new Date().toISOString())
-        .maybeSingle();
-      if (challengeError || !challenge) return json({ error: "This verification request expired or was already used. Reconnect your wallet." }, 409);
-
       const verified = await verifyTonProof(body, payload);
       if (!verified) return json({ error: "Wallet ownership could not be verified. Make sure you use a TON mainnet wallet that supports TON proof." }, 400);
 
-      const { data: consumed, error: consumeError } = await db.from("ton_wallet_proof_challenges")
-        .update({ consumed_at: new Date().toISOString() })
-        .eq("id", challenge.id)
-        .eq("player_id", player.id)
-        .is("consumed_at", null)
-        .gt("expires_at", new Date().toISOString())
-        .select("id")
-        .maybeSingle();
-      if (consumeError || !consumed) return json({ error: "This verification request was already used. Please reconnect your wallet." }, 409);
+      const { data: consumed, error: consumeError } = await admin.rpc("ton_wallet_consume_challenge", {
+        p_player_id: player.id,
+        p_payload_hash: payloadHash,
+      });
+      if (consumeError || consumed !== true) return json({ error: "This verification request expired or was already used. Please reconnect your wallet." }, 409);
 
-      const { data: savedWallet, error: saveError } = await db.from("player_ton_wallets").upsert({
-        player_id: player.id,
-        wallet_address: verified.address,
-        network: "-239",
-        verification_status: "verified",
-        proof_public_key: verified.publicKey,
-        proof_timestamp: new Date(verified.timestamp * 1000).toISOString(),
-        verified_at: new Date().toISOString(),
-        revoked_at: null,
-      }, { onConflict: "player_id" }).select("id,wallet_address,network,verification_status,verified_at").single();
-
+      const { data: savedWallet, error: saveError } = await admin.rpc("ton_wallet_save_verified", {
+        p_player_id: player.id,
+        p_wallet_address: verified.address,
+        p_public_key: verified.publicKey,
+        p_proof_timestamp: new Date(verified.timestamp * 1000).toISOString(),
+      });
       if (saveError || !savedWallet) {
         console.error("Verified TON wallet could not be saved", saveError);
         return json({ error: "The proof was valid, but the wallet could not be linked. Contact support if this continues." }, 409);
@@ -339,7 +298,7 @@ Deno.serve(async (req: Request) => {
       if (!/^[1-9][0-9]{0,29}$/.test(amountNano)) return json({ error: "Enter a valid whole nanoTON amount." }, 400);
       if (idempotencyKey.length < 8 || idempotencyKey.length > 128) return json({ error: "A valid withdrawal request key is required." }, 400);
 
-      const { data: result, error } = await admin.rpc("request_ton_withdrawal", {
+      const { data: result, error } = await admin.rpc("ton_wallet_request_withdrawal", {
         p_player_id: player.id,
         p_amount_nano: amountNano,
         p_idempotency_key: idempotencyKey,
