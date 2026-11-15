@@ -13,6 +13,7 @@ export interface ZapLedgerEntry {
 export interface ZapWallet {
   balance: number;
   lifetimeEarned: number;
+  rankingEarned: number;
   lifetimeSpent: number;
   updatedAt: string | null;
   transactions: ZapLedgerEntry[];
