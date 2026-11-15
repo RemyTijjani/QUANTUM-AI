@@ -1825,22 +1825,12 @@ Deno.serve(async (req: Request) => {
 
     // Read-only funding history and current verified raffle reserve.
     if (body.action === "list_external_zap_funding") {
-      const [{ data: reserve, error: reserveError }, { data: funding, error: fundingError }] = await Promise.all([
-        db.from("raffle_zap_reserve").select("available_balance, updated_at").eq("id", 1).maybeSingle(),
-        db.from("raffle_external_zap_funding")
-          .select("id, amount, transaction_reference, verification_method, confirmed_by, confirmed_at")
-          .order("confirmed_at", { ascending: false })
-          .limit(100),
-      ]);
-      if (reserveError || fundingError) {
-        console.error("External ZAP funding history lookup failed:", reserveError ?? fundingError);
+      const { data, error } = await db.rpc("get_external_raffle_zap_funding");
+      if (error || !data || typeof data !== "object") {
+        console.error("External ZAP funding history lookup failed:", error);
         return json({ error: "Could not load external ZAP funding records" }, 500);
       }
-      return json({
-        availableReserve: Number(reserve?.available_balance ?? 0),
-        updatedAt: reserve?.updated_at ?? null,
-        funding: funding ?? [],
-      });
+      return json(data);
     }
 
     return json({ error: "Unknown action" }, 400);
