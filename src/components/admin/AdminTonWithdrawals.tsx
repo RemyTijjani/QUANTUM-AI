@@ -19,6 +19,8 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
   const [hashes, setHashes] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [requestSearch, setRequestSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('open');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -70,6 +72,14 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
   const pending = requests.filter((request) => request.status === 'pending').length;
   const approved = requests.filter((request) => request.status === 'approved').length;
   const processing = requests.filter((request) => request.status === 'processing').length;
+  const visibleRequests = requests.filter((request) => {
+    const term = requestSearch.trim().toLowerCase();
+    const playerLabel = `${request.username ?? ''} ${request.first_name ?? ''} ${request.telegram_id}`.toLowerCase();
+    const matchesSearch = !term || playerLabel.includes(term) || request.wallet_address.toLowerCase().includes(term);
+    const isOpen = ['pending', 'approved', 'processing'].includes(request.status);
+    const matchesStatus = statusFilter === 'all' || (statusFilter === 'open' ? isOpen : request.status === statusFilter);
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <section className="space-y-4">
@@ -92,11 +102,20 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
         <button type="button" onClick={() => void refresh()} disabled={loading} className="rounded-lg border border-white/10 p-2 text-emerald-300 disabled:opacity-40" aria-label="Refresh Gram withdrawals"><RefreshCw size={14} className={loading ? 'animate-spin' : ''}/></button>
       </div>
 
+      {!loading && requests.length > 0 && (
+        <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 sm:grid-cols-[1fr_200px]">
+          <label className="block"><span className="mb-1 block text-[10px] text-slate-400">Search requests</span><input value={requestSearch} onChange={(event) => setRequestSearch(event.target.value)} placeholder="Player name, Telegram ID or wallet address" className="admin-field" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] text-slate-400">Filter by status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="admin-field"><option value="open">Open requests ({pending + approved + processing})</option><option value="all">All statuses ({requests.length})</option><option value="pending">Pending ({pending})</option><option value="approved">Approved ({approved})</option><option value="processing">Processing ({processing})</option><option value="paid">Paid</option><option value="rejected">Rejected</option><option value="cancelled">Cancelled</option></select></label>
+        </div>
+      )}
+
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-10 text-xs text-slate-400"><LoaderCircle size={15} className="animate-spin"/>Loading withdrawal requests…</div>
+        <div role="status" className="flex items-center justify-center gap-2 py-10 text-xs text-slate-400"><LoaderCircle size={15} className="animate-spin"/>Loading withdrawal requests…</div>
       ) : requests.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-[#101a14] py-9 text-center"><CheckCircle2 size={24} className="mx-auto text-emerald-300"/><p className="mt-2 text-xs text-emerald-300">No open withdrawal requests</p><p className="mt-1 text-[10px] text-slate-400">New verified player requests will appear here.</p></div>
-      ) : requests.map((request) => {
+        <div className="rounded-xl border border-white/10 bg-[#101a14] py-9 text-center"><CheckCircle2 size={24} className="mx-auto text-emerald-300"/><p className="mt-2 text-xs text-emerald-300">No withdrawal requests</p><p className="mt-1 text-[10px] text-slate-400">New verified player requests will appear here.</p></div>
+      ) : visibleRequests.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-white/15 py-9 text-center"><p className="text-xs font-semibold text-slate-200">No matching requests</p><p className="mt-1 text-[10px] text-slate-400">Try another search or status filter.</p><button type="button" onClick={() => { setRequestSearch(''); setStatusFilter('all'); }} className="mt-3 text-xs text-emerald-300">Clear search and filters</button></div>
+      ) : visibleRequests.map((request) => {
         const playerName = request.username ? '@' + request.username : request.first_name || 'Player';
         const amount = nanoTonToTon(request.amount_nano);
         return (
