@@ -58,7 +58,7 @@ export default function CoreTab({
   const miningLeft = state.coreMiningUntil - now;
   const fixed = fixedCount(state);
   const zpProgress = verifiedZpLifetime === null ? 0 : Math.min(100, (verifiedZpLifetime % 1000) / 10);
-  const zapProgress = zapEarned === null ? 0 : Math.min(100, (zapEarned % 10) * 10);
+  const zapProgress = zapEarned === null ? 0 : Math.min(100, zapEarned % 100);
 
   const handleFragment = (id: FragmentId, status: FragmentStatus) => {
     if (status === 'locked') {
@@ -135,10 +135,10 @@ export default function CoreTab({
                 </div>
               </div>
               <p className="mt-2 text-[10px] font-semibold text-cyan-200">Net ZAP progress</p>
-              <p className="mt-1 text-[8px] text-cyan-700">{zapLoading || zapEarned === null ? '—' : formatZp(zapEarned)} / next 10</p>
+              <p className="mt-1 text-[8px] text-cyan-700">{zapLoading || zapEarned === null ? '—' : formatZp(zapEarned % 100)} / 100 ZAP</p>
             </div>
           </div>
-          <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">ZP progress uses verified lifetime earnings. ZAP progress counts every ZAP credit, including ZP conversions, minus every ZAP spent.</p>
+          <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">ZP progress uses verified lifetime earnings. Each ZAP ring level requires 100 net ZAP. Every credit, including ZP conversions, adds progress; every ZAP spent reduces it.</p>
         </div>
       </section>
 
