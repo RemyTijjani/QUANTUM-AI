@@ -102,6 +102,7 @@ declare
   v_recipient jsonb;
   v_recipient_id uuid;
   v_sender_wallet app_private.player_zap_wallets%rowtype;
+  v_recipient_profile public.players%rowtype;
   v_transfer app_private.zap_transfers%rowtype;
   v_debit jsonb;
   v_credit jsonb;
@@ -149,12 +150,21 @@ begin
     from app_private.player_zap_wallets w
     where w.player_id = p_sender_id;
 
+    select * into v_recipient_profile
+    from public.players p
+    where p.id = v_transfer.recipient_id;
+
     return jsonb_build_object(
       'success', true,
       'alreadyApplied', true,
       'transferId', v_transfer.id,
       'amount', v_transfer.amount,
       'senderBalance', v_sender_wallet.balance,
+      'recipient', jsonb_build_object(
+        'username', v_recipient_profile.username,
+        'firstName', v_recipient_profile.first_name,
+        'displayName', coalesce(nullif(trim(v_recipient_profile.first_name), ''), nullif(trim(v_recipient_profile.username), ''), 'ZORD player')
+      ),
       'createdAt', v_transfer.created_at
     );
   end if;
@@ -195,12 +205,21 @@ begin
     from app_private.player_zap_wallets w
     where w.player_id = p_sender_id;
 
+    select * into v_recipient_profile
+    from public.players p
+    where p.id = v_transfer.recipient_id;
+
     return jsonb_build_object(
       'success', true,
       'alreadyApplied', true,
       'transferId', v_transfer.id,
       'amount', v_transfer.amount,
       'senderBalance', v_sender_wallet.balance,
+      'recipient', jsonb_build_object(
+        'username', v_recipient_profile.username,
+        'firstName', v_recipient_profile.first_name,
+        'displayName', coalesce(nullif(trim(v_recipient_profile.first_name), ''), nullif(trim(v_recipient_profile.username), ''), 'ZORD player')
+      ),
       'createdAt', v_transfer.created_at
     );
   end if;
