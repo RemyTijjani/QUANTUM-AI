@@ -47,7 +47,7 @@ declare global {
 }
 
 const TON_CONNECT_MANIFEST_URL =
-  'https://raw.githubusercontent.com/RemyTijjani/QUANTUM-AI/0987fe35026bd5a98c044a79cb819d1583b3d65c/public/tonconnect-manifest.json';
+  'https://zord-autonomous-agent.vercel.app/tonconnect-manifest.json';
 
 let tonConnectUI: TonConnectUIInstance | null = null;
 
