@@ -167,6 +167,9 @@ Deno.serve(async (req: Request) => {
       if (!/^[1-9][0-9]{0,19}$/.test(amountZap)) {
         return json({ error: "Enter a positive whole-number ZAP amount." }, 400);
       }
+      if (BigInt(amountZap) < 100n) {
+        return json({ error: "The minimum ZAP transfer is 100 ZAP." }, 400);
+      }
       if (idempotencyKey.length < 8 || idempotencyKey.length > 128) {
         return json({ error: "A valid transfer request key is required." }, 400);
       }
