@@ -171,16 +171,6 @@ Deno.serve(async (req: Request) => {
         return json({ error: "A valid transfer request key is required." }, 400);
       }
 
-      const { data: recipient, error: recipientError } = await admin.rpc("lookup_zap_transfer_recipient", {
-        p_sender_id: player.id,
-        p_identifier: recipientIdentifier,
-      });
-      if (recipientError || !recipient) {
-        const message = recipientError?.message ?? "Could not find that player.";
-        const status = /not found/i.test(message) ? 404 : /more than one player|yourself/i.test(message) ? 409 : 400;
-        return json({ error: message }, status);
-      }
-
       const { data: transfer, error: transferError } = await admin.rpc("transfer_player_zap", {
         p_sender_id: player.id,
         p_recipient_identifier: recipientIdentifier,
@@ -211,9 +201,9 @@ Deno.serve(async (req: Request) => {
           createdAt: transfer.createdAt,
         },
         recipient: {
-          username: recipient.username ?? null,
-          firstName: recipient.firstName ?? null,
-          displayName: recipient.displayName ?? "ZORD player",
+          username: transfer.recipient?.username ?? null,
+          firstName: transfer.recipient?.firstName ?? null,
+          displayName: transfer.recipient?.displayName ?? "ZORD player",
         },
         wallet,
         source: "server_atomic_player_zap_transfer",
