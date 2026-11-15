@@ -1230,14 +1230,29 @@ Deno.serve(async (req: Request) => {
       }).eq("id", id).eq("status", current.status).gt("starts_at", now.toISOString())
         .select("id").maybeSingle();
       if (updateError || !updated) return json({ error: "The Expedition could not be rescheduled. Refresh and try again." }, 409);
+      const rollbackSchedule = async () => {
+        const { error: rollbackError } = await db.from("expeditions").update({
+          starts_at: current.starts_at, ends_at: current.ends_at, updated_by: ADMIN_USERNAME,
+          updated_at: new Date().toISOString(),
+        }).eq("id", id).eq("status", current.status);
+        if (rollbackError) console.error("Expedition schedule rollback failed:", rollbackError);
+        return !rollbackError;
+      };
+      const { count: registrationsAfterUpdate, error: finalCheckError } = await db.from("expedition_participations")
+        .select("id", { count: "exact", head: true }).eq("expedition_id", id);
+      if (finalCheckError || (registrationsAfterUpdate ?? 0) > 0) {
+        const rolledBack = await rollbackSchedule();
+        if (!rolledBack) return json({ error: "Reschedule conflict detected and automatic rollback failed. Contact support before changing this Expedition again." }, 500);
+        return json({ error: finalCheckError ? "Could not re-check registrations; the schedule change was rolled back." : "A player registered during the change. The schedule was rolled back; duplicate this Expedition instead." }, finalCheckError ? 500 : 409);
+      }
       const { error: auditError } = await db.from("expedition_audit_log").insert({
         expedition_id: id, actor: ADMIN_USERNAME, action: "rescheduled",
         before_state: beforeState, after_state: { starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), status: current.status },
       });
       if (auditError) {
         console.error("Expedition reschedule audit failed:", auditError);
-        await db.from("expeditions").update({ starts_at: current.starts_at, updated_by: ADMIN_USERNAME }).eq("id", id).eq("status", current.status);
-        return json({ error: "Rescheduling was rolled back because its audit record could not be saved" }, 500);
+        const rolledBack = await rollbackSchedule();
+        return json({ error: rolledBack ? "Rescheduling was rolled back because its audit record could not be saved" : "Audit failed and automatic rollback failed. Contact support before changing this Expedition again." }, 500);
       }
       return json({ success: true });
     }
