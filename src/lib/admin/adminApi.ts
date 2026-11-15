@@ -752,11 +752,11 @@ export interface AdminRaffleRecord {
   id: string;
   title: string;
   description: string;
-  reward_type: 'ton' | 'zap' | 'agent';
+  reward_type: 'ton' | 'zap';
   reward_code: string | null;
   prize_pool_amount: number | string;
-  prize_currency: 'TON' | 'ZAP' | 'AGENT';
-  funding_source: 'treasury' | 'external' | 'agent_inventory';
+  prize_currency: 'TON' | 'ZAP';
+  funding_source: 'treasury' | 'external';
   min_bet_zap: number | string;
   entry_mode: 'one_bet_one_entry' | 'proportional';
   winner_count: number;
@@ -771,8 +771,8 @@ export interface AdminRaffleDraftInput {
   id?: string;
   title: string;
   description: string;
-  rewardType: 'ton' | 'zap' | 'agent';
-  rewardCode: 'alpha' | 'overclock' | null;
+  rewardType: 'ton' | 'zap';
+  rewardCode: null;
   prizePoolAmount: number;
   fundingSource: 'treasury' | 'external' | 'agent_inventory';
   minBetZap: number;
