@@ -92,32 +92,60 @@ Deno.serve(async (req: Request) => {
       ratePerSecond: rental.agent_type === "alpha_miner" ? 0.1 : 0.3,
     }));
 
-    // Release any Fragment mining rewards whose six-hour hold has elapsed.
-    // The database routine is idempotent and records each credit in the verified ledger.
-    const { error: fragmentReleaseError } = await admin.rpc("release_matured_fragment_zp", {
+    // Settle trusted Fragment mining through the current server time, then
+    // release only accrual intervals whose own six-hour hold has elapsed.
+    const { error: fragmentAccrualError } = await admin.rpc("accrue_fragment_mining_pending_zp", {
+      p_player_id: player.id,
+    });
+    if (fragmentAccrualError) {
+      console.error("Trusted Fragment mining accrual failed:", fragmentAccrualError);
+      return json({ error: "Could not refresh your pending ZP." }, 500);
+    }
+
+    const { error: fragmentReleaseError } = await admin.rpc("release_fragment_mining_accruals", {
       p_player_id: player.id,
     });
     if (fragmentReleaseError) {
-      console.error("Matured Fragment mining reward release failed:", fragmentReleaseError);
+      console.error("Matured Fragment mining accrual release failed:", fragmentReleaseError);
       return json({ error: "Could not refresh your verified ZP balance." }, 500);
     }
 
-    const { data: pendingFragmentRows, error: pendingFragmentError } = await admin
-      .from("fragment_mining_rewards")
-      .select("amount, release_at")
-      .eq("player_id", player.id)
-      .is("credited_at", null)
-      .order("release_at", { ascending: true });
-    if (pendingFragmentError) {
-      console.error("Pending Fragment mining reward lookup failed:", pendingFragmentError);
+    // Keep the legacy release path for pending records created before this change.
+    const { error: legacyFragmentReleaseError } = await admin.rpc("release_matured_fragment_zp", {
+      p_player_id: player.id,
+    });
+    if (legacyFragmentReleaseError) {
+      console.error("Legacy Fragment reward release failed:", legacyFragmentReleaseError);
+      return json({ error: "Could not refresh your verified ZP balance." }, 500);
+    }
+
+    const [pendingAccrualResult, pendingLegacyResult] = await Promise.all([
+      admin.from("fragment_mining_accruals")
+        .select("amount, release_at")
+        .eq("player_id", player.id)
+        .is("credited_at", null)
+        .order("release_at", { ascending: true }),
+      admin.from("fragment_mining_rewards")
+        .select("amount, release_at")
+        .eq("player_id", player.id)
+        .is("credited_at", null)
+        .order("release_at", { ascending: true }),
+    ]);
+    if (pendingAccrualResult.error || pendingLegacyResult.error) {
+      console.error("Pending Fragment mining reward lookup failed:", pendingAccrualResult.error ?? pendingLegacyResult.error);
       return json({ error: "Could not load pending Fragment mining rewards." }, 500);
     }
 
-    const pendingFragmentZp = (pendingFragmentRows ?? []).reduce(
+    const pendingFragmentRows = [
+      ...(pendingAccrualResult.data ?? []),
+      ...(pendingLegacyResult.data ?? []),
+    ].sort((a, b) => Date.parse(a.release_at) - Date.parse(b.release_at));
+
+    const pendingFragmentZp = pendingFragmentRows.reduce(
       (total, row) => total + Number(row.amount),
       0,
     );
-    const nextFragmentReleaseAt = pendingFragmentRows?.[0]?.release_at ?? null;
+    const nextFragmentReleaseAt = pendingFragmentRows[0]?.release_at ?? null;
 
     const { data: economy, error: economyError } = await admin
       .from("player_economy")
