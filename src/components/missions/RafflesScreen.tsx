@@ -6,10 +6,10 @@ type Raffle = {
   id: string;
   title: string;
   description: string;
-  reward_type: 'ton' | 'zap' | 'agent';
+  reward_type: 'ton' | 'zap';
   reward_code: string | null;
   prize_pool_amount: number | string;
-  prize_currency: 'TON' | 'ZAP' | 'AGENT';
+  prize_currency: 'TON' | 'ZAP';
   min_bet_zap: number | string;
   entry_mode: 'one_bet_one_entry' | 'proportional';
   winner_count: number;
@@ -22,9 +22,7 @@ type Entry = { id: string; raffle_id: string; stake_zap: number | string; ticket
 type WalletResponse = { balance?: number | string };
 const number = (value: number | string | null | undefined) => Number(value ?? 0);
 const fmt = (value: number | string) => number(value).toLocaleString(undefined, { maximumFractionDigits: 4 });
-const rewardLabel = (raffle: Raffle) => raffle.reward_type === 'agent'
-  ? raffle.reward_code === 'alpha' ? 'ZORD Alpha Miner Agent' : 'ZORD Overclocked Core Agent'
-  : `${fmt(raffle.prize_pool_amount)} ${raffle.prize_currency}`;
+const rewardLabel = (raffle: Raffle) => `${fmt(raffle.prize_pool_amount)} ${raffle.prize_currency}`;
 
 export default function RafflesScreen() {
   const [raffles, setRaffles] = useState<Raffle[]>([]);
