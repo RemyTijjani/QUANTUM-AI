@@ -383,6 +383,7 @@ interface AdminRequestBody {
     | "list_expedition_objective_reviews"
     | "review_expedition_objective"
     | "prepare_expedition_rewards"
+    | "issue_expedition_rewards"
     | "list_expeditions"
     | "publish_expedition"
     | "reschedule_expedition"
@@ -1184,6 +1185,28 @@ Deno.serve(async (req: Request) => {
         return json({ error: error?.message || "Objective review could not be completed" }, 409);
       }
       return json({ ...data, rewardsIssued: false });
+    }
+
+    if (body.action === "issue_expedition_rewards") {
+      const expeditionId = typeof body.expeditionId === "string" ? body.expeditionId : "";
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!validUuid.test(expeditionId)) return json({ error: "A valid Expedition ID is required" }, 400);
+
+      const { data: prepared, error: prepareError } = await db.rpc("prepare_expedition_reward_issuances", { p_expedition_id: expeditionId });
+      if (prepareError) {
+        console.error("Expedition reward preparation failed:", prepareError);
+        return json({ error: prepareError.message || "Could not prepare eligible rewards" }, 409);
+      }
+
+      const { data, error } = await db.rpc("admin_issue_expedition_rewards", {
+        p_expedition_id: expeditionId,
+        p_admin_actor: ADMIN_USERNAME,
+      });
+      if (error || !data || data.success !== true) {
+        console.error("Expedition reward issuance failed:", error);
+        return json({ error: error?.message || "Reward issuance could not be verified" }, 409);
+      }
+      return json({ ...data, pendingIssuancesCreated: Number(prepared ?? 0), balancesChanged: Number(data.issuedCount ?? 0) > 0 });
     }
 
     if (body.action === "prepare_expedition_rewards") {
