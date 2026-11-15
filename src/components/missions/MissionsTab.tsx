@@ -82,6 +82,8 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             key={mission.id}
             mission={mission}
             status={missionStatus(state, mission, now)}
+            notify={notify}
+            onRefreshVerifiedEconomy={onRefreshVerifiedEconomy}
           />
         ))}
       </section>
@@ -141,8 +143,17 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
         {mission.actionUrl && <a href={mission.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-cyan-300 underline">Open mission <ExternalLink size={10} /></a>}
         {mission.id === 'daily-uplink' ? (
           <DailyUplinkClaim notify={notify!} onClaimed={onRefreshVerifiedEconomy!} />
+        ) : mission.telegramChatId ? (
+          <button
+            type="button"
+            onClick={() => void claimTelegramMission()}
+            disabled={claiming || claimed}
+            className="mt-2 rounded border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-neon-300 disabled:opacity-50"
+          >
+            {claiming ? 'Checking membership...' : claimed ? 'Claim checked' : `Verify & claim +${formatZp(mission.reward)} ZP`}
+          </button>
         ) : (
-          <p className="mt-2 font-mono text-[9px] text-amber-300">Trusted completion checks and reward claims are not available for this mission yet.</p>
+          <p className="mt-2 font-mono text-[9px] text-amber-300">Reward is not claimable yet. Admin must configure trusted verification for this mission.</p>
         )}
       </div>
       <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-neon-600">{legacyClaimed ? 'Legacy local record' : 'Not claimable'}</span>
