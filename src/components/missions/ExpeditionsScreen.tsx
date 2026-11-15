@@ -147,6 +147,7 @@ export default function ExpeditionsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [selectedExpeditionId, setSelectedExpeditionId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [teamName, setTeamName] = useState<Record<string, string>>({});
   const [inviteCode, setInviteCode] = useState<Record<string, string>>({});
@@ -181,6 +182,7 @@ export default function ExpeditionsScreen() {
   }), [expeditions]);
 
   const visible = expeditions.filter((item) => {
+    if (selectedExpeditionId && item.id !== selectedExpeditionId) return false;
     if (filter === 'available') return item.isUnlocked && !item.myParticipation;
     if (filter === 'joined') return !!item.myParticipation;
     if (filter === 'locked') return !item.isUnlocked;
@@ -303,13 +305,15 @@ export default function ExpeditionsScreen() {
         </div>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-neon/15 bg-black/30 p-1">
+      {selectedExpeditionId && <button type="button" onClick={() => { setSelectedExpeditionId(null); setExpanded(null); }} className="inline-flex items-center gap-2 rounded-lg border border-neon/20 px-3 py-2 font-mono text-[10px] text-neon-300 hover:bg-neon/10">← Back to Expeditions</button>}
+
+      {!selectedExpeditionId && <div className="flex gap-1 overflow-x-auto rounded-xl border border-neon/15 bg-black/30 p-1">
         {(['all', 'available', 'joined', 'locked'] as Filter[]).map((value) => (
           <button key={value} type="button" onClick={() => setFilter(value)} className={`flex-1 rounded-lg px-2 py-2 font-mono text-[8px] uppercase tracking-wide transition ${filter === value ? 'bg-neon/15 text-neon-200' : 'text-neon-600 hover:text-neon-400'}`}>
             {value} <span className="opacity-60">{counts[value]}</span>
           </button>
         ))}
-      </div>
+      </div>}
 
       {error && <div role="alert" className="rounded-lg border border-amber-400/25 bg-amber-400/5 p-3 font-mono text-[10px] text-amber-200">{error}</div>}
 
@@ -361,10 +365,14 @@ export default function ExpeditionsScreen() {
                           ? <>Eligible for {item.reward.amount} {item.reward.type.toUpperCase()} — awaiting Admin payment processing.</>
                           : <>Reward eligibility has not been confirmed.</>}
                 </div>}
-                <button type="button" onClick={() => setExpanded(isOpen ? null : item.id)} aria-expanded={isOpen} className="flex w-full items-center justify-between border-t border-neon/10 pt-3 font-mono text-[9px] uppercase text-neon-500 hover:text-neon-300">
-                  <span>{isOpen ? 'Hide objectives & actions' : `View ${item.objectives.length} objectives & actions`}</span>{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </button>
-                {isOpen && (
+                {!selectedExpeditionId ? (
+                  <button type="button" onClick={() => { setSelectedExpeditionId(item.id); setExpanded(null); }} className="btn-primary w-full py-3 text-[10px]">View Expedition details →</button>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => setExpanded(isOpen ? null : item.id)} aria-expanded={isOpen} className="flex w-full items-center justify-between border-t border-neon/10 pt-3 font-mono text-[9px] uppercase text-neon-500 hover:text-neon-300">
+                      <span>{isOpen ? 'Hide objectives & actions' : `Continue to objectives & actions (${item.objectives.length})`}</span>{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                    {isOpen && (
                   <div className="space-y-3">
                     <div className="space-y-2">
                       <p className="label">Mission objectives</p>
@@ -428,6 +436,8 @@ export default function ExpeditionsScreen() {
                     {joined && !hasTeam && <div className="rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3 font-mono text-[9px] text-cyan-200"><UserRound size={13} className="mr-1 inline" /> You are registered as an individual participant.</div>}
                     {item.status === 'active' && <p className="flex items-center gap-2 font-mono text-[8px] text-neon-700"><ShieldCheck size={12} /> Completion evidence is verified by operations or trusted server records.</p>}
                   </div>
+                    )}
+                  </>
                 )}
               </article>
             );
