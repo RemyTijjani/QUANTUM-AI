@@ -62,6 +62,36 @@ Deno.serve(async (req: Request) => {
       return json(data);
     }
 
+    // Settle trusted agent-rental mining accrual through the current time.
+    // The database routine is idempotent and stops each rental at its exact expiry.
+    const { data: agentRentalAccrual, error: agentRentalAccrualError } = await admin.rpc(
+      "accrue_agent_rental_zp",
+      { p_player_id: player.id },
+    );
+    if (agentRentalAccrualError || !agentRentalAccrual?.success) {
+      console.error("Agent rental ZP accrual failed:", agentRentalAccrualError);
+      return json({ error: "Could not refresh your verified ZP balance." }, 500);
+    }
+
+    const { data: activeRentalRows, error: activeRentalError } = await admin
+      .from("player_agent_rentals")
+      .select("agent_type, starts_at, expires_at")
+      .eq("player_id", player.id)
+      .eq("status", "active")
+      .gt("expires_at", new Date().toISOString())
+      .order("expires_at", { ascending: true });
+    if (activeRentalError) {
+      console.error("Active agent rental lookup failed:", activeRentalError);
+      return json({ error: "Could not load your active mining rentals." }, 500);
+    }
+
+    const activeAgentRentals = (activeRentalRows ?? []).map((rental) => ({
+      agentType: rental.agent_type,
+      startsAt: rental.starts_at,
+      expiresAt: rental.expires_at,
+      ratePerSecond: rental.agent_type === "alpha_miner" ? 0.1 : 0.3,
+    }));
+
     // Release any Fragment mining rewards whose six-hour hold has elapsed.
     // The database routine is idempotent and records each credit in the verified ledger.
     const { error: fragmentReleaseError } = await admin.rpc("release_matured_fragment_zp", {
@@ -136,6 +166,8 @@ Deno.serve(async (req: Request) => {
       pendingKickback: Number(economy?.pending_kickback ?? 0),
       pendingFragmentZp,
       nextFragmentReleaseAt,
+      activeAgentRentals,
+      agentRentalAccrual,
       updatedAt: economy?.updated_at ?? null,
       transactions,
       source: "server_player_economy",
