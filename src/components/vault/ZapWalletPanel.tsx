@@ -77,9 +77,10 @@ export default function ZapWalletPanel({
       setPendingAmount(null);
       await onConversionComplete();
     } catch (conversionError) {
-      setError(conversionError instanceof Error ? conversionError.message : 'Conversion could not be completed.');
+      const message = conversionError instanceof Error ? conversionError.message : 'Conversion could not be completed.';
       // Refresh balances in case the server completed the request but the response was interrupted.
       await loadWallet();
+      setError(message);
       await onConversionComplete();
     } finally {
       setSubmitting(false);
