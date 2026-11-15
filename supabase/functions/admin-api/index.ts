@@ -404,12 +404,15 @@ interface AdminRequestBody {
     | "save_raffle_draft"
     | "reserve_raffle_prize"
     | "list_ton_withdrawals"
-    | "review_ton_withdrawal";
+    | "review_ton_withdrawal"
+    | "get_referral_kickback_budget"
+    | "set_referral_kickback_budget";
   adminUsername?: string;
   search?: string;
   playerId?: string;
   zapAmount?: number;
   tonAmount?: number;
+  monthlyKickbackBudgetZp?: number;
   transactionReference?: string;
   raffle?: {
     id?: string;
@@ -2000,6 +2003,32 @@ Deno.serve(async (req: Request) => {
       if (error || !data || typeof data !== "object") {
         console.error("External TON funding history lookup failed:", error);
         return json({ error: "Could not load external TON funding records" }, 500);
+      }
+      return json(data);
+    }
+
+    if (body.action === "get_referral_kickback_budget") {
+      const { data, error } = await db.rpc("admin_get_referral_kickback_budget");
+      if (error || !data || typeof data !== "object") {
+        console.error("Referral kickback budget lookup failed:", error);
+        return json({ error: "Could not load referral kickback budget." }, 500);
+      }
+      return json(data);
+    }
+
+    if (body.action === "set_referral_kickback_budget") {
+      const amount = body.monthlyKickbackBudgetZp;
+      if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0 || Number(amount.toFixed(6)) !== amount) {
+        return json({ error: "Enter a non-negative monthly ZP budget with up to 6 decimal places." }, 400);
+      }
+      const { data, error } = await db.rpc("admin_set_referral_kickback_budget", {
+        p_budget_zp: amount,
+        p_admin_username: ADMIN_USERNAME,
+      });
+      if (error || !data || typeof data !== "object") {
+        console.error("Referral kickback budget update failed:", error);
+        const message = error?.message ?? "Could not update referral kickback budget.";
+        return json({ error: message }, /allocated|reduce|below/i.test(message) ? 409 : 500);
       }
       return json(data);
     }
