@@ -54,7 +54,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewReasons, setReviewReasons] = useState<Record<string, string>>({});
   const [reviewMessage, setReviewMessage] = useState('');
-  const counts = useMemo(() => ({ legacy: events.length, active: drafts.filter(e => e.status === 'registration_open' || e.status === 'active').length, drafts: drafts.filter(e => e.status === 'draft').length }), [events, drafts]);
+  const counts = useMemo(() => ({ gameEvents: events.length, live: drafts.filter(e => e.status === 'registration_open' || e.status === 'active').length, drafts: drafts.filter(e => e.status === 'draft').length, pendingReviews: reviewQueue.individualSubmissions.length + reviewQueue.teamSubmissions.length }), [events, drafts, reviewQueue]);
 
   const loadDrafts = useCallback(async () => {
     setLoadingDrafts(true);
@@ -245,13 +245,13 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const publishDraft = async (draft: AdminExpeditionRecord) => {
     if (draft.status !== 'draft' || publishingId) return;
     const rewardWarning = draft.reward && draft.reward.reward_type !== 'none'
-      ? '\\n\\nImportant: ZP/ZAP reward payouts are not active yet. Publishing will make this Expedition visible, but it will not pay the configured reward.'
+      ? '\\n\\nRewards are not paid when you publish. After the Expedition is completed, you can separately issue rewards to eligible players.'
       : '';
     if (!window.confirm('Publish this Expedition? It will become visible in the Player Expeditions list. You can no longer edit it as a draft.' + rewardWarning)) return;
     setPublishingId(draft.id); setSavedMessage(''); setSavedMessageKind('info');
     try {
       const result = await publishAdminExpedition(creds, draft.id);
-      setSavedMessage(`Published successfully. This Expedition is now visible to players (${result.status.replace('_',' ')}).${draft.reward && draft.reward.reward_type !== 'none' ? ' Reward payouts are not active yet.' : ''}`);
+      setSavedMessage(`Published successfully. This Expedition is now visible to players (${result.status.replace('_',' ')}).${draft.reward && draft.reward.reward_type !== 'none' ? ' Rewards can be issued separately after completion and eligibility review.' : ''}`);
       setSavedMessageKind('success');
       await loadDrafts();
     } catch (error) {
@@ -287,8 +287,8 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     if (step === 3) return <div className="grid gap-4 md:grid-cols-2">
       <label className="admin-field-label">Reward type<select value={rewardType} onChange={e => setRewardType(e.target.value)} className="admin-field"><option value="ZP">ZP</option><option value="ZAP">ZAP</option><option value="none">No reward</option></select></label>
       <label className="admin-field-label">Reward amount<input type="number" min="1" step="1" disabled={rewardType==='none'} value={rewardAmount} onChange={e => setRewardAmount(e.target.value)} className="admin-field disabled:opacity-40"/></label>
-      {participation!=='solo' && <p className="text-[11px] leading-relaxed text-slate-500 md:col-span-2">Each eligible team member receives the full configured amount, not a shared pool. Team eligibility and reward issuing are not yet connected to the backend.</p>}
-      {rewardType==='ZAP' && <p className="text-[11px] text-amber-300 md:col-span-2">ZAP can be configured in this design, but the existing Events reward endpoint does not issue ZAP. Publishing is not enabled here.</p>}
+      {participation!=='solo' && <p className="text-[11px] leading-relaxed text-slate-500 md:col-span-2">Each eligible team member receives the full configured amount, not a shared pool. Rewards can be issued by an Admin after the Expedition is completed and eligibility is checked.</p>}
+      {rewardType==='ZAP' && <p className="text-[11px] text-amber-300 md:col-span-2">ZAP rewards are issued only after the Expedition is completed, eligible players are checked, and an Admin confirms the separate reward-issue action.</p>}
     </div>;
     if (step === 4) return <div className="grid gap-4 md:grid-cols-2">
       <label className="admin-field-label">Starts (local time)<input type="datetime-local" value={startsAt} onChange={e => setStartsAt(e.target.value)} className="admin-field"/></label>
@@ -300,21 +300,21 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{[['Category',category],['Access',access],['Participation',participation],['Reward',rewardType==='none'?'None':rewardAmount+' '+rewardType]].map(([k,v]) => <div key={k} className="border border-white/10 p-2"><p className="text-[9px] uppercase text-slate-500">{k}</p><p className="mt-1">{v}</p></div>)}</div>
       <p className="text-slate-400">{objectives.length} objectives · {startsAt ? new Date(startsAt).toLocaleString() : 'Start not set'} · {endsAt ? new Date(endsAt).toLocaleString() : 'End not set'}</p>
       {objectives.map((o,i) => <p key={o.id} className="border-l border-emerald-400/30 pl-2">{i+1}. {o.title} <span className="text-slate-500">({o.kind} · {o.scope})</span><span className="block text-[9px] text-emerald-300">{verificationSource(o.kind, o.scope)}</span></p>)}
-      <p className="border border-amber-500/30 bg-amber-950/10 p-3 text-[10px] text-amber-200">Preview only. Publishing changes the admin lifecycle status; it does not make Expeditions visible to players or issue rewards.</p>
+      <p className="border border-amber-500/30 bg-amber-950/10 p-3 text-[10px] text-amber-200">Publishing makes this Expedition visible to players. It does not pay rewards immediately; after completion, an Admin must separately issue rewards to eligible players.</p>
     </div>;
   };
 
   const metrics = [
     ['Drafts', counts.drafts, Layers],
-    ['Legacy Events', counts.legacy, CalendarDays],
-    ['Published legacy Events', counts.active, Clock3],
-    ['Builder steps', 6, Sparkles],
+    ['Live / registration', counts.live, Clock3],
+    ['Pending reviews', counts.pendingReviews, ShieldCheck],
+    ['Game Events', counts.gameEvents, CalendarDays],
   ] as const;
 
   return <section className="space-y-4">
     <style>{'.admin-field{display:block;width:100%;margin-top:6px;background:#020503;border:1px solid rgba(80,255,150,.25);padding:10px;color:#d1fae5;font-size:12px;outline:none}.admin-field:focus{border-color:rgba(80,255,150,.7)}.admin-field-label{display:block;font-size:11px;color:#70d99b}'}</style>
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{metrics.map(([label,value,Icon]) => <div key={label} className="border border-white/10 bg-[#101a14] p-3"><Icon size={16} className="mb-2 text-slate-400"/><p className="text-xl font-bold text-slate-100">{value}</p><p className="text-[9px] uppercase tracking-wider text-slate-500">{label}</p></div>)}</div>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3"><div><h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-300"><Compass size={15}/> Expedition Command</h2><p className="mt-1 text-[10px] text-slate-500">Build structured solo, team and mixed-objective Expeditions.</p></div>{!creating && <button type="button" onClick={() => {reset();setCreating(true);}} className="flex items-center gap-2 border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-slate-100"><Plus size={14}/> Create Expedition</button>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3"><div><h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-300"><Compass size={15}/> Expedition Command</h2><p className="mt-1 text-[10px] text-slate-500">Create and publish Expeditions, review player evidence, then issue eligible rewards after completion.</p></div>{!creating && <button type="button" onClick={() => {reset();setCreating(true);}} className="flex items-center gap-2 border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-slate-100"><Plus size={14}/> Create Expedition</button>}</div>
     {savedMessage && <p role={savedMessageKind === 'error' ? 'alert' : 'status'} aria-live="polite" className={'border-l-2 px-3 py-3 text-xs ' + (savedMessageKind === 'success' ? 'border-emerald-400/60 bg-emerald-400/10 text-emerald-200' : savedMessageKind === 'error' ? 'border-red-400/60 bg-red-400/10 text-red-200' : 'border-sky-400/50 bg-sky-400/10 text-sky-200')}>{savedMessage}</p>}
     {creating && <div className="space-y-4 border border-white/10 bg-[#0b120e] p-3 sm:p-5">
       <div className="flex items-center justify-between gap-2"><div><p className="text-[10px] uppercase tracking-widest text-slate-400">Expedition Builder</p><h3 className="mt-1 text-sm font-bold text-slate-100">Step {step+1}: {steps[step]}</h3></div><button type="button" onClick={() => setCreating(false)} className="text-[10px] text-slate-500">Close</button></div>
@@ -361,7 +361,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
                     <span className="border border-amber-400/30 px-2 py-1 text-[9px] text-amber-200">Pending review</span>
                   </div>
                   <details className="text-[10px] text-slate-400"><summary className="cursor-pointer">View submitted evidence</summary><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words border border-white/10 bg-[#0b120e] p-2 text-[9px] text-emerald-300">{JSON.stringify(item.evidence ?? {}, null, 2)}</pre></details>
-                  <label className="admin-field-label">Review reason {scope === 'team' ? '(optional for approval, required for rejection)' : '(optional for approval, required for rejection)'}<input value={reviewReasons[key] ?? ''} onChange={e => setReviewReasons(v => ({ ...v, [key]: e.target.value }))} maxLength={500} placeholder="Explain the decision…" className="admin-field"/></label>
+                  <label className="admin-field-label">Review reason (required for rejection)<input value={reviewReasons[key] ?? ''} onChange={e => setReviewReasons(v => ({ ...v, [key]: e.target.value }))} maxLength={500} placeholder="Explain the decision…" className="admin-field"/></label>
                   <div className="flex flex-wrap gap-2">
                     <button type="button" disabled={reviewingId === key} onClick={() => void submitReview(item, scope, 'verified')} className="border border-emerald-400/40 bg-emerald-950/20 px-3 py-2 text-[10px] text-emerald-200 disabled:opacity-40">{reviewingId === key ? 'Saving…' : 'Verify submission'}</button>
                     <button type="button" disabled={reviewingId === key} onClick={() => void submitReview(item, scope, 'rejected')} className="border border-red-400/30 px-3 py-2 text-[10px] text-red-200 disabled:opacity-40">Reject</button>
@@ -374,6 +374,6 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       )}
       <p className="text-[9px] leading-relaxed text-slate-500">Verifying evidence updates Expedition completion and eligibility only. It does not issue ZP/ZAP or change player balances.</p>
     </section>
-    <p className="text-[10px] leading-relaxed text-slate-500">Legacy Events data is preserved. This admin screen does not modify or delete existing Events. Player visibility and real reward issuance remain separate, disabled steps.</p>
+    <p className="text-[10px] leading-relaxed text-slate-500">Existing Game Events are preserved. Publishing an Expedition makes it visible to players; reward issuance remains a separate, explicit Admin action after completion.</p>
   </section>;
 }
