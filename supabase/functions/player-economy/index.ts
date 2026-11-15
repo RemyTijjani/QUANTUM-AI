@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
@@ -19,7 +19,7 @@ function json(body: unknown, status = 200) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-  if (req.method !== "GET") return json({ error: "Method not allowed." }, 405);
+  if (req.method !== "GET" && req.method !== "POST") return json({ error: "Method not allowed." }, 405);
   if (!SUPABASE_URL || !ANON_KEY || !SERVICE_ROLE_KEY) {
     console.error("Player economy service configuration is incomplete.");
     return json({ error: "Player economy service is not configured." }, 500);
@@ -43,6 +43,24 @@ Deno.serve(async (req: Request) => {
     const { data: player, error: playerError } = await admin
       .from("players").select("id").eq("id", authData.user.id).maybeSingle();
     if (playerError || !player) return json({ error: "Player profile was not found." }, 403);
+
+    if (req.method === "POST") {
+      let body: { action?: string; idempotencyKey?: string };
+      try { body = await req.json(); } catch { return json({ error: "Invalid request body." }, 400); }
+      if (body.action !== "claim_referral_kickbacks") return json({ error: "Unknown player economy action." }, 400);
+      const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
+        return json({ error: "A valid claim request ID is required." }, 400);
+      }
+      const { data, error } = await admin.rpc("claim_player_referral_kickbacks", {
+        p_player_id: player.id, p_idempotency_key: idempotencyKey,
+      });
+      if (error) {
+        console.error("Referral kickback claim failed:", error);
+        return json({ error: "Could not claim referral kickbacks." }, 409);
+      }
+      return json(data);
+    }
 
     // Release any Fragment mining rewards whose six-hour hold has elapsed.
     // The database routine is idempotent and records each credit in the verified ledger.
@@ -102,8 +120,17 @@ Deno.serve(async (req: Request) => {
       createdAt: row.created_at,
     }));
 
+    const { data: referralKickbacks, error: referralKickbacksError } = await admin.rpc(
+      "get_player_referral_kickbacks", { p_player_id: player.id },
+    );
+    if (referralKickbacksError) {
+      console.error("Referral kickback summary lookup failed:", referralKickbacksError);
+      return json({ error: "Could not load your referral kickbacks." }, 500);
+    }
+
     return json({
       success: true,
+      referralKickbacks,
       verifiedZpBalance: Number(economy?.zp_balance ?? 0),
       verifiedLifetimeZp: Number(economy?.lifetime_zp ?? 0),
       pendingKickback: Number(economy?.pending_kickback ?? 0),
