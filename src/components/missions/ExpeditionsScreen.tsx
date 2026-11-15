@@ -127,7 +127,7 @@ function rewardLabel(reward: Expedition['reward']) {
 }
 
 function statusLabel(expedition: Expedition) {
-  if (expedition.myParticipation) return expedition.myParticipation.status.replaceAll('_', ' ');
+  if (expedition.myParticipation) return expedition.myParticipation.status.replace(/_/g, ' ');
   if (!expedition.isUnlocked) return 'Locked';
   if (expedition.status === 'active') return 'In progress';
   if (expedition.status === 'registration_open') return 'Registration open';
@@ -311,7 +311,7 @@ export default function ExpeditionsScreen() {
                       {item.objectives.length === 0 ? <p className="font-mono text-[9px] text-amber-300">Objectives are being configured.</p> : item.objectives.map((objective) => (
                         <div key={objective.id} className="rounded-lg border border-neon/15 bg-black/30 p-3">
                           <div className="flex items-start justify-between gap-2"><p className="font-mono text-[10px] font-bold text-neon-300">{objective.title}</p><span className="shrink-0 font-mono text-[8px] uppercase text-neon-700">{objective.required ? 'Required' : 'Optional'}</span></div>
-                          <p className="mt-1 font-mono text-[8px] uppercase text-cyan-500">{objective.type.replaceAll('_', ' ')} · {objective.completionScope} completion</p>
+                          <p className="mt-1 font-mono text-[8px] uppercase text-cyan-500">{objective.type.replace(/_/g, ' ')} · {objective.completionScope} completion</p>
                           {objective.description && <p className="mt-2 font-mono text-[9px] leading-relaxed text-neon-600">{objective.description}</p>}
                           {objective.instructions && <p className="mt-2 whitespace-pre-wrap font-mono text-[9px] leading-relaxed text-neon-500">{objective.instructions}</p>}
                         </div>
