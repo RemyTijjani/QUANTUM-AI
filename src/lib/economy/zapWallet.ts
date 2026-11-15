@@ -61,6 +61,20 @@ export interface ZapConversionResult {
   conversionReference: string;
 }
 
+export interface ZapTransferRecipient {
+  username: string | null;
+  firstName: string | null;
+  displayName: string;
+}
+
+export interface ZapTransferResult {
+  transferId: string;
+  amount: number;
+  alreadyApplied: boolean;
+  createdAt: string;
+}
+
+
 const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zap-wallet`;
 
 async function request<T>(method: 'GET' | 'POST', body?: Record<string, string>, query = ''): Promise<T> {
@@ -142,4 +156,43 @@ export async function convertZpToZap(
     throw new Error('The conversion service returned an invalid result.');
   }
   return { conversion: result.conversion, wallet: result.wallet };
+}
+
+export async function lookupZapTransferRecipient(identifier: string): Promise<ZapTransferRecipient> {
+  const result = await request<{
+    success: boolean;
+    recipient: ZapTransferRecipient;
+  }>('GET', undefined, `?action=recipient&identifier=${encodeURIComponent(identifier.trim())}`);
+
+  if (!result.success || !result.recipient || typeof result.recipient.displayName !== 'string') {
+    throw new Error('Could not find that ZORD player.');
+  }
+  return result.recipient;
+}
+
+export async function transferZap(
+  recipientIdentifier: string,
+  amountZap: string,
+  idempotencyKey: string,
+): Promise<{ transfer: ZapTransferResult; recipient: ZapTransferRecipient; wallet: ZapWallet }> {
+  const result = await request<{
+    success: boolean;
+    transfer: ZapTransferResult;
+    recipient: ZapTransferRecipient;
+    wallet: ZapWallet;
+  }>('POST', {
+    action: 'transfer',
+    recipientIdentifier: recipientIdentifier.trim(),
+    amountZap,
+    idempotencyKey,
+  });
+
+  if (!result.success || !result.transfer || !result.recipient || !result.wallet) {
+    throw new Error('The ZAP transfer service returned an invalid result.');
+  }
+  return {
+    transfer: result.transfer,
+    recipient: result.recipient,
+    wallet: result.wallet,
+  };
 }
