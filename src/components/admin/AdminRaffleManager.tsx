@@ -5,6 +5,7 @@ import {
   AdminApiError,
   listAdminRaffles,
   saveAdminRaffleDraft,
+  reserveAdminRafflePrize,
 } from '@/lib/admin/adminApi';
 import type { AdminCredentials, AdminRaffleRecord } from '@/lib/admin/adminApi';
 
@@ -21,6 +22,8 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
   const [raffles, setRaffles] = useState<AdminRaffleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [reservingId, setReservingId] = useState<string | null>(null);
+  const [reservedIds, setReservedIds] = useState<Record<string, boolean>>({});
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -66,6 +69,26 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
   };
 
   const currency = rewardType === 'ton' ? 'TON' : 'ZAP';
+
+  const reservePrize = async (raffle: AdminRaffleRecord) => {
+    setError('');
+    setNotice('');
+    setReservingId(raffle.id);
+    try {
+      const result = await reserveAdminRafflePrize(creds, raffle.id);
+      setReservedIds((current) => ({ ...current, [raffle.id]: true }));
+      setNotice(
+        result.alreadyReserved
+          ? `This raffle's prize pool was already reserved: ${money(result.amount, result.currency)}.`
+          : `Prize pool reserved: ${money(result.amount, result.currency)}. The funds are locked for this raffle; it has not been published.`,
+      );
+    } catch (reserveError) {
+      setError(errorText(reserveError));
+    } finally {
+      setReservingId(null);
+    }
+  };
+
   const saveDraft = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
@@ -173,7 +196,7 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
       )}
 
       <div className="space-y-3">
-        {loading ? <div className="py-8 text-center text-xs text-neon-600">Loading your raffle drafts…</div> : raffles.length === 0 ? <div className="rounded-xl border border-neon/15 bg-black/20 py-9 text-center"><CircleDollarSign size={25} className="mx-auto text-neon-600"/><p className="mt-2 text-xs text-neon-300">No raffles created yet</p><p className="mt-1 text-[10px] text-neon-600">Create your first draft to get started.</p></div> : raffles.map((raffle) => <article key={raffle.id} className="rounded-xl border border-neon/15 bg-black/25 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h4 className="text-sm font-semibold text-neon-200">{raffle.title}</h4><p className="mt-1 text-[10px] text-neon-600">{money(raffle.prize_pool_amount, raffle.prize_currency)} · {raffle.winner_count} winner(s)</p></div><span className={`rounded-full border px-2.5 py-1 text-[9px] uppercase ${raffle.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : 'border-amber-400/25 bg-amber-400/5 text-amber-200'}`}>{raffle.status}</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-neon-500"><span>Minimum: {money(raffle.min_bet_zap, 'ZAP')}</span><span>{raffle.entry_mode === 'proportional' ? 'Proportional tickets' : 'One bet, one ticket'}</span></div>{raffle.status === 'draft' && <button type="button" onClick={() => editDraft(raffle)} className="mt-3 rounded-lg border border-neon/25 px-3 py-2 text-[10px] font-semibold text-neon-300 hover:bg-neon/10">Edit draft</button>}</article>)}
+        {loading ? <div className="py-8 text-center text-xs text-neon-600">Loading your raffle drafts…</div> : raffles.length === 0 ? <div className="rounded-xl border border-neon/15 bg-black/20 py-9 text-center"><CircleDollarSign size={25} className="mx-auto text-neon-600"/><p className="mt-2 text-xs text-neon-300">No raffles created yet</p><p className="mt-1 text-[10px] text-neon-600">Create your first draft to get started.</p></div> : raffles.map((raffle) => <article key={raffle.id} className="rounded-xl border border-neon/15 bg-black/25 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h4 className="text-sm font-semibold text-neon-200">{raffle.title}</h4><p className="mt-1 text-[10px] text-neon-600">{money(raffle.prize_pool_amount, raffle.prize_currency)} · {raffle.winner_count} winner(s)</p></div><span className={`rounded-full border px-2.5 py-1 text-[9px] uppercase ${raffle.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : 'border-amber-400/25 bg-amber-400/5 text-amber-200'}`}>{raffle.status}</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-neon-500"><span>Minimum: {money(raffle.min_bet_zap, 'ZAP')}</span><span>{raffle.entry_mode === 'proportional' ? 'Proportional tickets' : 'One bet, one ticket'}</span></div>{raffle.status === 'draft' && <div className="mt-3 flex flex-wrap gap-2">{reservedIds[raffle.id] ? <span role="status" className="rounded-lg border border-emerald-400/25 bg-emerald-400/5 px-3 py-2 text-[10px] font-semibold text-emerald-200">Prize reserved</span> : <button type="button" onClick={() => void reservePrize(raffle)} disabled={reservingId !== null} className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-40">{reservingId === raffle.id ? 'Checking reserve…' : 'Reserve prize pool'}</button>}<button type="button" onClick={() => editDraft(raffle)} disabled={!!reservedIds[raffle.id]} className="rounded-lg border border-neon/25 px-3 py-2 text-[10px] font-semibold text-neon-300 hover:bg-neon/10 disabled:opacity-40">Edit draft</button></div>}</article>)}
       </div>
       <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3"><p className="text-[10px] font-semibold text-amber-200">Publishing is protected</p><p className="mt-1 text-[10px] leading-relaxed text-amber-100/70">A draft cannot go live until its complete prize pool is reserved and verified. TON drafts also need the TON funding wallet and withdrawal flow configured. Winner selection and prize delivery are separate controlled steps.</p></div>
     </section>
