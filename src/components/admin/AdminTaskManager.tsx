@@ -16,7 +16,13 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
   const [editingTask, setEditingTask] = useState<AdminTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | AdminTask['status']>('all');
-  const visibleTasks = statusFilter === 'all' ? tasks : tasks.filter((task) => task.status === statusFilter);
+  const [kindFilter, setKindFilter] = useState<'all' | AdminTask['kind']>('all');
+  const [search, setSearch] = useState('');
+  const visibleTasks = tasks.filter((task) => {
+    const term = search.trim().toLowerCase();
+    const matchesSearch = !term || task.title.toLowerCase().includes(term) || task.description.toLowerCase().includes(term) || task.kind.toLowerCase().includes(term);
+    return matchesSearch && (statusFilter === 'all' || task.status === statusFilter) && (kindFilter === 'all' || task.kind === kindFilter);
+  });
 
   const openModal = (task: AdminTask | null) => {
     setEditingTask(task);
@@ -30,7 +36,7 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
           <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
             <Database size={15} className="text-emerald-300" /> Mission Manager
           </h2>
-          <p className="mt-1 text-[11px] text-slate-400">{tasks.length} mission{tasks.length === 1 ? '' : 's'} in total · Filter by visibility</p>
+          <p className="mt-1 text-[11px] text-slate-400">{tasks.length} mission{tasks.length === 1 ? '' : 's'} in total · Find and organise missions</p>
         </div>
         <button
           onClick={() => openModal(null)}
@@ -41,15 +47,29 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
       </div>
 
       {tasks.length > 0 && (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <label htmlFor="admin-mission-status-filter" className="text-[11px] text-slate-400">Show missions</label>
-          <select id="admin-mission-status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="admin-field sm:max-w-[220px]">
-            <option value="all">All visibility states ({tasks.length})</option>
-            <option value="published">Published ({tasks.filter((task) => task.status === 'published').length})</option>
-            <option value="draft">Draft ({tasks.filter((task) => task.status === 'draft').length})</option>
-            <option value="paused">Paused ({tasks.filter((task) => task.status === 'paused').length})</option>
-            <option value="archived">Archived ({tasks.filter((task) => task.status === 'archived').length})</option>
-          </select>
+        <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 sm:grid-cols-3">
+          <label className="block sm:col-span-3">
+            <span className="mb-1 block text-[10px] font-medium text-slate-400">Search missions</span>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by mission name, description or category…" className="admin-field" />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-medium text-slate-400">Visibility</span>
+            <select id="admin-mission-status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="admin-field">
+              <option value="all">All statuses ({tasks.length})</option>
+              {(['published', 'draft', 'paused', 'archived'] as const).map((status) => <option key={status} value={status}>{status[0].toUpperCase() + status.slice(1)} ({tasks.filter((task) => task.status === status).length})</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-medium text-slate-400">Category</span>
+            <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as typeof kindFilter)} className="admin-field">
+              <option value="all">All categories ({tasks.length})</option>
+              {(['daily', 'social', 'creator'] as const).map((kind) => <option key={kind} value={kind}>{kind[0].toUpperCase() + kind.slice(1)} ({tasks.filter((task) => task.kind === kind).length})</option>)}
+            </select>
+          </label>
+          <div className="flex items-end justify-between gap-2 text-[10px] text-slate-400 sm:justify-end">
+            <span>Showing {visibleTasks.length} of {tasks.length}</span>
+            {(search || statusFilter !== 'all' || kindFilter !== 'all') && <button type="button" onClick={() => { setSearch(''); setStatusFilter('all'); setKindFilter('all'); }} className="rounded-lg border border-white/10 px-2.5 py-2 text-emerald-300 hover:bg-white/5">Clear filters</button>}
+          </div>
         </div>
       )}
 
@@ -62,29 +82,33 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
         </div>
       ) : visibleTasks.length === 0 ? (
         <div className="rounded-xl border border-dashed border-white/15 px-4 py-10 text-center">
-          <p className="text-sm font-semibold text-slate-200">No {statusFilter} missions</p>
-          <p className="mt-1 text-xs text-slate-400">There are no missions with this visibility state.</p>
-          <button type="button" onClick={() => setStatusFilter('all')} className="mt-3 text-xs font-medium text-emerald-300 hover:text-emerald-200">Show all missions</button>
+          <Database size={22} className="mx-auto text-slate-500" />
+          <p className="mt-3 text-sm font-semibold text-slate-200">No matching missions</p>
+          <p className="mt-1 text-xs text-slate-400">Try a different search or change the visibility and category filters.</p>
+          <button type="button" onClick={() => { setSearch(''); setStatusFilter('all'); setKindFilter('all'); }} className="mt-3 text-xs font-medium text-emerald-300 hover:text-emerald-200">Clear search and filters</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {visibleTasks.map((task) => (
-            <div key={task.id} className="rounded-xl border border-white/10 bg-[#101a14] p-3 flex justify-between items-start">
-              <div>
-                <span className="text-[10px] uppercase px-1.5 py-0.5 rounded border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
-                  {task.kind}
-                </span>
-                <h3 className="text-xs font-bold text-emerald-300 mt-1.5">{task.title}</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">{task.description}</p>
-                <p className="text-[11px] text-slate-300 font-bold mt-2">Reward: +{formatZp(task.reward)} {task.rewardCurrency}</p>
-                <p className="text-[10px] text-slate-400">Access cost: {task.unlockCostZp.toLocaleString()} ZP · {task.status}</p>
+            <article key={task.id} className="flex min-w-0 flex-col justify-between gap-3 rounded-xl border border-white/10 bg-[#101a14] p-4 transition-colors hover:border-emerald-400/20 sm:flex-row sm:items-start">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">{task.kind}</span>
+                  <span className={`rounded-md border px-2 py-1 text-[9px] font-semibold capitalize ${task.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : task.status === 'draft' ? 'border-amber-400/25 bg-amber-400/5 text-amber-200' : 'border-white/10 bg-white/5 text-slate-300'}`}>{task.status}</span>
+                </div>
+                <h3 className="mt-2 break-words text-sm font-semibold text-slate-100">{task.title}</h3>
+                <p className="mt-1 break-words text-[11px] leading-relaxed text-slate-400">{task.description}</p>
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/10 pt-3 text-[10px]">
+                  <span className="font-semibold text-slate-200">Reward: +{formatZp(task.reward)} {task.rewardCurrency}</span>
+                  <span className="text-slate-400">Unlock cost: {task.unlockCostZp.toLocaleString()} ZP</span>
+                </div>
               </div>
-              <div className="flex gap-1.5">
+              <div className="flex shrink-0 gap-2 sm:pl-2">
                 <button
                   onClick={() => openModal(task)}
                   disabled={busyTaskId === task.id}
                   aria-label={`Edit ${task.title}`}
-                  className="p-1.5 bg-emerald-400/10 hover:bg-emerald-400/15 border border-white/10 text-emerald-300 disabled:opacity-50"
+                  className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-white/10 bg-emerald-400/10 text-emerald-300 transition hover:bg-emerald-400/15 disabled:opacity-50"
                 >
                   <Edit2 size={13} />
                 </button>
@@ -96,12 +120,12 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
                   }}
                   disabled={busyTaskId === task.id}
                   aria-label={`Delete ${task.title}`}
-                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 disabled:opacity-50"
+                  className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
                 >
                   {busyTaskId === task.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 </button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
