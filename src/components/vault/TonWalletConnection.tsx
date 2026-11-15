@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Clock3, LoaderCircle, ShieldCheck, Unplug, Wallet } from 'lucide-react';
-import { getTonConnectUI } from '@/lib/ton-connect';
+import { loadTonConnectUI } from '@/lib/ton-connect';
 import type { TonConnectWallet } from '@/lib/ton-connect';
 import {
   createTonProofChallenge,
@@ -110,16 +110,15 @@ export default function TonWalletConnection() {
       }
     };
 
-    try {
-      const ui = getTonConnectUI();
+    void refreshWalletData();
+    void loadTonConnectUI().then((ui) => {
+      if (!mounted) return;
       handleWallet(ui.wallet);
       unsubscribe = ui.onStatusChange(handleWallet);
       setReady(true);
-    } catch (cause) {
+    }).catch((cause: unknown) => {
       if (mounted) setError(cause instanceof Error ? cause.message : 'TON Connect could not be initialized.');
-    }
-
-    void refreshWalletData();
+    });
     return () => {
       mounted = false;
       unsubscribe?.();
@@ -131,7 +130,7 @@ export default function TonWalletConnection() {
     setError('');
     setNotice('');
     try {
-      const ui = getTonConnectUI();
+      const ui = await loadTonConnectUI();
       ui.setConnectRequestParameters({ state: 'loading' });
       const payload = await createTonProofChallenge();
       ui.setConnectRequestParameters({ state: 'ready', value: { tonProof: payload } });
@@ -147,7 +146,7 @@ export default function TonWalletConnection() {
     setBusy(true);
     setError('');
     try {
-      await getTonConnectUI().disconnect();
+      await (await loadTonConnectUI()).disconnect();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not disconnect this wallet.');
     } finally {
@@ -232,10 +231,10 @@ export default function TonWalletConnection() {
 
       <section className="rounded-lg border border-neon/15 bg-black/20 p-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="label">Withdrawable TON (Gram)</p>
+          <p className="label">TON withdrawal (Gram)</p>
           <button type="button" className="text-[9px] text-neon-500 underline" disabled={loadingData} onClick={() => void refreshWalletData()}>Refresh</button>
         </div>
-        <p className="mt-2 font-display text-2xl font-bold text-white">{loadingData ? '—' : availableTon.toLocaleString(undefined, { maximumFractionDigits: 9 })} <span className="text-xs font-normal text-neon-500">TON</span></p>
+        <p className="mt-2 font-display text-2xl font-bold text-white">{loadingData ? '—' : availableTon.toLocaleString(undefined, { maximumFractionDigits: 9 })} <span className="text-xs font-normal text-neon-500">TON available</span></p>
         <p className="mt-1 text-[9px] text-neon-700">Reserved for pending requests: {nanoTonToTon(walletData?.balance.reservedNano ?? '0')} TON</p>
         {walletData?.wallet && !wallet && <p className="mt-1 text-[9px] text-neon-600">Verified payout wallet: {shortAddress(walletData.wallet.wallet_address)}</p>}
 
@@ -253,7 +252,7 @@ export default function TonWalletConnection() {
             <p className="text-[9px] leading-relaxed text-amber-300">Requests are reviewed by an admin. TON is reserved first; an external transfer is recorded only after it is completed.</p>
           </div>
         ) : (
-          <p className="mt-3 text-[10px] leading-relaxed text-amber-300">Verify a TON mainnet wallet to unlock withdrawal requests. Your available balance stays safe in ZORD until then.</p>
+          <p className="mt-3 text-[10px] leading-relaxed text-amber-300">Connect and verify a TON mainnet wallet to unlock the withdrawal form. Your eligible TON rewards will remain safe in your Vault until you request a withdrawal.</p>
         )}
       </section>
 
