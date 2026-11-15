@@ -1928,6 +1928,24 @@ Deno.serve(async (req: Request) => {
       return json(data);
     }
 
+    // Publish only after the database verifies an exact, fully reserved prize pool.
+    if (body.action === "publish_raffle") {
+      const raffleId = typeof body.raffle?.id === "string" ? body.raffle.id : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raffleId)) {
+        return json({ error: "A valid raffle ID is required." }, 400);
+      }
+      const { data, error } = await db.rpc("publish_raffle", {
+        p_raffle_id: raffleId,
+        p_admin: ADMIN_USERNAME,
+      });
+      if (error || !data || data.success !== true || data.status !== "published") {
+        console.error("Raffle publishing failed:", error);
+        const message = error?.message ?? data?.error ?? "Could not verify raffle publishing.";
+        return json({ error: message }, 409);
+      }
+      return json(data);
+    }
+
     // Record externally sourced ZAP only after the signed-in Admin has checked the
     // deposit outside ZORD. The database RPC atomically audits and increases the
     // separate raffle reserve; it never credits a player wallet.
