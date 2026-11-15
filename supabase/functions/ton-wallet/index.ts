@@ -203,7 +203,7 @@ async function verifyTonProof(body: Record<string, unknown>, expectedPayload: st
     publicKey: new Uint8Array(publicKey),
     domain: signatureDomain(network),
   });
-  return valid ? { address: addressText, publicKey: publicKey.toString("hex"), timestamp } : null;
+  return valid ? { address: address.toRawString(), publicKey: publicKey.toString("hex"), timestamp } : null;
 }
 
 async function readWallet(admin: ReturnType<typeof createClient>, playerId: string) {
