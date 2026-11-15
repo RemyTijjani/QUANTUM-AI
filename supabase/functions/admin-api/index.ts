@@ -42,7 +42,10 @@ interface AdminRequestBody {
     | "approve_event_participant_reward"
     | "list_event_activities"
     | "save_event_activity"
-    | "delete_event_activity";
+    | "delete_event_activity"
+    | "list_briefings"
+    | "save_briefing_draft"
+    | "publish_briefing";
   adminUsername?: string;
   search?: string;
   playerId?: string;
@@ -84,6 +87,8 @@ interface AdminRequestBody {
     participationRules?: unknown;
   };
   expeditionId?: string;
+  briefingId?: string;
+  briefing?: { id?: string; title?: string; summary?: string; category?: string; content?: unknown; accessMode?: string; prerequisiteBriefingId?: string | null; passingScore?: number; rewardType?: string; rewardAmount?: number; questions?: Array<{ id?: string; prompt?: string; options?: string[]; correctOptionIndex?: number; explanation?: string }> };
   progressId?: string;
   progressScope?: "individual" | "team";
   objectiveDecision?: "verified" | "rejected";
@@ -1002,6 +1007,122 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Expedition draft could not be saved completely; changes were rolled back where possible" }, 500);
       }
       return json({ success: true, id: expeditionId, slug, status: "draft" });
+    }
+
+
+    // Intelligence Briefings admin actions run only after the existing admin credential and rate-limit checks.
+    if (body.action === "list_briefings") {
+      const { data: rows, error } = await db.from("briefings")
+        .select("id, slug, title, summary, category, content, status, access_mode, prerequisite_briefing_id, sort_order, passing_score, reward_type, reward_amount, published_at, created_at, updated_at")
+        .order("sort_order", { ascending: true }).order("created_at", { ascending: false }).limit(100);
+      if (error) return json({ error: "Could not load Intelligence Briefings." }, 500);
+      const ids = (rows ?? []).map((row) => row.id);
+      const questionsRes = ids.length ? await db.from("briefing_questions")
+        .select("id, briefing_id, prompt, options, correct_option_index, explanation, sort_order")
+        .in("briefing_id", ids).order("sort_order", { ascending: true }) : { data: [], error: null };
+      if (questionsRes.error) return json({ error: "Could not load briefing questions." }, 500);
+      const byId = new Map<string, unknown[]>();
+      for (const q of questionsRes.data ?? []) {
+        const list = byId.get(q.briefing_id) ?? [];
+        list.push({ id: q.id, prompt: q.prompt, options: q.options, correctOptionIndex: q.correct_option_index, explanation: q.explanation, sortOrder: q.sort_order });
+        byId.set(q.briefing_id, list);
+      }
+      return json({ success: true, briefings: (rows ?? []).map((row) => ({ ...row, questions: byId.get(row.id) ?? [] })) });
+    }
+
+    if (body.action === "save_briefing_draft") {
+      const item = body.briefing;
+      if (!item || typeof item !== "object") return json({ error: "Briefing details are required." }, 400);
+      const title = typeof item.title === "string" ? item.title.trim() : "";
+      const summary = typeof item.summary === "string" ? item.summary.trim() : "";
+      const category = typeof item.category === "string" ? item.category.trim().slice(0, 40) : "general";
+      const content = item.content;
+      const questions = item.questions;
+      const rewardType = item.rewardType;
+      const rewardAmount = item.rewardAmount;
+      const passingScore = item.passingScore;
+      const accessMode = item.accessMode;
+      const prerequisiteId = item.prerequisiteBriefingId || null;
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (title.length < 3 || title.length > 120) return json({ error: "Briefing title must be 3–120 characters." }, 400);
+      if (summary.length > 500) return json({ error: "Briefing summary must be 500 characters or fewer." }, 400);
+      if (!["open", "progressive"].includes(String(accessMode))) return json({ error: "Choose open or progressive access." }, 400);
+      if (accessMode === "progressive" && (!prerequisiteId || !uuid.test(String(prerequisiteId)))) return json({ error: "Choose a valid prerequisite briefing." }, 400);
+      if (prerequisiteId && (!uuid.test(String(prerequisiteId)) || prerequisiteId === item.id)) return json({ error: "Invalid prerequisite briefing." }, 400);
+      if (!Array.isArray(content) || content.length < 1 || content.length > 30 || content.some((block) =>
+        !block || typeof block !== "object" || !["text", "image", "video"].includes(String(block.type)) ||
+        (block.title !== undefined && (typeof block.title !== "string" || block.title.length > 160)) ||
+        (block.body !== undefined && (typeof block.body !== "string" || block.body.length > 6000)) ||
+        (block.url !== undefined && (typeof block.url !== "string" || block.url.length > 1000)))) {
+        return json({ error: "Add 1–30 valid content blocks. Text, image and video blocks are supported." }, 400);
+      }
+      if (!Array.isArray(questions) || questions.length < 3 || questions.length > 10 || questions.some((q) =>
+        !q || typeof q.prompt !== "string" || q.prompt.trim().length < 3 || q.prompt.length > 1000 ||
+        !Array.isArray(q.options) || q.options.length < 2 || q.options.length > 6 ||
+        q.options.some((option) => typeof option !== "string" || !option.trim() || option.length > 300) ||
+        !Number.isSafeInteger(q.correctOptionIndex) || q.correctOptionIndex < 0 || q.correctOptionIndex >= q.options.length ||
+        (q.explanation !== undefined && (typeof q.explanation !== "string" || q.explanation.length > 1000)))) {
+        return json({ error: "Add 3–10 valid quiz questions, each with 2–6 options and one correct answer." }, 400);
+      }
+      if (!["none", "zp", "zap"].includes(String(rewardType)) ||
+          (rewardType === "none" ? rewardAmount !== 0 : (!Number.isSafeInteger(rewardAmount) || Number(rewardAmount) <= 0))) {
+        return json({ error: "Set no reward, or a positive whole-number ZP/ZAP reward." }, 400);
+      }
+      if (!Number.isSafeInteger(passingScore) || Number(passingScore) < 1 || Number(passingScore) > 100) return json({ error: "Passing score must be 1–100." }, 400);
+      if (prerequisiteId) {
+        const { data: prerequisite } = await db.from("briefings").select("id, status").eq("id", prerequisiteId).maybeSingle();
+        if (!prerequisite || prerequisite.status !== "published") return json({ error: "The prerequisite must be an existing published briefing." }, 400);
+      }
+
+      const isUpdate = typeof item.id === "string" && uuid.test(item.id);
+      let id = item.id;
+      if (isUpdate) {
+        const { data: current, error: currentError } = await db.from("briefings").select("id, status").eq("id", id!).maybeSingle();
+        if (currentError || !current) return json({ error: "Briefing draft not found." }, 404);
+        if (current.status !== "draft") return json({ error: "Only draft briefings can be edited." }, 409);
+        const { error: updateError } = await db.from("briefings").update({
+          title, summary, category, content, access_mode: accessMode,
+          prerequisite_briefing_id: prerequisiteId, passing_score: passingScore,
+          reward_type: rewardType, reward_amount: rewardAmount, updated_by: ADMIN_USERNAME,
+          updated_at: new Date().toISOString(),
+        }).eq("id", id!).eq("status", "draft");
+        if (updateError) return json({ error: "Could not update the briefing draft." }, 500);
+        const { error: deleteError } = await db.from("briefing_questions").delete().eq("briefing_id", id!);
+        if (deleteError) return json({ error: "Could not replace the briefing questions." }, 500);
+      } else {
+        const slug = (slugify(title) || "briefing") + "-" + crypto.randomUUID().slice(0, 8);
+        const { data: created, error: createError } = await db.from("briefings").insert({
+          slug, title, summary, category, content, access_mode: accessMode,
+          prerequisite_briefing_id: prerequisiteId, passing_score: passingScore,
+          reward_type: rewardType, reward_amount: rewardAmount, status: "draft",
+          created_by: ADMIN_USERNAME, updated_by: ADMIN_USERNAME,
+        }).select("id").single();
+        if (createError || !created) return json({ error: "Could not create the briefing draft." }, 500);
+        id = created.id;
+      }
+      const questionRows = questions.map((q, index) => ({
+        briefing_id: id, prompt: q.prompt.trim(), options: q.options,
+        correct_option_index: q.correctOptionIndex, explanation: q.explanation ?? "", sort_order: index,
+      }));
+      const { error: questionError } = await db.from("briefing_questions").insert(questionRows);
+      if (questionError) {
+        console.error("Briefing question save failed:", questionError);
+        return json({ error: "Briefing was saved, but its questions could not be saved. Keep it as a draft and retry." }, 500);
+      }
+      return json({ success: true, id, status: "draft" });
+    }
+
+    if (body.action === "publish_briefing") {
+      const id = typeof body.briefingId === "string" ? body.briefingId : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) return json({ error: "A valid briefing ID is required." }, 400);
+      const { data: current, error: readError } = await db.from("briefings").select("id, status, content").eq("id", id).maybeSingle();
+      if (readError || !current) return json({ error: "Briefing not found." }, 404);
+      if (current.status !== "draft") return json({ error: "Only a draft briefing can be published." }, 409);
+      const { count, error: questionError } = await db.from("briefing_questions").select("id", { count: "exact", head: true }).eq("briefing_id", id);
+      if (questionError || !count || !Array.isArray(current.content) || current.content.length === 0) return json({ error: "Add briefing content and quiz questions before publishing." }, 400);
+      const { error: updateError } = await db.from("briefings").update({ status: "published", published_at: new Date().toISOString(), updated_by: ADMIN_USERNAME, updated_at: new Date().toISOString() }).eq("id", id).eq("status", "draft");
+      if (updateError) return json({ error: "Could not publish this briefing." }, 500);
+      return json({ success: true, status: "published" });
     }
 
     // SAVE OR UPDATE TASK
