@@ -108,8 +108,8 @@ function AdminConsole({
 
 
   const [logs, setLogs] = useState<string[]>([
-    '[INIT] ZORD OS // COMMAND & CONTROL online.',
-    '[SYS] Autonomous Moderation Intelligence cluster synced.',
+    '[INIT] ZORD Admin Workspace online.',
+    '[SYS] Administration cluster synced.',
     '[AUTH] Administrator credentials verified.',
   ]);
 
@@ -240,19 +240,19 @@ function AdminConsole({
     refreshing ? '...' : value.toLocaleString();
 
   return (
-    <div className="fixed inset-0 z-50 box-border w-full min-w-0 max-w-full bg-[#020503] text-neon-400 font-mono p-3 sm:p-4 overflow-y-auto overflow-x-hidden flex flex-col gap-4 sm:gap-6">
-      <div className="panel flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border border-neon/30 bg-[#020503]/90">
+    <div className="fixed inset-0 z-50 box-border flex h-dvh w-full min-w-0 max-w-full flex-col overflow-hidden gap-4 bg-[#080e0a] p-3 font-sans text-slate-100 sm:p-5">
+      <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 border border-neon bg-neon/10 text-neon animate-pulse">
+          <div className="rounded-xl bg-emerald-400/10 p-2 text-emerald-300">
             <Terminal size={24} />
           </div>
 
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-neon-600">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
               Autonomous Moderation Intelligence
             </p>
 
-            <h1 className="text-xl font-display font-bold tracking-wider text-neon-300">
+            <h1 className="text-xl font-semibold tracking-tight text-white">
               ZORD OS // COMMAND & CONTROL
             </h1>
           </div>
@@ -263,22 +263,22 @@ function AdminConsole({
             type="button"
             onClick={refresh}
             disabled={refreshing}
-            className="flex items-center gap-1.5 border border-neon/40 bg-neon/10 px-3 py-2 text-[10px] uppercase tracking-wider text-neon-300 transition hover:bg-neon/20 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
           >
             <RefreshCw
               size={12}
               className={refreshing ? 'animate-spin' : ''}
             />
-            Refresh Data
+            Refresh
           </button>
 
           <button
             type="button"
             onClick={onClose}
-            className="btn-primary flex items-center gap-2 text-xs py-2 px-4 border border-neon/50 bg-neon/10 hover:bg-neon/20 transition-all"
+            className="flex items-center gap-2 rounded-xl bg-emerald-400 px-4 py-2 text-xs font-semibold text-[#07110b] transition hover:bg-emerald-300"
           >
             <ArrowLeft size={16} />
-            Return to App
+            Return to app
           </button>
         </div>
       </div>
@@ -309,14 +309,14 @@ function AdminConsole({
         </div>
       )}
 
-      <div className="flex w-full min-w-0 flex-wrap gap-2 border-b border-neon/20 pb-2">
+      <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-[#111a14] p-2 md:w-60 md:p-3"><p className="hidden px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 md:block">Workspace</p><nav aria-label="Admin sections" className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
         <button
           type="button"
           onClick={() => setActiveTab('queue')}
-          className={`min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:flex-none sm:basis-auto px-3 sm:px-4 py-2 text-[10px] sm:text-xs uppercase tracking-wider transition-all border ${
+          className={`flex min-h-10 shrink-0 items-center rounded-xl px-3 py-2 text-xs font-medium transition md:w-full ${
             activeTab === 'queue'
-              ? 'border-neon bg-neon/20 text-neon-300 font-bold'
-              : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
+              ? 'bg-emerald-400/15 text-emerald-300 ring-1 ring-inset ring-emerald-400/25'
+              : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
           }`}
         >
           Review Queue ({data.submissions.length})
@@ -325,7 +325,7 @@ function AdminConsole({
         <button
           type="button"
           onClick={() => setActiveTab('stats')}
-          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
+          className={`flex min-h-10 shrink-0 items-center rounded-xl px-3 py-2 text-xs font-medium transition md:w-full ${
             activeTab === 'stats'
               ? 'border-neon bg-neon/20 text-neon-300 font-bold'
               : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
@@ -391,7 +391,7 @@ function AdminConsole({
               : 'border-neon/20 bg-black/40 text-neon-600 hover:text-neon-400'
           }`}
         >
-          TON Withdrawals
+          Gram Withdrawals
         </button>
 
         <button
@@ -407,7 +407,7 @@ function AdminConsole({
         </button>
 
 
-      </div>
+      </nav></aside><main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-[#0d1510] p-3 sm:p-5"><div className="mb-5 border-b border-white/10 pb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Management</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-white">Admin workspace</h2><p className="mt-1 text-xs text-slate-400">Manage ZORD operations from one place.</p></div>
 
       {activeTab === 'queue' && (
         <div className="panel p-4 border border-neon/20 space-y-4">
@@ -662,6 +662,7 @@ function AdminConsole({
 
 
       {activeTab === 'players' && <AdminPlayerManager creds={creds} />}
-    </div>
+        </main>
+      </div>
   );
 }
