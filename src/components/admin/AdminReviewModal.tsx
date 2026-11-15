@@ -40,6 +40,7 @@ import AdminExpeditionManager from '@/components/admin/AdminExpeditionManager';
 import AdminRaffleManager from '@/components/admin/AdminRaffleManager';
 import AdminPlayerManager from '@/components/admin/AdminPlayerManager';
 import AdminExternalZapFunding from '@/components/admin/AdminExternalZapFunding';
+import AdminExternalTonFunding from '@/components/admin/AdminExternalTonFunding';
 import VaultReservesCard from '@/components/admin/VaultReservesCard';
 import { NeonSpinner } from '@/components/NeonSpinner';
 
@@ -633,7 +634,12 @@ function AdminConsole({
 
       {activeTab === 'raffles' && <AdminRaffleManager creds={creds} />}
 
-      {activeTab === 'raffle-funding' && <AdminExternalZapFunding creds={creds} />}
+      {activeTab === 'raffle-funding' && (
+        <div className="space-y-6">
+          <AdminExternalTonFunding creds={creds} />
+          <AdminExternalZapFunding creds={creds} />
+        </div>
+      )}
 
       {activeTab === 'expeditions' && (
         <AdminExpeditionManager events={data.events} creds={creds} />
