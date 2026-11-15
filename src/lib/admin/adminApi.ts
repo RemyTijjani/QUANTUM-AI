@@ -611,6 +611,7 @@ export interface AdminExpeditionObjectiveReview {
   created_at: string;
   expedition_objectives?: { title?: string; objective_type?: string; completion_scope?: string };
   expedition_teams?: { name?: string };
+  expeditions?: { title?: string };
 }
 export async function listAdminExpeditionObjectiveReviews(creds: AdminCredentials, expeditionId?: string): Promise<{ individualSubmissions: AdminExpeditionObjectiveReview[]; teamSubmissions: AdminExpeditionObjectiveReview[] }> {
   const body = await callAdminApi(creds, { action: 'list_expedition_objective_reviews', expeditionId });
