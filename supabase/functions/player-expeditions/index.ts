@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
       const ids = (expeditions ?? []).map((item) => item.id);
       if (ids.length === 0) return json({ expeditions: [] });
 
-      const [objectivesRes, rewardsRes, participationRes, individualProgressRes] = await Promise.all([
+      const [objectivesRes, rewardsRes, participationRes, individualProgressRes, rewardIssuancesRes] = await Promise.all([
         admin.from("expedition_objectives")
           .select("id, expedition_id, objective_type, title, description, instructions, is_required, completion_scope, sort_order")
           .in("expedition_id", ids)
@@ -83,8 +83,12 @@ Deno.serve(async (req: Request) => {
           .select("id, expedition_id, objective_id, status, evidence, updated_at")
           .eq("player_id", player.id)
           .in("expedition_id", ids),
+        admin.from("expedition_reward_issuances")
+          .select("expedition_id, reward_type, amount, status, issued_at")
+          .eq("player_id", player.id)
+          .in("expedition_id", ids),
       ]);
-      const failed = [objectivesRes, rewardsRes, participationRes, individualProgressRes].find((result) => result.error);
+      const failed = [objectivesRes, rewardsRes, participationRes, individualProgressRes, rewardIssuancesRes].find((result) => result.error);
       if (failed) {
         console.error("Player Expedition details lookup failed:", failed.error);
         return json({ error: "Could not load Expedition details." }, 500);
@@ -117,6 +121,13 @@ Deno.serve(async (req: Request) => {
         rewardEligible: item.reward_eligible,
         registeredAt: item.registered_at,
         completedAt: item.completed_at,
+      }]));
+
+      const rewardIssuanceByExpedition = new Map((rewardIssuancesRes.data ?? []).map((row) => [row.expedition_id, {
+        type: row.reward_type,
+        amount: Number(row.amount),
+        status: row.status,
+        issuedAt: row.issued_at,
       }]));
 
       const prerequisiteIds = [...new Set((expeditions ?? [])
@@ -208,6 +219,7 @@ Deno.serve(async (req: Request) => {
           })),
           reward: rewardById.get(item.id) ?? { type: "none", amount: 0, recipientScope: "each_eligible_participant" },
           myParticipation: alreadyJoined,
+          myRewardIssuance: rewardIssuanceByExpedition.get(item.id) ?? null,
           isUnlocked: prerequisiteMet,
           lockedReason: prerequisiteMet ? null : "Complete the prerequisite Expedition first.",
           canJoinSolo: prerequisiteMet && !alreadyJoined && !registrationNotOpen && !registrationClosed && !notStarted && !ended &&
