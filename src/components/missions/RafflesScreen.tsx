@@ -64,9 +64,13 @@ export default function RafflesScreen() {
     return map;
   }, {}), [entries]);
 
-  const previewTickets = selected && Number(stake) >= number(selected.min_bet_zap)
-    ? selected.entry_mode === 'one_bet_one_entry' ? 1 : Math.floor(Number(stake) / number(selected.min_bet_zap))
+  const stakeAmount = Number(stake);
+  const validStake = selected !== null && stake.trim() !== '' && Number.isFinite(stakeAmount) && stakeAmount >= number(selected.min_bet_zap);
+  const previewTickets = selected && validStake
+    ? selected.entry_mode === 'one_bet_one_entry' ? 1 : Math.floor(stakeAmount / number(selected.min_bet_zap))
     : 0;
+  const insufficientBalance = balance !== null && validStake && stakeAmount > balance;
+  const balanceAfterEntry = balance !== null && validStake ? Math.max(0, balance - stakeAmount) : null;
 
   const enter = async () => {
     if (!selected || submitting || !Number.isFinite(Number(stake)) || Number(stake) < number(selected.min_bet_zap)) return;
@@ -198,11 +202,17 @@ export default function RafflesScreen() {
           <div className="w-full max-w-md space-y-4 rounded-2xl border border-cyan-300/30 bg-[#07100d] p-4 shadow-2xl sm:p-5">
             <div className="flex items-start justify-between gap-3"><div><p className="text-[9px] uppercase tracking-widest text-cyan-300">Entry details</p><h3 id="raffle-entry-title" className="mt-1 text-lg font-semibold text-neon-100">{selected.title}</h3></div><button type="button" onClick={() => setSelected(null)} className="rounded-lg border border-neon/20 px-3 py-1.5 text-xs text-neon-400">Close</button></div>
             <div className="rounded-xl border border-neon/15 bg-black/30 p-3"><p className="text-[9px] text-neon-600">Prize pool</p><p className="mt-1 font-display text-lg text-cyan-200">{rewardLabel(selected)}</p><p className="mt-1 text-[10px] text-neon-500">{selected.winner_count} winner(s) · {winnerMethodText(selected)}</p></div>
-            <label className="block space-y-1.5"><span className="text-xs text-neon-300">How much ZAP would you like to enter with?</span><input type="number" inputMode="decimal" min={selected.min_bet_zap} step="any" value={stake} onChange={(event) => setStake(event.target.value)} className="w-full rounded-xl border border-neon/25 bg-black/50 px-3 py-3 text-sm text-neon-100 outline-none focus:border-cyan-300/60"/><span className="block text-[10px] text-neon-600">Minimum: {fmt(selected.min_bet_zap)} ZAP · Your balance: {balance === null ? 'unavailable' : `${fmt(balance)} ZAP`}</span></label>
-            <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3"><div className="flex items-center justify-between text-xs"><span className="text-neon-500">Tickets you'll receive</span><strong className="text-cyan-200">{previewTickets}</strong></div><p className="mt-1 text-[9px] leading-relaxed text-neon-600">{selected.entry_mode === 'one_bet_one_entry' ? 'Each qualifying entry gives you one ticket.' : `Every ${fmt(selected.min_bet_zap)} ZAP gives one ticket. Any remainder does not add a ticket.`}</p></div>
+            <label className="block space-y-1.5"><span className="text-xs text-neon-300">Your entry stake</span><div className="relative"><input type="number" inputMode="decimal" min={selected.min_bet_zap} step="any" value={stake} onChange={(event) => setStake(event.target.value)} className="w-full rounded-xl border border-neon/25 bg-black/50 px-3 py-3 pr-16 text-sm text-neon-100 outline-none focus:border-cyan-300/60"/><span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neon-500">ZAP</span></div><span className="block text-[10px] text-neon-600">Minimum entry: {fmt(selected.min_bet_zap)} ZAP</span></label>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3"><p className="text-[9px] text-neon-600">You will spend</p><p className="mt-1 text-base font-bold text-cyan-200">{validStake ? fmt(stakeAmount) : '—'} ZAP</p></div>
+              <div className="rounded-xl border border-neon/15 bg-black/30 p-3"><p className="text-[9px] text-neon-600">Estimated balance after</p><p className="mt-1 text-base font-bold text-neon-200">{balanceAfterEntry === null ? 'Unavailable' : `${fmt(balanceAfterEntry)} ZAP`}</p></div>
+            </div>
+            <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3"><div className="flex items-center justify-between text-xs"><span className="text-neon-500">Tickets you will receive</span><strong className="text-cyan-200">{previewTickets}</strong></div><p className="mt-1 text-[9px] leading-relaxed text-neon-600">{selected.entry_mode === 'one_bet_one_entry' ? 'This raffle gives one ticket for each qualifying entry.' : `Every ${fmt(selected.min_bet_zap)} ZAP earns one ticket. Any amount left over does not earn an extra ticket.`}</p></div>
+            {insufficientBalance && <p role="alert" className="rounded-lg border border-red-400/20 bg-red-400/5 p-2 text-[10px] text-red-200">Your balance is too low for this entry. Reduce the stake or add ZAP before continuing.</p>}
+            {balance === null && <p className="text-[10px] text-amber-200/80">Your current balance could not be loaded. The server will verify your balance before accepting an entry.</p>}
             {error && <p role="alert" className="rounded-lg border border-red-400/20 bg-red-400/5 p-2 text-xs text-red-200">{error}</p>}
             <div className="flex items-start gap-2 text-[10px] leading-relaxed text-amber-200/80"><Info size={14} className="mt-0.5 shrink-0"/>Your ZAP stake is transferred to the platform treasury; it does not add to the displayed prize pool. Confirmed entries cannot be refunded. Only continue if you understand and accept this.</div>
-            <button type="button" onClick={() => void enter()} disabled={submitting || previewTickets < 1 || (balance !== null && Number(stake) > balance)} className="w-full rounded-xl bg-cyan-300/15 py-3 text-xs font-bold uppercase tracking-wider text-cyan-100 transition hover:bg-cyan-300/25 disabled:cursor-not-allowed disabled:opacity-40">{submitting ? 'Confirming entry…' : `Confirm entry · ${stake || '0'} ZAP`}</button>
+            <button type="button" onClick={() => void enter()} disabled={submitting || !validStake || previewTickets < 1 || insufficientBalance} className="w-full rounded-xl bg-cyan-300/15 py-3 text-xs font-bold uppercase tracking-wider text-cyan-100 transition hover:bg-cyan-300/25 disabled:cursor-not-allowed disabled:opacity-40">{submitting ? 'Confirming entry…' : `Confirm and spend ${fmt(stakeAmount)} ZAP`}</button>
           </div>
         </div>
       )}
