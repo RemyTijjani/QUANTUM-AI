@@ -12,6 +12,28 @@ import {
   type TonWalletData,
 } from '@/lib/economy/tonWallet';
 
+function rawTonAddress(value: string): string {
+  const raw = value.match(/^(-?\\d+):([0-9a-fA-F]{64})$/);
+  if (raw) return `${Number(raw[1])}:${raw[2].toLowerCase()}`;
+  try {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+    const bytes = Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
+    if (bytes.length !== 36) return '';
+    let crc = 0;
+    for (let i = 0; i < 34; i += 1) {
+      crc ^= bytes[i] << 8;
+      for (let bit = 0; bit < 8; bit += 1) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+    }
+    if (bytes[34] !== (crc >> 8) || bytes[35] !== (crc & 0xff)) return '';
+    const workchain = bytes[1] > 127 ? bytes[1] - 256 : bytes[1];
+    const hash = Array.from(bytes.slice(2, 34), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${workchain}:${hash}`;
+  } catch {
+    return '';
+  }
+}
+
 function shortAddress(address: string): string {
   return address.length > 18 ? address.slice(0, 9) + '…' + address.slice(-7) : address;
 }
@@ -150,7 +172,7 @@ export default function TonWalletConnection() {
   };
 
   const isMainnet = wallet?.account.chain === '-239';
-  const isVerified = walletData?.wallet?.verification_status === 'verified' && (!wallet || wallet.account.address === walletData.wallet.wallet_address);
+  const isVerified = walletData?.wallet?.verification_status === 'verified' && (!wallet || rawTonAddress(wallet.account.address) === walletData.wallet.wallet_address);
   const availableNano = walletData?.balance.availableNano ?? '0';
   const availableTon = Number(nanoTonToTon(availableNano));
   const hasEnough = (() => {
