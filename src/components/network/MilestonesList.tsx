@@ -31,7 +31,7 @@ export default function MilestonesList({ subNodeCount }: MilestonesListProps) {
                 {Math.min(subNodeCount, milestone.threshold)} / {milestone.threshold} operatives
               </p>
               <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-amber-300">
-                {reached ? 'Threshold reached · verification pending' : 'Progress · reward not yet enabled'}
+                {reached ? 'Threshold reached · payout not enabled' : 'Progress · payout not enabled'}
               </p>
             </div>
           </div>
