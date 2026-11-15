@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { CalendarClock, CircleDollarSign, Gift, Plus, RefreshCw, Save, ShieldCheck, Trophy, Users } from 'lucide-react';
 import {
   AdminApiError,
@@ -41,7 +42,7 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
   useEffect(() => { void refresh(); }, [refresh]);
 
   const currency = rewardType === 'ton' ? 'TON' : rewardType === 'zap' ? 'ZAP' : 'AGENT';
-  const saveDraft = async (event: React.FormEvent) => {
+  const saveDraft = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
     setNotice('');
@@ -66,7 +67,7 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
         rewardType,
         rewardCode: rewardType === 'agent' ? rewardCode : null,
         prizePoolAmount: amount,
-        fundingSource: rewardType === 'ton' ? 'external' : fundingSource,
+        fundingSource: rewardType === 'ton' ? 'external' : rewardType === 'agent' ? 'agent_inventory' : fundingSource,
         minBetZap: minBet,
         entryMode,
         winnerCount: winners,
