@@ -57,7 +57,7 @@ type Expedition = {
   category: string;
   access_mode: 'open' | 'progressive';
   participation_mode: 'solo' | 'team' | 'both';
-  status: 'scheduled' | 'registration_open' | 'active';
+  status: 'scheduled' | 'registration_open' | 'active' | 'completed';
   starts_at: string | null;
   ends_at: string | null;
   registrationOpensAt: string | null;
@@ -69,6 +69,7 @@ type Expedition = {
   objectives: Objective[];
   reward: { type: 'zp' | 'zap' | 'none'; amount: number; recipientScope: string };
   myParticipation: Participation | null;
+  myRewardIssuance: { type: 'zp' | 'zap'; amount: number; status: 'pending' | 'issued' | 'failed' | 'voided'; issuedAt: string | null } | null;
   isUnlocked: boolean;
   lockedReason: string | null;
   canJoinSolo: boolean;
@@ -349,6 +350,17 @@ export default function ExpeditionsScreen() {
                   <div className="rounded-lg border border-neon/10 bg-black/25 p-2"><p className="label">Ends</p><p className="mt-1 font-mono text-neon-400">{dateLabel(item.ends_at, item.timezone)}</p></div>
                 </div>
                 {item.myParticipation && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-2 font-mono text-[9px] text-cyan-200"><CheckCircle2 size={13} /> Registered · {item.myParticipation.individualContributionCount} individual contributions · {item.myParticipation.rewardEligible ? 'Reward eligible' : 'Eligibility in progress'}</div>}
+                {item.myParticipation && item.reward.type !== 'none' && item.status === 'completed' && <div className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 font-mono text-[9px] ${item.myRewardIssuance?.status === 'issued' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : item.myRewardIssuance?.status === 'voided' ? 'border-red-400/25 bg-red-400/5 text-red-200' : 'border-amber-400/25 bg-amber-400/5 text-amber-200'}`}>
+                  {item.myRewardIssuance?.status === 'issued'
+                    ? <><CheckCircle2 size={13} /> Reward paid: {item.myRewardIssuance.amount} {item.myRewardIssuance.type.toUpperCase()}</>
+                    : item.myRewardIssuance?.status === 'voided'
+                      ? <>Reward not issued — eligibility was not met at final verification.</>
+                      : item.myRewardIssuance?.status === 'pending'
+                        ? <>Reward approved for processing: {item.myRewardIssuance.amount} {item.myRewardIssuance.type.toUpperCase()}.</>
+                        : item.myParticipation.rewardEligible
+                          ? <>Eligible for {item.reward.amount} {item.reward.type.toUpperCase()} — awaiting Admin payment processing.</>
+                          : <>Reward eligibility has not been confirmed.</>}
+                </div>}
                 <button type="button" onClick={() => setExpanded(isOpen ? null : item.id)} aria-expanded={isOpen} className="flex w-full items-center justify-between border-t border-neon/10 pt-3 font-mono text-[9px] uppercase text-neon-500 hover:text-neon-300">
                   <span>{isOpen ? 'Hide objectives & actions' : `View ${item.objectives.length} objectives & actions`}</span>{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
