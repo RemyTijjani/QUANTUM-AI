@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { BadgeCheck, Clock3, Coins, Gift, Info, RefreshCw, Ticket, Trophy, Wallet } from 'lucide-react';
+import { BadgeCheck, Clock3, Gift, Info, RefreshCw, Ticket, Trophy, Wallet } from 'lucide-react';
 
 type Raffle = {
   id: string;
