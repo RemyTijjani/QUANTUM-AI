@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { ArrowDownToLine, RefreshCw, ShieldCheck, Loader2, ExternalLink } from 'lucide-react';
+import { ArrowDownToLine, RefreshCw, Loader2, ExternalLink } from 'lucide-react';
 import {
   AdminApiError,
   confirmExternalZapFunding,
