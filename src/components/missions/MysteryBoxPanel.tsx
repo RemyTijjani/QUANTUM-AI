@@ -216,7 +216,11 @@ export default function MysteryBoxPanel({
             <span>{refreshing ? "Refreshing" : "Refresh"}</span>
           </button>
         </div>
-        <p className="font-mono text-[10px] leading-relaxed text-neon-500">Your available boxes are loaded from the trusted reward service. The server selects the prize and records every opening.</p>
+        <p className="font-mono text-[10px] leading-relaxed text-neon-500">Your available boxes are loaded from the trusted reward service. The server selects the box tier and prize, then records every opening.</p>
+        <div className="rounded-lg border border-violet-300/20 bg-violet-400/5 p-3">
+          <p className="font-mono text-[10px] font-bold uppercase text-violet-200">How Standard and Premium work</p>
+          <p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-400">Every free daily claim or 500 ZP repeat opening awards one randomly selected box: <span className="font-bold text-neon-200">Standard · 80%</span> or <span className="font-bold text-violet-200">Premium · 20%</span>. You cannot choose or purchase a Premium Box directly. When a Premium Box is awarded, it appears in your inventory below.</p>
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-lg border border-neon/20 bg-black/30 p-3"><p className="label">Standard</p><p className="mt-1 font-display text-2xl text-neon-200">{counts.standard}</p><p className="font-mono text-[8px] uppercase text-neon-700">Available</p></div>
           <div className="rounded-lg border border-violet-300/25 bg-black/30 p-3"><p className="label">Premium</p><p className="mt-1 font-display text-2xl text-violet-200">{counts.premium}</p><p className="font-mono text-[8px] uppercase text-violet-400/70">Available</p></div>
@@ -237,7 +241,7 @@ export default function MysteryBoxPanel({
         </div>
         <div className="space-y-3 border-t border-neon/15 pt-4">
           <div className="flex items-center justify-between gap-2">
-            <div><p className="label">Open another box</p><p className="mt-1 font-mono text-[9px] text-neon-600">Choose 500 ZP or a verified rewarded ad.</p></div>
+            <div><p className="label">Open another box</p><p className="mt-1 font-mono text-[9px] text-neon-600">Spend 500 ZP for one more randomly tiered box.</p></div>
             <span className="rounded-md border border-amber-300/20 px-2 py-1 font-mono text-[8px] uppercase text-amber-200">500 ZP</span>
           </div>
           {repeatBox ? (
