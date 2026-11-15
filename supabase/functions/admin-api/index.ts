@@ -395,10 +395,14 @@ interface AdminRequestBody {
     | "delete_event_activity"
     | "list_briefings"
     | "save_briefing_draft"
-    | "publish_briefing";
+    | "publish_briefing"
+    | "confirm_external_zap_funding"
+    | "list_external_zap_funding";
   adminUsername?: string;
   search?: string;
   playerId?: string;
+  zapAmount?: number;
+  transactionReference?: string;
   adminPassword?: string;
   submissionId?: string;
   submissionIds?: string[];
@@ -1787,6 +1791,56 @@ Deno.serve(async (req: Request) => {
       }
 
       return json({ success: true });
+    }
+
+    // Record externally sourced ZAP only after the signed-in Admin has checked the
+    // deposit outside ZORD. The database RPC atomically audits and increases the
+    // separate raffle reserve; it never credits a player wallet.
+    if (body.action === "confirm_external_zap_funding") {
+      const amount = body.zapAmount;
+      const reference = typeof body.transactionReference === "string"
+        ? body.transactionReference.trim()
+        : "";
+      if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0 ||
+          Number(amount.toFixed(8)) !== amount) {
+        return json({ error: "Enter a positive ZAP amount with up to 8 decimal places" }, 400);
+      }
+      if (reference.length < 3 || reference.length > 200) {
+        return json({ error: "Enter a transaction reference between 3 and 200 characters" }, 400);
+      }
+      const { data, error } = await db.rpc("confirm_external_raffle_zap_funding", {
+        p_amount: amount,
+        p_transaction_reference: reference,
+        p_confirmed_by: ADMIN_USERNAME,
+      });
+      if (error) {
+        if (error.code === "23505") {
+          return json({ error: "This transaction reference has already been recorded" }, 409);
+        }
+        console.error("External ZAP funding confirmation failed:", error);
+        return json({ error: "Could not confirm external ZAP funding" }, 500);
+      }
+      return json(data);
+    }
+
+    // Read-only funding history and current verified raffle reserve.
+    if (body.action === "list_external_zap_funding") {
+      const [{ data: reserve, error: reserveError }, { data: funding, error: fundingError }] = await Promise.all([
+        db.from("raffle_zap_reserve").select("available_balance, updated_at").eq("id", 1).maybeSingle(),
+        db.from("raffle_external_zap_funding")
+          .select("id, amount, transaction_reference, verification_method, confirmed_by, confirmed_at")
+          .order("confirmed_at", { ascending: false })
+          .limit(100),
+      ]);
+      if (reserveError || fundingError) {
+        console.error("External ZAP funding history lookup failed:", reserveError ?? fundingError);
+        return json({ error: "Could not load external ZAP funding records" }, 500);
+      }
+      return json({
+        availableReserve: Number(reserve?.available_balance ?? 0),
+        updatedAt: reserve?.updated_at ?? null,
+        funding: funding ?? [],
+      });
     }
 
     return json({ error: "Unknown action" }, 400);
