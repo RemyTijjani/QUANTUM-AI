@@ -89,6 +89,26 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "GET") {
       const action = new URL(req.url).searchParams.get("action");
+      if (action === "recipient") {
+        const identifier = new URL(req.url).searchParams.get("identifier") ?? "";
+        const { data: recipient, error: recipientError } = await admin.rpc("lookup_zap_transfer_recipient", {
+          p_sender_id: player.id,
+          p_identifier: identifier,
+        });
+        if (recipientError || !recipient) {
+          const message = recipientError?.message ?? "Could not find that player.";
+          const status = /not found/i.test(message) ? 404 : /more than one player|yourself/i.test(message) ? 409 : 400;
+          return json({ error: message }, status);
+        }
+        return json({
+          success: true,
+          recipient: {
+            username: recipient.username ?? null,
+            firstName: recipient.firstName ?? null,
+            displayName: recipient.displayName ?? "ZORD player",
+          },
+        });
+      }
       if (action === "leaderboard") {
         const leaderboard = await readLeaderboard(admin, player.id);
         if (!leaderboard) return json({ error: "Could not load the ZAP leaderboard." }, 500);
@@ -115,11 +135,89 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    let body: { amountZp?: unknown; idempotencyKey?: unknown };
+    let body: {
+      action?: unknown;
+      amountZp?: unknown;
+      amountZap?: unknown;
+      recipientIdentifier?: unknown;
+      idempotencyKey?: unknown;
+    };
     try {
       body = await req.json();
     } catch {
       return json({ error: "A valid conversion request is required." }, 400);
+    }
+
+    if (body.action === "transfer") {
+      const recipientIdentifier = typeof body.recipientIdentifier === "string"
+        ? body.recipientIdentifier.trim()
+        : "";
+      const amountZap = typeof body.amountZap === "string"
+        ? body.amountZap
+        : typeof body.amountZap === "number" && Number.isSafeInteger(body.amountZap)
+          ? String(body.amountZap)
+          : "";
+      const idempotencyKey = typeof body.idempotencyKey === "string"
+        ? body.idempotencyKey.trim()
+        : "";
+
+      if (!recipientIdentifier || recipientIdentifier.length < 3 || recipientIdentifier.length > 80) {
+        return json({ error: "Enter the recipient's ZORD username or referral code." }, 400);
+      }
+      if (!/^[1-9][0-9]{0,23}$/.test(amountZap)) {
+        return json({ error: "Enter a positive whole-number ZAP amount." }, 400);
+      }
+      if (idempotencyKey.length < 8 || idempotencyKey.length > 128) {
+        return json({ error: "A valid transfer request key is required." }, 400);
+      }
+
+      const { data: recipient, error: recipientError } = await admin.rpc("lookup_zap_transfer_recipient", {
+        p_sender_id: player.id,
+        p_identifier: recipientIdentifier,
+      });
+      if (recipientError || !recipient) {
+        const message = recipientError?.message ?? "Could not find that player.";
+        const status = /not found/i.test(message) ? 404 : /more than one player|yourself/i.test(message) ? 409 : 400;
+        return json({ error: message }, status);
+      }
+
+      const { data: transfer, error: transferError } = await admin.rpc("transfer_player_zap", {
+        p_sender_id: player.id,
+        p_recipient_identifier: recipientIdentifier,
+        p_amount: amountZap,
+        p_idempotency_key: idempotencyKey,
+      });
+      if (transferError || !transfer?.success) {
+        const message = transferError?.message ?? "The transfer could not be completed.";
+        const status = /insufficient/i.test(message) ? 409
+          : /not found/i.test(message) ? 404
+          : /already used|more than one player|yourself/i.test(message) ? 409
+          : /whole-number|valid transfer|username or referral/i.test(message) ? 400
+          : 500;
+        return json({ error: message }, status);
+      }
+
+      const wallet = await readWallet(admin, player.id);
+      if (!wallet) {
+        return json({ error: "Transfer completed, but your updated wallet could not be loaded. Refresh your wallet." }, 500);
+      }
+
+      return json({
+        success: true,
+        transfer: {
+          transferId: transfer.transferId,
+          amount: transfer.amount,
+          alreadyApplied: Boolean(transfer.alreadyApplied),
+          createdAt: transfer.createdAt,
+        },
+        recipient: {
+          username: recipient.username ?? null,
+          firstName: recipient.firstName ?? null,
+          displayName: recipient.displayName ?? "ZORD player",
+        },
+        wallet,
+        source: "server_atomic_player_zap_transfer",
+      });
     }
 
     const amountZp = typeof body.amountZp === "string"
