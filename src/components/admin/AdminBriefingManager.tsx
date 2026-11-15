@@ -50,7 +50,7 @@ export default function AdminBriefingManager({ creds }: { creds: AdminCredential
     setBody(row.content?.map((block) => block.body || '').join('\n\n') ?? '');
     setAccessMode(row.access_mode); setPrerequisiteId(row.prerequisite_briefing_id ?? '');
     setPassingScore(row.passing_score); setRewardType(row.reward_type); setRewardAmount(Number(row.reward_amount));
-    setQuestions(row.questions.map((q: any) => ({
+    setQuestions(row.questions.map((q) => ({
       prompt: q.prompt, options: q.options, correctOptionIndex: q.correctOptionIndex, explanation: q.explanation ?? '',
     })));
     setNotice('Editing draft: ' + row.title); setError('');
