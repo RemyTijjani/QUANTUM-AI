@@ -2024,7 +2024,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Choose a valid withdrawal action" }, 400);
       }
       if (note.length > 1000) return json({ error: "Admin note must be 1,000 characters or fewer" }, 400);
-      if (action === "paid" && (transactionHash.length < 32 || transactionHash.length > 200 || /\\s/.test(transactionHash))) {
+      if (action === "paid" && (transactionHash.length < 32 || transactionHash.length > 200 || /\s/.test(transactionHash))) {
         return json({ error: "Enter the TON transaction hash or reference (32–200 characters, no spaces)" }, 400);
       }
       const { data, error } = await db.rpc("admin_transition_ton_withdrawal", {
