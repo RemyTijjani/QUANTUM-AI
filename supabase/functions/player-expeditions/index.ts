@@ -159,18 +159,24 @@ Deno.serve(async (req: Request) => {
         ...(individualProgressRes.data ?? []).map((row) => ({ ...row, scope: "individual" as const, team_id: null })),
         ...(teamProgressRes.data ?? []).map((row) => ({ ...row, scope: "team" as const })),
       ];
-      const rejectedProgressIds = allProgress.filter((row) => row.status === "rejected").map((row) => row.id);
+      const rejectedProgressIds = new Set(allProgress.filter((row) => row.status === "rejected").map((row) => row.id));
       const rejectionReasons = new Map<string, string>();
-      if (rejectedProgressIds.length > 0) {
-        const reasonLookups = await Promise.all(rejectedProgressIds.map(async (progressId) => {
-          const { data } = await admin.from("expedition_audit_log")
-            .select("reason, created_at, after_state")
-            .contains("after_state", { progress_id: progressId })
-            .in("action", ["objective_individual_rejected", "objective_team_rejected"])
-            .order("created_at", { ascending: false }).limit(1).maybeSingle();
-          return data?.reason ? [progressId, data.reason] as const : null;
-        }));
-        for (const entry of reasonLookups) if (entry) rejectionReasons.set(entry[0], entry[1]);
+      if (rejectedProgressIds.size > 0) {
+        const { data: rejectionRows, error: rejectionError } = await admin.from("expedition_audit_log")
+          .select("reason, created_at, after_state")
+          .in("expedition_id", ids)
+          .in("action", ["objective_individual_rejected", "objective_team_rejected"])
+          .order("created_at", { ascending: false }).limit(500);
+        if (rejectionError) {
+          console.error("Expedition rejection feedback lookup failed:", rejectionError);
+          return json({ error: "Could not load objective review feedback." }, 500);
+        }
+        for (const row of rejectionRows ?? []) {
+          const progressId = typeof row.after_state?.progress_id === "string" ? row.after_state.progress_id : "";
+          if (progressId && rejectedProgressIds.has(progressId) && row.reason && !rejectionReasons.has(progressId)) {
+            rejectionReasons.set(progressId, row.reason);
+          }
+        }
       }
       const progressByObjective = new Map<string, { individual?: Record<string, unknown>; team?: Record<string, unknown> }>();
       for (const row of allProgress) {
