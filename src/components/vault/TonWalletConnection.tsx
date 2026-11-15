@@ -115,6 +115,7 @@ export default function TonWalletConnection() {
       await ui.openModal();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not start secure wallet connection.');
+    } finally {
       setBusy(false);
     }
   };
@@ -149,7 +150,7 @@ export default function TonWalletConnection() {
   };
 
   const isMainnet = wallet?.account.chain === '-239';
-  const isVerified = walletData?.wallet?.verification_status === 'verified';
+  const isVerified = walletData?.wallet?.verification_status === 'verified' && (!wallet || wallet.account.address === walletData.wallet.wallet_address);
   const availableNano = walletData?.balance.availableNano ?? '0';
   const availableTon = Number(nanoTonToTon(availableNano));
   const hasEnough = (() => {
