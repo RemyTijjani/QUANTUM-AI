@@ -31,7 +31,7 @@ export default function ZapWalletPanel({
   const { auth } = useAuth();
   const player = auth.status === 'authenticated' ? auth.player : null;
   const [recipientIdentifier, setRecipientIdentifier] = useState('');
-  const [transferAmount, setTransferAmount] = useState('1');
+  const [transferAmount, setTransferAmount] = useState('100');
   const [recipientPreview, setRecipientPreview] = useState<ZapTransferRecipient | null>(null);
   const [lookingUpRecipient, setLookingUpRecipient] = useState(false);
   const [transferring, setTransferring] = useState(false);
@@ -96,7 +96,7 @@ export default function ZapWalletPanel({
 
   const handleTransfer = async () => {
     const identifier = recipientIdentifier.trim();
-    if (!recipientPreview || !/^[1-9][0-9]{0,19}$/.test(transferAmount) || transferring) return;
+    if (!recipientPreview || !/^[1-9][0-9]{0,19}$/.test(transferAmount) || BigInt(transferAmount) < 100n || transferring) return;
     if (BigInt(transferAmount) > BigInt(Math.max(0, Math.floor(wallet?.balance ?? 0)))) {
       setTransferError('You do not have enough ZAP for this transfer.');
       return;
@@ -115,7 +115,7 @@ export default function ZapWalletPanel({
       setWallet(result.wallet);
       setTransferSuccess(`Sent ${formatZp(result.transfer.amount)} ZAP to ${result.recipient.displayName}.`);
       setRecipientIdentifier('');
-      setTransferAmount('1');
+      setTransferAmount('100');
       setConfirmingTransfer(false);
       setRecipientPreview(null);
       setTransferRequestKey(null);
@@ -316,14 +316,14 @@ export default function ZapWalletPanel({
         </div>
         <div className="space-y-2">
           <label htmlFor="zap-transfer-amount" className="text-xs font-semibold text-neon-200">Amount to send (whole ZAP)</label>
-          <input id="zap-transfer-amount" type="number" min="1" step="1" inputMode="numeric" value={transferAmount} onChange={(event) => { setTransferAmount(event.target.value); setConfirmingTransfer(false); setTransferError(null); setTransferSuccess(null); setTransferRequestKey(null); setTransferRequestSignature(null); }} disabled={transferring} className="w-full rounded-lg border border-neon/20 bg-black/30 px-3 py-3 text-sm text-white outline-none focus:border-cyan-300/60 disabled:opacity-50" />
-          <p className="text-[9px] text-neon-700">Available: {wallet ? `${formatZp(wallet.balance)} ZAP` : '—'}</p>
+          <input id="zap-transfer-amount" type="number" min="100" step="1" inputMode="numeric" value={transferAmount} onChange={(event) => { setTransferAmount(event.target.value); setConfirmingTransfer(false); setTransferError(null); setTransferSuccess(null); setTransferRequestKey(null); setTransferRequestSignature(null); }} disabled={transferring} className="w-full rounded-lg border border-neon/20 bg-black/30 px-3 py-3 text-sm text-white outline-none focus:border-cyan-300/60 disabled:opacity-50" />
+          <p className="text-[9px] text-neon-700">Minimum: 100 ZAP · Available: {wallet ? `${formatZp(wallet.balance)} ZAP` : '—'}</p>
         </div>
         {!confirmingTransfer ? (
           <button
             type="button"
             onClick={() => setConfirmingTransfer(true)}
-            disabled={!recipientPreview || !/^[1-9][0-9]{0,19}$/.test(transferAmount) || transferring || !wallet}
+            disabled={!recipientPreview || !/^[1-9][0-9]{0,19}$/.test(transferAmount) || BigInt(transferAmount || '0') < 100n || transferring || !wallet}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-xs font-bold text-[#041016] hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Send size={14} />Review transfer
