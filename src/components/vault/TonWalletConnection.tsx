@@ -172,7 +172,7 @@ export default function TonWalletConnection() {
   };
 
   const isMainnet = wallet?.account.chain === '-239';
-  const isVerified = walletData?.wallet?.verification_status === 'verified' && (!wallet || rawTonAddress(wallet.account.address) === walletData.wallet.wallet_address);
+  const isVerified = walletData?.wallet?.verification_status === 'verified' && (!wallet || (wallet.account.chain === '-239' && rawTonAddress(wallet.account.address) === walletData.wallet.wallet_address));
   const availableNano = walletData?.balance.availableNano ?? '0';
   const availableTon = Number(nanoTonToTon(availableNano));
   const hasEnough = (() => {
