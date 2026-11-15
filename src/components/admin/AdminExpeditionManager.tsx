@@ -110,7 +110,6 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   };
   const validReward = rewardType === 'none' || (Number.isSafeInteger(Number(rewardAmount)) && Number(rewardAmount) > 0);
   const validDates = (!startsAt || Number.isFinite(new Date(startsAt).getTime())) && (!endsAt || Number.isFinite(new Date(endsAt).getTime())) && (!startsAt || !endsAt || new Date(startsAt).getTime() < new Date(endsAt).getTime());
-  const canSave = !!title.trim() && validReward && validDates && objectives.length > 0;
   const saveDraft = async () => {
     if (saving) return;
     if (!title.trim()) { setSavedMessage('Add an Expedition name before saving.'); setSavedMessageKind('error'); return; }
