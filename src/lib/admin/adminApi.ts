@@ -699,3 +699,50 @@ export async function publishAdminBriefing(creds: AdminCredentials, id: string):
     throw new AdminApiError('Briefing publishing could not be verified.');
   }
 }
+
+
+export interface AdminExternalZapFundingRecord {
+  id: string;
+  amount: number | string;
+  transaction_reference: string;
+  verification_method: string;
+  confirmed_by: string;
+  confirmed_at: string;
+}
+export interface AdminExternalZapFundingSummary {
+  availableReserve: number;
+  updatedAt: string | null;
+  funding: AdminExternalZapFundingRecord[];
+}
+export async function listExternalZapFunding(
+  creds: AdminCredentials,
+): Promise<AdminExternalZapFundingSummary> {
+  const body = await callAdminApi(creds, { action: 'list_external_zap_funding' });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('Could not load external ZAP funding records.');
+  }
+  const result = body as Partial<AdminExternalZapFundingSummary>;
+  if (typeof result.availableReserve !== 'number' || !Array.isArray(result.funding)) {
+    throw new AdminApiError('The external ZAP funding response could not be verified.');
+  }
+  return result as AdminExternalZapFundingSummary;
+}
+export async function confirmExternalZapFunding(
+  creds: AdminCredentials,
+  input: { amount: number; transactionReference: string },
+): Promise<{ fundingId: string; amount: number; transactionReference: string; confirmedBy: string; confirmedAt: string; availableReserve: number }> {
+  const body = await callAdminApi(creds, {
+    action: 'confirm_external_zap_funding',
+    zapAmount: input.amount,
+    transactionReference: input.transactionReference,
+  });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('The external ZAP funding confirmation could not be verified.');
+  }
+  const result = body as Record<string, unknown>;
+  if (result.success !== true || typeof result.fundingId !== 'string' ||
+      typeof result.availableReserve !== 'number' || typeof result.confirmedAt !== 'string') {
+    throw new AdminApiError('The external ZAP funding confirmation could not be verified.');
+  }
+  return result as { fundingId: string; amount: number; transactionReference: string; confirmedBy: string; confirmedAt: string; availableReserve: number };
+}
