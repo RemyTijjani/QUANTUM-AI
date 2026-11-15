@@ -383,18 +383,25 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
   ];
 
   return (
-    <div className="space-y-5 pb-3">
-      <header className="panel space-y-2 border border-neon/30 bg-neon/5 p-4">
-        <div className="flex items-center gap-2 text-neon-400"><Bot size={18} /><span className="label">ZORD autonomous services</span></div>
-        <h1 className="title">ZORD Agents</h1>
-        <p className="font-mono text-[11px] leading-relaxed text-neon-500">Community agents and mining operations share the ZORD platform. Each rented service tier will have isolated community settings and permissions.</p>
+    <div className="space-y-6 pb-5">
+      <header className="panel relative overflow-hidden rounded-2xl border border-neon/30 bg-gradient-to-br from-neon/[0.10] via-black/30 to-cyan-400/[0.04] p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-neon-400"><Bot size={18} /><span className="label">ZORD autonomous services</span></div>
+          <span className="rounded-full border border-green-400/25 bg-green-400/[0.06] px-2.5 py-1 font-mono text-[9px] uppercase tracking-wider text-green-300">Agent hub</span>
+        </div>
+        <h1 className="mt-3 font-display text-2xl font-bold tracking-wide text-neon-100">ZORD Agents</h1>
+        <p className="mt-2 max-w-xl text-xs leading-relaxed text-neon-400">Explore mining agents and community protection services in one place. Compare what each service offers before choosing your next step.</p>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-xl border border-neon/15 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase tracking-wider text-neon-600">Your active miners</p><p className="mt-1 font-display text-lg font-semibold text-neon-200">{running.length}</p></div>
+          <div className="rounded-xl border border-neon/15 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase tracking-wider text-neon-600">Current displayed rate</p><p className="mt-1 font-display text-lg font-semibold text-neon-200">{formatRate(miningRate)} <span className="text-[10px]">ZP/s</span></p></div>
+        </div>
       </header>
 
       <TemporaryRewardPanel />
 
       <AgentRentalCheckout />
 
-      <section className="panel space-y-4 rounded-2xl border border-neon/20 p-4 sm:p-5">
+      <section className="panel space-y-4 rounded-2xl border border-neon/20 bg-gradient-to-b from-neon/[0.04] to-black/20 p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div><p className="label">Mining operations</p><h2 className="title mt-1">ZP agent activity</h2></div>
           <Activity size={18} className="text-neon-400" />
@@ -418,12 +425,12 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
       </section>
 
       <section className="space-y-4">
-        <div className="space-y-1"><p className="label">Community protection tiers</p><h2 className="title">Rent a ZORD service</h2><p className="text-[11px] leading-relaxed text-neon-600">Explore the available community service levels.</p></div>
-        {tiers.map(({ name, tier, icon: Icon, summary, features }) => <article key={name} className="panel space-y-4 rounded-2xl border border-neon/20 bg-black/25 p-4 sm:p-5 transition-colors hover:border-neon/35">
+        <div className="space-y-2"><p className="label">Community protection</p><h2 className="title">Choose a service tier</h2><p className="text-xs leading-relaxed text-neon-500">Compare the protection levels below. Telegram bot provisioning is not available yet.</p></div>
+        {tiers.map(({ name, tier, icon: Icon, summary, features }) => <article key={name} className="panel space-y-4 rounded-2xl border border-neon/20 bg-gradient-to-br from-black/35 to-neon/[0.035] p-4 sm:p-5 transition-colors hover:border-neon/35">
           <div className="flex items-center justify-between"><span className="rounded-md border border-cyan-300/20 bg-cyan-300/5 px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-cyan-200">{tier}</span><span className="flex h-9 w-9 items-center justify-center rounded-xl border border-neon/20 bg-neon/5"><Icon size={18} className="text-neon-300" /></span></div>
           <div><h3 className="font-display text-base font-bold uppercase tracking-wider text-neon-200">{name}</h3><p className="mt-1 text-[11px] leading-relaxed text-neon-500">{summary}</p></div>
           <ul className="space-y-2">{features.map(feature => <li key={feature} className="flex items-start gap-2 text-[11px] leading-relaxed text-neon-400"><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-neon-400" />{feature}</li>)}</ul>
-          <div className="rounded-lg border border-amber-300/15 bg-amber-300/[0.04] px-3 py-2 font-mono text-[9px] uppercase tracking-wider text-amber-200">Telegram bot provisioning pending</div>
+          <div className="flex items-center gap-2 rounded-lg border border-amber-300/15 bg-amber-300/[0.04] px-3 py-2"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" /><span className="font-mono text-[9px] leading-relaxed text-amber-200">Coming soon · Telegram bot provisioning is not active yet</span></div>
         </article>)}
       </section>
     </div>
