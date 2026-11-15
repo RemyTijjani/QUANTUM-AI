@@ -19,7 +19,7 @@ function json(body: unknown, status = 200) {
 
 async function getPlayer(req: Request) {
   const authorization = req.headers.get("Authorization") ?? "";
-  const tokenMatch = authorization.match(/^Bearer\\s+(.+)$/i);
+  const tokenMatch = authorization.match(/^Bearer\s+(.+)$/i);
   if (!tokenMatch) {
     return { error: json({ error: "Sign in to access your ZAP wallet." }, 401) };
   }
