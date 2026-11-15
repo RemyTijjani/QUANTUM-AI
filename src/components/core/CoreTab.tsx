@@ -14,7 +14,6 @@ import type { GameState, FragmentStatus } from '@/lib/game/state';
 import { formatRate, formatZp, formatRemaining } from '@/lib/format';
 import { Coins, Award } from 'lucide-react';
 import type { Notify } from '@/hooks/useToast';
-import LevelBanner from '@/components/core/LevelBanner';
 import CoreCircuit from '@/components/core/CoreCircuit';
 import FragmentBays from '@/components/core/FragmentBays';
 import CharacterCard from '@/components/core/CharacterCard';
@@ -245,7 +244,6 @@ export default function CoreTab({
         <ArrowUpRight size={17} className="ml-2 shrink-0 text-cyan-300 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
       </button>
 
-      <LevelBanner tier={tier} rate={rate} />
       <CoreCircuit fragments={state.fragments} rate={rate} />
       <FragmentBays
         fragments={state.fragments}
