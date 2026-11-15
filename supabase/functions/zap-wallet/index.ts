@@ -57,6 +57,22 @@ async function readWallet(admin: ReturnType<typeof createClient>, playerId: stri
   return wallet;
 }
 
+async function readLeaderboard(admin: ReturnType<typeof createClient>, playerId: string) {
+  const { data, error } = await admin.rpc("get_zap_leaderboard", {
+    p_player_id: playerId,
+    p_limit: 20,
+  });
+  if (error || !data) {
+    console.error("ZAP leaderboard lookup failed:", error);
+    return null;
+  }
+  return data as {
+    entries: Array<{ rank: number; name: string; rankingEarned: number; isYou: boolean }>;
+    me: { rank: number; name: string; rankingEarned: number; isYou: boolean };
+    limit: number;
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== "GET" && req.method !== "POST") {
@@ -72,21 +88,21 @@ Deno.serve(async (req: Request) => {
     const { admin, player } = identity;
 
     if (req.method === "GET") {
+      const action = new URL(req.url).searchParams.get("action");
+      if (action === "leaderboard") {
+        const leaderboard = await readLeaderboard(admin, player.id);
+        if (!leaderboard) return json({ error: "Could not load the ZAP leaderboard." }, 500);
+        return json({ success: true, leaderboard, source: "server_zap_earnings_leaderboard" });
+      }
       const wallet = await readWallet(admin, player.id);
       if (!wallet) return json({ error: "Could not load your ZAP wallet." }, 500);
-      // Ranking counts earned ZAP rewards, excluding ZP-to-ZAP conversions.
-      const { data: earnedRows, error: earnedError } = await admin
-        .from("zap_ledger")
-        .select("amount")
-        .eq("player_id", player.id)
-        .eq("entry_type", "credit")
-        .neq("source", "zp_conversion");
-      if (earnedError) {
-        console.error("ZAP ranking total lookup failed:", earnedError);
-        return json({ error: "Could not load your ZAP earnings total." }, 500);
-      }
-      const rankingEarned = (earnedRows ?? []).reduce((total, row) => total + Number(row.amount || 0), 0);
-      return json({ success: true, wallet: { ...wallet, rankingEarned }, source: "server_player_zap_wallet" });
+      const leaderboard = await readLeaderboard(admin, player.id);
+      if (!leaderboard) return json({ error: "Could not load your ZAP earnings total." }, 500);
+      return json({
+        success: true,
+        wallet: { ...wallet, rankingEarned: Number(leaderboard.me.rankingEarned) },
+        source: "server_player_zap_wallet",
+      });
     }
 
     let body: { amountZp?: unknown; idempotencyKey?: unknown };
@@ -130,11 +146,13 @@ Deno.serve(async (req: Request) => {
 
     const wallet = await readWallet(admin, player.id);
     if (!wallet) return json({ error: "Conversion completed, but the updated wallet could not be loaded. Refresh your wallet." }, 500);
+    const leaderboard = await readLeaderboard(admin, player.id);
+    if (!leaderboard) return json({ error: "Conversion completed, but your ranking total could not be loaded. Refresh your wallet." }, 500);
 
     return json({
       success: true,
       conversion,
-      wallet,
+      wallet: { ...wallet, rankingEarned: Number(leaderboard.me.rankingEarned) },
       source: "server_atomic_zp_to_zap_conversion",
     });
   } catch (error) {
