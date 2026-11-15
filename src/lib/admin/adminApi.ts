@@ -880,6 +880,27 @@ export async function saveAdminRaffleDraft(creds: AdminCredentials, raffle: Admi
 }
 
 
+export interface AdminRafflePublishResult {
+  success: true;
+  status: 'published';
+  publishedAt: string;
+}
+
+export async function publishAdminRaffle(
+  creds: AdminCredentials,
+  raffleId: string,
+): Promise<AdminRafflePublishResult> {
+  const body = await callAdminApi(creds, { action: 'publish_raffle', raffle: { id: raffleId } });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('The publish response could not be verified.');
+  }
+  const result = body as Partial<AdminRafflePublishResult>;
+  if (result.success !== true || result.status !== 'published' || typeof result.publishedAt !== 'string') {
+    throw new AdminApiError('The server did not confirm that the raffle was published. Refresh the list before retrying.');
+  }
+  return result as AdminRafflePublishResult;
+}
+
 export interface AdminRaffleReservationResult {
   success: true;
   alreadyReserved: boolean;
