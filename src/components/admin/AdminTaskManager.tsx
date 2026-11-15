@@ -22,40 +22,40 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
   };
 
   return (
-    <div className="panel p-4 border border-neon/20 space-y-4">
-      <div className="flex items-center justify-between border-b border-neon/20 pb-2">
-        <h2 className="text-xs uppercase tracking-widest text-neon-400 font-bold flex items-center gap-2">
+    <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm space-y-4">
+      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+        <h2 className="text-xs uppercase tracking-widest text-slate-300 font-bold flex items-center gap-2">
           <Database size={14} /> Mission Manager
         </h2>
         <button
           onClick={() => openModal(null)}
-          className="btn-primary flex items-center gap-1.5 text-xs py-1.5 px-3 border border-neon bg-neon/20"
+          className="btn-primary flex items-center gap-1.5 text-xs py-1.5 px-3 border border-emerald-400/40 bg-emerald-400/15"
         >
           <Plus size={14} /> Add Mission
         </button>
       </div>
 
       {tasks.length === 0 ? (
-        <p className="py-12 text-center font-mono text-[11px] text-neon-500">No missions yet. Add a mission when you're ready.</p>
+        <p className="py-12 text-center font-mono text-[11px] text-slate-400">No missions yet. Add a mission when you're ready.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {tasks.map((task) => (
-            <div key={task.id} className="panel p-3 border border-neon/20 bg-black/40 flex justify-between items-start">
+            <div key={task.id} className="panel p-3 border border-white/10 bg-[#0b120e] flex justify-between items-start">
               <div>
-                <span className="text-[10px] uppercase px-1.5 py-0.5 rounded border border-neon/40 bg-neon/10 text-neon-300">
+                <span className="text-[10px] uppercase px-1.5 py-0.5 rounded border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
                   {task.kind}
                 </span>
-                <h3 className="text-xs font-bold text-neon-300 mt-1.5">{task.title}</h3>
-                <p className="text-[11px] text-neon-600 mt-0.5">{task.description}</p>
-                <p className="text-[11px] text-neon-400 font-bold mt-2">Reward: +{formatZp(task.reward)} {task.rewardCurrency}</p>
-                <p className="text-[10px] text-neon-600">Access cost: {task.unlockCostZp.toLocaleString()} ZP · {task.status}</p>
+                <h3 className="text-xs font-bold text-emerald-300 mt-1.5">{task.title}</h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">{task.description}</p>
+                <p className="text-[11px] text-slate-300 font-bold mt-2">Reward: +{formatZp(task.reward)} {task.rewardCurrency}</p>
+                <p className="text-[10px] text-slate-400">Access cost: {task.unlockCostZp.toLocaleString()} ZP · {task.status}</p>
               </div>
               <div className="flex gap-1.5">
                 <button
                   onClick={() => openModal(task)}
                   disabled={busyTaskId === task.id}
                   aria-label={`Edit ${task.title}`}
-                  className="p-1.5 bg-neon/10 hover:bg-neon/20 border border-neon/30 text-neon-300 disabled:opacity-50"
+                  className="p-1.5 bg-emerald-400/10 hover:bg-emerald-400/15 border border-white/10 text-emerald-300 disabled:opacity-50"
                 >
                   <Edit2 size={13} />
                 </button>
@@ -150,21 +150,21 @@ function TaskFormModal({
     <Modal title={task ? 'Edit Mission' : 'Create New Mission'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-[11px] text-neon-500 uppercase">Mission name</label>
-          <input name="title" defaultValue={task?.title ?? ''} required disabled={saving} placeholder="e.g. Join Telegram Channel" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <label className="text-[11px] text-slate-400 uppercase">Mission name</label>
+          <input name="title" defaultValue={task?.title ?? ''} required disabled={saving} placeholder="e.g. Join Telegram Channel" className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
         </div>
         <div>
-          <label className="text-[11px] text-neon-500 uppercase">What should players know?</label>
-          <input name="description" defaultValue={task?.description ?? ''} required disabled={saving} placeholder="Subscribe to our official channel" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <label className="text-[11px] text-slate-400 uppercase">What should players know?</label>
+          <input name="description" defaultValue={task?.description ?? ''} required disabled={saving} placeholder="Subscribe to our official channel" className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Mission category</label>
+            <label className="text-[11px] text-slate-400 uppercase">Mission category</label>
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value as AdminTask['kind'])}
               disabled={saving}
-              className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50"
+              className="w-full mt-1 bg-black border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50"
             >
               <option value="daily">Daily</option>
               <option value="social">Social</option>
@@ -172,59 +172,59 @@ function TaskFormModal({
             </select>
           </div>
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Reward amount</label>
-            <input type="number" name="reward" min={0} step={1} defaultValue={task?.reward ?? 100} required disabled={saving} className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+            <label className="text-[11px] text-slate-400 uppercase">Reward amount</label>
+            <input type="number" name="reward" min={0} step={1} defaultValue={task?.reward ?? 100} required disabled={saving} className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
           </div>
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Reward type</label>
-            <select value={rewardCurrency} onChange={(e) => setRewardCurrency(e.target.value as 'ZP' | 'ZAP')} disabled={saving} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-300"><option value="ZP">ZP</option><option value="ZAP">ZAP (configuration only)</option></select>
+            <label className="text-[11px] text-slate-400 uppercase">Reward type</label>
+            <select value={rewardCurrency} onChange={(e) => setRewardCurrency(e.target.value as 'ZP' | 'ZAP')} disabled={saving} className="w-full mt-1 bg-black border border-white/10 p-2 text-xs text-emerald-300"><option value="ZP">ZP</option><option value="ZAP">ZAP (configuration only)</option></select>
           </div>
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">ZP cost to unlock</label>
-            <input type="number" name="unlockCostZp" min={0} step={1} defaultValue={task?.unlockCostZp ?? 0} required disabled={saving} className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+            <label className="text-[11px] text-slate-400 uppercase">ZP cost to unlock</label>
+            <input type="number" name="unlockCostZp" min={0} step={1} defaultValue={task?.unlockCostZp ?? 0} required disabled={saving} className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
           </div>
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Mission visibility</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as AdminTask['status'])} disabled={saving} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-300"><option value="draft">Draft</option><option value="published">Published</option><option value="paused">Paused</option><option value="archived">Archived</option></select>
+            <label className="text-[11px] text-slate-400 uppercase">Mission visibility</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value as AdminTask['status'])} disabled={saving} className="w-full mt-1 bg-black border border-white/10 p-2 text-xs text-emerald-300"><option value="draft">Draft</option><option value="published">Published</option><option value="paused">Paused</option><option value="archived">Archived</option></select>
           </div>
         </div>
         {kind === 'creator' && (
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Content platform</label>
-            <select name="platform" defaultValue={task?.platform ?? 'tiktok'} disabled={saving} className="w-full mt-1 bg-black border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50">
+            <label className="text-[11px] text-slate-400 uppercase">Content platform</label>
+            <select name="platform" defaultValue={task?.platform ?? 'tiktok'} disabled={saving} className="w-full mt-1 bg-black border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50">
               <option value="tiktok">TikTok</option>
               <option value="youtube">YouTube</option>
             </select>
           </div>
         )}
         <div>
-          <label className="text-[11px] text-neon-500 uppercase">What must the player do?</label>
-          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\n') ?? ''} disabled={saving} placeholder="Write one simple task per line. Example: Submit a ZORD video link for review." className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
-          <p className="text-[10px] text-neon-600 mt-1">Beginner tip: use normal sentences, one task per line. You do not need JSON, code, or special formatting.</p>
+          <label className="text-[11px] text-slate-400 uppercase">What must the player do?</label>
+          <textarea name="objectives" rows={3} defaultValue={task?.objectives.join('\n') ?? ''} disabled={saving} placeholder="Write one simple task per line. Example: Submit a ZORD video link for review." className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+          <p className="text-[10px] text-slate-400 mt-1">Beginner tip: use normal sentences, one task per line. You do not need JSON, code, or special formatting.</p>
         </div>
         <div>
-          <label className="text-[11px] text-neon-500 uppercase">What does the player need before starting?</label>
-          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\n') ?? ''} disabled={saving} placeholder="Write one requirement per line. Example: Have access to the official ZORD Telegram channel." className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
-          <p className="text-[10px] text-neon-600 mt-1">Beginner tip: describe the requirement in plain language, one per line. No code or JSON is needed.</p>
+          <label className="text-[11px] text-slate-400 uppercase">What does the player need before starting?</label>
+          <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\n') ?? ''} disabled={saving} placeholder="Write one requirement per line. Example: Have access to the official ZORD Telegram channel." className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+          <p className="text-[10px] text-slate-400 mt-1">Beginner tip: describe the requirement in plain language, one per line. No code or JSON is needed.</p>
         </div>
         {kind === 'social' && (
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">Telegram chat ID (for automatic membership checks)</label>
-            <input name="telegramChatId" defaultValue={task?.telegramChatId ?? ''} disabled={saving} placeholder="-1001234567890 or @publicchannel" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
-            <p className="text-[10px] text-neon-600 mt-1">Required for Telegram rewards. Use the channel/group ID (not the invite link). The ZORD bot must be an administrator there. Leave blank for missions that are not Telegram membership missions.</p>
+            <label className="text-[11px] text-slate-400 uppercase">Telegram chat ID (for automatic membership checks)</label>
+            <input name="telegramChatId" defaultValue={task?.telegramChatId ?? ''} disabled={saving} placeholder="-1001234567890 or @publicchannel" className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
+            <p className="text-[10px] text-slate-400 mt-1">Required for Telegram rewards. Use the channel/group ID (not the invite link). The ZORD bot must be an administrator there. Leave blank for missions that are not Telegram membership missions.</p>
           </div>
         )}
         <p className="text-[10px] text-amber-300">Reward safety: ZAP is configuration only and cannot be paid yet. ZP unlock cost is also only a setting; players are not charged. Mission rewards must not be treated as earned until the relevant activity has a trusted server-side verification and payout flow.</p>
         <div>
-          <label className="text-[11px] text-neon-500 uppercase">Link for the player (optional)</label>
-          <input name="actionUrl" type="url" defaultValue={task?.actionUrl ?? ''} disabled={saving} placeholder="https://t.me/..." className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+          <label className="text-[11px] text-slate-400 uppercase">Link for the player (optional)</label>
+          <input name="actionUrl" type="url" defaultValue={task?.actionUrl ?? ''} disabled={saving} placeholder="https://t.me/..." className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50" />
         </div>
 
         {error && (
           <p role="alert" className="text-[11px] text-red-400 border-l-2 border-red-500/50 pl-2">{error}</p>
         )}
 
-        <button type="submit" disabled={saving} className="w-full py-2 flex items-center justify-center gap-2 bg-neon/20 hover:bg-neon/30 border border-neon text-xs uppercase tracking-wider font-bold disabled:opacity-60">
+        <button type="submit" disabled={saving} className="w-full py-2 flex items-center justify-center gap-2 bg-emerald-400/15 hover:bg-emerald-400/20 border border-emerald-400/40 text-xs uppercase tracking-wider font-bold disabled:opacity-60">
           {saving && <Loader2 size={14} className="animate-spin" />}
           {saving ? 'Saving...' : task ? 'Save Changes' : 'Create Mission'}
         </button>
