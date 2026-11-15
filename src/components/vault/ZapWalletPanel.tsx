@@ -97,7 +97,7 @@ export default function ZapWalletPanel({
   const handleTransfer = async () => {
     const identifier = recipientIdentifier.trim();
     if (!recipientPreview || !/^[1-9][0-9]{0,19}$/.test(transferAmount) || BigInt(transferAmount) < 100n || transferring) return;
-    if (BigInt(transferAmount) > BigInt(Math.max(0, Math.floor(wallet?.balance ?? 0)))) {
+    if (BigInt(transferAmount) > BigInt(wallet?.balance ?? '0')) {
       setTransferError('You do not have enough ZAP for this transfer.');
       return;
     }
