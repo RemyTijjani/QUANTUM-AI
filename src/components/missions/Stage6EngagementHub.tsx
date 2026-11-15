@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import MysteryBoxPanel from '@/components/missions/MysteryBoxPanel';
 import ExpeditionsScreen from '@/components/missions/ExpeditionsScreen';
+import IntelligenceBriefingsScreen from '@/components/missions/IntelligenceBriefingsScreen';
 import type { Notify } from '@/hooks/useToast';
 import {
   CalendarDays,
@@ -57,7 +58,7 @@ export default function Stage6EngagementHub({
 
       {active === 'streaks' && <DailyStreakScreen onZpReward={onZpReward} notify={notify} />}
       {active === 'mystery' && <MysteryBoxPanel onZpReward={onZpReward} notify={notify} />}
-      {active === 'briefings' && <BriefingsScreen />}
+      {active === 'briefings' && <IntelligenceBriefingsScreen />}
       {active === 'expeditions' && <ExpeditionsScreen />}
     </>
   );
@@ -239,26 +240,3 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
     </section>
   );
 }
-
-function BriefingsScreen() {
-  return (
-    <section className="space-y-3">
-      <FeatureHeader
-        eyebrow="Operations intelligence"
-        title="Intelligence Briefings"
-        description="Read official ZORD announcements, mission intelligence, tactical guidance and time-sensitive community assignments."
-        icon={Radio}
-      />
-      <div className="panel space-y-3 p-4">
-        <div className="flex items-center justify-between"><p className="label">Latest transmissions</p><span className="rounded-full border border-neon/20 px-2 py-1 font-mono text-[8px] uppercase text-neon-600">Live feed pending</span></div>
-        <div className="py-8 text-center">
-          <Radio size={26} className="mx-auto text-neon-700" />
-          <h3 className="mt-3 font-display text-xs font-bold uppercase tracking-wider text-neon-300">No published briefings</h3>
-          <p className="mx-auto mt-2 max-w-xs font-mono text-[9px] leading-relaxed text-neon-700">When operations publishes a briefing, its title, full message, publication time and any linked mission will appear here.</p>
-        </div>
-      </div>
-      <ServiceNotice title="Briefing feed is awaiting its trusted content source" />
-    </section>
-  );
-}
-
