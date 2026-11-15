@@ -397,12 +397,29 @@ interface AdminRequestBody {
     | "save_briefing_draft"
     | "publish_briefing"
     | "confirm_external_zap_funding"
-    | "list_external_zap_funding";
+    | "list_external_zap_funding"
+    | "list_raffles"
+    | "save_raffle_draft";
   adminUsername?: string;
   search?: string;
   playerId?: string;
   zapAmount?: number;
   transactionReference?: string;
+  raffle?: {
+    id?: string;
+    title?: string;
+    description?: string;
+    rewardType?: string;
+    rewardCode?: string | null;
+    prizePoolAmount?: number;
+    fundingSource?: string;
+    minBetZap?: number;
+    entryMode?: string;
+    winnerCount?: number;
+    winnerMethod?: string;
+    startsAt?: string | null;
+    endsAt?: string | null;
+  };
   adminPassword?: string;
   submissionId?: string;
   submissionIds?: string[];
@@ -1796,6 +1813,96 @@ Deno.serve(async (req: Request) => {
     // Record externally sourced ZAP only after the signed-in Admin has checked the
     // deposit outside ZORD. The database RPC atomically audits and increases the
     // separate raffle reserve; it never credits a player wallet.
+    if (body.action === "list_raffles") {
+      const { data: raffles, error } = await db
+        .from("raffles")
+        .select("id,title,description,reward_type,reward_code,prize_pool_amount,prize_currency,funding_source,min_bet_zap,entry_mode,winner_count,winner_method,status,starts_at,ends_at,created_at")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) {
+        console.error("Admin raffle list failed:", error);
+        return json({ error: "Could not load raffles." }, 500);
+      }
+      return json({ success: true, raffles: raffles ?? [] });
+    }
+
+    if (body.action === "save_raffle_draft") {
+      const raffle = body.raffle;
+      if (!raffle || typeof raffle !== "object") return json({ error: "Raffle details are required." }, 400);
+      const title = typeof raffle.title === "string" ? raffle.title.trim() : "";
+      const description = typeof raffle.description === "string" ? raffle.description.trim() : "";
+      const rewardType = raffle.rewardType;
+      const rewardCode = raffle.rewardCode ?? null;
+      const amount = Number(raffle.prizePoolAmount);
+      const minBet = Number(raffle.minBetZap);
+      const winnerCount = Number(raffle.winnerCount);
+      const entryMode = raffle.entryMode;
+      const winnerMethod = raffle.winnerMethod;
+      const fundingSource = rewardType === "ton" ? "external" : rewardType === "agent" ? "agent_inventory" : raffle.fundingSource;
+      const startsAt = raffle.startsAt ?? null;
+      const endsAt = raffle.endsAt ?? null;
+
+      if (title.length < 3 || title.length > 120 || description.length > 2000) return json({ error: "Enter a title between 3 and 120 characters and a description under 2,000 characters." }, 400);
+      if (!["ton", "zap", "agent"].includes(String(rewardType))) return json({ error: "Choose TON, ZAP or Agent as the prize type." }, 400);
+      if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(minBet) || minBet <= 0) return json({ error: "Prize pool and minimum bet must be positive amounts." }, 400);
+      if (!Number.isInteger(winnerCount) || winnerCount < 1 || winnerCount > 100) return json({ error: "Winner count must be between 1 and 100." }, 400);
+      if (!["one_bet_one_entry", "proportional"].includes(String(entryMode))) return json({ error: "Choose a valid entry method." }, 400);
+      if (!["random", "admin"].includes(String(winnerMethod))) return json({ error: "Choose a valid winner selection method." }, 400);
+      if (!["treasury", "external", "agent_inventory"].includes(String(fundingSource))) return json({ error: "Choose a valid prize funding source." }, 400);
+      if (rewardType === "agent" && (!["alpha", "overclock"].includes(String(rewardCode)) || !Number.isInteger(amount) || amount < winnerCount)) return json({ error: "Select an available agent and provide at least one agent per winner." }, 400);
+      if (rewardType !== "agent" && rewardCode !== null) return json({ error: "Only Agent prizes can have an agent selection." }, 400);
+      if (startsAt && (!Number.isFinite(Date.parse(startsAt)))) return json({ error: "The start date is invalid." }, 400);
+      if (endsAt && (!Number.isFinite(Date.parse(endsAt)))) return json({ error: "The closing date is invalid." }, 400);
+      if (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt)) return json({ error: "The closing date must be after the start date." }, 400);
+
+      const values = {
+        title,
+        description,
+        reward_type: rewardType,
+        reward_code: rewardCode,
+        prize_pool_amount: amount,
+        prize_currency: rewardType === "ton" ? "TON" : rewardType === "zap" ? "ZAP" : "AGENT",
+        funding_source: fundingSource,
+        min_bet_zap: minBet,
+        entry_mode: entryMode,
+        winner_count: winnerCount,
+        winner_method: winnerMethod,
+        status: "draft",
+        starts_at: startsAt,
+        ends_at: endsAt,
+        updated_by: ADMIN_USERNAME,
+        updated_at: new Date().toISOString(),
+      };
+
+      let saved;
+      if (raffle.id) {
+        const { data, error } = await db.from("raffles").update(values).eq("id", raffle.id).eq("status", "draft").select("*").maybeSingle();
+        if (error) {
+          console.error("Admin raffle draft update failed:", error);
+          return json({ error: "Could not update this raffle draft." }, 500);
+        }
+        if (!data) return json({ error: "Only an existing draft can be edited." }, 409);
+        saved = data;
+      } else {
+        const { data, error } = await db.from("raffles").insert({ ...values, created_by: ADMIN_USERNAME }).select("*").single();
+        if (error || !data) {
+          console.error("Admin raffle draft creation failed:", error);
+          return json({ error: "Could not save the raffle draft." }, 500);
+        }
+        saved = data;
+      }
+
+      const { error: auditError } = await db.from("raffle_audit_log").insert({
+        raffle_id: saved.id,
+        actor: ADMIN_USERNAME,
+        action: "draft_saved",
+        details: { title: saved.title, rewardType: saved.reward_type, prizePoolAmount: saved.prize_pool_amount },
+      });
+      if (auditError) console.error("Raffle draft audit record failed:", auditError);
+
+      return json({ success: true, raffle: saved });
+    }
+
     if (body.action === "confirm_external_zap_funding") {
       const amount = body.zapAmount;
       const reference = typeof body.transactionReference === "string"
