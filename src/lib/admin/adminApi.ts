@@ -774,7 +774,7 @@ export interface AdminRaffleDraftInput {
   rewardType: 'ton' | 'zap';
   rewardCode: null;
   prizePoolAmount: number;
-  fundingSource: 'treasury' | 'external' | 'agent_inventory';
+  fundingSource: 'treasury' | 'external';
   minBetZap: number;
   entryMode: 'one_bet_one_entry' | 'proportional';
   winnerCount: number;
@@ -799,4 +799,36 @@ export async function saveAdminRaffleDraft(creds: AdminCredentials, raffle: Admi
     throw new AdminApiError('The raffle draft could not be verified. Refresh the list before retrying.');
   }
   return result.raffle;
+}
+
+
+export interface AdminRaffleReservationResult {
+  success: true;
+  alreadyReserved: boolean;
+  reservationId: string;
+  amount: number | string;
+  currency: 'TON' | 'ZAP';
+  fundingSource: 'treasury' | 'external';
+}
+
+export async function reserveAdminRafflePrize(
+  creds: AdminCredentials,
+  raffleId: string,
+): Promise<AdminRaffleReservationResult> {
+  const body = await callAdminApi(creds, { action: 'reserve_raffle_prize', raffle: { id: raffleId } });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('The prize reservation response could not be verified.');
+  }
+  const result = body as Partial<AdminRaffleReservationResult>;
+  if (
+    result.success !== true ||
+    typeof result.reservationId !== 'string' ||
+    !['TON', 'ZAP'].includes(String(result.currency)) ||
+    !['treasury', 'external'].includes(String(result.fundingSource)) ||
+    !Number.isFinite(Number(result.amount)) ||
+    typeof result.alreadyReserved !== 'boolean'
+  ) {
+    throw new AdminApiError('The prize reservation could not be verified. Refresh the raffle list before retrying.');
+  }
+  return result as AdminRaffleReservationResult;
 }
