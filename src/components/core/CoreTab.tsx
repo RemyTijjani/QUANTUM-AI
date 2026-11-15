@@ -25,6 +25,7 @@ interface CoreTabProps {
   onWatchAd: (id: FragmentId) => void;
   onFixFragment: (id: FragmentId) => Promise<void>;
   verifiedZpBalance: number | null;
+  verifiedZpLifetime: number | null;
   zapEarned: number | null;
   zapLoading: boolean;
   pendingFragmentZp: number;
@@ -41,6 +42,7 @@ export default function CoreTab({
   onWatchAd,
   onFixFragment,
   verifiedZpBalance,
+  verifiedZpLifetime,
   zapEarned,
   zapLoading,
   pendingFragmentZp,
@@ -55,6 +57,8 @@ export default function CoreTab({
   const rate = passiveRate(state, now);
   const miningLeft = state.coreMiningUntil - now;
   const fixed = fixedCount(state);
+  const zpProgress = verifiedZpLifetime === null ? 0 : Math.min(100, (verifiedZpLifetime % 1000) / 10);
+  const zapProgress = zapEarned === null ? 0 : Math.min(100, (zapEarned % 10) * 10);
 
   const handleFragment = (id: FragmentId, status: FragmentStatus) => {
     if (status === 'locked') {
@@ -112,18 +116,29 @@ export default function CoreTab({
             <p className="mt-1 text-[9px] text-neon-700">Mining rate: {formatRate(rate)}</p>
           </div>
         </div>
-        <div className="relative mt-3 space-y-3 rounded-xl border border-neon/15 bg-black/30 p-3">
-          <div className="flex items-center justify-between"><p className="label">Earning progress</p><span className="text-[9px] text-neon-600">Your totals</span></div>
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-[10px]"><span className="text-neon-300">ZP balance</span><span className="tabular-nums text-neon-200">{verifiedZpBalance === null ? '—' : formatZp(verifiedZpBalance)} ZP</span></div>
-            <div className="h-2 overflow-hidden rounded-full bg-white/5"><div className="h-full rounded-full bg-neon-400 transition-all" style={{width: verifiedZpBalance === null ? '0%' : `${Math.min(100, (verifiedZpBalance % 1000) / 10)}%`}} /></div>
-            <p className="text-[8px] text-neon-700">Progress toward the next 1,000 ZP conversion step</p>
+        <div className="relative mt-3 rounded-xl border border-neon/15 bg-black/30 p-3">
+          <div className="mb-3 flex items-center justify-between"><p className="label">Earning progress</p><span className="text-[9px] text-neon-600">Next milestones</span></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col items-center text-center">
+              <div className="grid h-24 w-24 place-items-center rounded-full" style={{background: `conic-gradient(#7cf7c5 ${zpProgress}%, rgba(124,247,197,0.12) 0)`}}>
+                <div className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-[#07110f]">
+                  <div><p className="font-display text-lg font-bold tabular-nums text-neon-100">{zpProgress.toFixed(0)}%</p><p className="font-mono text-[8px] text-neon-600">ZP</p></div>
+                </div>
+              </div>
+              <p className="mt-2 text-[10px] font-semibold text-neon-200">Lifetime ZP earned</p>
+              <p className="mt-1 text-[8px] text-neon-700">{verifiedZpLifetime === null ? '—' : formatZp(verifiedZpLifetime)} / next 1,000</p>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <div className="grid h-24 w-24 place-items-center rounded-full" style={{background: `conic-gradient(#67ddff ${zapProgress}%, rgba(103,221,255,0.12) 0)`}}>
+                <div className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-[#07111a]">
+                  <div><p className="font-display text-lg font-bold tabular-nums text-cyan-100">{zapLoading ? '…' : zapProgress.toFixed(0) + '%'}</p><p className="font-mono text-[8px] text-cyan-600">ZAP</p></div>
+                </div>
+              </div>
+              <p className="mt-2 text-[10px] font-semibold text-cyan-200">Eligible ZAP earned</p>
+              <p className="mt-1 text-[8px] text-cyan-700">{zapLoading || zapEarned === null ? '—' : formatZp(zapEarned)} / next 10</p>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-[10px]"><span className="text-cyan-300">ZAP earned</span><span className="tabular-nums text-cyan-100">{zapLoading ? '…' : zapEarned === null ? '—' : `${formatZp(zapEarned)} ZAP`}</span></div>
-            <div className="h-2 overflow-hidden rounded-full bg-white/5"><div className="h-full rounded-full bg-cyan-300 transition-all" style={{width: zapEarned === null ? '0%' : `${Math.min(100, (zapEarned % 10) * 10)}%`}} /></div>
-            <p className="text-[8px] text-cyan-700">Progress through the current 10-ZAP milestone</p>
-          </div>
+          <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">ZP progress uses verified lifetime earnings. ZAP progress counts eligible rewards only, not ZP conversions.</p>
         </div>
       </section>
 
