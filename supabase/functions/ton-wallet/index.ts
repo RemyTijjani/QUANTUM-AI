@@ -14,6 +14,7 @@ import {
   WalletContractV3R2,
   WalletContractV4,
   WalletContractV5R1,
+  TonClient,
   type Slice,
   type StateInit,
 } from "npm:@ton/ton";
@@ -28,6 +29,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const TON_CONNECT_DOMAIN = "zord-autonomous-agent.vercel.app";
+const TONCENTER_ENDPOINT = "https://toncenter.com/api/v2/jsonRPC";
+const TONCENTER_API_KEY = Deno.env.get("TONCENTER_API_KEY") ?? "";
+const WALLETTG_TRAMPOLINE_HASH = "9149ae51c1e4689710cebf7830297b16acfbadb363a920a537893e7ffeeca768";
 const CHALLENGE_TTL_SECONDS = 5 * 60;
 const PROOF_TTL_SECONDS = 10 * 60;
 const MAX_BODY_BYTES = 16 * 1024;
@@ -127,6 +131,28 @@ function signatureDomain(network: string) {
   return { type: "l2" as const, globalId: Number(network) };
 }
 
+async function getWalletTgPublicKey(address: Address): Promise<Buffer | null> {
+  const client = new TonClient({
+    endpoint: TONCENTER_ENDPOINT,
+    ...(TONCENTER_API_KEY ? { apiKey: TONCENTER_API_KEY } : {}),
+  });
+
+  // A getter is trusted only after the live account is confirmed to be an
+  // active WalletTg trampoline contract, not merely because it returns a key.
+  const account = await client.getContractState(address);
+  if (account.state !== "active" || !account.code) return null;
+
+  const codeCells = Cell.fromBoc(account.code);
+  if (codeCells.length !== 1 || hex(codeCells[0].hash()) !== WALLETTG_TRAMPOLINE_HASH) return null;
+
+  const result = await client.runMethod(address, "get_public_key");
+  const key = result.stack.readBigNumber();
+  if (key < 0n || key >= (1n << 256n)) return null;
+
+  const keyHex = key.toString(16).padStart(64, "0");
+  return Buffer.from(keyHex, "hex");
+}
+
 async function verifyTonProof(body: Record<string, unknown>, expectedPayload: string) {
   const addressText = typeof body.address === "string" ? body.address : "";
   const network = typeof body.network === "string" ? body.network : "";
@@ -173,7 +199,21 @@ async function verifyTonProof(body: Record<string, unknown>, expectedPayload: st
   const derivedAddress = contractAddress(address.workChain, stateInit);
   if (!derivedAddress.equals(address)) return null;
 
-  const publicKey = parseWalletPublicKey(stateInit);
+  const stateInitCodeHash = stateInit.code ? hex(stateInit.code.hash()) : "";
+  const isWalletTg = stateInitCodeHash === WALLETTG_TRAMPOLINE_HASH;
+  let publicKey = parseWalletPublicKey(stateInit);
+
+  // WalletTg keeps its original StateInit after key rotation. Its anchor key
+  // can therefore be stale; resolve the current key only after checking the
+  // live account's active state and exact trampoline code hash.
+  if (!publicKey && isWalletTg) {
+    try {
+      publicKey = await getWalletTgPublicKey(address);
+    } catch (error) {
+      console.error("WalletTg on-chain key lookup failed", error);
+      return null;
+    }
+  }
   if (!publicKey || publicKey.length !== 32) return null;
   if (publicKeyHint && !publicKey.equals(Buffer.from(publicKeyHint, "hex"))) return null;
 
