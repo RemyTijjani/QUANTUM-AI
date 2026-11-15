@@ -385,6 +385,7 @@ interface AdminRequestBody {
     | "prepare_expedition_rewards"
     | "list_expeditions"
     | "publish_expedition"
+    | "reschedule_expedition"
     | "list_players"
     | "get_player_economy"
     | "list_event_participants"
@@ -468,6 +469,8 @@ interface AdminRequestBody {
     participationRules?: unknown;
   };
   expeditionId?: string;
+  startsAt?: string;
+  endsAt?: string;
   briefingId?: string;
   briefing?: { id?: string; title?: string; summary?: string; category?: string; content?: unknown; accessMode?: string; prerequisiteBriefingId?: string | null; passingScore?: number; rewardType?: string; rewardAmount?: number; questions?: Array<{ id?: string; prompt?: string; options?: string[]; correctOptionIndex?: number; explanation?: string }> };
   progressId?: string;
@@ -1197,6 +1200,48 @@ Deno.serve(async (req: Request) => {
 
     // CREATE AN UNPUBLISHED EXPEDITION DRAFT. All writes use the service-role client
     // only after the existing server-side admin credential and rate-limit checks.
+    if (body.action === "reschedule_expedition") {
+      const id = body.expeditionId;
+      if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "A valid Expedition ID is required" }, 400);
+      if (typeof body.startsAt !== "string" || typeof body.endsAt !== "string") return json({ error: "Choose both a new start and end date" }, 400);
+      const startsAt = new Date(body.startsAt);
+      const endsAt = new Date(body.endsAt);
+      const now = new Date();
+      if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || startsAt <= now || endsAt <= startsAt) {
+        return json({ error: "Choose a future start date and an end date later than the start" }, 400);
+      }
+      const { data: current, error: readError } = await db.from("expeditions")
+        .select("id, title, status, starts_at, registration_closes_at")
+        .eq("id", id).maybeSingle();
+      if (readError || !current) return json({ error: "Expedition not found" }, 404);
+      if (!["scheduled", "registration_open"].includes(current.status) ||
+          !current.starts_at || new Date(current.starts_at) <= now ||
+          (current.registration_closes_at && new Date(current.registration_closes_at) <= now)) {
+        return json({ error: "Only an Expedition that has not started and whose registration has not closed can be rescheduled" }, 409);
+      }
+      const { count, error: participationError } = await db.from("expedition_participations")
+        .select("id", { count: "exact", head: true }).eq("expedition_id", id);
+      if (participationError) return json({ error: "Could not verify Expedition registrations" }, 500);
+      if ((count ?? 0) > 0) return json({ error: "This Expedition already has registered players or teams. Duplicate it to change its schedule." }, 409);
+      const beforeState = { starts_at: current.starts_at, ends_at: null, status: current.status };
+      const { data: updated, error: updateError } = await db.from("expeditions").update({
+        starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(),
+        updated_by: ADMIN_USERNAME, updated_at: now.toISOString(),
+      }).eq("id", id).eq("status", current.status).gt("starts_at", now.toISOString())
+        .select("id").maybeSingle();
+      if (updateError || !updated) return json({ error: "The Expedition could not be rescheduled. Refresh and try again." }, 409);
+      const { error: auditError } = await db.from("expedition_audit_log").insert({
+        expedition_id: id, actor: ADMIN_USERNAME, action: "rescheduled",
+        before_state: beforeState, after_state: { starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), status: current.status },
+      });
+      if (auditError) {
+        console.error("Expedition reschedule audit failed:", auditError);
+        await db.from("expeditions").update({ starts_at: current.starts_at, updated_by: ADMIN_USERNAME }).eq("id", id).eq("status", current.status);
+        return json({ error: "Rescheduling was rolled back because its audit record could not be saved" }, 500);
+      }
+      return json({ success: true });
+    }
+
     if (body.action === "list_expeditions") {
       const { data: rows, error } = await db.from("expeditions")
         .select("id, slug, title, description, category, access_mode, participation_mode, status, starts_at, ends_at, timezone, min_team_size, max_team_size, min_individual_contributions")
