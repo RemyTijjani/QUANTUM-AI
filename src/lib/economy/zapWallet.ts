@@ -3,18 +3,18 @@ import { supabase } from '@/lib/supabase';
 export interface ZapLedgerEntry {
   id: string;
   entryType: string;
-  amount: number;
-  balanceAfter: number;
+  amount: string;
+  balanceAfter: string;
   source: string;
   description: string | null;
   createdAt: string;
 }
 
 export interface ZapWallet {
-  balance: number;
-  lifetimeEarned: number;
+  balance: string;
+  lifetimeEarned: string;
   rankingEarned: number;
-  lifetimeSpent: number;
+  lifetimeSpent: string;
   updatedAt: string | null;
   transactions: ZapLedgerEntry[];
 }
@@ -69,11 +69,62 @@ export interface ZapTransferRecipient {
 
 export interface ZapTransferResult {
   transferId: string;
-  amount: number;
+  amount: string;
   alreadyApplied: boolean;
   createdAt: string;
 }
 
+
+
+function exactIntegerString(value: unknown): string | null {
+  if (typeof value === 'string' && /^\\d+$/.test(value)) return value;
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) return String(value);
+  return null;
+}
+
+function normalizeZapWallet(value: unknown): ZapWallet | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const balance = exactIntegerString(source.balance);
+  const lifetimeEarned = exactIntegerString(source.lifetimeEarned);
+  const lifetimeSpent = exactIntegerString(source.lifetimeSpent);
+  if (balance === null || lifetimeEarned === null || lifetimeSpent === null || !Array.isArray(source.transactions)) {
+    return null;
+  }
+
+  const transactions: ZapLedgerEntry[] = [];
+  for (const item of source.transactions) {
+    if (!item || typeof item !== 'object') return null;
+    const entry = item as Record<string, unknown>;
+    const amount = exactIntegerString(entry.amount);
+    const balanceAfter = exactIntegerString(entry.balanceAfter);
+    if (amount === null || balanceAfter === null ||
+        typeof entry.id !== 'string' || typeof entry.entryType !== 'string' ||
+        typeof entry.source !== 'string' || typeof entry.createdAt !== 'string') {
+      return null;
+    }
+    transactions.push({
+      id: entry.id,
+      entryType: entry.entryType,
+      amount,
+      balanceAfter,
+      source: entry.source,
+      description: typeof entry.description === 'string' ? entry.description : null,
+      createdAt: entry.createdAt,
+    });
+  }
+
+  return {
+    balance,
+    lifetimeEarned,
+    lifetimeSpent,
+    rankingEarned: typeof source.rankingEarned === 'number' && Number.isFinite(source.rankingEarned)
+      ? source.rankingEarned
+      : 0,
+    updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : null,
+    transactions,
+  };
+}
 
 const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zap-wallet`;
 
@@ -115,11 +166,12 @@ async function request<T>(method: 'GET' | 'POST', body?: Record<string, string>,
 }
 
 export async function fetchZapWallet(): Promise<ZapWallet> {
-  const result = await request<{ success: boolean; wallet: ZapWallet }>('GET');
-  if (!result.success || !result.wallet || typeof result.wallet.balance !== 'number') {
+  const result = await request<{ success: boolean; wallet: unknown }>('GET');
+  const wallet = normalizeZapWallet(result.wallet);
+  if (!result.success || !wallet) {
     throw new Error('Could not load your ZAP wallet.');
   }
-  return result.wallet;
+  return wallet;
 }
 
 export async function fetchZapLeaderboard(): Promise<ZapLeaderboard> {
@@ -149,13 +201,14 @@ export async function convertZpToZap(
   const result = await request<{
     success: boolean;
     conversion: ZapConversionResult;
-    wallet: ZapWallet;
+    wallet: unknown;
   }>('POST', { amountZp, idempotencyKey });
+  const wallet = normalizeZapWallet(result.wallet);
 
-  if (!result.success || !result.conversion || !result.wallet) {
+  if (!result.success || !result.conversion || !wallet) {
     throw new Error('The conversion service returned an invalid result.');
   }
-  return { conversion: result.conversion, wallet: result.wallet };
+  return { conversion: result.conversion, wallet };
 }
 
 export async function lookupZapTransferRecipient(identifier: string): Promise<ZapTransferRecipient> {
@@ -177,22 +230,24 @@ export async function transferZap(
 ): Promise<{ transfer: ZapTransferResult; recipient: ZapTransferRecipient; wallet: ZapWallet }> {
   const result = await request<{
     success: boolean;
-    transfer: ZapTransferResult;
+    transfer: Omit<ZapTransferResult, 'amount'> & { amount: unknown };
     recipient: ZapTransferRecipient;
-    wallet: ZapWallet;
+    wallet: unknown;
   }>('POST', {
     action: 'transfer',
     recipientIdentifier: recipientIdentifier.trim(),
     amountZap,
     idempotencyKey,
   });
+  const wallet = normalizeZapWallet(result.wallet);
+  const amount = exactIntegerString(result.transfer?.amount);
 
-  if (!result.success || !result.transfer || !result.recipient || !result.wallet) {
+  if (!result.success || !result.transfer || amount === null || !result.recipient || !wallet) {
     throw new Error('The ZAP transfer service returned an invalid result.');
   }
   return {
-    transfer: result.transfer,
+    transfer: { ...result.transfer, amount },
     recipient: result.recipient,
-    wallet: result.wallet,
+    wallet,
   };
 }
