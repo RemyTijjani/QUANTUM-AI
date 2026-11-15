@@ -226,7 +226,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     <style>{'.admin-field{display:block;width:100%;margin-top:6px;background:#020503;border:1px solid rgba(80,255,150,.25);padding:10px;color:#d1fae5;font-size:12px;outline:none}.admin-field:focus{border-color:rgba(80,255,150,.7)}.admin-field-label{display:block;font-size:11px;color:#70d99b}'}</style>
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{metrics.map(([label,value,Icon]) => <div key={label} className="border border-white/10 bg-[#101a14] p-3"><Icon size={16} className="mb-2 text-slate-400"/><p className="text-xl font-bold text-slate-100">{value}</p><p className="text-[9px] uppercase tracking-wider text-slate-500">{label}</p></div>)}</div>
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3"><div><h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-300"><Compass size={15}/> Expedition Command</h2><p className="mt-1 text-[10px] text-slate-500">Build structured solo, team and mixed-objective Expeditions.</p></div>{!creating && <button type="button" onClick={() => {reset();setCreating(true);}} className="flex items-center gap-2 border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-slate-100"><Plus size={14}/> Create Expedition</button>}</div>
-    {savedMessage && <p role="status" className="border-l-2 border-emerald-400/40 bg-neon/5 px-3 py-2 text-[10px] text-emerald-300">{savedMessage}</p>}
+    {savedMessage && <p role="status" className="border-l-2 border-emerald-400/40 bg-emerald-400/5 px-3 py-2 text-[10px] text-emerald-300">{savedMessage}</p>}
     {creating && <div className="space-y-4 border border-white/10 bg-[#0b120e] p-3 sm:p-5">
       <div className="flex items-center justify-between gap-2"><div><p className="text-[10px] uppercase tracking-widest text-slate-400">Expedition Builder</p><h3 className="mt-1 text-sm font-bold text-slate-100">Step {step+1}: {steps[step]}</h3></div><button type="button" onClick={() => setCreating(false)} className="text-[10px] text-slate-500">Close</button></div>
       <div className="grid grid-cols-6 gap-1">{steps.map((name,i) => <button key={name} type="button" onClick={() => setStep(i)} title={name} className={'h-1.5 '+(i<=step?'bg-neon-400':'bg-emerald-400/10')}/>)}</div>
@@ -246,7 +246,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
         <div><h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">Objective verification queue</h3><p className="mt-1 text-[10px] text-slate-500">Review player and team evidence that needs an admin decision.</p></div>
         <button type="button" onClick={() => void loadReviews()} disabled={loadingReviews} className="border border-white/10 px-2 py-1 text-[10px] text-slate-300 disabled:opacity-40">{loadingReviews ? 'Refreshing…' : 'Refresh queue'}</button>
       </div>
-      {reviewMessage && <p role="status" className="border-l-2 border-emerald-400/30 bg-neon/5 px-3 py-2 text-[10px] text-emerald-300">{reviewMessage}</p>}
+      {reviewMessage && <p role="status" className="border-l-2 border-emerald-400/30 bg-emerald-400/5 px-3 py-2 text-[10px] text-emerald-300">{reviewMessage}</p>}
       {loadingReviews ? <p className="p-4 text-center text-xs text-slate-500">Loading review submissions…</p> : (
         <>
           {(['individual','team'] as const).map(scope => {
