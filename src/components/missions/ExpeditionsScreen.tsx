@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Users,
   UserRound,
+  Send,
 } from 'lucide-react';
 
 type Objective = {
@@ -22,6 +23,10 @@ type Objective = {
   required: boolean;
   completionScope: 'individual' | 'team' | 'both';
   order: number;
+  progress?: {
+    individual?: { id: string; status: string; evidence: Record<string, unknown>; updated_at: string; reviewReason?: string | null } | null;
+    team?: { id: string; status: string; evidence: Record<string, unknown>; updated_at: string; reviewReason?: string | null } | null;
+  };
 };
 
 type TeamMember = { playerId: string; role: string; joinedAt: string };
@@ -145,6 +150,7 @@ export default function ExpeditionsScreen() {
   const [teamName, setTeamName] = useState<Record<string, string>>({});
   const [inviteCode, setInviteCode] = useState<Record<string, string>>({});
   const [createdInvite, setCreatedInvite] = useState<Record<string, string>>({});
+  const [evidenceDrafts, setEvidenceDrafts] = useState<Record<string, string>>({});
 
   const load = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
@@ -212,6 +218,20 @@ export default function ExpeditionsScreen() {
     if (!code) throw new Error('Enter the 16-character team invitation code.');
     await callExpeditionApi('POST', { action: 'join_team', inviteCode: code });
     setInviteCode((current) => ({ ...current, [item.id]: '' }));
+  });
+
+  const submitObjective = (item: Expedition, objective: Objective, scope: 'individual' | 'team') => perform(item.id, async () => {
+    const key = `${item.id}:${objective.id}:${scope}`;
+    const evidenceText = (evidenceDrafts[key] ?? '').trim();
+    if (!evidenceText) throw new Error('Add a link or a short note describing your completed objective.');
+    await callExpeditionApi('POST', {
+      action: 'submit_objective',
+      expeditionId: item.id,
+      objectiveId: objective.id,
+      scope,
+      evidence: { text: evidenceText },
+    });
+    setEvidenceDrafts((current) => ({ ...current, [key]: '' }));
   });
 
   const leaveTeam = (item: Expedition) => {
@@ -282,6 +302,7 @@ export default function ExpeditionsScreen() {
             const hasTeam = !!item.myTeam;
             const canUseTeams = item.participation_mode === 'team' || item.participation_mode === 'both';
             const busy = busyId === item.id;
+            const rosterLocked = item.status === 'active' || (!!item.starts_at && new Date(item.starts_at).getTime() <= Date.now());
             return (
               <article key={item.id} className="panel space-y-3 overflow-hidden p-4">
                 {item.cover_image_url && <img src={item.cover_image_url} alt="" className="h-32 w-full rounded-lg object-cover" loading="lazy" />}
@@ -314,6 +335,28 @@ export default function ExpeditionsScreen() {
                           <p className="mt-1 font-mono text-[8px] uppercase text-cyan-500">{objective.type.replace(/_/g, ' ')} · {objective.completionScope} completion</p>
                           {objective.description && <p className="mt-2 font-mono text-[9px] leading-relaxed text-neon-600">{objective.description}</p>}
                           {objective.instructions && <p className="mt-2 whitespace-pre-wrap font-mono text-[9px] leading-relaxed text-neon-500">{objective.instructions}</p>}
+                          {joined && item.status === 'active' && ([
+                            ...(objective.completionScope === 'individual' || objective.completionScope === 'both' ? [{ scope: 'individual' as const, progress: objective.progress?.individual ?? null, label: 'Your individual submission' }] : []),
+                            ...(hasTeam && (objective.completionScope === 'team' || objective.completionScope === 'both') ? [{ scope: 'team' as const, progress: objective.progress?.team ?? null, label: 'Team submission' }] : []),
+                          ]).map(({ scope, progress, label }) => {
+                            const key = `${item.id}:${objective.id}:${scope}`;
+                            const status = progress?.status ?? 'not_submitted';
+                            const verified = status === 'verified';
+                            const pending = status === 'submitted';
+                            return <div key={scope} className="mt-3 space-y-2 rounded-lg border border-neon/15 bg-black/30 p-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="font-mono text-[9px] text-neon-300">{label}</p>
+                                <span className={`rounded-full border px-2 py-1 font-mono text-[8px] uppercase ${verified ? 'border-emerald-400/30 text-emerald-300' : pending ? 'border-amber-400/30 text-amber-200' : status === 'rejected' ? 'border-red-400/30 text-red-300' : 'border-neon/20 text-neon-600'}`}>{status === 'not_submitted' ? 'Not submitted' : status}</span>
+                              </div>
+                              {progress?.reviewReason && status === 'rejected' && <p className="rounded border border-red-400/20 bg-red-400/5 p-2 font-mono text-[9px] text-red-200">Admin feedback: {progress.reviewReason}</p>}
+                              {!verified && !pending && <div className="space-y-2">
+                                <textarea value={evidenceDrafts[key] ?? ''} onChange={(event) => setEvidenceDrafts((current) => ({ ...current, [key]: event.target.value }))} maxLength={3500} rows={2} placeholder="Paste a link or explain what you completed…" className="w-full rounded-lg border border-neon/20 bg-black/50 px-3 py-2 font-mono text-[9px] text-neon-200 outline-none focus:border-neon/50" />
+                                <button type="button" disabled={busy || !(evidenceDrafts[key] ?? '').trim()} onClick={() => void submitObjective(item, objective, scope)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 font-mono text-[9px] uppercase text-cyan-200 disabled:opacity-40"><Send size={12} /> {busy ? 'Submitting…' : status === 'rejected' ? 'Resubmit evidence' : 'Submit evidence'}</button>
+                              </div>}
+                              {pending && <p className="font-mono text-[8px] text-amber-200">Your evidence is waiting for the operations team to review it.</p>}
+                              {verified && <p className="font-mono text-[8px] text-emerald-300">This objective has been verified.</p>}
+                            </div>;
+                          })}
                         </div>
                       ))}
                     </div>
@@ -338,9 +381,9 @@ export default function ExpeditionsScreen() {
                     {joined && hasTeam && (
                       <div className="space-y-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3">
                         <p className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase text-cyan-200"><Users size={13} /> {item.myTeam?.name ?? 'Your team'}</p>
-                        <p className="font-mono text-[8px] text-neon-600">{item.myTeam?.members.length ?? 0} active member(s) · Roster locks at Expedition start</p>
+                        <p className="font-mono text-[8px] text-neon-600">{item.myTeam?.members.length ?? 0} active member(s) · {rosterLocked ? 'Roster locked' : 'Roster locks when the Expedition starts'}</p>
                         {createdInvite[item.id] && <div className="flex items-center gap-2"><input readOnly value={createdInvite[item.id]} className="min-w-0 flex-1 rounded-lg border border-neon/20 bg-black/50 px-2 py-2 font-mono text-[10px] tracking-widest text-neon-200" /><button type="button" onClick={() => void copyInvite(createdInvite[item.id])} className="rounded-lg border border-neon/25 p-2 text-neon-300" aria-label="Copy team invite code"><Copy size={14} /></button></div>}
-                        <button type="button" disabled={busy} onClick={() => void leaveTeam(item)} className="w-full rounded-lg border border-red-400/25 px-3 py-2 font-mono text-[9px] uppercase text-red-300 disabled:opacity-40">{busy ? 'Leaving…' : 'Leave team'}</button>
+                        {rosterLocked ? <p className="flex items-center gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 p-2 font-mono text-[9px] text-amber-200"><LockKeyhole size={12} /> Team membership is locked for this Expedition.</p> : <button type="button" disabled={busy} onClick={() => void leaveTeam(item)} className="w-full rounded-lg border border-red-400/25 px-3 py-2 font-mono text-[9px] uppercase text-red-300 disabled:opacity-40">{busy ? 'Leaving…' : 'Leave team'}</button>}
                       </div>
                     )}
                     {joined && !hasTeam && <div className="rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3 font-mono text-[9px] text-cyan-200"><UserRound size={13} className="mr-1 inline" /> You are registered as an individual participant.</div>}
