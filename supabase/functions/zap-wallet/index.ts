@@ -199,7 +199,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         transfer: {
           transferId: transfer.transferId,
-          amount: transfer.amount,
+          amount: amountZap,
           alreadyApplied: Boolean(transfer.alreadyApplied),
           createdAt: transfer.createdAt,
         },
