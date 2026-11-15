@@ -582,6 +582,25 @@ export interface AdminExpeditionRecord {
   objectives: Array<{ id: string; objective_type: AdminExpeditionDraftInput['objectives'][number]['kind']; title: string; completion_scope: 'individual' | 'team' | 'both'; sort_order: number }>;
   reward: { reward_type: 'zp' | 'zap' | 'none'; amount: number; recipient_scope: string } | null;
 }
+export interface AdminExpeditionRewardIssueResult {
+  success: true;
+  issuedCount: number;
+  voidedCount: number;
+  rewardType: 'zp' | 'zap';
+  amountPerPlayer: number;
+}
+export async function issueAdminExpeditionRewards(
+  creds: AdminCredentials, expeditionId: string,
+): Promise<AdminExpeditionRewardIssueResult> {
+  const body = await callAdminApi(creds, { action: 'issue_expedition_rewards', expeditionId });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The reward issuance response could not be verified.');
+  const result = body as Partial<AdminExpeditionRewardIssueResult>;
+  if (result.success !== true || !Number.isInteger(result.issuedCount) || !Number.isInteger(result.voidedCount)
+      || !['zp', 'zap'].includes(String(result.rewardType)) || typeof result.amountPerPlayer !== 'number') {
+    throw new AdminApiError('Reward issuance could not be verified. Refresh the Expedition before retrying.');
+  }
+  return result as AdminExpeditionRewardIssueResult;
+}
 export async function listAdminExpeditions(creds: AdminCredentials): Promise<AdminExpeditionRecord[]> {
   const body = await callAdminApi(creds, { action: 'list_expeditions' });
   if (!body || typeof body !== 'object' || !Array.isArray((body as { expeditions?: unknown }).expeditions)) {
