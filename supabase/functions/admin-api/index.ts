@@ -2,6 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { mapInBatches, verifyConfiguredEventActivities } from "../_shared/event-verification.ts";
 
+// Intelligence Briefings management is included in the authenticated admin action set.
 // admin-api: privileged admin actions using service role key,
 // credentials verified server-side.
 const corsHeaders = {
