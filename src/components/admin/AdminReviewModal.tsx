@@ -234,7 +234,7 @@ function AdminConsole({
     await saveVaultReserves(creds, reserves);
 
     addLog(
-      `[VAULT] Reserves updated: ${reserves.tonReserve} TON / ${formatZp(reserves.zpReserve)} ZP`,
+      `[VAULT] Reserves updated: ${reserves.tonReserve} Gram / ${formatZp(reserves.zpReserve)} ZP`,
     );
 
     await refresh();
@@ -346,8 +346,8 @@ function AdminConsole({
           onClick={() => setActiveTab('tasks')}
           className={`flex min-h-10 shrink-0 items-center rounded-xl px-3 py-2 text-xs font-medium transition md:w-full ${
             activeTab === 'tasks'
-              ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-300 font-bold'
-              : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
+              ? 'bg-emerald-400/15 text-emerald-300 ring-1 ring-inset ring-emerald-400/25'
+              : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
           }`}
         >
           <ListTodo size={15} className="shrink-0" /> Task manager <span className="ml-auto">{data.tasks.length}</span>
@@ -356,7 +356,7 @@ function AdminConsole({
         <button
           type="button"
           onClick={() => setActiveTab('players')}
-          className={`px-4 py-2 text-xs uppercase tracking-wider transition-all border ${
+          className={`flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium transition md:w-full ${
             activeTab === 'players'
               ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-300 font-bold'
               : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
@@ -417,7 +417,7 @@ function AdminConsole({
       </nav></aside><main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-[#0d1510] p-3 sm:p-5"><div className="mb-5 border-b border-white/10 pb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Management</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-white">{{ queue: 'Review queue', stats: 'Overview', tasks: 'Task manager', players: 'Player management', raffles: 'Raffle management', 'raffle-funding': 'Raffle funding', 'ton-withdrawals': 'Gram withdrawals', expeditions: 'Expeditions' }[activeTab]}</h2><p className="mt-1 text-xs text-slate-400">Manage ZORD operations from one place.</p></div>
 
       {activeTab === 'queue' && (
-        <div className="panel p-4 border border-white/10 space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-2">
             <h2 className="text-xs uppercase tracking-widest text-slate-300 font-bold flex items-center gap-2">
               <ShieldCheck size={14} />
