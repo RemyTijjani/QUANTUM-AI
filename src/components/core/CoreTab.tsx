@@ -1,7 +1,6 @@
 import { FRAGMENT_IDS, FRAGMENT_NAMES } from '@/lib/game/config';
 import {
   Store,
-  ArrowRightLeft,
   ArrowUpRight,
   Flame,
   Gift,
