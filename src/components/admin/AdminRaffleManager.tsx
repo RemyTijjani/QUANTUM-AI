@@ -10,6 +10,12 @@ import type { AdminCredentials, AdminRaffleDraftInput, AdminRaffleRecord } from 
 
 const money = (value: number | string, currency: string) => `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`;
 const errorText = (error: unknown) => error instanceof AdminApiError ? error.message : 'Something went wrong. Please try again.';
+const toLocalDateTime = (value: string | null) => {
+  if (!value) return '';
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
 
 export default function AdminRaffleManager({ creds }: { creds: AdminCredentials }) {
   const [raffles, setRaffles] = useState<AdminRaffleRecord[]>([]);
@@ -18,6 +24,7 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [rewardType, setRewardType] = useState<'zap' | 'ton' | 'agent'>('zap');
@@ -41,6 +48,25 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const editDraft = (raffle: AdminRaffleRecord) => {
+    setEditingId(raffle.id);
+    setTitle(raffle.title);
+    setDescription(raffle.description ?? '');
+    setRewardType(raffle.reward_type);
+    setRewardCode(raffle.reward_code === 'overclock' ? 'overclock' : 'alpha');
+    setPrizeAmount(String(raffle.prize_pool_amount));
+    setFundingSource(raffle.funding_source === 'treasury' ? 'treasury' : 'external');
+    setMinimumBet(String(raffle.min_bet_zap));
+    setEntryMode(raffle.entry_mode);
+    setWinnerCount(String(raffle.winner_count));
+    setWinnerMethod(raffle.winner_method);
+    setStartsAt(toLocalDateTime(raffle.starts_at));
+    setEndsAt(toLocalDateTime(raffle.ends_at));
+    setError('');
+    setNotice('');
+    setShowForm(true);
+  };
+
   const currency = rewardType === 'ton' ? 'TON' : rewardType === 'zap' ? 'ZAP' : 'AGENT';
   const saveDraft = async (event: FormEvent) => {
     event.preventDefault();
@@ -62,6 +88,7 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
     setSaving(true);
     try {
       await saveAdminRaffleDraft(creds, {
+        ...(editingId ? { id: editingId } : {}),
         title: title.trim(),
         description: description.trim(),
         rewardType,
@@ -75,7 +102,8 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
         startsAt: startsAt ? new Date(startsAt).toISOString() : null,
         endsAt: endsAt ? new Date(endsAt).toISOString() : null,
       });
-      setNotice('Draft saved. It is not visible to players and no prize funds have been reserved.');
+      setNotice(editingId ? 'Draft updated. It is still private and no prize funds have been reserved.' : 'Draft saved. It is not visible to players and no prize funds have been reserved.');
+      setEditingId(null);
       setTitle(''); setDescription(''); setPrizeAmount('100'); setMinimumBet('10'); setWinnerCount('1'); setStartsAt(''); setEndsAt('');
       setShowForm(false);
       await refresh();
@@ -145,14 +173,14 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
           </div>
           <div className="flex flex-col-reverse gap-2 border-t border-neon/10 pt-4 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setShowForm(false)} className="rounded-xl border border-neon/20 px-4 py-3 text-xs text-neon-400">Cancel</button>
-            <button type="submit" disabled={saving} className="flex items-center justify-center gap-2 rounded-xl bg-cyan-300/15 px-5 py-3 text-xs font-bold uppercase tracking-wider text-cyan-100 hover:bg-cyan-300/25 disabled:opacity-40"><Save size={14}/>{saving ? 'Saving draft…' : 'Save as draft'}</button>
+            <button type="submit" disabled={saving} className="flex items-center justify-center gap-2 rounded-xl bg-cyan-300/15 px-5 py-3 text-xs font-bold uppercase tracking-wider text-cyan-100 hover:bg-cyan-300/25 disabled:opacity-40"><Save size={14}/>{saving ? 'Saving draft…' : editingId ? 'Update draft' : 'Save as draft'}</button>
           </div>
           <p className="text-center text-[9px] leading-relaxed text-neon-700">Saving a draft does not reserve funds, publish it, charge players or send prizes.</p>
         </form>
       )}
 
       <div className="space-y-3">
-        {loading ? <div className="py-8 text-center text-xs text-neon-600">Loading your raffle drafts…</div> : raffles.length === 0 ? <div className="rounded-xl border border-neon/15 bg-black/20 py-9 text-center"><CircleDollarSign size={25} className="mx-auto text-neon-600"/><p className="mt-2 text-xs text-neon-300">No raffles created yet</p><p className="mt-1 text-[10px] text-neon-600">Create your first draft to get started.</p></div> : raffles.map((raffle) => <article key={raffle.id} className="rounded-xl border border-neon/15 bg-black/25 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h4 className="text-sm font-semibold text-neon-200">{raffle.title}</h4><p className="mt-1 text-[10px] text-neon-600">{raffle.reward_type === 'agent' ? raffle.reward_code === 'alpha' ? 'ZORD Alpha Miner Agent' : 'ZORD Overclocked Core Agent' : money(raffle.prize_pool_amount, raffle.prize_currency)} · {raffle.winner_count} winner(s)</p></div><span className={`rounded-full border px-2.5 py-1 text-[9px] uppercase ${raffle.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : 'border-amber-400/25 bg-amber-400/5 text-amber-200'}`}>{raffle.status}</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-neon-500"><span>Minimum: {money(raffle.min_bet_zap, 'ZAP')}</span><span>{raffle.entry_mode === 'proportional' ? 'Proportional tickets' : 'One bet, one ticket'}</span></div></article>)}
+        {loading ? <div className="py-8 text-center text-xs text-neon-600">Loading your raffle drafts…</div> : raffles.length === 0 ? <div className="rounded-xl border border-neon/15 bg-black/20 py-9 text-center"><CircleDollarSign size={25} className="mx-auto text-neon-600"/><p className="mt-2 text-xs text-neon-300">No raffles created yet</p><p className="mt-1 text-[10px] text-neon-600">Create your first draft to get started.</p></div> : raffles.map((raffle) => <article key={raffle.id} className="rounded-xl border border-neon/15 bg-black/25 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h4 className="text-sm font-semibold text-neon-200">{raffle.title}</h4><p className="mt-1 text-[10px] text-neon-600">{raffle.reward_type === 'agent' ? raffle.reward_code === 'alpha' ? 'ZORD Alpha Miner Agent' : 'ZORD Overclocked Core Agent' : money(raffle.prize_pool_amount, raffle.prize_currency)} · {raffle.winner_count} winner(s)</p></div><span className={`rounded-full border px-2.5 py-1 text-[9px] uppercase ${raffle.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : 'border-amber-400/25 bg-amber-400/5 text-amber-200'}`}>{raffle.status}</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-neon-500"><span>Minimum: {money(raffle.min_bet_zap, 'ZAP')}</span><span>{raffle.entry_mode === 'proportional' ? 'Proportional tickets' : 'One bet, one ticket'}</span></div>{raffle.status === 'draft' && <button type="button" onClick={() => editDraft(raffle)} className="mt-3 rounded-lg border border-neon/25 px-3 py-2 text-[10px] font-semibold text-neon-300 hover:bg-neon/10">Edit draft</button>}</article>)}
       </div>
       <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3"><p className="text-[10px] font-semibold text-amber-200">Publishing is protected</p><p className="mt-1 text-[10px] leading-relaxed text-amber-100/70">A draft cannot go live until its complete prize pool is reserved and verified. TON drafts also need the TON funding wallet and withdrawal flow configured. Winner selection and prize delivery are separate controlled steps.</p></div>
     </section>
