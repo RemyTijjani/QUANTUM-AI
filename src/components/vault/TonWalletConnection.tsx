@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Clock3, LoaderCircle, ShieldCheck, Unplug, Wallet } from 'lucide-react';
 import { getTonConnectUI } from '@/lib/ton-connect';
 import type { TonConnectWallet } from '@/lib/ton-connect';
@@ -51,6 +51,7 @@ export default function TonWalletConnection() {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const withdrawalAttempt = useRef<{ amountNano: string; idempotencyKey: string } | null>(null);
 
   const refreshWalletData = useCallback(async () => {
     setLoadingData(true);
@@ -160,7 +161,12 @@ export default function TonWalletConnection() {
     setNotice('');
     try {
       const amountNano = tonToNanoTon(withdrawAmount);
-      await requestTonWithdrawal(amountNano, crypto.randomUUID());
+      const attempt = withdrawalAttempt.current?.amountNano === amountNano
+        ? withdrawalAttempt.current
+        : { amountNano, idempotencyKey: crypto.randomUUID() };
+      withdrawalAttempt.current = attempt;
+      await requestTonWithdrawal(amountNano, attempt.idempotencyKey);
+      withdrawalAttempt.current = null;
       setWithdrawAmount('');
       setNotice('Withdrawal request submitted. Your TON is reserved while an admin reviews it; nothing has been sent yet.');
       await refreshWalletData();
