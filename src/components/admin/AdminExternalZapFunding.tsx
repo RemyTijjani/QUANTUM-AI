@@ -102,7 +102,7 @@ export default function AdminExternalZapFunding({ creds }: { creds: AdminCredent
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3 border-t border-emerald-400/40/10 pt-3">
+        <form onSubmit={handleSubmit} className="space-y-3 border-t border-white/10 pt-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="text-[10px] uppercase tracking-wider text-slate-400">
               Deposit amount (ZAP)
@@ -138,7 +138,7 @@ export default function AdminExternalZapFunding({ creds }: { creds: AdminCredent
         ) : (
           <div className="space-y-2">
             {summary.funding.map((item: AdminExternalZapFundingRecord) => (
-              <div key={item.id} className="border border-emerald-400/40/10 bg-[#101a14] p-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+              <div key={item.id} className="border border-white/10 bg-[#101a14] p-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-emerald-300 tabular-nums">{formatZap(item.amount)} ZAP</p>
                   <p className="text-[10px] text-slate-400 break-all mt-1">Reference: {item.transaction_reference}</p>
