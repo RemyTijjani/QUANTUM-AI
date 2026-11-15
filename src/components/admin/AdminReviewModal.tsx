@@ -270,8 +270,8 @@ function AdminConsole({
   ] as const;
 
   return (
-    <div className="fixed inset-0 z-50 box-border flex h-dvh w-full min-w-0 max-w-full flex-col overflow-hidden gap-4 bg-[#080e0a] p-3 font-sans text-slate-100 sm:p-5">
-      <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+    <div className="fixed inset-0 z-50 box-border flex h-dvh w-full min-w-0 max-w-full flex-col overflow-hidden gap-2 bg-[#080e0a] p-2 font-sans text-slate-100 sm:gap-4 sm:p-5">
+      <div className="flex shrink-0 flex-col gap-2 rounded-xl border border-white/10 bg-[#111a14] p-3 shadow-xl sm:gap-3 sm:rounded-2xl sm:p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-emerald-400/10 p-2 text-emerald-300">
             <Terminal size={24} />
@@ -339,11 +339,11 @@ function AdminConsole({
         </div>
       )}
 
-      <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-[#111a14] p-2 md:w-60 md:p-3">
+      <aside className="w-full shrink-0 rounded-xl border border-white/10 bg-[#111a14] p-1.5 sm:rounded-2xl sm:p-2 md:w-60 md:p-3">
         <p className="hidden px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 md:block">Admin workspace</p>
-        <nav aria-label="Admin sections" className="flex gap-3 overflow-x-auto md:flex-col md:overflow-visible">
+        <nav aria-label="Admin sections" className="no-scrollbar flex flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain md:flex-col md:items-stretch md:gap-3 md:overflow-visible">
           {navGroups.map((group) => (
-            <div key={group.label} className="flex shrink-0 flex-col gap-1">
+            <div key={group.label} className="contents md:flex md:shrink-0 md:flex-col md:gap-1">
               <p className="hidden px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500 md:block">{group.label}</p>
               {group.items.map((item) => {
                 const Icon = item.icon;
@@ -354,7 +354,7 @@ function AdminConsole({
                     type="button"
                     onClick={() => setActiveTab(item.id)}
                     aria-current={selected ? 'page' : undefined}
-                    className={`flex min-h-10 shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-medium transition md:w-full ${
+                    className={`flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-left text-[11px] font-medium transition sm:min-h-10 sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs md:w-full ${
                       selected
                         ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
                         : 'border-transparent text-slate-400 hover:border-white/10 hover:bg-white/5 hover:text-slate-100'
@@ -373,7 +373,7 @@ function AdminConsole({
             </div>
           ))}
         </nav>
-      </aside><main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-[#0d1510] p-3 sm:p-5"><div className="mb-5 border-b border-white/10 pb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Management</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-white">{{ queue: 'Review queue', stats: 'Overview', tasks: 'Task manager', players: 'Player management', raffles: 'Raffle management', 'raffle-funding': 'Raffle funding', 'ton-withdrawals': 'Gram withdrawals', expeditions: 'Expeditions' }[activeTab]}</h2><p className="mt-1 text-xs text-slate-400">Manage ZORD operations from one place.</p></div>
+      </aside><main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-white/10 bg-[#0d1510] p-3 sm:rounded-2xl sm:p-5"><div className="mb-4 border-b border-white/10 pb-3 sm:mb-5 sm:pb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Management</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-white">{{ queue: 'Review queue', stats: 'Overview', tasks: 'Task manager', players: 'Player management', raffles: 'Raffle management', 'raffle-funding': 'Raffle funding', 'ton-withdrawals': 'Gram withdrawals', expeditions: 'Expeditions' }[activeTab]}</h2><p className="mt-1 text-xs text-slate-400">Manage ZORD operations from one place.</p></div>
 
       {activeTab === 'queue' && (
         <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm space-y-4">
