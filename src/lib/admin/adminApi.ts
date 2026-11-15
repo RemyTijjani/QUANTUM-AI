@@ -756,7 +756,7 @@ export interface AdminRaffleRecord {
   reward_code: string | null;
   prize_pool_amount: number | string;
   prize_currency: 'TON' | 'ZAP' | 'AGENT';
-  funding_source: 'treasury' | 'external';
+  funding_source: 'treasury' | 'external' | 'agent_inventory';
   min_bet_zap: number | string;
   entry_mode: 'one_bet_one_entry' | 'proportional';
   winner_count: number;
