@@ -1258,7 +1258,7 @@ Deno.serve(async (req: Request) => {
         await db.from("expeditions").update({ status: "draft", updated_by: ADMIN_USERNAME }).eq("id", id).eq("status", nextStatus);
         return json({ error: "Publishing was rolled back because its audit record could not be saved" }, 500);
       }
-      return json({ success: true, status: nextStatus, playerVisibility: false });
+      return json({ success: true, status: nextStatus, playerVisibility: true, rewardIssuance: "not_enabled" });
     }
 
     if (body.action === "save_expedition_draft") {
