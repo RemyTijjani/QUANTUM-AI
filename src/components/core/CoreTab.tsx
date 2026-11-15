@@ -103,10 +103,10 @@ export default function CoreTab({
             <p className="mt-1 text-[8px] text-neon-700">{nextFragmentReleaseAt ? `Next release in ${formatRemaining(new Date(nextFragmentReleaseAt).getTime() - now)}` : 'No pending Fragment rewards'}</p>
           </div>
           <div className="rounded-xl border border-cyan-300/25 bg-cyan-950/30 p-3">
-            <div className="flex items-center gap-2 text-cyan-200"><Award size={14}/><p className="label">ZAP earned</p></div>
+            <div className="flex items-center gap-2 text-cyan-200"><Award size={14}/><p className="label">ZAP score</p></div>
             <p className="mt-2 font-display text-2xl font-bold tabular-nums text-cyan-100">{zapLoading ? '…' : zapEarned === null ? '—' : formatZp(zapEarned)}</p>
-            <p className="mt-1 text-[9px] text-cyan-600">Lifetime eligible ZAP rewards</p>
-            <p className="mt-2 text-[9px] text-cyan-700">Ranking score</p>
+            <p className="mt-1 text-[9px] text-cyan-600">Net ZAP activity (earned − spent)</p>
+            <p className="mt-2 text-[9px] text-cyan-700">Rank & achievement score</p>
           </div>
           <div className="rounded-xl border border-cyan-400/20 bg-black/40 p-3">
             <p className="label">Core rank</p><p className="mt-1 font-display text-xl text-cyan-200">{tier.rank}</p><p className="mt-1 text-[9px] text-cyan-700">Gameplay tier {tier.tier}</p>
@@ -134,11 +134,11 @@ export default function CoreTab({
                   <div><p className="font-display text-lg font-bold tabular-nums text-cyan-100">{zapLoading ? '…' : zapProgress.toFixed(0) + '%'}</p><p className="font-mono text-[8px] text-cyan-600">ZAP</p></div>
                 </div>
               </div>
-              <p className="mt-2 text-[10px] font-semibold text-cyan-200">Eligible ZAP earned</p>
+              <p className="mt-2 text-[10px] font-semibold text-cyan-200">Net ZAP progress</p>
               <p className="mt-1 text-[8px] text-cyan-700">{zapLoading || zapEarned === null ? '—' : formatZp(zapEarned)} / next 10</p>
             </div>
           </div>
-          <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">ZP progress uses verified lifetime earnings. ZAP progress counts eligible rewards only, not ZP conversions.</p>
+          <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">ZP progress uses verified lifetime earnings. ZAP progress counts every ZAP credit, including ZP conversions, minus every ZAP spent.</p>
         </div>
       </section>
 
