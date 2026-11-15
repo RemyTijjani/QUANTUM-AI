@@ -15,6 +15,8 @@ interface AdminTaskManagerProps {
 export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }: AdminTaskManagerProps) {
   const [editingTask, setEditingTask] = useState<AdminTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | AdminTask['status']>('all');
+  const visibleTasks = statusFilter === 'all' ? tasks : tasks.filter((task) => task.status === statusFilter);
 
   const openModal = (task: AdminTask | null) => {
     setEditingTask(task);
@@ -23,23 +25,50 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
 
   return (
     <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm space-y-4">
-      <div className="flex items-center justify-between border-b border-white/10 pb-2">
-        <h2 className="text-xs uppercase tracking-widest text-slate-300 font-bold flex items-center gap-2">
-          <Database size={14} /> Mission Manager
-        </h2>
+      <div className="flex flex-col gap-3 border-b border-white/10 pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+            <Database size={15} className="text-emerald-300" /> Mission Manager
+          </h2>
+          <p className="mt-1 text-[11px] text-slate-400">{tasks.length} mission{tasks.length === 1 ? '' : 's'} in total · Filter by visibility</p>
+        </div>
         <button
           onClick={() => openModal(null)}
-          className="btn-primary flex items-center gap-1.5 text-xs py-1.5 px-3 border border-emerald-400/40 bg-emerald-400/15"
+          className="btn-primary flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold border border-emerald-400/40 bg-emerald-400/15 text-emerald-200 hover:bg-emerald-400/20"
         >
           <Plus size={14} /> Add Mission
         </button>
       </div>
 
+      {tasks.length > 0 && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <label htmlFor="admin-mission-status-filter" className="text-[11px] text-slate-400">Show missions</label>
+          <select id="admin-mission-status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="admin-field sm:max-w-[220px]">
+            <option value="all">All visibility states ({tasks.length})</option>
+            <option value="published">Published ({tasks.filter((task) => task.status === 'published').length})</option>
+            <option value="draft">Draft ({tasks.filter((task) => task.status === 'draft').length})</option>
+            <option value="paused">Paused ({tasks.filter((task) => task.status === 'paused').length})</option>
+            <option value="archived">Archived ({tasks.filter((task) => task.status === 'archived').length})</option>
+          </select>
+        </div>
+      )}
+
       {tasks.length === 0 ? (
-        <p className="py-12 text-center font-mono text-[11px] text-slate-400">No missions yet. Add a mission when you're ready.</p>
+        <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-12 text-center">
+          <Database size={24} className="mx-auto text-slate-500" />
+          <p className="mt-3 text-sm font-semibold text-slate-200">No missions created yet</p>
+          <p className="mt-1 text-xs text-slate-400">Create a mission to start adding activities for players.</p>
+          <button type="button" onClick={() => openModal(null)} className="mt-4 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-medium text-emerald-200 hover:bg-emerald-400/15"><Plus size={13} className="mr-1 inline" /> Create first mission</button>
+        </div>
+      ) : visibleTasks.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-white/15 px-4 py-10 text-center">
+          <p className="text-sm font-semibold text-slate-200">No {statusFilter} missions</p>
+          <p className="mt-1 text-xs text-slate-400">There are no missions with this visibility state.</p>
+          <button type="button" onClick={() => setStatusFilter('all')} className="mt-3 text-xs font-medium text-emerald-300 hover:text-emerald-200">Show all missions</button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {tasks.map((task) => (
+          {visibleTasks.map((task) => (
             <div key={task.id} className="rounded-xl border border-white/10 bg-[#101a14] p-3 flex justify-between items-start">
               <div>
                 <span className="text-[10px] uppercase px-1.5 py-0.5 rounded border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
