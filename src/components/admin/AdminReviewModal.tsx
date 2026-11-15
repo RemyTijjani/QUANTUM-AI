@@ -526,7 +526,7 @@ function AdminConsole({
               </p>
             </div>
 
-            <div className="panel p-4 border border-white/10 bg-emerald-400/5">
+            <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm">
               <div className="flex items-center justify-between text-slate-400 mb-2">
                 <span className="text-[11px] uppercase tracking-wider">
                   Total ZP Awarded
