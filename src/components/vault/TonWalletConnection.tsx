@@ -102,7 +102,7 @@ export default function TonWalletConnection() {
           if (mounted) setBusy(false);
         });
       } else if (tonProof && 'error' in tonProof) {
-        setError(tonProof.error.message || 'This wallet does not support TON proof verification. Try Tonkeeper or another supported wallet.');
+        setError(tonProof.error.message || 'This wallet does not support the TON proof verification required by ZORD. Try Tonkeeper or another supported wallet.');
       } else {
         // A restored connection is not proof of ownership. Only the server's saved verification can unlock withdrawals.
         void refreshWalletData();
@@ -208,7 +208,7 @@ export default function TonWalletConnection() {
       ) : (
         <div className="space-y-2">
           <p className="font-mono text-[10px] leading-relaxed text-neon-500">
-            Connect Tonkeeper or Telegram Wallet. ZORD asks your wallet to sign a one-time ownership check. Connecting does not send money.
+            Connect Tonkeeper or another supported TON wallet. ZORD asks your wallet to sign a one-time ownership check. Connecting does not send money.
           </p>
           <button type="button" className="btn-primary w-full" disabled={!ready || busy} onClick={() => void connect()}>
             {busy || !ready ? <LoaderCircle size={14} className="animate-spin" /> : <Wallet size={14} />}
