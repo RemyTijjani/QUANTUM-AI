@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Compass, Plus, ChevronLeft, ChevronRight, Save, Users, BookOpen, Gamepad2, Globe, Trophy, CalendarDays, Sparkles, Layers, ShieldCheck, Clock3, Copy, CalendarClock } from 'lucide-react';
-import { listAdminExpeditions, publishAdminExpedition, rescheduleAdminExpedition, saveExpeditionDraft, listAdminExpeditionObjectiveReviews, reviewAdminExpeditionObjective, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput, type AdminExpeditionRecord, type AdminExpeditionObjectiveReview } from '@/lib/admin/adminApi';
+import { listAdminExpeditions, publishAdminExpedition, rescheduleAdminExpedition, issueAdminExpeditionRewards, saveExpeditionDraft, listAdminExpeditionObjectiveReviews, reviewAdminExpeditionObjective, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput, type AdminExpeditionRecord, type AdminExpeditionObjectiveReview } from '@/lib/admin/adminApi';
 
 type ObjectiveKind = 'briefing' | 'quiz' | 'game' | 'community' | 'external' | 'milestone';
 type Objective = { id: number; kind: ObjectiveKind; title: string; scope: 'individual' | 'team' | 'both' };
@@ -42,6 +42,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const [loadingDrafts, setLoadingDrafts] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [issuingRewardsId, setIssuingRewardsId] = useState<string | null>(null);
   const [reschedulingId, setReschedulingId] = useState<string | null>(null);
   const [rescheduleStart, setRescheduleStart] = useState('');
   const [rescheduleEnd, setRescheduleEnd] = useState('');
@@ -223,6 +224,24 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       setSavedMessageKind('error');
     } finally { setPublishingId(null); }
   };
+  const issueRewards = async (draft: AdminExpeditionRecord) => {
+    if (draft.status !== 'completed' || !draft.reward || draft.reward.reward_type === 'none' || issuingRewardsId) return;
+    const confirmed = window.confirm(
+      `Issue ${draft.reward.amount} ${draft.reward.reward_type.toUpperCase()} to every currently eligible participant in "${draft.title}"? This will change player balances. Already-issued rewards will not be paid twice.`
+    );
+    if (!confirmed) return;
+    setIssuingRewardsId(draft.id); setSavedMessage(''); setSavedMessageKind('info');
+    try {
+      const result = await issueAdminExpeditionRewards(creds, draft.id);
+      setSavedMessage(`Reward processing complete: ${result.issuedCount} player(s) paid ${result.amountPerPlayer} ${result.rewardType.toUpperCase()} each; ${result.voidedCount} ineligible record(s) skipped.`);
+      setSavedMessageKind('success');
+      await loadDrafts();
+    } catch (error) {
+      setSavedMessage(error instanceof Error ? error.message : 'Could not issue Expedition rewards.');
+      setSavedMessageKind('error');
+    } finally { setIssuingRewardsId(null); }
+  };
+
   const publishDraft = async (draft: AdminExpeditionRecord) => {
     if (draft.status !== 'draft' || publishingId) return;
     const rewardWarning = draft.reward && draft.reward.reward_type !== 'none'
@@ -311,6 +330,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
         <div className="flex flex-wrap items-center gap-2"><span className="text-[10px] text-slate-300">{d.reward?.amount ? d.reward.amount+' '+d.reward.reward_type.toUpperCase() : 'No reward'}</span>
           {d.status==='draft' && <><button type="button" onClick={() => editDraft(d)} className="border border-white/10 px-2 py-1 text-[10px] text-emerald-300">Edit</button><button type="button" onClick={() => duplicateExpedition(d)} className="flex items-center gap-1 border border-white/10 px-2 py-1 text-[10px] text-slate-200"><Copy size={11}/> Duplicate</button><button type="button" disabled={publishingId===d.id} onClick={() => void publishDraft(d)} className="border border-amber-400/40 px-2 py-1 text-[10px] text-amber-200 disabled:opacity-40">{publishingId===d.id?'Publishing…':'Publish'}</button></>}
           {['scheduled','registration_open'].includes(d.status) && d.starts_at && new Date(d.starts_at) > new Date() && <><button type="button" onClick={() => beginReschedule(d)} className="flex items-center gap-1 border border-sky-400/30 px-2 py-1 text-[10px] text-sky-200"><CalendarClock size={11}/> Reschedule</button><button type="button" onClick={() => duplicateExpedition(d)} className="flex items-center gap-1 border border-white/10 px-2 py-1 text-[10px] text-slate-200"><Copy size={11}/> Duplicate</button></>}
+          {d.status==='completed' && d.reward && d.reward.reward_type!=='none' && <button type="button" disabled={issuingRewardsId===d.id || !!issuingRewardsId} onClick={() => void issueRewards(d)} className="border border-emerald-400/40 bg-emerald-400/10 px-2 py-1 text-[10px] text-emerald-200 disabled:opacity-40">{issuingRewardsId===d.id ? 'Issuing…' : 'Issue eligible rewards'}</button>}
           {!['draft','scheduled','registration_open'].includes(d.status) && <button type="button" onClick={() => duplicateExpedition(d)} className="flex items-center gap-1 border border-white/10 px-2 py-1 text-[10px] text-slate-200"><Copy size={11}/> Duplicate</button>}
         </div>
         {reschedulingId===d.id && <div className="mt-3 grid w-full gap-2 border-t border-white/10 pt-3 sm:grid-cols-[1fr_1fr_auto_auto]">
