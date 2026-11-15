@@ -95,7 +95,7 @@ export default function AdminExternalTonFunding({ creds }: { creds: AdminCredent
             <h2 className="text-xs uppercase tracking-widest text-emerald-300 font-bold flex items-center gap-2">
               <ArrowDownToLine size={15} /> External Gram raffle funding
             </h2>
-            <p className="text-[10px] text-slate-400 mt-1">Use this wallet only for Gram raffle prize deposits.</p>
+            <p className="text-[10px] text-slate-400 mt-1">This designated wallet is for external Gram raffle prize deposits only.</p>
           </div>
           <button type="button" onClick={() => void refresh()} disabled={loading} className="p-2 border border-white/10 text-emerald-300 disabled:opacity-50" aria-label="Refresh Gram funding records">
             {loading ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
@@ -104,23 +104,33 @@ export default function AdminExternalTonFunding({ creds }: { creds: AdminCredent
 
         <div className="border border-white/10 bg-[#0b120e] p-3 space-y-2">
           <p className="text-[10px] uppercase tracking-wider text-slate-400">Designated Gram funding wallet</p>
-          <p className="text-xs text-slate-100 break-all select-all">{summary?.walletAddress ?? 'Loading wallet address...'}</p>
+          <p className="text-xs text-slate-100 break-all select-all">{summary?.walletAddress ?? 'Loading designated wallet...'}</p>
           <button type="button" onClick={() => void copyAddress()} disabled={!summary?.walletAddress} className="px-3 py-2 border border-white/10 text-emerald-300 text-[10px] uppercase tracking-wider flex items-center gap-2 disabled:opacity-40">
             {copied ? <Check size={13} /> : <Copy size={13} />}
             {copied ? 'Address copied' : 'Copy wallet address'}
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="border border-white/10 bg-[#0b120e] p-3">
-            <p className="text-[10px] uppercase tracking-wider text-slate-400">Verified raffle Gram reserve</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="border border-emerald-400/20 bg-emerald-400/5 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-emerald-200">Available Gram reserve</p>
             <p className="text-2xl font-display font-bold text-emerald-300 tabular-nums mt-1">{loading && !summary ? '...' : `${formatTon(summary?.availableReserve ?? 0)} Gram`}</p>
-            <p className="text-[10px] text-slate-400 mt-1">Separate from player wallets. Used only for reserved raffle prizes.</p>
+            <p className="text-[10px] text-slate-400 mt-1">Confirmed funds available for raffle prize reservations. Separate from player wallets.</p>
+          </div>
+          <div className="border border-white/10 bg-[#0b120e] p-3">
+            <p className="text-[10px] uppercase tracking-wider text-slate-300">Verified deposits</p>
+            <p className="mt-2 text-sm font-semibold text-white">{loading && !summary ? 'Loading…' : `${summary?.funding.length ?? 0} confirmed record(s)`}</p>
+            <p className="text-[10px] text-slate-400 mt-1">Each record below shows its amount, transaction reference, confirming Admin and time.</p>
           </div>
           <div className="border border-amber-400/20 bg-amber-400/5 p-3">
-            <p className="text-[10px] uppercase tracking-wider text-amber-300 flex items-center gap-1"><ShieldCheck size={12} /> Check before confirming</p>
-            <p className="text-[11px] text-slate-300 mt-2">On TON Explorer, verify the transaction succeeded, sent TON to the exact wallet above, and has the amount you enter. Check the transaction hash has not already been used.</p>
+            <p className="text-[10px] uppercase tracking-wider text-amber-200">Reserved for raffles</p>
+            <p className="mt-2 text-sm font-semibold text-amber-100">Tracked per raffle</p>
+            <p className="text-[10px] text-slate-400 mt-1">See Raffle Manager for individual reservations. This screen does not provide a total reserved figure.</p>
           </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+          <p className="text-[10px] font-semibold text-slate-200">Before confirming a Gram deposit</p>
+          <p className="mt-1 text-[10px] leading-relaxed text-slate-400">Use TON Explorer to confirm the transaction succeeded, reached the designated wallet above, has the exact amount entered, and has not already been recorded. One Admin confirmation adds the deposit to the available raffle reserve; it does not publish a raffle or pay a winner.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3 border-t border-white/10 pt-3">
@@ -149,7 +159,7 @@ export default function AdminExternalTonFunding({ creds }: { creds: AdminCredent
 
       <section className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between border-b border-white/10 pb-2">
-          <h3 className="text-xs uppercase tracking-widest text-slate-300 font-bold">Gram funding history</h3>
+          <h3 className="text-xs uppercase tracking-widest text-slate-300 font-bold">Verified Gram deposit history</h3>
           <span className="text-[10px] text-slate-400">{summary?.funding.length ?? 0} records shown</span>
         </div>
         {loading && !summary ? (
@@ -171,7 +181,7 @@ export default function AdminExternalTonFunding({ creds }: { creds: AdminCredent
           </div>
         )}
       </section>
-      <p className="text-[10px] text-slate-500">Single-Admin verification: ZORD records the Admin's confirmation and audit details. It does not independently inspect the TON blockchain. Only confirm after checking the transaction externally.</p>
+      <p className="text-[10px] text-slate-500">Single-Admin verification: the confirming Admin checks the transaction on TON Explorer. ZORD records the Admin, transaction reference, amount and time; it does not independently inspect the blockchain.</p>
     </div>
   );
 }
