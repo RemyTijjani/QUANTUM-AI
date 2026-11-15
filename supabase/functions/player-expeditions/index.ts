@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
       const ids = (expeditions ?? []).map((item) => item.id);
       if (ids.length === 0) return json({ expeditions: [] });
 
-      const [objectivesRes, rewardsRes, participationRes] = await Promise.all([
+      const [objectivesRes, rewardsRes, participationRes, individualProgressRes] = await Promise.all([
         admin.from("expedition_objectives")
           .select("id, expedition_id, objective_type, title, description, instructions, is_required, completion_scope, sort_order")
           .in("expedition_id", ids)
@@ -79,8 +79,12 @@ Deno.serve(async (req: Request) => {
           .select("expedition_id, status, team_id, individual_contribution_count, reward_eligible, registered_at, completed_at")
           .eq("player_id", player.id)
           .in("expedition_id", ids),
+        admin.from("expedition_objective_progress")
+          .select("id, expedition_id, objective_id, status, evidence, updated_at")
+          .eq("player_id", player.id)
+          .in("expedition_id", ids),
       ]);
-      const failed = [objectivesRes, rewardsRes, participationRes].find((result) => result.error);
+      const failed = [objectivesRes, rewardsRes, participationRes, individualProgressRes].find((result) => result.error);
       if (failed) {
         console.error("Player Expedition details lookup failed:", failed.error);
         return json({ error: "Could not load Expedition details." }, 500);
@@ -134,12 +138,13 @@ Deno.serve(async (req: Request) => {
       }
 
       const teamIds = [...new Set((participationRes.data ?? []).map((item) => item.team_id).filter((id): id is string => !!id))];
-      const [teamsRes, membersRes] = teamIds.length > 0 ? await Promise.all([
+      const [teamsRes, membersRes, teamProgressRes] = teamIds.length > 0 ? await Promise.all([
         admin.from("expedition_teams").select("id, expedition_id, name, leader_player_id, status").in("id", teamIds),
         admin.from("expedition_team_members").select("team_id, player_id, role, membership_status, joined_at").in("team_id", teamIds).eq("membership_status", "active"),
-      ]) : [{ data: [], error: null }, { data: [], error: null }];
-      if (teamsRes.error || membersRes.error) {
-        console.error("Expedition team details lookup failed:", teamsRes.error ?? membersRes.error);
+        admin.from("expedition_team_objective_progress").select("id, expedition_id, objective_id, team_id, status, evidence, updated_at").in("team_id", teamIds),
+      ]) : [{ data: [], error: null }, { data: [], error: null }, { data: [], error: null }];
+      if (teamsRes.error || membersRes.error || teamProgressRes.error) {
+        console.error("Expedition team details lookup failed:", teamsRes.error ?? membersRes.error ?? teamProgressRes.error);
         return json({ error: "Could not load your Expedition team details." }, 500);
       }
       const teamsById = new Map((teamsRes.data ?? []).map((team) => [team.id, team]));
@@ -148,6 +153,35 @@ Deno.serve(async (req: Request) => {
         const list = membersByTeam.get(member.team_id) ?? [];
         list.push({ playerId: member.player_id, role: member.role, joinedAt: member.joined_at });
         membersByTeam.set(member.team_id, list);
+      }
+
+      const allProgress = [
+        ...(individualProgressRes.data ?? []).map((row) => ({ ...row, scope: "individual" as const, team_id: null })),
+        ...(teamProgressRes.data ?? []).map((row) => ({ ...row, scope: "team" as const })),
+      ];
+      const rejectedProgressIds = allProgress.filter((row) => row.status === "rejected").map((row) => row.id);
+      const rejectionReasons = new Map<string, string>();
+      if (rejectedProgressIds.length > 0) {
+        const reasonLookups = await Promise.all(rejectedProgressIds.map(async (progressId) => {
+          const { data } = await admin.from("expedition_audit_log")
+            .select("reason, created_at, after_state")
+            .contains("after_state", { progress_id: progressId })
+            .in("action", ["objective_individual_rejected", "objective_team_rejected"])
+            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          return data?.reason ? [progressId, data.reason] as const : null;
+        }));
+        for (const entry of reasonLookups) if (entry) rejectionReasons.set(entry[0], entry[1]);
+      }
+      const progressByObjective = new Map<string, { individual?: Record<string, unknown>; team?: Record<string, unknown> }>();
+      for (const row of allProgress) {
+        const participation = participationById.get(row.expedition_id);
+        if (!participation) continue;
+        const key = row.expedition_id + ":" + row.objective_id;
+        const current = progressByObjective.get(key) ?? {};
+        const progress = { id: row.id, status: row.status, evidence: row.evidence, updated_at: row.updated_at, reviewReason: rejectionReasons.get(row.id) ?? null };
+        if (row.scope === "individual") current.individual = progress;
+        else if (row.team_id === participation.teamId) current.team = progress;
+        progressByObjective.set(key, current);
       }
 
       const now = Date.now();
@@ -162,7 +196,10 @@ Deno.serve(async (req: Request) => {
         const myTeam = alreadyJoined?.teamId ? teamsById.get(alreadyJoined.teamId) ?? null : null;
         return {
           ...item,
-          objectives: objectivesById.get(item.id) ?? [],
+          objectives: (objectivesById.get(item.id) ?? []).map((objective) => ({
+            ...objective,
+            progress: progressByObjective.get(item.id + ":" + String(objective.id)) ?? { individual: null, team: null },
+          })),
           reward: rewardById.get(item.id) ?? { type: "none", amount: 0, recipientScope: "each_eligible_participant" },
           myParticipation: alreadyJoined,
           isUnlocked: prerequisiteMet,
