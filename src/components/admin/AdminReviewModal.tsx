@@ -445,7 +445,7 @@ function AdminConsole({
               {data.submissions.map((sub) => (
                 <li
                   key={sub.id}
-                  className="panel space-y-3 p-4 border border-white/10 bg-[#0b120e]"
+                  className="rounded-xl border border-white/10 bg-[#101a14] p-4 space-y-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <label className="flex items-center gap-2 text-[9px] text-slate-400">
@@ -509,7 +509,7 @@ function AdminConsole({
       {activeTab === 'stats' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="panel p-4 border border-white/10 bg-emerald-400/5">
+            <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm">
               <div className="flex items-center justify-between text-slate-400 mb-2">
                 <span className="text-[11px] uppercase tracking-wider">
                   Active Operatives
@@ -587,7 +587,7 @@ function AdminConsole({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="panel lg:col-span-2 p-4 border border-white/10 flex flex-col gap-3">
+            <div className="rounded-2xl border border-white/10 bg-[#111a14] lg:col-span-2 p-4 flex flex-col gap-3">
               <h2 className="text-xs uppercase tracking-widest text-slate-300 font-bold flex items-center gap-2 border-b border-white/10 pb-2">
                 <Activity size={14} />
                 Live Audit Log & Activity Stream
@@ -618,7 +618,7 @@ function AdminConsole({
               </div>
             </div>
 
-            <div className="panel p-4 border border-white/10 flex flex-col gap-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 flex flex-col gap-4">
               <h2 className="text-xs uppercase tracking-widest text-slate-300 font-bold flex items-center gap-2 border-b border-white/10 pb-2">
                 <Database size={14} />
                 Economy & Controls
