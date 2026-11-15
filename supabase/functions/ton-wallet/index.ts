@@ -80,21 +80,21 @@ function parseWalletPublicKey(stateInit: StateInit): Buffer | null {
     slice.loadUint(32);
     return slice.loadBuffer(32);
   };
-  const loadV2 = (slice: ReturnType<typeof stateInit.data.beginParse>) => {
+  const loadV2 = (slice: Slice) => {
     slice.loadUint(32);
     return slice.loadBuffer(32);
   };
-  const loadV3 = (slice: ReturnType<typeof stateInit.data.beginParse>) => {
-    slice.loadUint(32);
-    slice.loadUint(32);
-    return slice.loadBuffer(32);
-  };
-  const loadV4 = (slice: ReturnType<typeof stateInit.data.beginParse>) => {
+  const loadV3 = (slice: Slice) => {
     slice.loadUint(32);
     slice.loadUint(32);
     return slice.loadBuffer(32);
   };
-  const loadV5 = (slice: ReturnType<typeof stateInit.data.beginParse>) => {
+  const loadV4 = (slice: Slice) => {
+    slice.loadUint(32);
+    slice.loadUint(32);
+    return slice.loadBuffer(32);
+  };
+  const loadV5 = (slice: Slice) => {
     slice.loadBoolean();
     slice.loadUint(32);
     slice.loadUint(32);
