@@ -31,7 +31,7 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
   const meIsListed = entries.some((entry) => entry.isYou);
 
   return (
-    <Modal title="ZAP Earnings Ranking" onClose={onClose}>
+    <Modal title="ZAP Activity Ranking" onClose={onClose}>
       <div className="mb-4 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
         <p className="font-mono text-[9px] uppercase tracking-wider text-cyan-500">Your verified ranking</p>
         {loading ? (
@@ -39,7 +39,7 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
         ) : leaderboard ? (
           <div className="mt-1 flex items-end justify-between gap-3">
             <p className="font-display text-2xl font-bold text-cyan-100">#{leaderboard.me.rank}</p>
-            <p className="font-mono text-xs text-cyan-200">{formatZp(Number(leaderboard.me.rankingEarned))} ZAP earned</p>
+            <p className="font-mono text-xs text-cyan-200">{formatZp(Number(leaderboard.me.rankingEarned))} net ZAP</p>
           </div>
         ) : (
           <p className="mt-2 font-mono text-xs text-red-300">Ranking unavailable</p>
@@ -74,7 +74,7 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
       )}
 
       <p className="mt-4 text-center font-mono text-[9px] leading-relaxed text-neon-600">
-        Ranked by verified ZAP rewards earned. ZAP created by converting ZP does not increase your rank. Spending ZAP does not lower it.
+        Ranked by net ZAP activity: every ZAP credit increases your score, including ZP-to-ZAP conversions, and every ZAP debit or spend decreases it.
       </p>
     </Modal>
   );
