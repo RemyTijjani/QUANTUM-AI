@@ -89,22 +89,32 @@ export default function AdminPlayerManager({ creds }: Props) {
       </form>
 
       {error && (
-        <div role="alert" className="border-l-2 border-red-500/60 bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
-          {error}
+        <div role="alert" className="flex flex-col gap-2 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-3 text-[11px] text-red-200 sm:flex-row sm:items-center sm:justify-between">
+          <span>{error}</span>
+          <button type="button" onClick={() => void loadPlayers(search.trim())} disabled={loading} className="self-start rounded-lg border border-red-300/20 px-3 py-1.5 text-red-100 hover:bg-red-400/10 disabled:opacity-50 sm:self-auto">Try again</button>
         </div>
       )}
 
       {loading ? (
-        <div className="py-10 text-center text-xs text-slate-400">Loading player directory…</div>
+        <div role="status" className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-12 text-center text-xs text-slate-400">
+          <RefreshCw size={18} className="animate-spin text-emerald-300" />
+          Loading player directory…
+        </div>
       ) : players.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-12 text-center text-slate-400">
-          <UserRound size={28} />
-          <p className="text-xs">No matching player records found.</p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-12 text-center text-slate-400">
+          <span className="rounded-full bg-white/5 p-3"><UserRound size={24} /></span>
+          <div>
+            <p className="text-sm font-semibold text-slate-200">{search.trim() ? 'No players match that search' : 'No player records yet'}</p>
+            <p className="mt-1 max-w-sm text-xs text-slate-400">{search.trim() ? 'Check the spelling or try a Telegram ID, username, first name, or referral code.' : 'Player accounts will appear here when they join ZORD.'}</p>
+          </div>
+          {search.trim() && <button type="button" onClick={() => { setSearch(''); void loadPlayers(''); }} className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-medium text-emerald-200 hover:bg-emerald-400/15">Clear search and show all players</button>}
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        <div className="hidden overflow-x-auto rounded-xl border border-white/10 md:block">
           <table className="w-full min-w-[680px] border-collapse text-left">
-            <thead>
+            <caption className="sr-only">Player directory search results</caption>
+            <thead className="bg-white/[0.03]">
               <tr className="border-b border-white/10 text-[9px] uppercase tracking-wider text-slate-400">
                 <th className="px-3 py-3 font-medium">Player</th>
                 <th className="px-3 py-3 font-medium">Referral code</th>
@@ -115,7 +125,7 @@ export default function AdminPlayerManager({ creds }: Props) {
             </thead>
             <tbody>
               {players.map((player) => (
-                <tr key={player.id} className="border-b border-white/10 text-[11px] text-emerald-300">
+                <tr key={player.id} className="border-b border-white/10 text-[11px] text-emerald-200 transition-colors hover:bg-white/[0.025]">
                   <td className="px-3 py-3">
                     <div className="font-semibold">{player.first_name || 'Unnamed player'}</div>
                     <div className="mt-1 text-[10px] text-slate-400">
@@ -139,6 +149,27 @@ export default function AdminPlayerManager({ creds }: Props) {
             </tbody>
           </table>
         </div>
+        <div className="grid gap-2 md:hidden">
+          {players.map((player) => (
+            <article key={player.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-emerald-200">{player.first_name || 'Unnamed player'}</p>
+                  <p className="mt-0.5 truncate text-xs text-slate-400">{player.username ? `@${player.username}` : 'No username'}</p>
+                </div>
+                <button type="button" onClick={() => setSelectedPlayer(player)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-2 text-[10px] font-medium text-emerald-200 hover:bg-emerald-400/15">
+                  <Wallet size={12} /> View economy
+                </button>
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-white/10 pt-3 text-[10px]">
+                <div><dt className="text-slate-500">Referral code</dt><dd className="mt-0.5 break-all font-mono text-slate-200">{player.referral_code || '—'}</dd></div>
+                <div><dt className="text-slate-500">Telegram ID</dt><dd className="mt-0.5 break-all font-mono text-slate-200">{String(player.telegram_id)}</dd></div>
+                <div className="col-span-2"><dt className="text-slate-500">Joined</dt><dd className="mt-0.5 text-slate-300">{dateLabel(player.created_at)}</dd></div>
+              </dl>
+            </article>
+          ))}
+        </div>
+        </>
       )}
       {selectedPlayer && (
         <AdminPlayerEconomyDetail
