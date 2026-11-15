@@ -93,13 +93,6 @@ function FeatureHeader({
 
 
 
-function ServiceNotice({ title }: { title: string }) {
-  return (
-    <div className="panel border border-amber-400/20 bg-amber-400/5 p-4">
-      <p className="font-mono text-[10px] leading-relaxed text-amber-200">{title}</p>
-    </div>
-  );
-}
 
 type DailyStreakStatus = {
   currentStreakDay: number;
