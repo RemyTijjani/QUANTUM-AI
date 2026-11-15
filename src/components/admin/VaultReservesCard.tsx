@@ -38,7 +38,7 @@ export default function VaultReservesCard({ reserves, refreshing, onSave }: Vaul
   };
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm bg-neon/5 space-y-4">
+    <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm bg-emerald-400/5 space-y-4">
       <div className="flex items-center justify-between border-b border-white/10 pb-2">
         <h2 className="text-xs uppercase tracking-widest text-slate-300 font-bold flex items-center gap-2">
           <Coins size={14} /> Vault Reserves
