@@ -19,7 +19,20 @@ export interface ZapWallet {
   transactions: ZapLedgerEntry[];
 }
 
-export interface ZapLeaderboardEntry {\n  rank: number;\n  name: string;\n  rankingEarned: number;\n  isYou: boolean;\n}\n\nexport interface ZapLeaderboard {\n  entries: ZapLeaderboardEntry[];\n  me: ZapLeaderboardEntry;\n  limit: number;\n}\n\nexport interface ZapConversionResult {
+export interface ZapLeaderboardEntry {
+  rank: number;
+  name: string;
+  rankingEarned: number;
+  isYou: boolean;
+}
+
+export interface ZapLeaderboard {
+  entries: ZapLeaderboardEntry[];
+  me: ZapLeaderboardEntry;
+  limit: number;
+}
+
+export interface ZapConversionResult {
   success: boolean;
   alreadyApplied: boolean;
   zpDebited: number;
@@ -76,7 +89,15 @@ export async function fetchZapWallet(): Promise<ZapWallet> {
   return result.wallet;
 }
 
-export async function fetchZapLeaderboard(): Promise<ZapLeaderboard> {\n  const result = await request<{ success: boolean; leaderboard: ZapLeaderboard }>('GET', undefined, '?action=leaderboard');\n  if (!result.success || !result.leaderboard || !Array.isArray(result.leaderboard.entries) || !result.leaderboard.me) {\n    throw new Error('Could not load the ZAP leaderboard.');\n  }\n  return result.leaderboard;\n}\n\nexport async function convertZpToZap(
+export async function fetchZapLeaderboard(): Promise<ZapLeaderboard> {
+  const result = await request<{ success: boolean; leaderboard: ZapLeaderboard }>('GET', undefined, '?action=leaderboard');
+  if (!result.success || !result.leaderboard || !Array.isArray(result.leaderboard.entries) || !result.leaderboard.me) {
+    throw new Error('Could not load the ZAP leaderboard.');
+  }
+  return result.leaderboard;
+}
+
+export async function convertZpToZap(
   amountZp: string,
   idempotencyKey: string,
 ): Promise<{ conversion: ZapConversionResult; wallet: ZapWallet }> {
