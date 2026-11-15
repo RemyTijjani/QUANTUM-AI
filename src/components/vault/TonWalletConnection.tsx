@@ -59,7 +59,7 @@ export default function TonWalletConnection() {
       const data = await fetchTonWallet();
       setWalletData(data);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not load TON wallet details.');
+      setError(cause instanceof Error ? cause.message : 'Could not load Gram wallet details.');
     } finally {
       setLoadingData(false);
     }
@@ -167,7 +167,7 @@ export default function TonWalletConnection() {
       await requestTonWithdrawal(amountNano, attempt.idempotencyKey);
       withdrawalAttempt.current = null;
       setWithdrawAmount('');
-      setNotice('Withdrawal request submitted. Your TON is reserved while an admin reviews it; nothing has been sent yet.');
+      setNotice('Withdrawal request submitted. Your Gram is reserved while an admin reviews it; nothing has been sent yet.');
       await refreshWalletData();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not submit the withdrawal request.');
@@ -193,7 +193,7 @@ export default function TonWalletConnection() {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Wallet size={16} className="text-cyan-300" />
-        <p className="label">TON Connect wallet</p>
+        <p className="label">Gram wallet</p>
         {isVerified && <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 text-[9px] text-emerald-300"><ShieldCheck size={11} /> Verified</span>}
       </div>
 
@@ -202,7 +202,7 @@ export default function TonWalletConnection() {
           <div className="min-w-0">
             <p className="font-mono text-[11px] text-neon-200">{shortAddress(wallet.account.address)}</p>
             <p className={'mt-1 font-mono text-[9px] ' + (isMainnet ? 'text-emerald-300' : 'text-amber-300')}>
-              {isMainnet ? 'Connected · TON mainnet' : 'Wrong network · switch to TON mainnet'}
+              {isMainnet ? 'Connected · Gram network' : 'Wrong network · switch to Gram network'}
             </p>
             <p className="mt-1 font-mono text-[9px] text-neon-600">
               {isVerified ? 'Ownership verified by ZORD' : 'Connected, but ownership is not verified'}
@@ -213,7 +213,7 @@ export default function TonWalletConnection() {
       ) : (
         <div className="space-y-2">
           <p className="font-mono text-[10px] leading-relaxed text-neon-500">
-            Connect Tonkeeper or another supported TON wallet. ZORD asks your wallet to sign a one-time ownership check. Connecting does not send money.
+            Connect Tonkeeper or another supported Gram wallet. ZORD asks your wallet to sign a one-time ownership check. Connecting does not send money.
           </p>
           <button type="button" className="btn-primary w-full" disabled={!ready || busy} onClick={() => void connect()}>
             {busy || !ready ? <LoaderCircle size={14} className="animate-spin" /> : <Wallet size={14} />}
@@ -231,28 +231,28 @@ export default function TonWalletConnection() {
 
       <section className="rounded-lg border border-neon/15 bg-black/20 p-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="label">TON withdrawal (Gram)</p>
+          <p className="label">Gram withdrawal</p>
           <button type="button" className="text-[9px] text-neon-500 underline" disabled={loadingData} onClick={() => void refreshWalletData()}>Refresh</button>
         </div>
-        <p className="mt-2 font-display text-2xl font-bold text-white">{loadingData ? '—' : availableTon.toLocaleString(undefined, { maximumFractionDigits: 9 })} <span className="text-xs font-normal text-neon-500">TON available</span></p>
-        <p className="mt-1 text-[9px] text-neon-700">Reserved for pending requests: {nanoTonToTon(walletData?.balance.reservedNano ?? '0')} TON</p>
+        <p className="mt-2 font-display text-2xl font-bold text-white">{loadingData ? '—' : availableTon.toLocaleString(undefined, { maximumFractionDigits: 9 })} <span className="text-xs font-normal text-neon-500">Gram available</span></p>
+        <p className="mt-1 text-[9px] text-neon-700">Reserved for pending requests: {nanoTonToTon(walletData?.balance.reservedNano ?? '0')} Gram</p>
         {walletData?.wallet && !wallet && <p className="mt-1 text-[9px] text-neon-600">Verified payout wallet: {shortAddress(walletData.wallet.wallet_address)}</p>}
 
         {isVerified ? (
           <div className="mt-3 space-y-2">
             <label htmlFor="ton-withdraw-amount" className="block text-[10px] text-neon-500">Amount to withdraw</label>
             <div className="flex gap-2">
-              <input id="ton-withdraw-amount" inputMode="decimal" value={withdrawAmount} onChange={(event) => setWithdrawAmount(event.target.value)} placeholder="0.00 TON" className="min-w-0 flex-1 rounded-lg border border-neon/20 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/50" />
+              <input id="ton-withdraw-amount" inputMode="decimal" value={withdrawAmount} onChange={(event) => setWithdrawAmount(event.target.value)} placeholder="0.00 Gram" className="min-w-0 flex-1 rounded-lg border border-neon/20 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/50" />
               <button type="button" className="btn-ghost" onClick={() => setWithdrawAmount(nanoTonToTon(availableNano))}>Max</button>
             </div>
             <button type="button" className="btn-primary w-full" disabled={busy || !hasEnough} onClick={() => void submitWithdrawal()}>
               {busy ? <LoaderCircle size={14} className="animate-spin" /> : <ArrowDownLeftIcon />}
               Request withdrawal
             </button>
-            <p className="text-[9px] leading-relaxed text-amber-300">Requests are reviewed by an admin. TON is reserved first; an external transfer is recorded only after it is completed.</p>
+            <p className="text-[9px] leading-relaxed text-amber-300">Requests are reviewed by an admin. Gram is reserved first; the external transfer is recorded only after it is completed.</p>
           </div>
         ) : (
-          <p className="mt-3 text-[10px] leading-relaxed text-amber-300">Connect and verify a TON mainnet wallet to unlock the withdrawal form. Your eligible TON rewards will remain safe in your Vault until you request a withdrawal.</p>
+          <p className="mt-3 text-[10px] leading-relaxed text-amber-300">Connect and verify a Gram network wallet to unlock the withdrawal form. Your eligible TON rewards will remain safe in your Vault until you request a withdrawal.</p>
         )}
       </section>
 
@@ -262,7 +262,7 @@ export default function TonWalletConnection() {
           {walletData?.withdrawals.map((request) => (
             <div key={request.id} className="flex items-center justify-between gap-3 rounded-lg border border-neon/10 bg-black/20 p-3">
               <div>
-                <p className="text-xs text-white">{nanoTonToTon(request.amount_nano)} TON</p>
+                <p className="text-xs text-white">{nanoTonToTon(request.amount_nano)} Gram</p>
                 <p className="mt-1 text-[9px] text-neon-700">{new Date(request.created_at).toLocaleDateString()}</p>
               </div>
               <span className="rounded-full border border-neon/20 px-2 py-1 text-[9px] capitalize text-neon-300">{formatStatus(request.status)}</span>
