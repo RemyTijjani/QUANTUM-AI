@@ -402,7 +402,9 @@ interface AdminRequestBody {
     | "list_external_ton_funding"
     | "list_raffles"
     | "save_raffle_draft"
-    | "reserve_raffle_prize";
+    | "reserve_raffle_prize"
+    | "list_ton_withdrawals"
+    | "review_ton_withdrawal";
   adminUsername?: string;
   search?: string;
   playerId?: string;
@@ -481,6 +483,10 @@ interface AdminRequestBody {
   participationId?: string;
   participationStatus?: string;
   activityId?: string;
+  tonWithdrawalId?: string;
+  withdrawalAction?: "approve" | "reject" | "processing" | "paid";
+  adminNote?: string;
+  transactionHash?: string;
   activity?: {
     id?: string;
     eventId?: string;
@@ -1994,6 +2000,45 @@ Deno.serve(async (req: Request) => {
       if (error || !data || typeof data !== "object") {
         console.error("External TON funding history lookup failed:", error);
         return json({ error: "Could not load external TON funding records" }, 500);
+      }
+      return json(data);
+    }
+
+    if (body.action === "list_ton_withdrawals") {
+      const { data, error } = await db.rpc("admin_list_ton_withdrawals");
+      if (error || !data || typeof data !== "object") {
+        console.error("TON withdrawal queue lookup failed:", error);
+        return json({ error: "Could not load TON withdrawal requests" }, 500);
+      }
+      return json(data);
+    }
+
+    if (body.action === "review_ton_withdrawal") {
+      const requestId = typeof body.tonWithdrawalId === "string" ? body.tonWithdrawalId : "";
+      const action = body.withdrawalAction;
+      const note = typeof body.adminNote === "string" ? body.adminNote.trim() : "";
+      const transactionHash = typeof body.transactionHash === "string" ? body.transactionHash.trim() : "";
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!validUuid.test(requestId)) return json({ error: "A valid withdrawal request is required" }, 400);
+      if (!["approve", "reject", "processing", "paid"].includes(String(action))) {
+        return json({ error: "Choose a valid withdrawal action" }, 400);
+      }
+      if (note.length > 1000) return json({ error: "Admin note must be 1,000 characters or fewer" }, 400);
+      if (action === "paid" && (transactionHash.length < 32 || transactionHash.length > 200 || /\\s/.test(transactionHash))) {
+        return json({ error: "Enter the TON transaction hash or reference (32–200 characters, no spaces)" }, 400);
+      }
+      const { data, error } = await db.rpc("admin_transition_ton_withdrawal", {
+        p_request_id: requestId,
+        p_action: action,
+        p_admin_username: ADMIN_USERNAME,
+        p_admin_note: note || null,
+        p_transaction_hash: transactionHash || null,
+      });
+      if (error || !data || typeof data !== "object") {
+        console.error("TON withdrawal review failed:", error);
+        const message = error?.message ?? "Could not update this withdrawal request";
+        const status = /not found/i.test(message) ? 404 : 409;
+        return json({ error: message }, status);
       }
       return json(data);
     }
