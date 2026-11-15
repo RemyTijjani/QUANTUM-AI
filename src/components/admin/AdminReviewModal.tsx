@@ -12,6 +12,13 @@ import {
   Zap,
   ArrowLeft,
   ShieldCheck,
+  LayoutDashboard,
+  ClipboardCheck,
+  ListTodo,
+  Ticket,
+  Wallet,
+  ArrowDownToLine,
+  Compass,
 } from 'lucide-react';
 
 import { formatZp } from '@/lib/format';
@@ -319,7 +326,7 @@ function AdminConsole({
               : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
           }`}
         >
-          Review Queue ({data.submissions.length})
+          <ClipboardCheck size={15} className="shrink-0" /> Review queue <span className="ml-auto">{data.submissions.length}</span>
         </button>
 
         <button
@@ -331,7 +338,7 @@ function AdminConsole({
               : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
           }`}
         >
-          System & Telemetry
+          <LayoutDashboard size={15} className="shrink-0" /> Overview
         </button>
 
         <button
@@ -343,7 +350,7 @@ function AdminConsole({
               : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
           }`}
         >
-          Mission Control ({data.tasks.length})
+          <ListTodo size={15} className="shrink-0" /> Task manager <span className="ml-auto">{data.tasks.length}</span>
         </button>
 
         <button
@@ -355,7 +362,7 @@ function AdminConsole({
               : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
           }`}
         >
-          Players
+          <Users size={15} className="shrink-0" /> Players
         </button>
 
         <button
@@ -367,7 +374,7 @@ function AdminConsole({
               : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
           }`}
         >
-          Raffles
+          <Ticket size={15} className="shrink-0" /> Raffles
         </button>
 
         <button
@@ -379,7 +386,7 @@ function AdminConsole({
               : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
           }`}
         >
-          Raffle Funding
+          <Wallet size={15} className="shrink-0" /> Raffle funding
         </button>
 
         <button
@@ -391,7 +398,7 @@ function AdminConsole({
               : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
           }`}
         >
-          Gram Withdrawals
+          <ArrowDownToLine size={15} className="shrink-0" /> Gram withdrawals
         </button>
 
         <button
@@ -403,7 +410,7 @@ function AdminConsole({
               : 'border-white/10 bg-[#0b120e] text-slate-400 hover:text-slate-300'
           }`}
         >
-          Expeditions
+          <Compass size={15} className="shrink-0" /> Expeditions
         </button>
 
 
