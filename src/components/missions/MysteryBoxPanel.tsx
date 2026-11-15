@@ -221,7 +221,8 @@ export default function MysteryBoxPanel({
           <div className="rounded-lg border border-neon/20 bg-black/30 p-3"><p className="label">Standard</p><p className="mt-1 font-display text-2xl text-neon-200">{counts.standard}</p><p className="font-mono text-[8px] uppercase text-neon-700">Available</p></div>
           <div className="rounded-lg border border-violet-300/25 bg-black/30 p-3"><p className="label">Premium</p><p className="mt-1 font-display text-2xl text-violet-200">{counts.premium}</p><p className="font-mono text-[8px] uppercase text-violet-400/70">Available</p></div>
         </div>
-      <div className="space-y-3 rounded-lg border border-violet-300/20 bg-violet-400/5 p-3">
+      <div className="mt-4 space-y-3 border-t border-neon/15 pt-4">
+        <div className="space-y-3 rounded-lg border border-violet-300/20 bg-violet-400/5 p-3">
           <div><p className="label">Daily free box</p><p className="mt-1 font-mono text-[9px] text-neon-500">One free Mystery Box every 24 hours. This is separate from Daily Streak.</p></div>
           {repeatBox?.freeClaimAvailable ? (
             <button type="button" onClick={() => void claimDailyBox()} disabled={dailyClaimBusy || loading} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-violet-300/35 bg-violet-300/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-violet-100 disabled:opacity-50">
