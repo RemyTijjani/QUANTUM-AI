@@ -658,11 +658,21 @@ export interface AdminBriefingInput {
   rewardAmount: number;
   questions: AdminBriefingQuestionInput[];
 }
-export interface AdminBriefingRecord extends AdminBriefingInput {
+export interface AdminBriefingRecord {
   id: string;
   slug: string;
+  title: string;
+  summary: string;
+  category: string;
+  content: AdminBriefingInput['content'];
   status: 'draft' | 'published' | 'archived';
+  access_mode: 'open' | 'progressive';
+  prerequisite_briefing_id: string | null;
+  passing_score: number;
+  reward_type: 'none' | 'zp' | 'zap';
+  reward_amount: number;
   published_at: string | null;
+  questions: Array<{ id: string; prompt: string; options: string[]; correctOptionIndex: number; explanation: string }>;
 }
 export async function listAdminBriefings(creds: AdminCredentials): Promise<AdminBriefingRecord[]> {
   const body = await callAdminApi(creds, { action: 'list_briefings' });
