@@ -14,6 +14,8 @@ import {
   WalletContractV3R2,
   WalletContractV4,
   WalletContractV5R1,
+  type Slice,
+  type StateInit,
 } from "npm:@ton/ton";
 import { Buffer } from "npm:buffer";
 
@@ -72,9 +74,9 @@ async function authenticate(req: Request) {
   return { admin, player };
 }
 
-function parseWalletPublicKey(stateInit: ReturnType<typeof loadStateInit>): Buffer | null {
+function parseWalletPublicKey(stateInit: StateInit): Buffer | null {
   if (!stateInit.code || !stateInit.data) return null;
-  const loadV1 = (slice: ReturnType<typeof stateInit.data.beginParse>) => {
+  const loadV1 = (slice: Slice) => {
     slice.loadUint(32);
     return slice.loadBuffer(32);
   };
@@ -157,7 +159,7 @@ async function verifyTonProof(body: Record<string, unknown>, expectedPayload: st
   if (!/^[0-9a-fA-F]{64}$/.test(publicKeyHint)) return null;
 
   let address: Address;
-  let stateInit: ReturnType<typeof loadStateInit>;
+  let stateInit: StateInit;
   let signature: Buffer;
   try {
     address = Address.parse(addressText);
