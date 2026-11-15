@@ -25,7 +25,8 @@ import { useToast } from '@/hooks/useToast';
 import { AuthProvider, useAuth } from '@/hooks/useTelegramAuth';
 import { useMissions } from '@/hooks/useMissions';
 import { fetchVerifiedEconomy } from '@/lib/economy/verifiedEconomy';
-import { fetchZapWallet } from '@/lib/economy/zapWallet';
+import { fetchZapAchievements, fetchZapWallet } from '@/lib/economy/zapWallet';
+import type { ZapAchievements } from '@/lib/economy/zapWallet';
 import type { VerifiedLedgerEntry } from '@/lib/economy/verifiedEconomy';
 
 import type { MissionSpec } from '@/lib/game/config';
@@ -136,6 +137,8 @@ function GameApp({
   const [verifiedZpLifetime, setVerifiedZpLifetime] = useState<number | null>(null);
   const [zapEarned, setZapEarned] = useState<number | null>(null);
   const [zapLoading, setZapLoading] = useState(true);
+  const [zapAchievements, setZapAchievements] = useState<ZapAchievements | null>(null);
+  const [zapAchievementsLoading, setZapAchievementsLoading] = useState(true);
   const [pendingFragmentZp, setPendingFragmentZp] = useState(0);
   const [nextFragmentReleaseAt, setNextFragmentReleaseAt] = useState<string | null>(null);
   const [verifiedTransactions, setVerifiedTransactions] = useState<VerifiedLedgerEntry[]>([]);
@@ -151,11 +154,15 @@ function GameApp({
       try {
         const zapWallet = await fetchZapWallet();
         setZapEarned(zapWallet.rankingEarned);
+        const achievements = await fetchZapAchievements();
+        setZapAchievements(achievements);
       } catch (zapError) {
         console.error('ZAP earnings load failed:', zapError);
         setZapEarned(null);
+        setZapAchievements(null);
       } finally {
         setZapLoading(false);
+        setZapAchievementsLoading(false);
       }
     } catch (error) {
       console.error('Verified ZP balance load failed:', error);
@@ -165,7 +172,9 @@ function GameApp({
       setNextFragmentReleaseAt(null);
       setVerifiedTransactions([]);
       setZapEarned(null);
+      setZapAchievements(null);
       setZapLoading(false);
+      setZapAchievementsLoading(false);
     }
   }, []);
 
@@ -296,6 +305,8 @@ function GameApp({
             verifiedZpLifetime={verifiedZpLifetime}
             zapEarned={zapEarned}
             zapLoading={zapLoading}
+            zapAchievements={zapAchievements}
+            zapAchievementsLoading={zapAchievementsLoading}
             pendingFragmentZp={pendingFragmentZp}
             nextFragmentReleaseAt={nextFragmentReleaseAt}
             onOpenExpeditions={() => { setMissionsInitialView('expeditions'); setTab('missions'); }}
