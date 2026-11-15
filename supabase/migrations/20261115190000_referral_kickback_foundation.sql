@@ -212,6 +212,11 @@ begin
     from app_private.referral_kickback_account_controls
     where player_id = v_recipient.recipient_id;
 
+    -- A suspended recipient earns no new kickbacks. A held account may
+    -- accrue a reward, but it remains held until an Admin completes review.
+    if coalesce(v_recipient_status, 'active') = 'suspended' then
+      continue;
+    end if;
     v_entry_status := case when coalesce(v_recipient_status, 'active') = 'active'
       then 'pending' else 'held' end;
 
