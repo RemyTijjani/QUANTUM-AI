@@ -140,6 +140,29 @@ function statusLabel(expedition: Expedition) {
   return 'Scheduled';
 }
 
+function journeyGuide(expedition: Expedition) {
+  if (expedition.status === 'completed') {
+    return { step: 3, heading: 'Expedition completed', detail: 'Review your final progress and reward status.' };
+  }
+  if (expedition.status === 'active') {
+    return expedition.myParticipation
+      ? { step: 2, heading: 'Your Expedition is live', detail: 'Open your objectives, submit evidence, and follow review progress.' }
+      : { step: 2, heading: 'Expedition is live', detail: 'Registration is closed. You can view the objectives but cannot join now.' };
+  }
+  if (expedition.myParticipation) {
+    return { step: 1, heading: 'You are registered', detail: 'Your place is saved. Return when the start time arrives to take part.' };
+  }
+  if (!expedition.isUnlocked) {
+    return { step: 0, heading: 'Complete the prerequisite', detail: expedition.lockedReason || 'This Expedition is not unlocked for your account yet.' };
+  }
+  if (expedition.status === 'registration_open') {
+    return { step: 0, heading: 'Registration is open', detail: 'Choose solo participation or register a team before the deadline.' };
+  }
+  return { step: 0, heading: 'Coming soon', detail: expedition.registrationOpensAt
+    ? `Registration opens ${dateLabel(expedition.registrationOpensAt, expedition.timezone)}.`
+    : 'Check the start and registration dates. Registration is not open yet.' };
+}
+
 export default function ExpeditionsScreen() {
   const [expeditions, setExpeditions] = useState<Expedition[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
@@ -334,6 +357,7 @@ export default function ExpeditionsScreen() {
             const hasTeam = !!item.myTeam;
             const canUseTeams = item.participation_mode === 'team' || item.participation_mode === 'both';
             const busy = busyId === item.id;
+            const guide = journeyGuide(item);
             const rosterLocked = item.status === 'active' || (!!item.starts_at && new Date(item.starts_at).getTime() <= Date.now());
             return (
               <article key={item.id} className="panel space-y-3 overflow-hidden p-4">
@@ -349,6 +373,19 @@ export default function ExpeditionsScreen() {
                   <div className="shrink-0 text-right"><p className="font-display text-sm text-cyan-200">{rewardLabel(item.reward)}</p><p className="mt-1 font-mono text-[8px] text-neon-700">{item.reward?.recipientScope === 'each_eligible_team_member' ? 'Per eligible team member' : 'Per eligible participant'}</p></div>
                 </div>
                 {item.description && <p className="font-mono text-[10px] leading-relaxed text-neon-500">{item.description}</p>}
+                <div className="space-y-2 rounded-lg border border-neon/15 bg-black/30 p-3">
+                  <div>
+                    <p className="font-mono text-[9px] font-bold text-neon-200">{guide.heading}</p>
+                    <p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-500">{guide.detail}</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5" aria-label="Expedition journey progress">
+                    {['Register', 'Take part', 'Results'].map((label, index) => (
+                      <div key={label} className={`rounded-md border px-2 py-2 text-center ${guide.step > index ? 'border-emerald-400/30 bg-emerald-400/5 text-emerald-200' : guide.step === index ? 'border-cyan-400/30 bg-cyan-400/5 text-cyan-200' : 'border-neon/10 text-neon-700'}`}>
+                        <span className="block font-mono text-[8px]">{index + 1}. {label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-2 text-[9px]">
                   <div className="rounded-lg border border-neon/10 bg-black/25 p-2"><p className="label">Starts</p><p className="mt-1 font-mono text-neon-400">{dateLabel(item.starts_at, item.timezone)}</p></div>
                   <div className="rounded-lg border border-neon/10 bg-black/25 p-2"><p className="label">Ends</p><p className="mt-1 font-mono text-neon-400">{dateLabel(item.ends_at, item.timezone)}</p></div>
@@ -415,14 +452,14 @@ export default function ExpeditionsScreen() {
 
                     {!joined && !item.isUnlocked && <div className="flex items-center gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 font-mono text-[9px] text-amber-200"><LockKeyhole size={14} />{item.lockedReason || 'Complete the prerequisite first.'}</div>}
                     {!joined && item.isUnlocked && item.canJoinSolo && item.participation_mode !== 'team' && (
-                      <button type="button" disabled={busy} onClick={() => void joinSolo(item)} className="btn-primary w-full py-3 text-[10px] disabled:opacity-40">{busy ? 'Registering…' : 'Join Expedition'}</button>
+                      <button type="button" disabled={busy} onClick={() => void joinSolo(item)} className="btn-primary w-full py-3 text-[10px] disabled:opacity-40">{busy ? 'Registering…' : 'Register for Expedition'}</button>
                     )}
                     {!joined && item.isUnlocked && canUseTeams && (
                       <div className="space-y-2 rounded-lg border border-neon/15 bg-black/25 p-3">
                         <p className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase text-neon-300"><Users size={13} /> Team registration</p>
                         <label className="block space-y-1"><span className="label">Create a new team</span><input value={teamName[item.id] ?? ''} onChange={(event) => setTeamName((current) => ({ ...current, [item.id]: event.target.value }))} maxLength={80} placeholder="Team name" className="w-full rounded-lg border border-neon/20 bg-black/50 px-3 py-2 font-mono text-[10px] text-neon-200 outline-none focus:border-neon/50" /></label>
                         <button type="button" disabled={busy || !(teamName[item.id] ?? '').trim()} onClick={() => void createTeam(item)} className="btn-ghost w-full py-2 text-[9px] disabled:opacity-40">{busy ? 'Creating…' : 'Create team & get invite code'}</button>
-                        <div className="border-t border-neon/10 pt-2"><label className="block space-y-1"><span className="label">Or join with an invitation code</span><input value={inviteCode[item.id] ?? ''} onChange={(event) => setInviteCode((current) => ({ ...current, [item.id]: event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16) }))} maxLength={16} placeholder="16-character code" className="w-full rounded-lg border border-neon/20 bg-black/50 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-neon-200 outline-none focus:border-neon/50" /></label><button type="button" disabled={busy || (inviteCode[item.id] ?? '').length !== 16} onClick={() => void joinTeam(item)} className="btn-ghost mt-2 w-full py-2 text-[9px] disabled:opacity-40">{busy ? 'Joining…' : 'Join team'}</button></div>
+                        <div className="border-t border-neon/10 pt-2"><label className="block space-y-1"><span className="label">Or join with an invitation code</span><input value={inviteCode[item.id] ?? ''} onChange={(event) => setInviteCode((current) => ({ ...current, [item.id]: event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16) }))} maxLength={16} placeholder="16-character code" className="w-full rounded-lg border border-neon/20 bg-black/50 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-neon-200 outline-none focus:border-neon/50" /></label><button type="button" disabled={busy || (inviteCode[item.id] ?? '').length !== 16} onClick={() => void joinTeam(item)} className="btn-ghost mt-2 w-full py-2 text-[9px] disabled:opacity-40">{busy ? 'Joining…' : 'Join this team'}</button></div>
                       </div>
                     )}
                     {joined && hasTeam && (
