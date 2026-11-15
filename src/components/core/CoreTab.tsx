@@ -176,7 +176,7 @@ export default function CoreTab({
         ) : (
           <p className="rounded-lg border border-dashed border-cyan-400/15 px-3 py-4 text-center text-[10px] leading-relaxed text-cyan-700">Your first badge unlocks at 100 net ZAP. Keep earning to open your collection.</p>
         )}
-        <p className="text-center text-[8px] text-cyan-800">Badge minting will be enabled after the TON NFT collection is established. Minting will remain optional.</p>
+        <p className="text-center text-[8px] text-cyan-800">Minting is optional. Once verified on TON, a minted badge stays yours even if your net ZAP later drops. Minting is not available yet.</p>
       </section>
 
       <section className="grid grid-cols-2 gap-2">
