@@ -637,3 +637,53 @@ export async function reviewAdminExpeditionObjective(
     throw new AdminApiError('The objective review could not be verified.');
   }
 }
+
+
+export interface AdminBriefingQuestionInput {
+  prompt: string;
+  options: string[];
+  correctOptionIndex: number;
+  explanation: string;
+}
+export interface AdminBriefingInput {
+  id?: string;
+  title: string;
+  summary: string;
+  category: string;
+  content: Array<{ type: 'text' | 'image' | 'video'; title?: string; body?: string; url?: string; caption?: string }>;
+  accessMode: 'open' | 'progressive';
+  prerequisiteBriefingId: string | null;
+  passingScore: number;
+  rewardType: 'none' | 'zp' | 'zap';
+  rewardAmount: number;
+  questions: AdminBriefingQuestionInput[];
+}
+export interface AdminBriefingRecord extends AdminBriefingInput {
+  id: string;
+  slug: string;
+  status: 'draft' | 'published' | 'archived';
+  published_at: string | null;
+}
+export async function listAdminBriefings(creds: AdminCredentials): Promise<AdminBriefingRecord[]> {
+  const body = await callAdminApi(creds, { action: 'list_briefings' });
+  if (!body || typeof body !== 'object' || !Array.isArray((body as { briefings?: unknown }).briefings)) {
+    throw new AdminApiError('Could not load saved Intelligence Briefings.');
+  }
+  return (body as { briefings: AdminBriefingRecord[] }).briefings;
+}
+export async function saveAdminBriefing(creds: AdminCredentials, briefing: AdminBriefingInput): Promise<{ id: string }> {
+  const body = await callAdminApi(creds, { action: 'save_briefing_draft', briefing });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The briefing draft response could not be verified.');
+  const result = body as { success?: unknown; id?: unknown; status?: unknown };
+  if (result.success !== true || typeof result.id !== 'string' || result.status !== 'draft') {
+    throw new AdminApiError('The briefing draft could not be verified.');
+  }
+  return { id: result.id };
+}
+export async function publishAdminBriefing(creds: AdminCredentials, id: string): Promise<void> {
+  const body = await callAdminApi(creds, { action: 'publish_briefing', briefingId: id });
+  if (!body || typeof body !== 'object' || (body as { success?: unknown; status?: unknown }).success !== true ||
+      (body as { status?: unknown }).status !== 'published') {
+    throw new AdminApiError('Briefing publishing could not be verified.');
+  }
+}
