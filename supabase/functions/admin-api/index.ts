@@ -62,6 +62,7 @@ interface AdminRequestBody {
     reward?: number;
     platform?: string | null;
     actionUrl?: string | null;
+    telegramChatId?: string | null;
     rewardCurrency?: string;
     unlockCostZp?: number;
     status?: string;
@@ -184,6 +185,14 @@ function validateTask(
   if (task.objectives !== undefined && (!Array.isArray(task.objectives) || task.objectives.length > 50 || task.objectives.some((v) => typeof v !== 'string' || v.length > 300))) return "Invalid mission objectives";
   if (task.requirements !== undefined && (!Array.isArray(task.requirements) || task.requirements.length > 50 || task.requirements.some((v) => typeof v !== 'string' || v.length > 300))) return "Invalid mission requirements";
 
+  if (task.telegramChatId) {
+    const chatId = task.telegramChatId.trim();
+    if (!/^(?:-?\\d+|@[A-Za-z0-9_]{5,})$/.test(chatId)) {
+      return "Telegram chat ID must be a numeric chat ID or public @username";
+    }
+    if (task.kind !== "social") return "Telegram membership verification is only available for social missions";
+  }
+
   if (task.actionUrl) {
     try {
       const parsed = new URL(task.actionUrl);
@@ -302,7 +311,7 @@ Deno.serve(async (req: Request) => {
         db
           .from("mission_tasks")
           .select(
-            "id, kind, title, description, reward, platform, action_url, reward_currency, unlock_cost_zp, status, objectives, requirements"
+            "id, kind, title, description, reward, platform, action_url, telegram_chat_id, reward_currency, unlock_cost_zp, status, objectives, requirements"
           )
           .order("created_at", { ascending: true }),
 
@@ -364,6 +373,7 @@ Deno.serve(async (req: Request) => {
           reward: t.reward,
           platform: t.platform,
           actionUrl: t.action_url,
+          telegramChatId: t.telegram_chat_id ?? null,
           rewardCurrency: t.reward_currency ?? "ZP",
           unlockCostZp: t.unlock_cost_zp ?? 0,
           status: t.status ?? "published",
@@ -1150,6 +1160,7 @@ Deno.serve(async (req: Request) => {
             ? task.platform || null
             : null,
         action_url: task.actionUrl?.trim() || null,
+        telegram_chat_id: task.telegramChatId?.trim() || null,
         reward_currency: task.rewardCurrency ?? "ZP",
         unlock_cost_zp: task.unlockCostZp ?? 0,
         status: task.status ?? "draft",
