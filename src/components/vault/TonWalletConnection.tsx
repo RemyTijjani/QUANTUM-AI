@@ -209,6 +209,7 @@ export default function TonWalletConnection() {
         </div>
         <p className="mt-2 font-display text-2xl font-bold text-white">{loadingData ? '—' : availableTon.toLocaleString(undefined, { maximumFractionDigits: 9 })} <span className="text-xs font-normal text-neon-500">TON</span></p>
         <p className="mt-1 text-[9px] text-neon-700">Reserved for pending requests: {nanoTonToTon(walletData?.balance.reservedNano ?? '0')} TON</p>
+        {walletData?.wallet && !wallet && <p className="mt-1 text-[9px] text-neon-600">Verified payout wallet: {shortAddress(walletData.wallet.wallet_address)}</p>}
 
         {isVerified ? (
           <div className="mt-3 space-y-2">
