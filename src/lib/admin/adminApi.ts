@@ -882,3 +882,51 @@ export async function reserveAdminRafflePrize(
   }
   return result as AdminRaffleReservationResult;
 }
+
+
+export interface AdminTonWithdrawal {
+  id: string;
+  player_id: string;
+  wallet_address: string;
+  amount_nano: string;
+  status: 'pending' | 'approved' | 'processing';
+  admin_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  transaction_hash: string | null;
+  created_at: string;
+  updated_at: string;
+  paid_at: string | null;
+  telegram_id: number | string;
+  username: string | null;
+  first_name: string | null;
+}
+
+export async function listAdminTonWithdrawals(creds: AdminCredentials): Promise<AdminTonWithdrawal[]> {
+  const body = await callAdminApi(creds, { action: 'list_ton_withdrawals' });
+  if (!body || typeof body !== 'object' || !Array.isArray((body as { requests?: unknown }).requests)) {
+    throw new AdminApiError('Could not load TON withdrawal requests.');
+  }
+  return (body as { requests: AdminTonWithdrawal[] }).requests;
+}
+
+export type AdminTonWithdrawalAction = 'approve' | 'reject' | 'processing' | 'paid';
+
+export async function reviewAdminTonWithdrawal(
+  creds: AdminCredentials,
+  input: { requestId: string; action: AdminTonWithdrawalAction; note?: string; transactionHash?: string },
+): Promise<{ success: true; id: string; status: string; amountNano: string; transactionHash: string | null }> {
+  const body = await callAdminApi(creds, {
+    action: 'review_ton_withdrawal',
+    tonWithdrawalId: input.requestId,
+    withdrawalAction: input.action,
+    adminNote: input.note ?? '',
+    transactionHash: input.transactionHash ?? '',
+  });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The withdrawal review response could not be verified.');
+  const result = body as Record<string, unknown>;
+  if (result.success !== true || result.id !== input.requestId || typeof result.status !== 'string' || typeof result.amountNano !== 'string') {
+    throw new AdminApiError('The withdrawal request could not be updated. Refresh the queue before retrying.');
+  }
+  return result as { success: true; id: string; status: string; amountNano: string; transactionHash: string | null };
+}
