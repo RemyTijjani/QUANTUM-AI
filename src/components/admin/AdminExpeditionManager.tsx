@@ -118,6 +118,8 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     if (!title.trim()) { setSavedMessage('Add an Expedition name before saving.'); setSavedMessageKind('error'); return; }
     if (!validReward) { setSavedMessage('Enter a whole-number reward greater than zero, or select No reward.'); setSavedMessageKind('error'); return; }
     if (!validDates) { setSavedMessage('The end date must be later than the start date.'); setSavedMessageKind('error'); return; }
+    if (participation !== 'solo' && (!startsAt || !endsAt)) { setSavedMessage('Team Expeditions need both a future start date and an end date.'); setSavedMessageKind('error'); return; }
+    if (participation !== 'solo' && new Date(startsAt) <= new Date()) { setSavedMessage('Choose a future start date so players have time to register their teams.'); setSavedMessageKind('error'); return; }
     if (objectives.length === 0) { setSavedMessage('Add at least one objective before saving.'); setSavedMessageKind('error'); return; }
     const min = Number(teamMin);
     const max = Number(teamMax);
