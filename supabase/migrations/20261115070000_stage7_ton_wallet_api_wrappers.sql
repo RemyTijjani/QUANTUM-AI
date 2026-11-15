@@ -129,15 +129,15 @@ as $$
       from app_private.player_ton_wallets w
       where w.player_id = p_player_id
     ),
-    'balance', (
+    'balance', coalesce((
       select jsonb_build_object(
-        'availableNano', coalesce(b.available_nano, 0)::text,
-        'reservedNano', coalesce(b.reserved_nano, 0)::text,
+        'availableNano', b.available_nano::text,
+        'reservedNano', b.reserved_nano::text,
         'updatedAt', b.updated_at
       )
       from app_private.player_ton_balances b
       where b.player_id = p_player_id
-    ),
+    ), jsonb_build_object('availableNano', '0', 'reservedNano', '0', 'updatedAt', null)),
     'transactions', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', t.id,
