@@ -237,17 +237,17 @@ function AgentRentalCheckout() {
   const isMainnetWallet = walletNetwork === '-239';
 
   return (
-    <section className="panel space-y-4 border border-cyan-400/25 p-4">
-      <div>
+    <section className="panel space-y-5 overflow-hidden rounded-2xl border border-neon/25 bg-gradient-to-b from-neon/[0.06] to-black/30 p-4 sm:p-5">
+      <div className="space-y-2">
         <p className="label">Native coin · TON mainnet</p>
-        <h2 className="title mt-1">Rent a mining agent</h2>
-        <p className="mt-2 font-mono text-[10px] leading-relaxed text-neon-500">
+        <h2 className="title">Rent a mining agent</h2>
+        <p className="max-w-xl text-[11px] leading-relaxed text-neon-500">
           ZORD displays the native TON coin as GRAM. Both rentals run for 30 days.
           Working agents generate ZP only.
         </p>
       </div>
 
-      <div className="border border-neon/20 bg-black/30 p-3">
+      <div className="rounded-xl border border-neon/20 bg-black/35 p-4">
         <div className="flex items-center gap-2">
           <Wallet size={15} className="text-cyan-300" />
           <p className="label">TON wallet</p>
@@ -272,23 +272,23 @@ function AgentRentalCheckout() {
         </div>
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         {RENTAL_OPTIONS.map((option) => (
-          <article key={option.id} className="border border-neon/20 bg-black/30 p-3">
+          <article key={option.id} className="flex h-full flex-col rounded-xl border border-neon/20 bg-black/35 p-4 transition-colors hover:border-neon/35">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="font-display text-xs font-bold text-neon-300">{option.title}</h3>
-                <p className="mt-1 font-mono text-[10px] text-neon-600">{option.description}</p>
+                <h3 className="font-display text-sm font-bold leading-snug text-neon-200">{option.title}</h3>
+                <p className="mt-2 text-[11px] leading-relaxed text-neon-500">{option.description}</p>
               </div>
-              <span className="shrink-0 font-display text-sm font-bold text-cyan-300">{option.price}</span>
+              <span className="shrink-0 rounded-lg border border-cyan-300/20 bg-cyan-300/5 px-2.5 py-1.5 font-display text-sm font-bold text-cyan-200">{option.price}</span>
             </div>
-            <div className="mt-3 flex items-center justify-between gap-2 font-mono text-[10px] text-neon-400">
+            <div className="mt-4 flex items-center justify-between gap-2 border-t border-neon/10 pt-3 font-mono text-[10px] text-neon-400">
               <span>{option.rate}</span>
               <span>30 days</span>
             </div>
             <button
               type="button"
-              className="btn-primary mt-3 w-full"
+              className="btn-primary mt-auto w-full rounded-lg py-3"
               disabled={!rentalBackendActionsEnabled || busy !== null || (intent !== null && Date.parse(intent.expiresAt) > Date.now())}
               onClick={() => void createIntent(option.id)}
             >
@@ -300,7 +300,7 @@ function AgentRentalCheckout() {
       </div>
 
       {intent && (
-        <div className="space-y-3 border border-cyan-400/30 bg-cyan-400/5 p-3">
+        <div className="space-y-4 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.04] p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="font-display text-xs font-bold uppercase text-cyan-300">Wallet checkout ready</p>
             <span className="font-mono text-[9px] uppercase text-amber-300">
@@ -394,13 +394,13 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
 
       <AgentRentalCheckout />
 
-      <section className="panel space-y-3 p-4">
+      <section className="panel space-y-4 rounded-2xl border border-neon/20 p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div><p className="label">Mining operations</p><h2 className="title mt-1">ZP agent activity</h2></div>
           <Activity size={18} className="text-neon-400" />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="border border-neon/20 bg-black/40 p-3"><p className="label">Active miners</p><p className="mt-1 font-display text-xl text-neon-300">{running.length}</p></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-neon/20 bg-black/35 p-3"><p className="label">Active miners</p><p className="mt-1 font-display text-xl text-neon-300">{running.length}</p></div>
           <div className="border border-neon/20 bg-black/40 p-3"><p className="label">Displayed rate</p><p className="mt-1 font-display text-xl text-neon-300">{formatRate(miningRate)} <span className="text-[10px]">ZP/s</span></p></div>
         </div>
         <div className="space-y-2">
@@ -408,7 +408,7 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
             const agent = AGENTS[id];
             const endsAt = state.agents[id];
             const isActive = endsAt > now;
-            return <article key={id} className="flex items-start justify-between gap-3 border border-neon/15 bg-black/30 p-3">
+            return <article key={id} className="flex items-start justify-between gap-3 rounded-xl border border-neon/15 bg-black/30 p-3.5">
               <div className="min-w-0"><p className="font-display text-xs font-bold text-neon-300">{agent.name}</p><p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-600">{agent.summary}</p><p className="mt-2 font-mono text-[10px] text-cyan-300">{formatRate(agent.zpPerSec)} ZP/sec while active</p></div>
               <span className={'shrink-0 border px-2 py-1 font-mono text-[9px] uppercase ' + (isActive ? 'border-green-500/40 text-green-300' : 'border-neon/20 text-neon-600')}>{isActive ? formatRemaining(endsAt - now) : 'Inactive'}</span>
             </article>;
@@ -417,13 +417,13 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
         <p className="font-mono text-[9px] leading-relaxed text-amber-300">Mining figures shown here are legacy game-state estimates, not a verified payout or withdrawable balance. Confirmed rentals are not yet connected to trusted ZP accrual. Working agents generate ZP only.</p>
       </section>
 
-      <section className="space-y-3">
-        <div><p className="label">Community protection tiers</p><h2 className="title mt-1">Rent a ZORD service</h2></div>
-        {tiers.map(({ name, tier, icon: Icon, summary, features }) => <article key={name} className="panel space-y-3 border border-neon/25 p-4">
-          <div className="flex items-center justify-between"><span className="font-mono text-[9px] uppercase tracking-widest text-cyan-300">{tier}</span><Icon size={19} className="text-neon-400" /></div>
-          <div><h3 className="font-display text-base font-bold uppercase tracking-wider text-neon-300">{name}</h3><p className="mt-1 font-mono text-[10px] text-neon-500">{summary}</p></div>
-          <ul className="space-y-1">{features.map(feature => <li key={feature} className="font-mono text-[10px] text-neon-400">• {feature}</li>)}</ul>
-          <div className="border-t border-neon/15 pt-2 font-mono text-[9px] uppercase tracking-wider text-amber-300">Telegram bot provisioning pending</div>
+      <section className="space-y-4">
+        <div className="space-y-1"><p className="label">Community protection tiers</p><h2 className="title">Rent a ZORD service</h2><p className="text-[11px] leading-relaxed text-neon-600">Explore the available community service levels.</p></div>
+        {tiers.map(({ name, tier, icon: Icon, summary, features }) => <article key={name} className="panel space-y-4 rounded-2xl border border-neon/20 bg-black/25 p-4 sm:p-5 transition-colors hover:border-neon/35">
+          <div className="flex items-center justify-between"><span className="rounded-md border border-cyan-300/20 bg-cyan-300/5 px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-cyan-200">{tier}</span><span className="flex h-9 w-9 items-center justify-center rounded-xl border border-neon/20 bg-neon/5"><Icon size={18} className="text-neon-300" /></span></div>
+          <div><h3 className="font-display text-base font-bold uppercase tracking-wider text-neon-200">{name}</h3><p className="mt-1 text-[11px] leading-relaxed text-neon-500">{summary}</p></div>
+          <ul className="space-y-2">{features.map(feature => <li key={feature} className="flex items-start gap-2 text-[11px] leading-relaxed text-neon-400"><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-neon-400" />{feature}</li>)}</ul>
+          <div className="rounded-lg border border-amber-300/15 bg-amber-300/[0.04] px-3 py-2 font-mono text-[9px] uppercase tracking-wider text-amber-200">Telegram bot provisioning pending</div>
         </article>)}
       </section>
     </div>
