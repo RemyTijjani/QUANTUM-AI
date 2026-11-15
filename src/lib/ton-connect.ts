@@ -2,13 +2,21 @@ export interface TonConnectWallet {
   account: {
     address: string;
     chain: string;
+    publicKey?: string;
+    walletStateInit?: string;
+  };
+  connectItems?: {
+    tonProof?:
+      | { name: 'ton_proof'; proof: { timestamp: number | string; domain: { lengthBytes: number; value: string }; signature: string; payload: string } }
+      | { name: 'ton_proof'; error: { code: number; message?: string } };
   };
 }
 
 interface TonConnectUIInstance {
   wallet: TonConnectWallet | null;
-  account: { address: string; chain: string } | null;
+  account: { address: string; chain: string; publicKey?: string; walletStateInit?: string } | null;
   setConnectionNetwork(network: string): void;
+  setConnectRequestParameters(parameters: null | { state: 'loading' } | { state: 'ready'; value: { tonProof: string } }): void;
   onStatusChange(callback: (wallet: TonConnectWallet | null) => void): () => void;
   openModal(): Promise<void>;
   disconnect(): Promise<void>;
