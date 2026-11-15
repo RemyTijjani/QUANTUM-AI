@@ -109,6 +109,7 @@ function TaskFormModal({
     const form = new FormData(e.currentTarget);
     const platform = String(form.get('platform') ?? '');
     const actionUrl = String(form.get('actionUrl') ?? '').trim();
+    const telegramChatId = String(form.get('telegramChatId') ?? '').trim();
 
     const input: AdminTaskInput = {
       id: task?.id,
@@ -118,6 +119,7 @@ function TaskFormModal({
       reward: Number(form.get('reward')),
       platform: kind === 'creator' && (platform === 'tiktok' || platform === 'youtube') ? platform : null,
       actionUrl: actionUrl || null,
+      telegramChatId: telegramChatId || null,
       rewardCurrency,
       unlockCostZp: Number(form.get('unlockCostZp') ?? 0),
       status,
@@ -205,6 +207,13 @@ function TaskFormModal({
           <textarea name="requirements" rows={3} defaultValue={task?.requirements.join('\n') ?? ''} disabled={saving} placeholder="Write one requirement per line. Example: Have access to the official ZORD Telegram channel." className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
           <p className="text-[10px] text-neon-600 mt-1">Beginner tip: describe the requirement in plain language, one per line. No code or JSON is needed.</p>
         </div>
+        {kind === 'social' && (
+          <div>
+            <label className="text-[11px] text-neon-500 uppercase">Telegram chat ID (for automatic membership checks)</label>
+            <input name="telegramChatId" defaultValue={task?.telegramChatId ?? ''} disabled={saving} placeholder="-1001234567890 or @publicchannel" className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50" />
+            <p className="text-[10px] text-neon-600 mt-1">Required for Telegram rewards. Use the channel/group ID (not the invite link). The ZORD bot must be an administrator there. Leave blank for missions that are not Telegram membership missions.</p>
+          </div>
+        )}
         <p className="text-[10px] text-amber-300">Reward safety: ZAP is configuration only and cannot be paid yet. ZP unlock cost is also only a setting; players are not charged. Mission rewards must not be treated as earned until the relevant activity has a trusted server-side verification and payout flow.</p>
         <div>
           <label className="text-[11px] text-neon-500 uppercase">Link for the player (optional)</label>
