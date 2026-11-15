@@ -1211,7 +1211,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Choose a future start date and an end date later than the start" }, 400);
       }
       const { data: current, error: readError } = await db.from("expeditions")
-        .select("id, title, status, starts_at, registration_closes_at")
+        .select("id, title, status, starts_at, ends_at, registration_closes_at")
         .eq("id", id).maybeSingle();
       if (readError || !current) return json({ error: "Expedition not found" }, 404);
       if (!["scheduled", "registration_open"].includes(current.status) ||
@@ -1223,7 +1223,7 @@ Deno.serve(async (req: Request) => {
         .select("id", { count: "exact", head: true }).eq("expedition_id", id);
       if (participationError) return json({ error: "Could not verify Expedition registrations" }, 500);
       if ((count ?? 0) > 0) return json({ error: "This Expedition already has registered players or teams. Duplicate it to change its schedule." }, 409);
-      const beforeState = { starts_at: current.starts_at, ends_at: null, status: current.status };
+      const beforeState = { starts_at: current.starts_at, ends_at: current.ends_at, status: current.status };
       const { data: updated, error: updateError } = await db.from("expeditions").update({
         starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(),
         updated_by: ADMIN_USERNAME, updated_at: now.toISOString(),
@@ -1276,7 +1276,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "publish_expedition") {
       const id = body.expeditionId;
       if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "A valid Expedition ID is required" }, 400);
-      const { data: current, error: readError } = await db.from("expeditions").select("id, status, title, starts_at").eq("id", id).maybeSingle();
+      const { data: current, error: readError } = await db.from("expeditions").select("id, status, title, starts_at, participation_mode").eq("id", id).maybeSingle();
       if (readError || !current) return json({ error: "Expedition not found" }, 404);
       if (current.status !== "draft") return json({ error: "Only an unpublished draft can be published" }, 409);
       const [{ count: objectiveCount, error: objectiveError }, { data: reward, error: rewardError }] = await Promise.all([
@@ -1285,6 +1285,9 @@ Deno.serve(async (req: Request) => {
       ]);
       if (objectiveError || rewardError) return json({ error: "Could not validate Expedition before publishing" }, 500);
       if (!objectiveCount || !reward) return json({ error: "Add objectives and reward configuration before publishing" }, 400);
+      if (["team", "both"].includes(current.participation_mode) && !current.starts_at) {
+        return json({ error: "Set a future start date before publishing a team Expedition" }, 400);
+      }
       // Publish changes only the admin lifecycle state. No player-facing read/claim path is enabled by this action.
       const nextStatus = current.starts_at && new Date(current.starts_at).getTime() > Date.now() ? "scheduled" : "registration_open";
       const { error: updateError } = await db.from("expeditions").update({
