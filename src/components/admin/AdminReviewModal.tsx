@@ -261,6 +261,15 @@ function AdminConsole({
     ] },
   ] as const;
 
+  const overviewActions = [
+    { tab: 'queue', title: 'Review submissions', description: 'Check evidence and approve or reject pending work.', icon: ClipboardCheck, detail: `${data.stats.pendingSubmissions} awaiting review` },
+    { tab: 'tasks', title: 'Manage missions', description: 'Create, update and organize player tasks.', icon: ListTodo, detail: `${data.tasks.length} configured tasks` },
+    { tab: 'players', title: 'Manage players', description: 'Find player profiles and inspect account activity.', icon: Users },
+    { tab: 'expeditions', title: 'Manage Expeditions', description: 'Publish events, review objectives and issue eligible rewards.', icon: Compass },
+    { tab: 'raffles', title: 'Manage Raffles', description: 'Configure raffles and review their prize setup.', icon: Ticket },
+    { tab: 'raffle-funding', title: 'Manage funding', description: 'Review external prize funding records.', icon: Wallet },
+  ] as const;
+
   return (
     <div className="fixed inset-0 z-50 box-border flex h-dvh w-full min-w-0 max-w-full flex-col overflow-hidden gap-4 bg-[#080e0a] p-3 font-sans text-slate-100 sm:p-5">
       <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
@@ -463,7 +472,7 @@ function AdminConsole({
             <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm">
               <div className="flex items-center justify-between text-slate-400 mb-2">
                 <span className="text-[11px] uppercase tracking-wider">
-                  Active Operatives
+                  Registered players
                 </span>
                 <Users size={16} />
               </div>
@@ -528,6 +537,35 @@ function AdminConsole({
               </p>
             </div>
           </div>
+
+          <section aria-labelledby="overview-actions-title" className="space-y-3">
+            <div>
+              <h2 id="overview-actions-title" className="text-sm font-semibold text-white">Quick access</h2>
+              <p className="mt-1 text-xs text-slate-400">Jump straight to the areas you manage most often.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {overviewActions.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.tab}
+                    type="button"
+                    onClick={() => setActiveTab(item.tab)}
+                    className="group flex min-h-28 items-start gap-3 rounded-2xl border border-white/10 bg-[#111a14] p-4 text-left transition hover:border-emerald-400/30 hover:bg-emerald-400/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+                  >
+                    <span className="rounded-xl bg-emerald-400/10 p-2 text-emerald-300">
+                      <Icon size={18} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-slate-100 group-hover:text-emerald-200">{item.title}</span>
+                      <span className="mt-1 block text-xs leading-relaxed text-slate-400">{item.description}</span>
+                      {'detail' in item && <span className="mt-2 block text-[10px] font-medium text-emerald-300">{item.detail}</span>}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <VaultReservesCard
