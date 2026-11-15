@@ -45,18 +45,18 @@ export default function AdminPlayerManager({ creds }: Props) {
   };
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm space-y-4">
+    <section className="space-y-5 rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-3">
         <div>
-          <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-300">
-            <Users size={15} /> Player Directory
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
+            <Users size={17} className="text-emerald-300" /> Player management
           </h2>
-          <p className="mt-1 text-[10px] text-slate-400">
-            Read-only account lookup. Up to 50 most recent matches.
+          <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-400">
+            Find a registered player and open their economy details. This directory is read-only.
           </p>
         </div>
-        <span className="text-[10px] uppercase tracking-wider text-slate-400">
-          {loading ? 'Loading records…' : `${players.length} record${players.length === 1 ? '' : 's'} shown`}
+        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-300" aria-live="polite">
+          {loading ? 'Loading players…' : `${players.length} ${players.length === 1 ? 'player' : 'players'} shown`}
         </span>
       </div>
 
@@ -67,7 +67,7 @@ export default function AdminPlayerManager({ creds }: Props) {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           maxLength={64}
-          placeholder="Search username, first name, referral code, or Telegram ID"
+          placeholder="Search by name, username, referral code or Telegram ID"
           className="admin-field min-w-0 flex-1"
         />
         <button
@@ -75,7 +75,7 @@ export default function AdminPlayerManager({ creds }: Props) {
           disabled={loading}
           className="flex items-center justify-center gap-2 border border-emerald-400/40 bg-emerald-400/10 px-4 py-2 text-[10px] uppercase tracking-wider text-emerald-300 hover:bg-emerald-400/15 disabled:opacity-50"
         >
-          <Search size={13} /> Search
+          <Search size={13} /> Search players
         </button>
         <button
           type="button"
@@ -84,9 +84,10 @@ export default function AdminPlayerManager({ creds }: Props) {
           className="flex items-center justify-center gap-2 border border-white/10 px-3 py-2 text-[10px] uppercase tracking-wider text-slate-400 hover:text-emerald-300 disabled:opacity-50"
           aria-label="Refresh player list"
         >
-          <RefreshCw size={13} /> Reset
+          <RefreshCw size={13} /> Clear
         </button>
       </form>
+      <p className="-mt-2 text-[10px] leading-relaxed text-slate-500">Search checks the player name, username, referral code and Telegram ID. Up to 50 recent matches are shown.</p>
 
       {error && (
         <div role="alert" className="flex flex-col gap-2 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-3 text-[11px] text-red-200 sm:flex-row sm:items-center sm:justify-between">
@@ -141,7 +142,7 @@ export default function AdminPlayerManager({ creds }: Props) {
                   </td>
                   <td className="px-3 py-3">
                     <button type="button" onClick={() => setSelectedPlayer(player)} className="inline-flex items-center gap-1.5 border border-white/10 px-2 py-1.5 text-[9px] uppercase tracking-wider text-emerald-300 hover:bg-emerald-400/10">
-                      <Wallet size={11} /> View
+                      <Wallet size={11} /> View economy
                     </button>
                   </td>
                 </tr>
@@ -179,7 +180,7 @@ export default function AdminPlayerManager({ creds }: Props) {
         />
       )}
       <p className="text-[10px] text-slate-500">
-        Player records are not modified from this directory. Account restrictions and economy adjustments are not enabled here.
+        This directory does not change player accounts or balances. Economy details are available for inspection only; account restrictions and manual adjustments are not enabled here.
       </p>
     </section>
   );
