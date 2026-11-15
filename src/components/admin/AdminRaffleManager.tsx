@@ -9,7 +9,7 @@ import {
 } from '@/lib/admin/adminApi';
 import type { AdminCredentials, AdminRaffleRecord } from '@/lib/admin/adminApi';
 
-const money = (value: number | string, currency: string) => `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`;
+const money = (value: number | string, currency: string) => `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency === 'TON' ? 'Gram' : currency}`;
 const errorText = (error: unknown) => error instanceof AdminApiError ? error.message : 'Something went wrong. Please try again.';
 const toLocalDateTime = (value: string | null) => {
   if (!value) return '';
