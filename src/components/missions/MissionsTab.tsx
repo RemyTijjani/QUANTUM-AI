@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock, Search, Target } from 'lucide-react';
+import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock } from 'lucide-react';
 import { AD_QUOTA_TARGET } from '@/lib/game/config';
 import type { MissionSpec } from '@/lib/game/config';
 import { adsWatchedToday, missionStatus } from '@/lib/game/state';
@@ -29,16 +29,9 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
     setActiveView(initialView);
   }, [initialView]);
 
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<'all' | 'daily' | 'social' | 'creator'>('all');
-  const searchTerm = search.trim().toLowerCase();
-  const visibleMissions = missions.filter((mission) => {
-    const matchesSearch = !searchTerm || mission.title.toLowerCase().includes(searchTerm) || mission.description.toLowerCase().includes(searchTerm);
-    return matchesSearch && (category === 'all' || mission.kind === category);
-  });
-  const daily = visibleMissions.filter((m) => m.kind === 'daily');
-  const social = visibleMissions.filter((m) => m.kind === 'social');
-  const creator = visibleMissions.filter((m) => m.kind === 'creator');
+  const daily = missions.filter((m) => m.kind === 'daily');
+  const social = missions.filter((m) => m.kind === 'social');
+  const creator = missions.filter((m) => m.kind === 'creator');
   const readyCount = missions.filter((mission) => missionStatus(state, mission, now) === 'ready').length;
   const claimedCount = missions.filter((mission) => missionStatus(state, mission, now) === 'claimed').length;
 
@@ -66,32 +59,8 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
 
       <Stage6EngagementHub active={activeView} onChange={setActiveView} onZpReward={onRefreshVerifiedEconomy} notify={notify} />
 
-      <div className={activeView === 'missions' ? 'space-y-5' : 'hidden'}>
+      <div className={activeView === 'missions' ? 'space-y-6' : 'hidden'}>
       <section className="space-y-3">
-        <div className="rounded-xl border border-neon/15 bg-black/25 p-3">
-          <label className="flex items-center gap-2 rounded-lg border border-neon/20 bg-black/35 px-3 py-2.5">
-            <Search size={14} className="shrink-0 text-neon-600" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a mission…" className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-neon-200 outline-none placeholder:text-neon-700" />
-            {search && <button type="button" onClick={() => setSearch('')} className="text-[10px] text-neon-400">Clear</button>}
-          </label>
-          <div className="mt-3 grid grid-cols-4 gap-1.5">
-            {([{ id: 'all', label: 'All' }, { id: 'daily', label: 'Daily' }, { id: 'social', label: 'Social' }, { id: 'creator', label: 'Creator' }] as const).map((item) => (
-              <button key={item.id} type="button" onClick={() => setCategory(item.id)} aria-pressed={category === item.id} className={`rounded-lg border px-2 py-2 font-mono text-[9px] uppercase tracking-wide transition ${category === item.id ? 'border-neon/40 bg-neon/10 text-neon-200' : 'border-white/10 bg-white/[0.02] text-neon-600 hover:text-neon-300'}`}>
-                {item.label}<span className="ml-1 opacity-70">{item.id === 'all' ? missions.length : missions.filter((mission) => mission.kind === item.id).length}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        {visibleMissions.length === 0 && (
-          <div className="rounded-xl border border-dashed border-neon/20 bg-black/20 px-4 py-10 text-center">
-            <Search size={22} className="mx-auto text-neon-700" />
-            <p className="mt-3 text-sm font-semibold text-neon-200">No missions found</p>
-            <p className="mt-1 text-[10px] text-neon-600">Try another search or choose a different category.</p>
-            <button type="button" onClick={() => { setSearch(''); setCategory('all'); }} className="mt-3 text-[10px] font-mono uppercase text-neon-300">Reset filters</button>
-          </div>
-        )}
-      </section>
-      {daily.length > 0 && <section className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <CalendarCheck size={14} className="text-neon-400" />
           <p className="label">Daily Protocols</p>
@@ -110,9 +79,9 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             }
           />
         ))}
-      </section>}
+      </section>
 
-      {social.length > 0 && <section className="space-y-3">
+      <section className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <Megaphone size={14} className="text-neon-400" />
           <p className="label">Social Raids</p>
@@ -126,9 +95,9 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             onRefreshVerifiedEconomy={onRefreshVerifiedEconomy}
           />
         ))}
-      </section>}
+      </section>
 
-      {creator.length > 0 && <section className="space-y-3">
+      <section className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <Video size={14} className="text-neon-400" />
           <div className="flex flex-1 items-center justify-between">
@@ -150,7 +119,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             notify={notify}
           />
         ))}
-      </section>}
+      </section>
       </div>
     </div>
   );
