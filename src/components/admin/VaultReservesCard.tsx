@@ -58,7 +58,7 @@ export default function VaultReservesCard({ reserves, refreshing, onSave }: Vaul
       {editing ? (
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-[11px] text-slate-400 uppercase">TON Reserve</label>
+            <label className="text-[11px] text-slate-400 uppercase">Gram Reserve</label>
             <input
               type="number"
               min={0}
@@ -100,7 +100,7 @@ export default function VaultReservesCard({ reserves, refreshing, onSave }: Vaul
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div className="flex items-center gap-2 text-slate-400 mb-1">
-              <Coins size={14} /> <span className="text-[11px] uppercase tracking-wider">TON Reserve</span>
+              <Coins size={14} /> <span className="text-[11px] uppercase tracking-wider">Gram Reserve</span>
             </div>
             <p className="text-2xl font-display font-bold text-emerald-300 tabular-nums">
               {refreshing ? '...' : reserves.tonReserve.toLocaleString(undefined, { maximumFractionDigits: 4 })}
