@@ -399,7 +399,8 @@ interface AdminRequestBody {
     | "confirm_external_zap_funding"
     | "list_external_zap_funding"
     | "list_raffles"
-    | "save_raffle_draft";
+    | "save_raffle_draft"
+    | "reserve_raffle_prize";
   adminUsername?: string;
   search?: string;
   playerId?: string;
@@ -1810,6 +1811,25 @@ Deno.serve(async (req: Request) => {
       return json({ success: true });
     }
 
+    // Reserve the complete prize pool before any raffle can be published.
+    // The database RPC locks the raffle and reserve rows and is idempotent.
+    if (body.action === "reserve_raffle_prize") {
+      const raffleId = typeof body.raffle?.id === "string" ? body.raffle.id : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raffleId)) {
+        return json({ error: "A valid raffle ID is required." }, 400);
+      }
+      const { data, error } = await db.rpc("reserve_raffle_prize", {
+        p_raffle_id: raffleId,
+        p_admin: ADMIN_USERNAME,
+      });
+      if (error || !data) {
+        console.error("Raffle prize reservation failed:", error);
+        const message = error?.message ?? "Could not reserve this prize pool.";
+        return json({ error: message }, 409);
+      }
+      return json(data);
+    }
+
     // Record externally sourced ZAP only after the signed-in Admin has checked the
     // deposit outside ZORD. The database RPC atomically audits and increases the
     // separate raffle reserve; it never credits a player wallet.
@@ -1849,8 +1869,7 @@ Deno.serve(async (req: Request) => {
       if (!["one_bet_one_entry", "proportional"].includes(String(entryMode))) return json({ error: "Choose a valid entry method." }, 400);
       if (!["random", "admin"].includes(String(winnerMethod))) return json({ error: "Choose a valid winner selection method." }, 400);
       if (!["treasury", "external"].includes(String(fundingSource))) return json({ error: "Choose a valid prize funding source." }, 400);
-      if (rewardType === "agent" && (!["alpha", "overclock"].includes(String(rewardCode)) || !Number.isInteger(amount) || amount < winnerCount)) return json({ error: "Select an available agent and provide at least one agent per winner." }, 400);
-      if (rewardType !== "agent" && rewardCode !== null) return json({ error: "Only Agent prizes can have an agent selection." }, 400);
+      if (rewardCode !== null) return json({ error: "Agent prizes are no longer supported." }, 400);
       if (startsAt && (!Number.isFinite(Date.parse(startsAt)))) return json({ error: "The start date is invalid." }, 400);
       if (endsAt && (!Number.isFinite(Date.parse(endsAt)))) return json({ error: "The closing date is invalid." }, 400);
       if (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt)) return json({ error: "The closing date must be after the start date." }, 400);
