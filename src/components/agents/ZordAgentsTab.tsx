@@ -34,6 +34,13 @@ interface PaymentIntent {
   expiresAt: string;
 }
 
+interface ActiveAgentRental {
+  agentType: AgentRentalType;
+  startsAt: string;
+  expiresAt: string;
+  ratePerSecond: number;
+}
+
 const RENTAL_OPTIONS: {
   id: AgentRentalType;
   title: string;
@@ -63,6 +70,9 @@ function AgentRentalCheckout() {
   const [notice, setNotice] = useState('');
   const [noticeKind, setNoticeKind] = useState<'info' | 'success' | 'error'>('info');
   const [activeUntil, setActiveUntil] = useState<string | null>(null);
+  const [activeRentals, setActiveRentals] = useState<ActiveAgentRental[]>([]);
+  const [rentalSummaryLoading, setRentalSummaryLoading] = useState(true);
+  const [rentalSummaryError, setRentalSummaryError] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [walletNetwork, setWalletNetwork] = useState<string | null>(null);
   const [walletReady, setWalletReady] = useState(false);
@@ -103,6 +113,33 @@ function AgentRentalCheckout() {
       unsubscribe?.();
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadActiveRentals = async () => {
+      setRentalSummaryLoading(true);
+      setRentalSummaryError(false);
+      try {
+        const { data, error } = await supabase.functions.invoke('player-economy', {
+          method: 'GET',
+        });
+        if (error || !data?.success) {
+          throw new Error(data?.error || error?.message || 'Could not load verified rental status.');
+        }
+        if (mounted) {
+          setActiveRentals(Array.isArray(data.activeAgentRentals) ? data.activeAgentRentals : []);
+        }
+      } catch {
+        if (mounted) setRentalSummaryError(true);
+      } finally {
+        if (mounted) setRentalSummaryLoading(false);
+      }
+    };
+
+    void loadActiveRentals();
+    return () => { mounted = false; };
+  }, [activeUntil]);
 
   const connectWallet = async () => {
     try {
@@ -299,6 +336,45 @@ function AgentRentalCheckout() {
         ))}
       </div>
 
+      <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.035] p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="label">Verified rental mining</p>
+            <p className="mt-1 font-display text-sm font-bold text-cyan-200">Trusted ZP accrual</p>
+          </div>
+          <span className="rounded-full border border-cyan-300/20 px-2 py-1 font-mono text-[9px] uppercase text-cyan-200">
+            Server tracked
+          </span>
+        </div>
+        <p className="mt-2 font-mono text-[9px] leading-relaxed text-neon-500">
+          Confirmed rentals add ZP to your verified balance while active. Accrual stops at the exact rental expiry, and each credited period is protected against duplicate processing.
+        </p>
+        {rentalSummaryLoading ? (
+          <p className="mt-3 font-mono text-[10px] text-neon-500">Checking your rental status…</p>
+        ) : rentalSummaryError ? (
+          <p className="mt-3 font-mono text-[10px] text-amber-300">Verified rental status is temporarily unavailable. Your balance has not been changed by this display.</p>
+        ) : activeRentals.length === 0 ? (
+          <p className="mt-3 font-mono text-[10px] text-neon-500">No confirmed mining rental is currently active.</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {activeRentals.map((rental) => (
+              <div key={rental.agentType} className="flex items-center justify-between gap-3 rounded-lg border border-neon/15 bg-black/25 p-3">
+                <div className="min-w-0">
+                  <p className="font-display text-xs font-bold text-neon-200">
+                    {rental.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}
+                  </p>
+                  <p className="mt-1 font-mono text-[10px] text-cyan-200">{rental.ratePerSecond} ZP / second</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="font-mono text-[9px] uppercase text-green-300">Active</p>
+                  <p className="mt-1 font-mono text-[9px] text-neon-500">Until {new Date(rental.expiresAt).toLocaleString()}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {intent && (
         <div className="space-y-4 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.04] p-4">
           <div className="flex items-center justify-between gap-2">
@@ -366,7 +442,7 @@ function AgentRentalCheckout() {
         </p>
       )}
       <p className="font-mono text-[9px] leading-relaxed text-amber-300">
-        A wallet connection never activates a rental. The server must independently verify the TON mainnet transaction and its unique comment before recording payment. Confirmed rentals are not yet connected to trusted ZP accrual.
+        A wallet connection never activates a rental. The server independently verifies the TON mainnet transaction and its unique comment. Only confirmed rentals earn ZP, and accrual stops at expiry.
       </p>
     </section>
   );
@@ -421,7 +497,7 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
             </article>;
           })}
         </div>
-        <p className="font-mono text-[9px] leading-relaxed text-amber-300">Mining figures shown here are legacy game-state estimates, not a verified payout or withdrawable balance. Confirmed rentals are not yet connected to trusted ZP accrual. Working agents generate ZP only.</p>
+        <p className="font-mono text-[9px] leading-relaxed text-amber-300">The activity figures above are legacy game-state estimates, not a withdrawable balance. Paid GRAM rentals are shown separately in the verified rental panel and credited through the trusted ZP ledger.</p>
       </section>
 
       <section className="space-y-4">
