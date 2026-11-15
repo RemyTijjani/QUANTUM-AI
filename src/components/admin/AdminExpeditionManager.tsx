@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Compass, Plus, ChevronLeft, ChevronRight, Save, Users, BookOpen, Gamepad2, Globe, Trophy, CalendarDays, Sparkles, Layers, ShieldCheck, Clock3 } from 'lucide-react';
-import { listAdminExpeditions, publishAdminExpedition, saveExpeditionDraft, listAdminExpeditionObjectiveReviews, reviewAdminExpeditionObjective, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput, type AdminExpeditionRecord, type AdminExpeditionObjectiveReview } from '@/lib/admin/adminApi';
+import { Compass, Plus, ChevronLeft, ChevronRight, Save, Users, BookOpen, Gamepad2, Globe, Trophy, CalendarDays, Sparkles, Layers, ShieldCheck, Clock3, Copy, CalendarClock } from 'lucide-react';
+import { listAdminExpeditions, publishAdminExpedition, rescheduleAdminExpedition, saveExpeditionDraft, listAdminExpeditionObjectiveReviews, reviewAdminExpeditionObjective, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput, type AdminExpeditionRecord, type AdminExpeditionObjectiveReview } from '@/lib/admin/adminApi';
 
 type ObjectiveKind = 'briefing' | 'quiz' | 'game' | 'community' | 'external' | 'milestone';
 type Objective = { id: number; kind: ObjectiveKind; title: string; scope: 'individual' | 'team' | 'both' };
@@ -42,6 +42,9 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const [loadingDrafts, setLoadingDrafts] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const [rescheduleStart, setRescheduleStart] = useState('');
+  const [rescheduleEnd, setRescheduleEnd] = useState('');
   const [savedMessage, setSavedMessage] = useState('');
   const [savedMessageKind, setSavedMessageKind] = useState<'success' | 'error' | 'info'>('info');
   const [saving, setSaving] = useState(false);
@@ -172,6 +175,52 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     setObjectives(draft.objectives.map((o,i) => ({ id: i+1, kind: o.objective_type, title: o.title, scope: o.completion_scope ?? 'individual' })));
     setStep(0); setCreating(true); setSavedMessage(''); setSavedMessageKind('info');
   };
+  const duplicateExpedition = (draft: AdminExpeditionRecord) => {
+    const categoryLabels: Record<string, string> = { open:'Open', progressive:'Progressive', seasonal:'Seasonal', community:'Community', competitive:'Competitive', team:'Team', special_limited_time:'Special limited-time' };
+    setEditingId(null);
+    setTitle(draft.title + ' (Copy)');
+    setDescription(draft.description);
+    setCategory(categoryLabels[draft.category] ?? 'Community');
+    setAccess(draft.access_mode);
+    setParticipation(draft.participation_mode);
+    setTeamMin(String(draft.min_team_size));
+    setTeamMax(String(draft.max_team_size));
+    setContribution(String(draft.min_individual_contributions));
+    setStartsAt('');
+    setEndsAt('');
+    setRewardType(draft.reward?.reward_type === 'none' ? 'none' : (draft.reward?.reward_type ?? 'zp').toUpperCase());
+    setRewardAmount(String(draft.reward?.amount ?? 0));
+    setObjectives(draft.objectives.map((o,i) => ({ id: i+1, kind: o.objective_type, title: o.title, scope: o.completion_scope ?? 'individual' })));
+    setStep(0);
+    setCreating(true);
+    setSavedMessage('A new draft copy is ready. Set a future schedule before saving.');
+    setSavedMessageKind('info');
+  };
+  const beginReschedule = (draft: AdminExpeditionRecord) => {
+    setReschedulingId(draft.id);
+    setRescheduleStart(toLocalDateTimeInput(draft.starts_at));
+    setRescheduleEnd(toLocalDateTimeInput(draft.ends_at));
+    setSavedMessage('');
+  };
+  const submitReschedule = async (draft: AdminExpeditionRecord) => {
+    if (!rescheduleStart || !rescheduleEnd || new Date(rescheduleStart) <= new Date() || new Date(rescheduleEnd) <= new Date(rescheduleStart)) {
+      setSavedMessage('Choose a future start date and an end date later than the start.');
+      setSavedMessageKind('error');
+      return;
+    }
+    setPublishingId(draft.id);
+    setSavedMessage('');
+    try {
+      await rescheduleAdminExpedition(creds, draft.id, new Date(rescheduleStart).toISOString(), new Date(rescheduleEnd).toISOString());
+      setSavedMessage('Expedition rescheduled successfully.');
+      setSavedMessageKind('success');
+      setReschedulingId(null);
+      await loadDrafts();
+    } catch (error) {
+      setSavedMessage(error instanceof Error ? error.message : 'Could not reschedule this Expedition.');
+      setSavedMessageKind('error');
+    } finally { setPublishingId(null); }
+  };
   const publishDraft = async (draft: AdminExpeditionRecord) => {
     if (draft.status !== 'draft' || publishingId) return;
     const rewardWarning = draft.reward && draft.reward.reward_type !== 'none'
@@ -257,7 +306,17 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       <div className="flex items-center justify-between gap-2"><h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Saved Expeditions</h3><button type="button" onClick={() => void loadDrafts()} disabled={loadingDrafts} className="border border-white/10 px-2 py-1 text-[10px] text-slate-300 disabled:opacity-40">Refresh</button></div>
       {loadingDrafts ? <p className="border border-dashed border-white/10 p-6 text-center text-xs text-slate-500">Loading saved Expeditions…</p> : drafts.length===0 ? <div className="border border-dashed border-white/10 p-6 text-center text-xs text-slate-500">No Expeditions have been saved yet.</div> : drafts.map(d => <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-[#101a14] p-3">
         <div className="min-w-0"><p className="text-xs text-slate-100">{d.title}</p><p className="mt-1 text-[9px] text-slate-500">{d.category.replace(/_/g,' ')} · {d.participation_mode} · {d.objectives.length} objectives</p><p className="mt-1 text-[9px] uppercase tracking-wider text-slate-400">{d.status.replace(/_/g,' ')}</p></div>
-        <div className="flex flex-wrap items-center gap-2"><span className="text-[10px] text-slate-300">{d.reward?.amount ? d.reward.amount+' '+d.reward.reward_type.toUpperCase() : 'No reward'}</span>{d.status==='draft' && <><button type="button" onClick={() => editDraft(d)} className="border border-white/10 px-2 py-1 text-[10px] text-emerald-300">Edit</button><button type="button" disabled={publishingId===d.id} onClick={() => void publishDraft(d)} className="border border-amber-400/40 px-2 py-1 text-[10px] text-amber-200 disabled:opacity-40">{publishingId===d.id?'Publishing…':'Publish'}</button></>}</div>
+        <div className="flex flex-wrap items-center gap-2"><span className="text-[10px] text-slate-300">{d.reward?.amount ? d.reward.amount+' '+d.reward.reward_type.toUpperCase() : 'No reward'}</span>
+          {d.status==='draft' && <><button type="button" onClick={() => editDraft(d)} className="border border-white/10 px-2 py-1 text-[10px] text-emerald-300">Edit</button><button type="button" onClick={() => duplicateExpedition(d)} className="flex items-center gap-1 border border-white/10 px-2 py-1 text-[10px] text-slate-200"><Copy size={11}/> Duplicate</button><button type="button" disabled={publishingId===d.id} onClick={() => void publishDraft(d)} className="border border-amber-400/40 px-2 py-1 text-[10px] text-amber-200 disabled:opacity-40">{publishingId===d.id?'Publishing…':'Publish'}</button></>}
+          {['scheduled','registration_open'].includes(d.status) && d.starts_at && new Date(d.starts_at) > new Date() && <><button type="button" onClick={() => beginReschedule(d)} className="flex items-center gap-1 border border-sky-400/30 px-2 py-1 text-[10px] text-sky-200"><CalendarClock size={11}/> Reschedule</button><button type="button" onClick={() => duplicateExpedition(d)} className="flex items-center gap-1 border border-white/10 px-2 py-1 text-[10px] text-slate-200"><Copy size={11}/> Duplicate</button></>}
+          {!['draft','scheduled','registration_open'].includes(d.status) && <button type="button" onClick={() => duplicateExpedition(d)} className="flex items-center gap-1 border border-white/10 px-2 py-1 text-[10px] text-slate-200"><Copy size={11}/> Duplicate</button>}
+        </div>
+        {reschedulingId===d.id && <div className="mt-3 grid w-full gap-2 border-t border-white/10 pt-3 sm:grid-cols-[1fr_1fr_auto_auto]">
+          <label className="admin-field-label">New start<input type="datetime-local" value={rescheduleStart} onChange={e=>setRescheduleStart(e.target.value)} className="admin-field"/></label>
+          <label className="admin-field-label">New end<input type="datetime-local" value={rescheduleEnd} onChange={e=>setRescheduleEnd(e.target.value)} className="admin-field"/></label>
+          <button type="button" disabled={publishingId===d.id} onClick={()=>void submitReschedule(d)} className="self-end border border-sky-400/40 px-3 py-2 text-[10px] text-sky-200 disabled:opacity-40">{publishingId===d.id?'Saving…':'Save dates'}</button>
+          <button type="button" onClick={()=>setReschedulingId(null)} className="self-end border border-white/10 px-3 py-2 text-[10px] text-slate-300">Cancel</button>
+        </div>}
       </div>)}
     </div>
     <section className="space-y-3 border border-white/10 bg-[#101a14] p-3 sm:p-4">
