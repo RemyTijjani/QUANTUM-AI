@@ -186,16 +186,16 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
   const legacyClaimed = status === 'claimed';
 
   return (
-    <div className="panel flex items-center gap-4 p-4">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neon/30 text-neon-400">
+    <article className="panel flex items-start gap-3 p-4 transition-colors hover:border-neon/25 sm:gap-4">
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${legacyClaimed || claimed ? 'border-cyan-300/30 bg-cyan-300/5 text-cyan-200' : 'border-neon/30 bg-neon/5 text-neon-300'}`}>
         {legacyClaimed ? <Check size={20} /> : <Icon size={20} />}
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="font-display text-xs font-bold uppercase tracking-wide text-neon-300">{mission.title}</h3>
-        <p className="mt-1 font-mono text-[11px] leading-relaxed text-neon-500">{mission.description}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[11px] tabular-nums">
-          <span className="text-neon-400">{mission.telegramChatId ? `Reward: ${formatZp(mission.reward)} ZP` : `Configured reward (not claimable): ${formatZp(mission.reward)} ZP`}</span>
-          {progressLabel && <span className="text-cyan-300">Local game estimate: {progressLabel}</span>}
+        <h3 className="font-display text-sm font-bold tracking-wide text-white">{mission.title}</h3>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-neon-500">{mission.description}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px]">
+          <span className="rounded-md border border-neon/20 bg-neon/5 px-2 py-1 font-mono font-semibold text-neon-300">{mission.telegramChatId ? `+ ${formatZp(mission.reward)} ZP` : `Reward: ${formatZp(mission.reward)} ZP`}</span>
+          {progressLabel && <span className="rounded-md border border-cyan-300/20 bg-cyan-300/5 px-2 py-1 font-mono text-cyan-200">{progressLabel}</span>}
         </div>
         {mission.actionUrl && <a href={mission.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-cyan-300 underline">Open mission <ExternalLink size={10} /></a>}
         {mission.id === 'daily-uplink' ? (
@@ -213,8 +213,8 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           <p className="mt-2 font-mono text-[9px] text-amber-300">Reward is not claimable yet. Admin must configure trusted verification for this mission.</p>
         )}
       </div>
-      <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-neon-600">{claimed ? 'Claimed' : mission.telegramChatId ? 'Membership check' : legacyClaimed ? 'Legacy local record' : 'Not claimable'}</span>
-    </div>
+      <span className={`shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed ? 'Claimed' : mission.telegramChatId ? 'Verify' : legacyClaimed ? 'Completed' : 'Unavailable'}</span>
+    </article>
   );
 }
 
