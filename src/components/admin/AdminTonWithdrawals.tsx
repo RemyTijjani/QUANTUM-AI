@@ -110,7 +110,7 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
               <p className="mt-2 break-all font-mono text-[10px] text-emerald-300">Payout wallet: {shortAddress(request.wallet_address)}</p>
               <p className="mt-1 text-[9px] text-slate-500">Requested {new Date(request.created_at).toLocaleString()}</p>
             </div>
-            <label className="block space-y-1"><span className="text-[10px] text-slate-400">Admin note <span className="text-slate-500">(optional)</span></span><textarea rows={2} maxLength={1000} value={notes[request.id] ?? ''} onChange={(event) => setNotes((current) => ({ ...current, [request.id]: event.target.value }))} placeholder="Add a note for the audit record…" className="w-full resize-y rounded-lg border border-white/10 bg-[#0b120e] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/40"/></label>
+            <label className="block space-y-1"><span className="text-[10px] text-slate-400">Admin note <span className="text-slate-500">(optional)</span></span><textarea rows={2} maxLength={1000} value={notes[request.id] ?? ''} onChange={(event) => setNotes((current) => ({ ...current, [request.id]: event.target.value }))} placeholder="Add a note for the audit record…" className="admin-field resize-y"/></label>
 
             {request.status === 'pending' && <div className="grid grid-cols-2 gap-2">
               <button type="button" disabled={workingId !== null} onClick={() => void act(request, 'approve')} className="flex items-center justify-center gap-2 rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2.5 text-[10px] font-semibold text-emerald-200 disabled:opacity-40">{workingId === request.id ? <LoaderCircle size={13} className="animate-spin"/> : <CheckCircle2 size={13}/>}Approve</button>
@@ -124,7 +124,7 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
 
             {request.status === 'processing' && <div className="space-y-2">
               <p className="text-[10px] leading-relaxed text-amber-200">After sending Gram externally, enter its transaction hash below. ZORD does not send the transfer automatically.</p>
-              <input value={hashes[request.id] ?? ''} onChange={(event) => setHashes((current) => ({ ...current, [request.id]: event.target.value }))} maxLength={200} placeholder="Gram transaction hash / reference" className="w-full rounded-lg border border-white/10 bg-[#0b120e] px-3 py-2 font-mono text-[10px] text-white outline-none focus:border-emerald-400/40"/>
+              <input value={hashes[request.id] ?? ''} onChange={(event) => setHashes((current) => ({ ...current, [request.id]: event.target.value }))} maxLength={200} placeholder="Gram transaction hash / reference" className="admin-field font-mono text-xs"/>
               <button type="button" disabled={workingId !== null} onClick={() => void act(request, 'paid')} className="w-full rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2.5 text-[10px] font-semibold text-emerald-200 disabled:opacity-40">{workingId === request.id ? 'Recording…' : 'Mark as paid'}</button>
             </div>}
           </article>
