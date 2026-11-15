@@ -68,7 +68,7 @@ export default function AdminPlayerManager({ creds }: Props) {
           onChange={(event) => setSearch(event.target.value)}
           maxLength={64}
           placeholder="Search username, first name, referral code, or Telegram ID"
-          className="min-w-0 flex-1 border border-white/10 bg-[#0b120e] px-3 py-2 text-xs text-slate-100 outline-none focus:border-emerald-400/40"
+          className="admin-field min-w-0 flex-1"
         />
         <button
           type="submit"
