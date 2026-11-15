@@ -164,7 +164,7 @@ Deno.serve(async (req: Request) => {
       if (!recipientIdentifier || recipientIdentifier.length < 3 || recipientIdentifier.length > 80) {
         return json({ error: "Enter the recipient's ZORD username or referral code." }, 400);
       }
-      if (!/^[1-9][0-9]{0,23}$/.test(amountZap)) {
+      if (!/^[1-9][0-9]{0,19}$/.test(amountZap)) {
         return json({ error: "Enter a positive whole-number ZAP amount." }, 400);
       }
       if (idempotencyKey.length < 8 || idempotencyKey.length > 128) {
