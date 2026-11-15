@@ -77,7 +77,135 @@ declare
 begin
   if p_player_id is null
      or nullif(trim(p_wallet_address), '') is null
-     or p_public_key !~ '^[a-f0-9]{64}$'
+     or p_public_key is null
+     or p_public_key !~ '^[a-f0-9]{64} - interval '10 minutes'
+     or p_proof_timestamp > now() + interval '60 seconds' then
+    raise exception 'Invalid verified TON wallet details';
+  end if;
+
+  insert into app_private.player_ton_wallets(
+    player_id, wallet_address, network, verification_status,
+    proof_public_key, proof_timestamp, verified_at, revoked_at
+  )
+  values (
+    p_player_id, p_wallet_address, '-239', 'verified',
+    p_public_key, p_proof_timestamp, now(), null
+  )
+  on conflict (player_id) do update
+  set wallet_address = excluded.wallet_address,
+      network = excluded.network,
+      verification_status = 'verified',
+      proof_public_key = excluded.proof_public_key,
+      proof_timestamp = excluded.proof_timestamp,
+      verified_at = now(),
+      revoked_at = null
+  returning * into v_wallet;
+
+  return jsonb_build_object(
+    'id', v_wallet.id,
+    'wallet_address', v_wallet.wallet_address,
+    'network', v_wallet.network,
+    'verification_status', v_wallet.verification_status,
+    'verified_at', v_wallet.verified_at
+  );
+end;
+$$;
+
+create or replace function public.ton_wallet_get_data(p_player_id uuid)
+returns jsonb
+language sql
+security definer
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'wallet', (
+      select jsonb_build_object(
+        'id', w.id,
+        'wallet_address', w.wallet_address,
+        'network', w.network,
+        'verification_status', w.verification_status,
+        'verified_at', w.verified_at
+      )
+      from app_private.player_ton_wallets w
+      where w.player_id = p_player_id
+    ),
+    'balance', coalesce((
+      select jsonb_build_object(
+        'availableNano', b.available_nano::text,
+        'reservedNano', b.reserved_nano::text,
+        'updatedAt', b.updated_at
+      )
+      from app_private.player_ton_balances b
+      where b.player_id = p_player_id
+    ), jsonb_build_object('availableNano', '0', 'reservedNano', '0', 'updatedAt', null)),
+    'transactions', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', t.id,
+        'entry_type', t.entry_type,
+        'direction', t.direction,
+        'amount_nano', t.amount_nano::text,
+        'available_after_nano', t.available_after_nano::text,
+        'reference_type', t.reference_type,
+        'created_at', t.created_at
+      ) order by t.created_at desc)
+      from (
+        select *
+        from app_private.player_ton_ledger
+        where player_id = p_player_id
+        order by created_at desc
+        limit 10
+      ) t
+    ), '[]'::jsonb),
+    'withdrawals', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', r.id,
+        'amount_nano', r.amount_nano::text,
+        'status', r.status,
+        'wallet_address', r.wallet_address,
+        'transaction_hash', r.transaction_hash,
+        'admin_note', r.admin_note,
+        'created_at', r.created_at,
+        'updated_at', r.updated_at,
+        'paid_at', r.paid_at
+      ) order by r.created_at desc)
+      from (
+        select *
+        from app_private.ton_withdrawal_requests
+        where player_id = p_player_id
+        order by created_at desc
+        limit 10
+      ) r
+    ), '[]'::jsonb)
+  )
+  where exists (select 1 from public.players p where p.id = p_player_id);
+$$;
+
+create or replace function public.ton_wallet_request_withdrawal(
+  p_player_id uuid,
+  p_amount_nano numeric,
+  p_idempotency_key text
+)
+returns jsonb
+language sql
+security definer
+set search_path = ''
+as $$
+  select app_private.request_ton_withdrawal(p_player_id, p_amount_nano, p_idempotency_key);
+$$;
+
+revoke all on function public.ton_wallet_create_challenge(uuid, text, timestamptz) from public, anon, authenticated;
+revoke all on function public.ton_wallet_consume_challenge(uuid, text) from public, anon, authenticated;
+revoke all on function public.ton_wallet_save_verified(uuid, text, text, timestamptz) from public, anon, authenticated;
+revoke all on function public.ton_wallet_get_data(uuid) from public, anon, authenticated;
+revoke all on function public.ton_wallet_request_withdrawal(uuid, numeric, text) from public, anon, authenticated;
+
+grant execute on function public.ton_wallet_create_challenge(uuid, text, timestamptz) to service_role;
+grant execute on function public.ton_wallet_consume_challenge(uuid, text) to service_role;
+grant execute on function public.ton_wallet_save_verified(uuid, text, text, timestamptz) to service_role;
+grant execute on function public.ton_wallet_get_data(uuid) to service_role;
+grant execute on function public.ton_wallet_request_withdrawal(uuid, numeric, text) to service_role;
+
+     or p_proof_timestamp is null
      or p_proof_timestamp < now() - interval '10 minutes'
      or p_proof_timestamp > now() + interval '60 seconds' then
     raise exception 'Invalid verified TON wallet details';
