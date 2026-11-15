@@ -281,3 +281,13 @@
     transition: none !important;
   }
 }
+
+
+/* Shared form controls for the redesigned Admin workspace. */
+.admin-field {
+  @apply w-full rounded-xl border border-white/10 bg-[#080e0a] px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-400/50 disabled:opacity-50;
+}
+
+.admin-field-label {
+  @apply flex flex-col gap-2 text-xs font-medium text-slate-300;
+}
