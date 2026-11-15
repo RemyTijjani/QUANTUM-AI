@@ -774,7 +774,7 @@ export interface AdminRaffleDraftInput {
   rewardType: 'ton' | 'zap' | 'agent';
   rewardCode: 'alpha' | 'overclock' | null;
   prizePoolAmount: number;
-  fundingSource: 'treasury' | 'external';
+  fundingSource: 'treasury' | 'external' | 'agent_inventory';
   minBetZap: number;
   entryMode: 'one_bet_one_entry' | 'proportional';
   winnerCount: number;
