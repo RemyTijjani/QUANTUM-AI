@@ -1,4 +1,4 @@
-import { Coins, History, Image, Wallet } from 'lucide-react';
+import { ArrowDownLeft, Coins, History, Image, Wallet } from 'lucide-react';
 import { formatZp } from '@/lib/format';
 import type { VerifiedLedgerEntry } from '@/lib/economy/verifiedEconomy';
 import TonWalletConnection from './TonWalletConnection';
@@ -14,19 +14,17 @@ export default function VaultTab({
   onRefreshVerifiedEconomy: () => Promise<void> | void;
 }) {
   return (
-    <div className="space-y-5 pb-3">
-      <header className="panel space-y-2 border border-neon/30 bg-neon/5 p-4">
-        <div className="flex items-center gap-2 text-neon-400"><Wallet size={18} /><p className="label">ZORD asset vault</p></div>
-        <h1 className="title">Wallet & assets</h1>
-        <p className="font-mono text-[10px] leading-relaxed text-neon-500">Wallet connection, ZP/ZAP operations, transaction records and future collectibles will be managed here.</p>
+    <div className="space-y-4 pb-5">
+      <header className="space-y-2 py-1">
+        <div className="flex items-center gap-2 text-neon-400">
+          <Wallet size={18} />
+          <p className="label">Your finances</p>
+        </div>
+        <h1 className="font-display text-2xl font-bold tracking-wide text-white">Vault</h1>
+        <p className="max-w-sm text-xs leading-relaxed text-neon-600">
+          Your ZORD balances, wallet connection and transaction activity — all in one place.
+        </p>
       </header>
-
-      <TonWalletConnection />
-
-      <section className="panel p-4">
-        <div className="flex items-center gap-2 text-neon-500"><Coins size={14} /><p className="label">Verified ZP balance</p></div>
-        <p className="mt-3 font-display text-xl text-neon-300">{verifiedZpBalance === null ? 'Unavailable' : formatZp(verifiedZpBalance)}</p>
-      </section>
 
       <ZapWalletPanel
         verifiedZpBalance={verifiedZpBalance}
@@ -34,12 +32,32 @@ export default function VaultTab({
       />
 
       <section className="panel space-y-3 p-4">
-        <div className="flex items-center gap-2"><History size={15} className="text-neon-400" /><h2 className="title">Verified ZP history</h2></div>
-        <p className="font-mono text-[10px] text-neon-600">Latest 50 entries from your server-side economy ledger. This history is read-only.</p>
+        <div className="flex items-center gap-2">
+          <ArrowDownLeft size={16} className="text-neon-400" />
+          <div>
+            <h2 className="title">TON wallet</h2>
+            <p className="mt-1 text-[10px] text-neon-700">Connect an external wallet</p>
+          </div>
+        </div>
+        <TonWalletConnection />
+      </section>
+
+      <section className="panel space-y-3 p-4">
+        <div className="flex items-center gap-2">
+          <History size={16} className="text-neon-400" />
+          <div>
+            <h2 className="title">ZP activity</h2>
+            <p className="mt-1 text-[10px] text-neon-700">Your latest verified point movements</p>
+          </div>
+        </div>
         {transactions.length === 0 ? (
-          <div className="border border-neon/15 px-3 py-4 text-center font-mono text-[9px] uppercase tracking-wider text-neon-700">No verified ZP transactions yet</div>
+          <div className="rounded-lg border border-neon/10 bg-black/20 px-3 py-6 text-center">
+            <Coins size={20} className="mx-auto mb-2 text-neon-700" />
+            <p className="text-xs text-neon-500">No ZP activity yet</p>
+            <p className="mt-1 text-[10px] text-neon-700">Your earned points will appear here.</p>
+          </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {transactions.map((entry) => {
               const positive = entry.amount >= 0;
               const dateLabel = entry.createdAt && Number.isFinite(Date.parse(entry.createdAt))
@@ -47,19 +65,17 @@ export default function VaultTab({
                 : 'Date unavailable';
               const typeLabel = entry.transactionType.replace(/_/g, ' ');
               return (
-                <article key={entry.id} className="border border-neon/15 p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-mono text-[10px] uppercase text-neon-300">{typeLabel}</p>
-                      {entry.description && <p className="mt-1 break-words font-mono text-[9px] text-neon-600">{entry.description}</p>}
-                    </div>
-                    <p className={`shrink-0 font-display text-sm ${positive ? 'text-emerald-300' : 'text-amber-300'}`}>
-                      {positive ? '+' : ''}{formatZp(entry.amount)} ZP
-                    </p>
+                <article key={entry.id} className="flex items-center justify-between gap-3 border-b border-neon/10 py-3 last:border-0">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs capitalize text-neon-200">{typeLabel}</p>
+                    {entry.description && <p className="mt-1 truncate text-[10px] text-neon-700">{entry.description}</p>}
+                    <p className="mt-1 text-[9px] text-neon-700">{dateLabel}</p>
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[9px] text-neon-700">
-                    <span>{dateLabel}</span>
-                    <span>Balance: {formatZp(entry.balanceAfter)} ZP</span>
+                  <div className="shrink-0 text-right">
+                    <p className={`font-display text-sm font-semibold ${positive ? 'text-emerald-300' : 'text-amber-300'}`}>
+                      {positive ? '+' : ''}{formatZp(entry.amount)} <span className="text-[10px]">ZP</span>
+                    </p>
+                    <p className="mt-1 text-[9px] text-neon-700">Balance {formatZp(entry.balanceAfter)}</p>
                   </div>
                 </article>
               );
@@ -68,9 +84,14 @@ export default function VaultTab({
         )}
       </section>
 
-      <section className="panel space-y-2 p-4">
-        <div className="flex items-center gap-2"><Image size={15} className="text-neon-400" /><h2 className="title">Collectibles & NFTs</h2></div>
-        <p className="font-mono text-[10px] text-neon-600">Collectibles and early-adopter NFT features are planned. No NFT reward or ownership is being represented as active.</p>
+      <section className="panel flex items-start gap-3 p-4">
+        <Image size={17} className="mt-0.5 shrink-0 text-neon-500" />
+        <div>
+          <h2 className="title">Collectibles</h2>
+          <p className="mt-1 text-[10px] leading-relaxed text-neon-700">
+            Collectibles and NFT features are planned. They are not available in the Vault yet.
+          </p>
+        </div>
       </section>
     </div>
   );
