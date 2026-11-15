@@ -13,6 +13,7 @@ import type { FragmentId } from '@/lib/game/config';
 import { fixedCount, fragmentCooldownRemaining, passiveRate, tierInfo } from '@/lib/game/state';
 import type { GameState, FragmentStatus } from '@/lib/game/state';
 import { formatRate, formatZp, formatRemaining } from '@/lib/format';
+import { Coins, Award } from 'lucide-react';
 import type { Notify } from '@/hooks/useToast';
 import LevelBanner from '@/components/core/LevelBanner';
 import CoreCircuit from '@/components/core/CoreCircuit';
@@ -25,6 +26,8 @@ interface CoreTabProps {
   onWatchAd: (id: FragmentId) => void;
   onFixFragment: (id: FragmentId) => Promise<void>;
   verifiedZpBalance: number | null;
+  zapEarned: number | null;
+  zapLoading: boolean;
   pendingFragmentZp: number;
   nextFragmentReleaseAt: string | null;
   onOpenExpeditions: () => void;
@@ -39,6 +42,8 @@ export default function CoreTab({
   onWatchAd,
   onFixFragment,
   verifiedZpBalance,
+  zapEarned,
+  zapLoading,
   pendingFragmentZp,
   nextFragmentReleaseAt,
   onOpenExpeditions,
@@ -86,27 +91,39 @@ export default function CoreTab({
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Linked
           </span>
         </div>
-        <div className="relative mt-4 grid grid-cols-2 gap-2">
-          <div className="border border-neon/20 bg-black/40 p-3">
-            <p className="label">Verified ZP</p>
-            <p className="mt-1 font-display text-xl tabular-nums text-neon-200">{verifiedZpBalance === null ? '—' : formatZp(verifiedZpBalance)}</p>
-            <p className="mt-1 font-mono text-[8px] text-neon-700">Server-recorded balance</p>
-            <p className="mt-2 font-mono text-[9px] text-amber-300">Pending Fragment: {formatZp(pendingFragmentZp)} ZP</p>
-            <p className="mt-1 font-mono text-[8px] text-neon-600">{nextFragmentReleaseAt ? `Next release in ${formatRemaining(new Date(nextFragmentReleaseAt).getTime() - now)}` : 'No Fragment rewards waiting'}</p>
+        <div className="relative mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-neon/25 bg-black/40 p-3">
+            <div className="flex items-center gap-2 text-neon-300"><Coins size={14}/><p className="label">Verified ZP</p></div>
+            <p className="mt-2 font-display text-2xl font-bold tabular-nums text-neon-100">{verifiedZpBalance === null ? '—' : formatZp(verifiedZpBalance)}</p>
+            <p className="mt-1 text-[9px] text-neon-600">Available gameplay points</p>
+            <p className="mt-2 text-[9px] text-amber-300">Pending: {formatZp(pendingFragmentZp)} ZP</p>
+            <p className="mt-1 text-[8px] text-neon-700">{nextFragmentReleaseAt ? `Next release in ${formatRemaining(new Date(nextFragmentReleaseAt).getTime() - now)}` : 'No pending Fragment rewards'}</p>
           </div>
-          <div className="border border-cyan-400/20 bg-black/40 p-3">
-            <p className="label">Core rank</p>
-            <p className="mt-1 font-display text-xl text-cyan-200">{tier.rank}</p>
-            <p className="mt-1 font-mono text-[8px] text-cyan-700">Tier {tier.tier}</p>
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-950/30 p-3">
+            <div className="flex items-center gap-2 text-cyan-200"><Award size={14}/><p className="label">ZAP earned</p></div>
+            <p className="mt-2 font-display text-2xl font-bold tabular-nums text-cyan-100">{zapLoading ? '…' : zapEarned === null ? '—' : formatZp(zapEarned)}</p>
+            <p className="mt-1 text-[9px] text-cyan-600">Lifetime eligible ZAP rewards</p>
+            <p className="mt-2 text-[9px] text-cyan-700">Ranking score</p>
           </div>
-          <div className="border border-neon/20 bg-black/40 p-3">
-            <p className="label">Fragments online</p>
-            <p className="mt-1 font-display text-xl tabular-nums text-neon-200">{fixed}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
+          <div className="rounded-xl border border-cyan-400/20 bg-black/40 p-3">
+            <p className="label">Core rank</p><p className="mt-1 font-display text-xl text-cyan-200">{tier.rank}</p><p className="mt-1 text-[9px] text-cyan-700">Gameplay tier {tier.tier}</p>
           </div>
-          <div className="border border-neon/20 bg-black/40 p-3">
-            <p className="label">Local game rate</p>
-            <p className="mt-1 font-display text-xl tabular-nums text-neon-200">{formatRate(rate)}</p>
-            <p className="mt-1 font-mono text-[8px] text-amber-400">Estimate only · not verified ZP</p>
+          <div className="rounded-xl border border-neon/20 bg-black/40 p-3">
+            <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{fixed}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
+            <p className="mt-1 text-[9px] text-neon-700">Mining rate: {formatRate(rate)}</p>
+          </div>
+        </div>
+        <div className="relative mt-3 space-y-3 rounded-xl border border-neon/15 bg-black/30 p-3">
+          <div className="flex items-center justify-between"><p className="label">Earning progress</p><span className="text-[9px] text-neon-600">Your totals</span></div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[10px]"><span className="text-neon-300">ZP balance</span><span className="tabular-nums text-neon-200">{verifiedZpBalance === null ? '—' : formatZp(verifiedZpBalance)} ZP</span></div>
+            <div className="h-2 overflow-hidden rounded-full bg-white/5"><div className="h-full rounded-full bg-neon-400 transition-all" style={{width: verifiedZpBalance === null ? '0%' : `${Math.min(100, (verifiedZpBalance % 1000) / 10)}%`}} /></div>
+            <p className="text-[8px] text-neon-700">Progress toward the next 1,000 ZP conversion step</p>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[10px]"><span className="text-cyan-300">ZAP earned</span><span className="tabular-nums text-cyan-100">{zapLoading ? '…' : zapEarned === null ? '—' : `${formatZp(zapEarned)} ZAP`}</span></div>
+            <div className="h-2 overflow-hidden rounded-full bg-white/5"><div className="h-full rounded-full bg-cyan-300 transition-all" style={{width: zapEarned === null ? '0%' : `${Math.min(100, (zapEarned % 10) * 10)}%`}} /></div>
+            <p className="text-[8px] text-cyan-700">Progress through the current 10-ZAP milestone</p>
           </div>
         </div>
       </section>
@@ -192,16 +209,7 @@ export default function CoreTab({
       </p>
       <CharacterCard fixed={fixed} lifetimeZp={formatZp(state.lifetimeZp)} rate={formatRate(rate)} />
 
-      <section className="panel space-y-3 border border-cyan-500/25 bg-cyan-500/5 p-4">
-        <div className="flex items-center gap-2"><ArrowRightLeft size={16} className="text-cyan-300" /><p className="label">ZP → ZAP progression</p></div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="border border-neon/20 bg-black/40 p-3"><p className="label">Verified ZP</p><p className="mt-1 font-display text-lg text-neon-300">{verifiedZpBalance === null ? '—' : formatZp(verifiedZpBalance)}</p></div>
-          <div className="border border-cyan-500/20 bg-black/40 p-3"><p className="label">ZAP wallet</p><p className="mt-1 font-display text-lg text-cyan-300">Not active</p></div>
-        </div>
-        <div className="flex items-center justify-between font-mono text-[10px] text-neon-500"><span>Conversion rule: 1,000 ZP = 1 ZAP</span><span>100 ZAP minimum transfer</span></div>
-        <div className="h-2 overflow-hidden rounded-full bg-black/60"><div className="h-full bg-cyan-400" style={{ width: verifiedZpBalance === null ? '0%' : `${(verifiedZpBalance % 1000) / 10}%` }} /></div>
-        <p className="font-mono text-[9px] leading-relaxed text-amber-300">Conversion, ZAP balances and transfers are not enabled yet. This indicator shows progress toward the next 1,000 ZP threshold; it does not mint or promise ZAP.</p>
-      </section>
+
 
       <section className="panel space-y-3 p-4">
         <div className="flex items-center gap-2"><Store size={16} className="text-neon-400" /><p className="label">Service marketplace</p></div>
