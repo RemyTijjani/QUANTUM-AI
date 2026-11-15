@@ -1150,10 +1150,10 @@ Deno.serve(async (req: Request) => {
       const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (expeditionId && !validUuid.test(expeditionId)) return json({ error: "A valid Expedition ID is required" }, 400);
       let individualQuery = db.from("expedition_objective_progress")
-        .select("id, expedition_id, objective_id, player_id, status, evidence, created_at, expedition_objectives!inner(title, objective_type, completion_scope), expeditions!inner(title)")
+        .select("id, expedition_id, objective_id, player_id, status, evidence, created_at, expedition_objectives!inner(title, objective_type, completion_scope)")
         .eq("status", "submitted").order("created_at", { ascending: true }).limit(100);
       let teamQuery = db.from("expedition_team_objective_progress")
-        .select("id, expedition_id, objective_id, team_id, status, evidence, created_at, expedition_objectives!inner(title, objective_type, completion_scope), expeditions!inner(title), expedition_teams!inner(name)")
+        .select("id, expedition_id, objective_id, team_id, status, evidence, created_at, expedition_objectives!inner(title, objective_type, completion_scope), expedition_teams!inner(name)")
         .eq("status", "submitted").order("created_at", { ascending: true }).limit(100);
       if (expeditionId) {
         individualQuery = individualQuery.eq("expedition_id", expeditionId);
@@ -1164,7 +1164,37 @@ Deno.serve(async (req: Request) => {
         console.error("Expedition objective review queue failed:", individualRes.error || teamRes.error);
         return json({ error: "Could not load submitted Expedition objectives" }, 500);
       }
-      return json({ success: true, individualSubmissions: individualRes.data ?? [], teamSubmissions: teamRes.data ?? [], limitPerQueue: 100 });
+
+      // expedition_id is intentionally not a declared PostgREST relationship on
+      // either progress table. Resolve titles with a separate lookup instead of
+      // embedding expeditions!inner(title), which fails with PGRST200.
+      const individualRows = individualRes.data ?? [];
+      const teamRows = teamRes.data ?? [];
+      const expeditionIds = [...new Set([...individualRows, ...teamRows]
+        .map((row) => row.expedition_id)
+        .filter((id): id is string => typeof id === "string"))];
+      let expeditionTitles = new Map<string, string>();
+      if (expeditionIds.length > 0) {
+        const { data: expeditionRows, error: expeditionError } = await db
+          .from("expeditions").select("id, title").in("id", expeditionIds);
+        if (expeditionError) {
+          console.error("Expedition objective review title lookup failed:", expeditionError);
+          return json({ error: "Could not load Expedition titles for submitted objectives" }, 500);
+        }
+        expeditionTitles = new Map((expeditionRows ?? []).map((row) => [row.id, row.title]));
+      }
+      return json({
+        success: true,
+        individualSubmissions: individualRows.map((row) => ({
+          ...row,
+          expeditions: { title: expeditionTitles.get(row.expedition_id) ?? "Expedition" },
+        })),
+        teamSubmissions: teamRows.map((row) => ({
+          ...row,
+          expeditions: { title: expeditionTitles.get(row.expedition_id) ?? "Expedition" },
+        })),
+        limitPerQueue: 100,
+      });
     }
 
     if (body.action === "review_expedition_objective") {
