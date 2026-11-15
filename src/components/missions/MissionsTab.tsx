@@ -125,6 +125,23 @@ interface MissionCardProps {
 }
 
 function MissionCard({ mission, status, progressLabel, notify, onRefreshVerifiedEconomy }: MissionCardProps) {
+  const [claiming, setClaiming] = useState(false);
+  const [claimed, setClaimed] = useState(false);
+  const claimTelegramMission = async () => {
+    if (!notify || !mission.telegramChatId || claiming) return;
+    setClaiming(true);
+    const { data, error } = await supabase.functions.invoke('mission-actions', {
+      body: { missionId: mission.id },
+    });
+    setClaiming(false);
+    if (error || !data || data.success !== true) {
+      notify(data?.error || error?.message || 'Could not verify Telegram membership. Try again.', 'error');
+      return;
+    }
+    setClaimed(true);
+    notify(data.alreadyClaimed ? 'This mission reward was already claimed.' : `Telegram membership verified. +${formatZp(Number(data.rewardZp) || mission.reward)} ZP credited.`);
+    await onRefreshVerifiedEconomy?.();
+  };
   const Icon = mission.kind === 'daily' ? CalendarCheck : Megaphone;
   const legacyClaimed = status === 'claimed';
 
