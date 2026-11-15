@@ -133,7 +133,7 @@ async function verifyTonProof(body: Record<string, unknown>, expectedPayload: st
   const proof = body.proof && typeof body.proof === "object" && !Array.isArray(body.proof)
     ? body.proof as Record<string, unknown>
     : null;
-  if (!proof || network !== "-239" || !TON_CONNECT_DOMAIN || !addressText) return null;
+  if (!proof || network !== "-239" || !TON_CONNECT_DOMAIN.includes(".") || !addressText) return null;
 
   const timestampValue = proof.timestamp;
   const timestamp = typeof timestampValue === "number"
@@ -156,7 +156,7 @@ async function verifyTonProof(body: Record<string, unknown>, expectedPayload: st
   if (Math.abs(now - timestamp) > PROOF_TTL_SECONDS) return null;
   if (domainValue !== TON_CONNECT_DOMAIN || domainLength !== new TextEncoder().encode(domainValue).length) return null;
   if (payload !== expectedPayload || new TextEncoder().encode(payload).length > 128) return null;
-  if (!/^[0-9a-fA-F]{64}$/.test(publicKeyHint)) return null;
+  if (publicKeyHint && !/^[0-9a-fA-F]{64}$/.test(publicKeyHint)) return null;
 
   let address: Address;
   let stateInit: StateInit;
@@ -175,7 +175,7 @@ async function verifyTonProof(body: Record<string, unknown>, expectedPayload: st
 
   const publicKey = parseWalletPublicKey(stateInit);
   if (!publicKey || publicKey.length !== 32) return null;
-  if (!publicKey.equals(Buffer.from(publicKeyHint, "hex"))) return null;
+  if (publicKeyHint && !publicKey.equals(Buffer.from(publicKeyHint, "hex"))) return null;
 
   const workchain = Buffer.alloc(4);
   workchain.writeInt32BE(address.workChain, 0);
