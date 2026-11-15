@@ -9,6 +9,7 @@ interface MissionTaskRow {
   reward: number | null;
   platform: 'tiktok' | 'youtube' | null;
   action_url: string | null;
+  telegram_chat_id: string | null;
   reward_currency: 'ZP' | 'ZAP';
   unlock_cost_zp: number;
   status: 'draft' | 'published' | 'paused' | 'archived';
@@ -59,7 +60,7 @@ export async function fetchMissions(): Promise<MissionSpec[]> {
   try {
     const { data, error } = await supabase
       .from('mission_tasks')
-      .select('id, kind, title, description, reward, platform, action_url, reward_currency, unlock_cost_zp, status')
+      .select('id, kind, title, description, reward, platform, action_url, telegram_chat_id, reward_currency, unlock_cost_zp, status')
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -87,6 +88,7 @@ export async function fetchMissions(): Promise<MissionSpec[]> {
         reward: row.reward as number,
         platform: row.platform ?? undefined,
         actionUrl: row.action_url ?? undefined,
+        telegramChatId: row.telegram_chat_id ?? undefined,
       }));
   } catch (err) {
     console.warn('Mission list unavailable, showing built-in display-only missions.', err);
