@@ -1838,17 +1838,17 @@ Deno.serve(async (req: Request) => {
       const winnerCount = Number(raffle.winnerCount);
       const entryMode = raffle.entryMode;
       const winnerMethod = raffle.winnerMethod;
-      const fundingSource = rewardType === "ton" ? "external" : rewardType === "agent" ? "agent_inventory" : raffle.fundingSource;
+      const fundingSource = rewardType === "ton" ? "external" : raffle.fundingSource;
       const startsAt = raffle.startsAt ?? null;
       const endsAt = raffle.endsAt ?? null;
 
       if (title.length < 3 || title.length > 120 || description.length > 2000) return json({ error: "Enter a title between 3 and 120 characters and a description under 2,000 characters." }, 400);
-      if (!["ton", "zap", "agent"].includes(String(rewardType))) return json({ error: "Choose TON, ZAP or Agent as the prize type." }, 400);
+      if (!["ton", "zap"].includes(String(rewardType))) return json({ error: "Only TON and ZAP prizes are supported." }, 400);
       if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(minBet) || minBet <= 0) return json({ error: "Prize pool and minimum bet must be positive amounts." }, 400);
       if (!Number.isInteger(winnerCount) || winnerCount < 1 || winnerCount > 100) return json({ error: "Winner count must be between 1 and 100." }, 400);
       if (!["one_bet_one_entry", "proportional"].includes(String(entryMode))) return json({ error: "Choose a valid entry method." }, 400);
       if (!["random", "admin"].includes(String(winnerMethod))) return json({ error: "Choose a valid winner selection method." }, 400);
-      if (!["treasury", "external", "agent_inventory"].includes(String(fundingSource))) return json({ error: "Choose a valid prize funding source." }, 400);
+      if (!["treasury", "external"].includes(String(fundingSource))) return json({ error: "Choose a valid prize funding source." }, 400);
       if (rewardType === "agent" && (!["alpha", "overclock"].includes(String(rewardCode)) || !Number.isInteger(amount) || amount < winnerCount)) return json({ error: "Select an available agent and provide at least one agent per winner." }, 400);
       if (rewardType !== "agent" && rewardCode !== null) return json({ error: "Only Agent prizes can have an agent selection." }, 400);
       if (startsAt && (!Number.isFinite(Date.parse(startsAt)))) return json({ error: "The start date is invalid." }, 400);
@@ -1861,7 +1861,7 @@ Deno.serve(async (req: Request) => {
         reward_type: rewardType,
         reward_code: rewardCode,
         prize_pool_amount: amount,
-        prize_currency: rewardType === "ton" ? "TON" : rewardType === "zap" ? "ZAP" : "AGENT",
+        prize_currency: rewardType === "ton" ? "TON" : "ZAP",
         funding_source: fundingSource,
         min_bet_zap: minBet,
         entry_mode: entryMode,
