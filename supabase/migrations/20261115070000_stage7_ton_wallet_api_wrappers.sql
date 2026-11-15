@@ -1,5 +1,8 @@
 -- Stage 7: service-role-only API wrappers for the private TON wallet tables.
 -- The private schema remains unexposed to browser clients.
+create unique index if not exists ton_withdrawal_requests_transaction_hash_uidx
+  on app_private.ton_withdrawal_requests(transaction_hash)
+  where transaction_hash is not null;
 create or replace function public.ton_wallet_create_challenge(
   p_player_id uuid,
   p_payload_hash text,
