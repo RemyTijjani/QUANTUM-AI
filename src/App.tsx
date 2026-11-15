@@ -133,6 +133,7 @@ function GameApp({
 
   const { auth } = useAuth();
   const [verifiedZpBalance, setVerifiedZpBalance] = useState<number | null>(null);
+  const [verifiedZpLifetime, setVerifiedZpLifetime] = useState<number | null>(null);
   const [zapEarned, setZapEarned] = useState<number | null>(null);
   const [zapLoading, setZapLoading] = useState(true);
   const [pendingFragmentZp, setPendingFragmentZp] = useState(0);
@@ -143,6 +144,7 @@ function GameApp({
     try {
       const economy = await fetchVerifiedEconomy();
       setVerifiedZpBalance(economy.verifiedZpBalance);
+      setVerifiedZpLifetime(economy.verifiedLifetimeZp);
       setPendingFragmentZp(economy.pendingFragmentZp);
       setNextFragmentReleaseAt(economy.nextFragmentReleaseAt);
       setVerifiedTransactions(economy.transactions);
@@ -158,6 +160,7 @@ function GameApp({
     } catch (error) {
       console.error('Verified ZP balance load failed:', error);
       setVerifiedZpBalance(null);
+      setVerifiedZpLifetime(null);
       setPendingFragmentZp(0);
       setNextFragmentReleaseAt(null);
       setVerifiedTransactions([]);
@@ -290,6 +293,7 @@ function GameApp({
             notify={notify}
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
             verifiedZpBalance={verifiedZpBalance}
+            verifiedZpLifetime={verifiedZpLifetime}
             zapEarned={zapEarned}
             zapLoading={zapLoading}
             pendingFragmentZp={pendingFragmentZp}
