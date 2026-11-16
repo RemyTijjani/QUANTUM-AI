@@ -187,7 +187,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
     : mission.id === 'agent-uptime'
       ? 'A paid agent must remain continuously active for 12 hours. The server checks the rental before issuing 10 ZAP.'
       : mission.id === 'follow-signal'
-        ? 'Automatic X follow verification is not connected yet. Rewards remain locked until a trusted verification method is available.'
+        ? 'Submit your X account. An Admin will manually check whether it follows @zord_agent before approving the 250 ZP reward.'
         : mission.actionUrl?.includes('t.me/')
           ? 'Telegram membership verification is not configured. An Admin must add the Telegram chat ID and make the ZORD bot an administrator.'
           : 'A trusted verification method has not been configured for this mission. Its reward remains locked.';
@@ -205,7 +205,9 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           {progressLabel && <span className="rounded-md border border-cyan-300/20 bg-cyan-300/5 px-2 py-1 font-mono text-cyan-200">{progressLabel}</span>}
         </div>
         {mission.actionUrl && <a href={mission.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-cyan-300 underline">Open mission <ExternalLink size={10} /></a>}
-        {mission.id === 'daily-uplink' ? (
+        {mission.id === 'follow-signal' ? (
+          <XFollowSubmissionCard notify={notify!} />
+        ) : mission.id === 'daily-uplink' ? (
           <DailyUplinkClaim notify={notify!} onClaimed={onRefreshVerifiedEconomy!} />
         ) : mission.telegramChatId ? (
           <button
@@ -404,6 +406,51 @@ function LinkInput({
       >
         {submitting ? 'Sending' : 'Submit'}
       </button>
+    </div>
+  );
+}
+
+
+function XFollowSubmissionCard({ notify }: { notify: Notify }) {
+  const [account, setAccount] = useState('');
+  const [status, setStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
+  const [submittedAccount, setSubmittedAccount] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const { data, error } = await supabase.from('x_follow_submissions').select('x_username, status').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (cancelled) return;
+      if (error) notify('Could not load your X Follow submission status.', 'error');
+      else if (data) { setStatus(data.status as 'pending' | 'approved' | 'rejected'); setSubmittedAccount(data.x_username); }
+      setLoading(false);
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [notify]);
+  const submit = async () => {
+    if (!account.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase.rpc('submit_x_follow_submission', { p_x_account: account.trim() });
+      if (error || !data || data.success !== true) { notify(error?.message || data?.error || 'Could not submit your X account. Try again.', 'error'); return; }
+      setStatus('pending'); setSubmittedAccount(String(data.xUsername || account.trim()).replace(/^@/, '')); setAccount('');
+      notify('Your X account was submitted. An Admin will check the follow and review it.');
+    } catch (error) { notify(error instanceof Error ? error.message : 'Could not submit your X account.', 'error'); }
+    finally { setSubmitting(false); }
+  };
+  if (loading) return <p className="mt-2 font-mono text-[10px] text-neon-600">Checking your X Follow submission…</p>;
+  if (status === 'approved') return <div className="mt-3 flex items-center gap-2 rounded-lg border border-neon/40 bg-neon/10 px-3 py-2.5 font-mono text-[11px] text-neon-300"><Check size={14} className="shrink-0" /><span>Approved — +250 ZP has been credited.</span></div>;
+  if (status === 'pending') return <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2.5 font-mono text-[11px] text-amber-200"><div className="flex items-center gap-2"><Clock size={14} /> Pending Admin review</div><a href={`https://x.com/${encodeURIComponent(submittedAccount || '')}`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-cyan-300 underline">@{submittedAccount} <ExternalLink size={11} /></a></div>;
+  return (
+    <div className="mt-3 space-y-2">
+      {status === 'rejected' && <p className="rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 font-mono text-[10px] text-red-300">Your previous account was not approved. Follow @zord_agent, then submit the correct X account again.</p>}
+      <div className="flex flex-col gap-2 min-[420px]:flex-row">
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-neon/25 bg-black/50 px-3 py-2"><span className="font-mono text-xs text-neon-500">@</span><input type="text" value={account} onChange={(event) => setAccount(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void submit(); }} maxLength={200} placeholder="Your X username or profile link" aria-label="Your X username or profile link" className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-neon-300 outline-none placeholder:text-neon-700" /></div>
+        <button type="button" onClick={() => void submit()} disabled={submitting || !account.trim()} className="btn-primary w-full shrink-0 px-3 py-2 text-[10px] min-[420px]:w-auto">{submitting ? 'Submitting…' : 'Submit X account'}</button>
+      </div>
+      <p className="font-mono text-[9px] leading-relaxed text-neon-600">Enter your X username (for example, @yourname) or your X profile link. Admin approval awards 250 ZP once.</p>
     </div>
   );
 }
