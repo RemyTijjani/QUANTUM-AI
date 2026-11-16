@@ -172,8 +172,8 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
       </div>
 
       <div className="min-w-0 rounded-2xl border border-white/10 bg-[#111a14] p-4">
-        <h3 className="mb-3 flex items-center gap-2 border-b border-white/10 pb-3 text-xs font-bold uppercase tracking-widest text-slate-200"><Pickaxe size={15} /> Global mining controls</h3>
-        <p className="mb-3 text-[11px] leading-relaxed text-slate-400">Controls are enforced by PostgreSQL, not the browser. Changes settle earned ZP first. Pausing suspends active mining windows; paused time is excluded when mining resumes.</p>
+        <h3 className="mb-3 flex items-center gap-2 border-b border-white/10 pb-3 text-xs font-bold uppercase tracking-widest text-slate-200"><Pickaxe size={15} /> Global Fragment mining controls</h3>
+        <p className="mb-3 text-[11px] leading-relaxed text-slate-400">Fragment mining controls are enforced by PostgreSQL, not the browser. Changes settle earned ZP first. Pausing suspends active mining windows; paused time is excluded when mining resumes.</p>
         {miningError && <p role="alert" className="mb-2 text-[11px] text-red-300">{miningError}</p>}
         <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0b120e] p-3">
           <div><p className="text-xs font-semibold text-white">Fragment mining</p><p className="mt-1 text-[10px] text-slate-400">{mining ? `Currently ${mining.fragmentMiningEnabled ? 'running' : 'paused'} · ${mining.fragmentMiningRateMultiplier.toFixed(2)}× base` : 'Loading settings…'}</p></div>
