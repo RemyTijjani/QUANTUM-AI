@@ -37,6 +37,9 @@ export default function AdminTonWithdrawals({ creds }: { creds: AdminCredentials
   useEffect(() => { void refresh(); }, [refresh]);
 
   const act = async (request: AdminTonWithdrawal, action: AdminTonWithdrawalAction) => {
+    if (action === 'approve' && !window.confirm('Approve this withdrawal? The requested Gram will remain reserved until payment is recorded.')) return;
+    if (action === 'reject' && !window.confirm('Reject this withdrawal? The reserved Gram will be returned to the player’s available balance.')) return;
+    if (action === 'paid' && !window.confirm('Record this withdrawal as paid? Only continue after you have confirmed the external Gram transfer succeeded.')) return;
     setWorkingId(request.id);
     setError('');
     setNotice('');
