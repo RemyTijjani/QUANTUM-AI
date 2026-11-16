@@ -19,6 +19,7 @@ import type { EngagementView } from '@/components/missions/Stage6EngagementHub';
 import VaultTab from '@/components/vault/VaultTab';
 import ZordAgentsTab from '@/components/agents/ZordAgentsTab';
 import { AdminDashboard } from '@/components/admin/AdminReviewModal';
+import PlayerAnnouncements from '@/components/PlayerAnnouncements';
 
 import { useGame } from '@/hooks/useGame';
 import { useToast } from '@/hooks/useToast';
@@ -296,6 +297,7 @@ function GameApp({
       )}
 
       <main className="no-scrollbar relative flex-1 overflow-y-auto px-4 pt-4">
+        <PlayerAnnouncements />
         {tab === 'core' && (
           <CoreTab
             state={state}
