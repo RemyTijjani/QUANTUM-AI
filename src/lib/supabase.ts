@@ -18,3 +18,9 @@ export interface CreatorOpsSubmission {
   reviewed_at: string | null;
   created_at: string;
 }
+
+export interface XFollowSubmission {
+  id: string; player_id: string; x_username: string;
+  status: 'pending' | 'approved' | 'rejected'; reward_zp: number; created_at: string;
+  players?: { referral_code: string | null; username: string | null; first_name: string | null };
+}
