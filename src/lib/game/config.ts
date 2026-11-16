@@ -79,6 +79,7 @@ export const MILESTONES = [
 ] as const;
 
 export type MissionKind = 'daily' | 'social' | 'creator';
+export type MissionRewardCurrency = 'ZP' | 'ZAP';
 
 export interface MissionSpec {
   id: string;
@@ -86,6 +87,7 @@ export interface MissionSpec {
   title: string;
   description: string;
   reward: number;
+  rewardCurrency?: MissionRewardCurrency;
   platform?: 'tiktok' | 'youtube';
   actionUrl?: string;
   telegramChatId?: string;
