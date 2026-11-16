@@ -50,7 +50,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             <p className="mt-1 font-display text-sm font-bold tabular-nums text-neon-200">{formatClock(msUntilNextDay(now))}</p>
           </div>
         </div>
-        <div className="relative mt-5 grid grid-cols-3 gap-2">
+        <div className="relative mt-5 grid grid-cols-1 min-[380px]:grid-cols-3 gap-2">
           <div className="rounded-xl border border-white/10 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Available</p><p className="mt-1 font-display text-xl text-white">{missions.length - claimedCount}</p></div>
           <div className="rounded-xl border border-neon/20 bg-neon/5 p-3"><p className="font-mono text-[9px] uppercase text-neon-500">Ready</p><p className="mt-1 font-display text-xl text-neon-200">{readyCount}</p></div>
           <div className="rounded-xl border border-white/10 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Claimed</p><p className="mt-1 font-display text-xl text-cyan-200">{claimedCount}</p></div>
@@ -139,17 +139,26 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
   const claimTelegramMission = async () => {
     if (!notify || !mission.telegramChatId || claiming) return;
     setClaiming(true);
-    const { data, error } = await supabase.functions.invoke('mission-actions', {
-      body: { missionId: mission.id },
-    });
-    setClaiming(false);
-    if (error || !data || data.success !== true) {
-      notify(data?.error || error?.message || 'Could not verify Telegram membership. Try again.', 'error');
-      return;
+    try {
+      const { data, error } = await supabase.functions.invoke('mission-actions', {
+        body: { missionId: mission.id },
+      });
+      if (error || !data || data.success !== true) {
+        notify(data?.error || error?.message || 'Could not verify Telegram membership. Try again.', 'error');
+        return;
+      }
+      setClaimed(true);
+      notify(data.alreadyClaimed ? 'This mission reward was already claimed.' : `Telegram membership verified. +${formatZp(Number(data.rewardZp) || mission.reward)} ZP credited.`);
+      try {
+        await onRefreshVerifiedEconomy?.();
+      } catch {
+        notify('Reward was recorded, but your balance could not refresh. Reopen the Vault or refresh later.', 'error');
+      }
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not verify Telegram membership. Try again.', 'error');
+    } finally {
+      setClaiming(false);
     }
-    setClaimed(true);
-    notify(data.alreadyClaimed ? 'This mission reward was already claimed.' : `Telegram membership verified. +${formatZp(Number(data.rewardZp) || mission.reward)} ZP credited.`);
-    await onRefreshVerifiedEconomy?.();
   };
   const Icon = mission.kind === 'daily' ? CalendarCheck : Megaphone;
   const legacyClaimed = status === 'claimed';
@@ -164,7 +173,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           : 'A trusted verification method has not been configured for this mission. Its reward remains locked.';
 
   return (
-    <article className="panel flex items-start gap-3 p-4 transition-colors hover:border-neon/25 sm:gap-4">
+    <article className="panel flex flex-wrap items-start gap-3 p-4 transition-colors hover:border-neon/25 sm:flex-nowrap sm:gap-4">
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${legacyClaimed || claimed ? 'border-cyan-300/30 bg-cyan-300/5 text-cyan-200' : 'border-neon/30 bg-neon/5 text-neon-300'}`}>
         {legacyClaimed || claimed ? <Check size={20} /> : <Icon size={20} />}
       </div>
@@ -182,16 +191,16 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           <button
             type="button"
             onClick={() => void claimTelegramMission()}
-            disabled={claiming || claimed}
+            disabled={claiming || claimed || legacyClaimed}
             className="mt-2 rounded border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-neon-300 disabled:opacity-50"
           >
-            {claiming ? 'Checking membership...' : claimed ? 'Claim checked' : `Verify & claim +${formatZp(mission.reward)} ZP`}
+            {claiming ? 'Checking membership...' : claimed || legacyClaimed ? 'Already claimed' : `Verify & claim +${formatZp(mission.reward)} ZP`}
           </button>
         ) : (
           <p className="mt-2 font-mono text-[9px] leading-relaxed text-amber-300">{unavailableReason}</p>
         )}
       </div>
-      <span className={`shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : mission.telegramChatId ? 'Verify' : 'Setup needed'}</span>
+      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : mission.telegramChatId ? 'Verify' : 'Setup needed'}</span>
     </article>
   );
 }
@@ -347,8 +356,8 @@ function LinkInput({
   submitting: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex flex-1 items-center gap-2 rounded-lg border border-neon/25 bg-black/50 px-3 py-2">
+    <div className="flex flex-col gap-2 min-[420px]:flex-row">
+      <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-neon/25 bg-black/50 px-3 py-2">
         <Link2 size={14} className="shrink-0 text-neon-500" />
         <input
           type="url"
@@ -362,7 +371,7 @@ function LinkInput({
         type="button"
         onClick={onSubmit}
         disabled={submitting || !link.trim()}
-        className="btn-primary shrink-0 px-3 py-2 text-[10px]"
+        className="btn-primary w-full shrink-0 px-3 py-2 text-[10px] min-[420px]:w-auto"
       >
         {submitting ? 'Sending' : 'Submit'}
       </button>
