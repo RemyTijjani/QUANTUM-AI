@@ -59,6 +59,7 @@ export default function TonWalletConnection() {
     try {
       const data = await fetchTonWallet();
       setWalletData(data);
+      setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load Gram wallet details.');
     } finally {
