@@ -321,7 +321,7 @@ export default function ExpeditionsScreen() {
           </button>
         </div>
         <p className="font-mono text-[10px] leading-relaxed text-neon-500">Join solo or assemble a squad. Objectives and eligibility are checked by ZORD’s trusted services — team leaders cannot approve their own progress.</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-3 gap-2">
           <div className="rounded-lg border border-neon/15 bg-black/30 p-2"><p className="label">Available</p><p className="mt-1 font-display text-lg text-neon-200">{counts.available}</p></div>
           <div className="rounded-lg border border-neon/15 bg-black/30 p-2"><p className="label">Joined</p><p className="mt-1 font-display text-lg text-cyan-200">{counts.joined}</p></div>
           <div className="rounded-lg border border-neon/15 bg-black/30 p-2"><p className="label">Locked</p><p className="mt-1 font-display text-lg text-amber-200">{counts.locked}</p></div>
