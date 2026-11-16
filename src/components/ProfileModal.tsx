@@ -14,11 +14,13 @@ export interface ProfileIdentity {
 interface ProfileModalProps {
   state: GameState;
   identity: ProfileIdentity | null;
+  verifiedZpBalance: number | null;
+  verifiedZpLifetime: number | null;
   onReset: () => void;
   onClose: () => void;
 }
 
-export default function ProfileModal({ state, identity, onReset, onClose }: ProfileModalProps) {
+export default function ProfileModal({ state, identity, verifiedZpBalance, verifiedZpLifetime, onReset, onClose }: ProfileModalProps) {
   const [confirmingReset, setConfirmingReset] = useState(false);
   const now = Date.now();
   const tier = tierInfo(state.lifetimeZp);
@@ -30,25 +32,27 @@ export default function ProfileModal({ state, identity, onReset, onClose }: Prof
   return (
     <Modal title="Operative Profile" onClose={onClose}>
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-neon/50 bg-neon/10 text-neon-400 shadow-glow">
             <User size={26} />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="label">Operative rank</p>
             <h3 className="mt-1 font-display text-base font-bold uppercase tracking-wide text-neon-300">
               {tier.rank}
             </h3>
-            <p className="mt-1 font-mono text-[11px] text-neon-300">{displayName}</p>
+            <p className="mt-1 break-words font-mono text-xs text-neon-300">{displayName}</p>
             <p className="font-mono text-[11px] text-neon-500">ZORD Tier {String(tier.tier).padStart(2, '0')}</p>
           </div>
         </div>
 
-        <dl className="grid grid-cols-2 gap-2">
-          <Stat label="Total ZP balance" value={formatZp(state.zp)} />
+        <dl className="grid grid-cols-2 gap-2 sm:gap-3">
+          <Stat label="Game ZP balance" value={formatZp(state.zp)} />
+          <Stat label="Verified ZP balance" value={verifiedZpBalance === null ? 'Unavailable' : formatZp(verifiedZpBalance)} />
           <Stat label="Passive ZP/sec" value={formatRate(passiveRate(state, now))} />
           <Stat label="Fragments connected" value={`${fixedCount(state)} / ${FRAGMENT_IDS.length}`} />
-          <Stat label="Lifetime ZP" value={formatZp(state.lifetimeZp)} />
+          <Stat label="Lifetime game ZP" value={formatZp(state.lifetimeZp)} />
+          <Stat label="Verified lifetime ZP" value={verifiedZpLifetime === null ? 'Unavailable' : formatZp(verifiedZpLifetime)} />
         </dl>
 
         <section className="space-y-2">
@@ -64,7 +68,7 @@ export default function ProfileModal({ state, identity, onReset, onClose }: Prof
                   key={id}
                   className="flex items-center justify-between gap-3 rounded-lg border border-neon/25 bg-neon/5 px-4 py-3"
                 >
-                  <span className="font-display text-[11px] font-bold uppercase tracking-wide text-neon-300">
+                  <span className="min-w-0 break-words font-display text-xs font-bold uppercase tracking-wide text-neon-300">
                     {AGENTS[id].name}
                   </span>
                   <span className="font-mono text-[11px] tabular-nums text-neon-400">
@@ -78,17 +82,41 @@ export default function ProfileModal({ state, identity, onReset, onClose }: Prof
 
         <section className="space-y-3 border-t border-red-500/25 pt-5">
           <p className="label !text-red-300/80">System utilities</p>
-          <p className="font-mono text-[11px] leading-relaxed text-neon-500">
-            Wipes ZP, fragments, rentals, sub-nodes and vault link. This cannot be undone.
+          <p className="font-mono text-xs leading-relaxed text-neon-400">
+            Resets this device's legacy game progress, including its game ZP balance and local game stats. It does not erase server-verified ZP, wallet transactions, or server-owned Fragment records.
           </p>
-          <button
-            type="button"
-            onClick={() => (confirmingReset ? onReset() : setConfirmingReset(true))}
-            className="w-full rounded-lg border border-red-500/60 bg-red-500/10 px-4 py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.16em] text-red-300 transition duration-200 hover:bg-red-500/20 active:scale-[0.98]"
-          >
-            <RotateCcw size={14} className="mr-2 inline" />
-            {confirmingReset ? 'Confirm wipe' : 'Reset system memory'}
-          </button>
+          {confirmingReset ? (
+            <div className="space-y-3 rounded-lg border border-red-500/35 bg-red-500/5 p-3">
+              <p className="font-mono text-xs leading-relaxed text-red-200" role="alert">
+                This local reset cannot be undone. Server-owned balances and records will remain unchanged.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingReset(false)}
+                  className="min-h-11 rounded-lg border border-neon/30 bg-transparent px-3 py-2 font-display text-xs font-bold uppercase tracking-wide text-neon-300 transition hover:bg-neon/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={onReset}
+                  className="min-h-11 rounded-lg border border-red-500/60 bg-red-500/15 px-3 py-2 font-display text-xs font-bold uppercase tracking-wide text-red-200 transition hover:bg-red-500/25"
+                >
+                  Confirm local reset
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingReset(true)}
+              className="min-h-11 w-full rounded-lg border border-red-500/60 bg-red-500/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-[0.12em] text-red-300 transition duration-200 hover:bg-red-500/20 active:scale-[0.98]"
+            >
+              <RotateCcw size={14} className="mr-2 inline" />
+              Reset local game progress
+            </button>
+          )}
         </section>
       </div>
     </Modal>
@@ -97,9 +125,9 @@ export default function ProfileModal({ state, identity, onReset, onClose }: Prof
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-neon/15 bg-black/40 px-3 py-3">
-      <dt className="font-mono text-[10px] uppercase tracking-wider text-neon-500">{label}</dt>
-      <dd className="mt-1 font-display text-sm font-bold tabular-nums text-neon-300">{value}</dd>
+    <div className="min-w-0 rounded-lg border border-neon/15 bg-black/40 px-3 py-3">
+      <dt className="break-words font-mono text-xs uppercase tracking-wide text-neon-400">{label}</dt>
+      <dd className="mt-1 break-words font-display text-sm font-bold tabular-nums text-neon-300">{value}</dd>
     </div>
   );
 }
