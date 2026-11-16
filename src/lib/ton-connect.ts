@@ -46,9 +46,6 @@ declare global {
   }
 }
 
-const TON_CONNECT_MANIFEST_URL =
-  'https://zord-autonomous-agent.vercel.app/tonconnect-manifest.json';
-
 let tonConnectUI: TonConnectUIInstance | null = null;
 let tonConnectScriptPromise: Promise<void> | null = null;
 
@@ -57,16 +54,11 @@ export async function loadTonConnectUI(): Promise<TonConnectUIInstance> {
 
   if (!tonConnectScriptPromise) {
     tonConnectScriptPromise = new Promise<void>((resolve, reject) => {
-      const existing = document.querySelector<HTMLScriptElement>('script[data-zord-ton-connect]');
-      const script = existing ?? document.createElement('script');
-
-      // A completed script without the expected global is unusable; remove it
-      // so a retry can fetch a clean copy instead of waiting for an old event.
-      if (existing?.dataset.loaded === 'true') {
-        existing.remove();
-      }
-
-      const activeScript = existing?.dataset.loaded === 'true' ? document.createElement('script') : script;
+      // If the global is absent, discard any stale or failed script element.
+      // A fresh element makes retries reliable even when an earlier load event
+      // completed before this module attached its listeners.
+      document.querySelector<HTMLScriptElement>('script[data-zord-ton-connect]')?.remove();
+      const activeScript = document.createElement('script');
       const cleanup = () => {
         activeScript.removeEventListener('load', onLoad);
         activeScript.removeEventListener('error', onError);
@@ -112,7 +104,9 @@ export function getTonConnectUI(): TonConnectUIInstance {
 
   if (!tonConnectUI) {
     tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
-      manifestUrl: TON_CONNECT_MANIFEST_URL,
+      // Load the manifest from this deployment (Preview or Production).
+      // Its "url" field stays on the canonical domain used by server proof checks.
+      manifestUrl: new URL('/tonconnect-manifest.json', window.location.origin).toString(),
       uiPreferences: { theme: 'DARK' },
     });
     tonConnectUI.setConnectionNetwork('-239');
