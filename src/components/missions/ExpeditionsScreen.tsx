@@ -343,8 +343,8 @@ export default function ExpeditionsScreen() {
       ) : visible.length === 0 ? (
         <div className="panel space-y-2 p-7 text-center">
           <Compass size={28} className="mx-auto text-neon-700" />
-          <h3 className="font-display text-xs font-bold uppercase tracking-wider text-neon-300">{filter === 'joined' ? 'No joined Expeditions' : filter === 'locked' ? 'No locked Expeditions' : 'No published Expeditions yet'}</h3>
-          <p className="font-mono text-[9px] leading-relaxed text-neon-700">{filter === 'joined' ? 'When you register or join a squad, your operations will appear here.' : 'New Expeditions appear here after the operations team opens registration.'}</p>
+          <h3 className="font-display text-xs font-bold uppercase tracking-wider text-neon-300">{filter === 'joined' ? 'No joined Expeditions' : filter === 'locked' ? 'No locked Expeditions' : filter === 'available' ? 'No Expeditions open for registration' : 'No published Expeditions yet'}</h3>
+          <p className="font-mono text-[9px] leading-relaxed text-neon-700">{filter === 'joined' ? 'When you register or join a squad, your operations will appear here.' : filter === 'available' ? 'There are no unlocked Expeditions accepting registrations right now. Check back when a registration window opens.' : filter === 'locked' ? 'Locked Expeditions will appear here when they have prerequisites you have not completed yet.' : 'New Expeditions appear here after the operations team publishes them.'}</p>
           <button type="button" onClick={() => void load(true)} className="btn-ghost mx-auto"><RefreshCw size={12} /> Refresh list</button>
         </div>
       ) : (
@@ -529,6 +529,7 @@ export default function ExpeditionsScreen() {
                               <div><h5 className="break-words font-display text-sm font-bold uppercase text-cyan-100">{activeObjective.title}</h5><p className="mt-1 font-mono text-[8px] uppercase text-cyan-500">{activeObjective.type.replace(/_/g, ' ')} · {activeObjective.completionScope} completion</p></div>
                               {activeObjective.description && <p className="font-mono text-[10px] leading-relaxed text-neon-400">{activeObjective.description}</p>}
                               {activeObjective.instructions && <div className="rounded-lg border border-neon/10 bg-black/30 p-3"><p className="label">How to complete this task</p><p className="mt-2 whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-neon-300">{activeObjective.instructions}</p></div>}
+                              {activeObjective.completionScope === 'team' && !hasTeam && <p className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 font-mono text-[9px] leading-relaxed text-amber-200">This objective requires an Expedition team. Your current registration is individual, so contact the operations team for guidance.</p>}
                               {([
                                 ...(activeObjective.completionScope === 'individual' || activeObjective.completionScope === 'both' ? [{ scope: 'individual' as const, progress: activeObjective.progress?.individual ?? null, label: 'Your submission' }] : []),
                                 ...(hasTeam && (activeObjective.completionScope === 'team' || activeObjective.completionScope === 'both') ? [{ scope: 'team' as const, progress: activeObjective.progress?.team ?? null, label: 'Team submission' }] : []),
