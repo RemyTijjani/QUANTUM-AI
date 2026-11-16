@@ -403,7 +403,7 @@ function AgentRentalCheckout() {
           <div>
             <p className="label">Exact amount</p>
             <p className="mt-1 font-display text-xl text-cyan-200">
-              {(Number(intent.amountNano) / 1_000_000_000).toFixed(3).replace(/\\.?0+$/, '')} GRAM
+              {(Number(intent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} GRAM
             </p>
             <p className="font-mono text-[9px] text-neon-600">TON mainnet · native coin · not a jetton</p>
           </div>
