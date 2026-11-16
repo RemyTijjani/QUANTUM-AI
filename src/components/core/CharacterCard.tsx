@@ -10,7 +10,7 @@ export default function CharacterCard({ fixed, lifetimeZp, rate }: CharacterCard
   const stats = [
     { label: 'Fragments', value: `${fixed}/4` },
     { label: 'Game lifetime ZP', value: lifetimeZp },
-    { label: 'Estimated ZP / sec', value: rate },
+    { label: 'Displayed rate estimate', value: `${rate} ZP/s` },
   ];
 
   return (
@@ -27,11 +27,10 @@ export default function CharacterCard({ fixed, lifetimeZp, rate }: CharacterCard
       </div>
 
       <p className="mt-4 font-mono text-xs leading-relaxed text-neon-300/90">
-        ZORD was scattered across the grid in four pieces. Restore fragments to advance the local game simulation.
-        These game-state estimates do not credit the verified ZP economy.
+        ZORD was scattered across the grid in four pieces. Restore fragments to bring the core online. Fragment mining is recorded by the trusted gameplay service, and earned ZP is released to your verified balance after the six-hour pending period.
       </p>
 
-      <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-neon/15 pt-4">
+      <dl className="mt-5 grid grid-cols-1 min-[380px]:grid-cols-3 gap-2 border-t border-neon/15 pt-4">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-lg border border-neon/15 bg-black/40 px-2 py-2.5 text-center">
             <dt className="font-mono text-[10px] uppercase tracking-wider text-neon-500">{stat.label}</dt>
