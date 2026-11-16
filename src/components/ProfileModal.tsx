@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Activity, Cpu, RotateCcw, ShieldCheck, User, Wallet, Zap } from 'lucide-react';
 import { AGENTS, FRAGMENT_IDS } from '@/lib/game/config';
 import { activeAgents, fixedCount, passiveRate, tierInfo } from '@/lib/game/state';
@@ -183,7 +184,7 @@ export default function ProfileModal({ state, identity, verifiedZpBalance, verif
   );
 }
 
-function BalanceCard({ label, value, icon, detail, featured = false }: { label: string; value: string; icon: React.ReactNode; detail: string; featured?: boolean }) {
+function BalanceCard({ label, value, icon, detail, featured = false }: { label: string; value: string; icon: ReactNode; detail: string; featured?: boolean }) {
   return (
     <div className={`min-w-0 rounded-xl border p-3 ${featured ? 'border-neon/35 bg-neon/[0.08]' : 'border-white/10 bg-white/[0.025]'}`}>
       <div className="flex items-center gap-1.5 text-neon-400">
