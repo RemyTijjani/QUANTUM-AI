@@ -24,6 +24,14 @@ type WalletResponse = { balance?: number | string };
 const number = (value: number | string | null | undefined) => Number(value ?? 0);
 const fmt = (value: number | string) => number(value).toLocaleString(undefined, { maximumFractionDigits: 4 });
 const rewardLabel = (raffle: Raffle) => `${fmt(raffle.prize_pool_amount)} ${raffle.prize_currency}`;
+const countdownText = (target: string, now: number) => {
+  const total = Math.max(0, Math.floor((new Date(target).getTime() - now) / 1000));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  return `${days ? `${days}d ` : ''}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
 
 export default function RafflesScreen() {
   const [raffles, setRaffles] = useState<Raffle[]>([]);
@@ -37,6 +45,7 @@ export default function RafflesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [clockNow, setClockNow] = useState(Date.now());
 
   const refresh = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true); else setLoading(true);
@@ -61,6 +70,10 @@ export default function RafflesScreen() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const entriesByRaffle = useMemo(() => entries.reduce<Record<string, Entry[]>>((map, entry) => {
     (map[entry.raffle_id] ??= []).push(entry);
@@ -103,8 +116,8 @@ export default function RafflesScreen() {
 
   const raffleState = (raffle: Raffle): 'upcoming' | 'open' | 'closed' => {
     const now = Date.now();
+    if (raffle.status === 'closed' || (raffle.ends_at && now >= new Date(raffle.ends_at).getTime())) return 'closed';
     if (raffle.starts_at && now < new Date(raffle.starts_at).getTime()) return 'upcoming';
-    if (raffle.ends_at && now >= new Date(raffle.ends_at).getTime()) return 'closed';
     return raffle.status === 'published' ? 'open' : 'closed';
   };
 
@@ -112,9 +125,9 @@ export default function RafflesScreen() {
 
   const statusText = (raffle: Raffle) => {
     const state = raffleState(raffle);
-    if (state === 'upcoming') return `Starts ${raffle.starts_at ? new Date(raffle.starts_at).toLocaleString() : 'soon'}`;
-    if (state === 'closed') return 'Entries are closed';
-    if (raffle.ends_at) return `Closes ${new Date(raffle.ends_at).toLocaleString()}`;
+    if (state === 'upcoming' && raffle.starts_at) return `Starts in ${countdownText(raffle.starts_at, clockNow)}`;
+    if (state === 'closed') return 'Awaiting Result';
+    if (raffle.ends_at) return `Closes in ${countdownText(raffle.ends_at, clockNow)}`;
     return 'Open for entries';
   };
 
@@ -178,7 +191,7 @@ export default function RafflesScreen() {
                 <div className="border-b border-neon/10 bg-gradient-to-r from-neon/5 to-transparent p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0"><p className="text-[9px] uppercase tracking-widest text-cyan-300">Prize pool</p><h4 className="mt-1 break-words font-display text-lg font-bold text-neon-100">{rewardLabel(raffle)}</h4></div>
-                    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] ${raffleState(raffle) === 'open' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : raffleState(raffle) === 'upcoming' ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : 'border-neon/20 bg-white/5 text-neon-500'}`}>{raffleState(raffle) === 'open' ? 'Open' : raffleState(raffle) === 'upcoming' ? 'Upcoming' : 'Closed'}</span>
+                    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] ${raffleState(raffle) === 'open' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : raffleState(raffle) === 'upcoming' ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : 'border-neon/20 bg-white/5 text-neon-500'}`}>{raffleState(raffle) === 'open' ? 'Open' : raffleState(raffle) === 'upcoming' ? 'Upcoming' : 'Awaiting Result'}</span>
                   </div>
                   <h3 className="mt-3 text-sm font-semibold text-neon-200">{raffle.title}</h3>
                   {raffle.description && <p className="mt-1 text-xs leading-relaxed text-neon-500">{raffle.description}</p>}
@@ -192,7 +205,7 @@ export default function RafflesScreen() {
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neon/10 px-4 py-3">
                   <span className="flex items-center gap-1.5 text-[9px] text-neon-600"><Clock3 size={12}/>{statusText(raffle)}</span>
-                  <button type="button" onClick={() => openRaffle(raffle)} disabled={raffleState(raffle) !== 'open'} className="rounded-lg bg-neon/15 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-neon-200 transition hover:bg-neon/25 disabled:cursor-not-allowed disabled:opacity-35">{raffleState(raffle) === 'upcoming' ? 'Not open yet' : raffleState(raffle) === 'closed' ? 'Entries closed' : 'Enter raffle'}</button>
+                  <button type="button" onClick={() => openRaffle(raffle)} disabled={raffleState(raffle) !== 'open'} className="rounded-lg bg-neon/15 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-neon-200 transition hover:bg-neon/25 disabled:cursor-not-allowed disabled:opacity-35">{raffleState(raffle) === 'upcoming' ? 'Starts soon' : raffleState(raffle) === 'closed' ? 'Awaiting Result' : 'Enter raffle'}</button>
                 </div>
               </article>
             );
