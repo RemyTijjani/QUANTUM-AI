@@ -847,6 +847,7 @@ export interface AdminRaffleRecord {
   status: 'draft' | 'published' | 'closed' | 'drawn' | 'settled' | 'cancelled';
   starts_at: string | null;
   ends_at: string | null;
+  closed_at?: string | null;
   created_at: string;
 }
 
@@ -904,6 +905,27 @@ export async function publishAdminRaffle(
     throw new AdminApiError('The server did not confirm that the raffle was published. Refresh the list before retrying.');
   }
   return result as AdminRafflePublishResult;
+}
+
+export interface AdminRaffleCloseResult {
+  success: true;
+  status: 'closed';
+  alreadyClosed: boolean;
+  closedAt: string | null;
+  earlyClose?: boolean;
+}
+
+export async function closeAdminRaffle(
+  creds: AdminCredentials,
+  raffleId: string,
+): Promise<AdminRaffleCloseResult> {
+  const body = await callAdminApi(creds, { action: 'close_raffle', raffle: { id: raffleId } });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The close response could not be verified.');
+  const result = body as Partial<AdminRaffleCloseResult>;
+  if (result.success !== true || result.status !== 'closed' || typeof result.alreadyClosed !== 'boolean') {
+    throw new AdminApiError('The server did not confirm that the raffle was closed. Refresh before retrying.');
+  }
+  return result as AdminRaffleCloseResult;
 }
 
 export interface AdminRaffleReservationResult {
