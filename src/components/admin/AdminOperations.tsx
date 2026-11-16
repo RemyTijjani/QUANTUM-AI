@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Download, MessageSquare, Pickaxe, RefreshCw, Send, Trash2 } from 'lucide-react';
 import {
   AdminApiError,
@@ -20,7 +20,7 @@ function downloadCsv(filename: string, rows: Array<Record<string, unknown>>) {
     return '"' + raw.replace(/"/g, '""') + '"';
   };
   const csv = [headers.map(quote).join(','), ...rows.map((row) => headers.map((key) => quote(row[key])).join(','))].join('\r\n');
-  const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csv], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['\\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -54,7 +54,7 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
   const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const loadMining = async () => {
+  const loadMining = useCallback(async () => {
     setMiningError(null);
     try {
       const settings = await getAdminGlobalMiningSettings(creds);
@@ -64,9 +64,9 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
     } catch (error) {
       setMiningError(errorText(error));
     }
-  };
+  }, [creds]);
 
-  useEffect(() => { void loadMining(); }, [creds.username]);
+  useEffect(() => { void loadMining(); }, [loadMining]);
 
   const submitBroadcast = async () => {
     const channels = [ ...(inApp ? ['in_app' as const] : []), ...(telegram ? ['telegram' as const] : []) ];
@@ -158,6 +158,14 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
           <label className="flex items-center gap-2"><input type="checkbox" checked={inApp} onChange={(event) => setInApp(event.target.checked)} /> In-app</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={telegram} onChange={(event) => setTelegram(event.target.checked)} /> Telegram</label>
         </div>
+        {(title.trim() || message.trim()) && (
+          <div className="mb-3 rounded-xl border border-emerald-400/20 bg-[#0b120e] p-3" aria-live="polite">
+            <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-emerald-300">Message preview</p>
+            <p className="break-words text-xs font-semibold text-white">{title.trim() || 'Announcement title'}</p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-[11px] leading-relaxed text-slate-300">{message.trim() || 'Your message will appear here.'}</p>
+            <p className="mt-2 text-[9px] text-emerald-200/70">Delivery: {[inApp ? 'In-app' : '', telegram ? 'Telegram' : ''].filter(Boolean).join(' + ') || 'No channel selected'}</p>
+          </div>
+        )}
         {broadcastError && <p role="alert" className="mb-2 text-[11px] text-red-300">{broadcastError}</p>}
         {broadcastNotice && <p role="status" className="mb-2 text-[11px] text-emerald-300">{broadcastNotice}</p>}
         <button type="button" onClick={() => void submitBroadcast()} disabled={broadcastBusy || !title.trim() || !message.trim() || (!inApp && !telegram)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 px-3 py-2.5 text-xs font-bold text-[#07110b] disabled:cursor-not-allowed disabled:opacity-50"><Send size={14} />{broadcastBusy ? 'Sending…' : 'Preview & send broadcast'}</button>
