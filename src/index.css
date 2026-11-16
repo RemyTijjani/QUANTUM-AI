@@ -291,3 +291,63 @@
 .admin-field-label {
   @apply flex flex-col gap-2 text-xs font-medium text-slate-300;
 }
+
+
+/* Readability pass: preserve the neon terminal aesthetic while making UI text easier to scan. */
+@layer base {
+  body {
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    line-height: 1.35;
+  }
+
+  :focus-visible {
+    outline: 2px solid #86efac;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .label {
+    @apply text-xs tracking-[0.18em] text-neon-400;
+  }
+
+  .title {
+    @apply text-base tracking-[0.14em] text-neon-300;
+  }
+
+  .btn {
+    @apply text-xs tracking-[0.12em];
+  }
+}
+
+@layer utilities {
+  /* Lift tiny utility text to a readable minimum without changing its placement. */
+  .text-xs {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .text-\\[9px\\],
+  .text-\\[10px\\],
+  .text-\\[11px\\] {
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .text-neon-500,
+  .text-neon-600 {
+    color: #4ade80;
+  }
+}
