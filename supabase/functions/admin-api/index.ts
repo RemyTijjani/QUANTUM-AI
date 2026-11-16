@@ -372,6 +372,7 @@ const TASK_PLATFORMS = ["tiktok", "youtube"];
 interface AdminRequestBody {
   action:
     | "review_submission"
+    | "review_x_follow_submission"
     | "bulk_approve_submissions"
     | "fetch_dashboard"
     | "save_task"
@@ -673,6 +674,7 @@ Deno.serve(async (req: Request) => {
         pendingRes,
         approvedRes,
         pendingListRes,
+        xFollowPendingRes,
         tasksRes,
         vaultRes,
         eventsRes,
@@ -706,6 +708,13 @@ Deno.serve(async (req: Request) => {
           .order("created_at", { ascending: true }),
 
         db
+          .from("x_follow_submissions")
+          .select("id, player_id, x_username, status, reward_zp, created_at, players!inner(referral_code, username, first_name)")
+          .eq("status", "pending")
+          .order("created_at", { ascending: true })
+          .limit(500),
+
+        db
           .from("mission_tasks")
           .select(
             "id, kind, title, description, reward, platform, action_url, telegram_chat_id, reward_currency, unlock_cost_zp, status, objectives, requirements"
@@ -730,6 +739,7 @@ Deno.serve(async (req: Request) => {
         pendingRes,
         approvedRes,
         pendingListRes,
+        xFollowPendingRes,
         tasksRes,
         vaultRes,
         eventsRes,
@@ -761,6 +771,7 @@ Deno.serve(async (req: Request) => {
         },
 
         submissions: pendingListRes.data ?? [],
+        xFollowSubmissions: xFollowPendingRes.data ?? [],
 
         tasks: (tasksRes.data ?? []).map((t) => ({
           id: t.id,
@@ -780,6 +791,24 @@ Deno.serve(async (req: Request) => {
 
         events: eventsRes.data ?? [],
       });
+    }
+
+    if (body.action === "review_x_follow_submission") {
+      const submissionId = typeof body.submissionId === "string" ? body.submissionId : "";
+      const decision = body.decision;
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!validUuid.test(submissionId)) return json({ error: "A valid X Follow submission is required." }, 400);
+      if (decision !== "approved" && decision !== "rejected") return json({ error: "Choose approve or reject." }, 400);
+      const { data, error } = await db.rpc("admin_review_x_follow_submission", {
+        p_submission_id: submissionId, p_decision: decision,
+        p_admin_username: ADMIN_USERNAME, p_rejection_reason: null,
+      });
+      if (error || !data || typeof data !== "object" || data.success !== true || data.decision !== decision) {
+        console.error("X Follow review failed:", error);
+        const message = error?.message ?? "Could not verify the X Follow review.";
+        return json({ error: message }, /already|reviewed|not found/i.test(message) ? 409 : 500);
+      }
+      return json(data);
     }
 
     // SEARCH PLAYERS: read-only, bounded admin lookup.
