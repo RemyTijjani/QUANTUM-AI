@@ -1,7 +1,8 @@
 export const APP_NAME = 'ZORD Autonomous Agent';
 export const APP_TAGLINE = 'Autonomous Intellect. Total Group Dominion.';
 
-export const TIER_SIZE = 2500;
+// Core Rank advances for every 500 net ZAP.
+export const TIER_SIZE = 500;
 
 export const RANKS = [
   'Initiate',
