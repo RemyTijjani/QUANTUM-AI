@@ -68,7 +68,9 @@ export default function CoreTab({
   const rankNumber = coreRank?.rankNumber ?? tier.tier;
   const rankProgress = Math.max(0, Math.min(100, coreRank?.progressPercent ?? tier.progress * 100));
   const rankNextThreshold = coreRank?.nextThreshold ?? rankNumber * 500;
+  const rankCurrentThreshold = coreRank?.currentThreshold ?? Math.max(0, (rankNumber - 1) * 500);
   const rankRemaining = Math.max(0, rankNextThreshold - (netZapProgress ?? 0));
+  const rankZapProgress = Math.max(0, (netZapProgress ?? 0) - rankCurrentThreshold);
   const zapProgress = netZapProgress === null || netZapProgress === undefined
     ? 0
     : Math.max(0, Math.min(100, ((netZapProgress % 100) + 100) % 100));
@@ -167,7 +169,7 @@ export default function CoreTab({
               <div className="h-full rounded-full bg-cyan-300 transition-all duration-500" style={{ width: String(rankProgress) + '%' }} />
             </div>
             <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[9px] text-cyan-700">
-              <span>{formatZp(netZapProgress ?? 0)} / {formatZp(rankNextThreshold)} net ZAP</span>
+              <span>{formatZp(rankZapProgress)} / 500 net ZAP in this rank</span>
               <span>{rankRemaining === 0 ? 'Rank threshold reached' : `${formatZp(rankRemaining)} ZAP to next rank`}</span>
             </div>
             <p className="mt-2 text-[8px] leading-relaxed text-cyan-800">Every 500 net ZAP advances your Core Rank. Spending ZAP can lower your rank; earning or receiving ZAP can raise it.</p>
