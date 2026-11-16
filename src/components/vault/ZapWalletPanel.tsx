@@ -389,7 +389,7 @@ export default function ZapWalletPanel({
         </div>
         <p className="text-[10px] leading-relaxed text-neon-700">Share your referral code with another ZORD player so they can send ZAP to you.</p>
         <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-neon/15 bg-black/20 p-3">
-          <span className="min-w-0 flex-1 break-all font-mono text-xs text-cyan-200">{player?.referralCode ?? 'Your code is loading…'}</span>
+          <span className="min-w-0 flex-1 break-all font-mono text-xs text-cyan-200">{player ? (player.referralCode ?? 'No receive code is assigned yet.') : 'Loading your receive code…'}</span>
           <button type="button" onClick={() => void handleCopyReceiveCode()} disabled={!player?.referralCode} className="flex shrink-0 items-center gap-1 rounded-md border border-cyan-300/25 px-2 py-2 text-[9px] font-semibold text-cyan-200 disabled:opacity-40"><Copy size={12} />{copiedReceiveCode ? 'Copied' : 'Copy code'}</button>
         </div>
         {player?.referralCode && (
