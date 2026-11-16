@@ -317,10 +317,11 @@ function GameApp({
             onFixFragment={async (id) => {
               try {
                 await trustedGameplay.fixFragment(id);
+                return true;
               } catch (error) {
                 if (error instanceof Error && error.message.includes('Unlock this fragment')) {
                   await startFragmentUnlock(id);
-                  return;
+                  return false;
                 }
                 throw error;
               }
