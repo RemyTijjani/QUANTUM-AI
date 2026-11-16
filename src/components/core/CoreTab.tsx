@@ -287,7 +287,7 @@ export default function CoreTab({
         {miningLeft > 0 ? `Core timer: ${formatRemaining(miningLeft)} left` : 'No active fragment mining session. Fix an unlocked fragment to start server-recorded mining.'}
       </p>
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
-        Complete the timed unlock, then fix the fragment into the core. Mining is recorded by the trusted server; earned ZP stays pending for six hours before becoming Verified ZP. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
+        Each Fragment has its own assigned advertising provider. Ad unlocking will activate after publisher approval and trusted server-side verification. Once unlocked, fix the Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
       </p>
       <CharacterCard fixed={fixed} lifetimeZp={formatZp(state.lifetimeZp)} rate={formatRate(rate)} />
 
