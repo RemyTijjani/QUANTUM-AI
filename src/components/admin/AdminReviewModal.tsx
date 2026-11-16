@@ -665,7 +665,7 @@ function AdminConsole({
 
 
       {activeTab === 'players' && <AdminPlayerManager creds={creds} />}
-      {activeTab === 'referrals' && <AdminReferralManager creds={creds} />
+      {activeTab === 'referrals' && <AdminReferralManager creds={creds} />}
         </main>
       </div>
   );
