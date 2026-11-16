@@ -181,7 +181,7 @@ export function tierInfo(lifetimeZp: number) {
 
   return {
     tier,
-    rank: RANKS[Math.min(tier - 1, RANKS.length - 1)],
+    rank: RANKS[tier - 1] ?? `Core ${tier}`,
     progress: intoTier / TIER_SIZE,
     intoTier,
     toNext: TIER_SIZE - intoTier,
