@@ -406,6 +406,7 @@ interface AdminRequestBody {
     | "list_raffles"
     | "save_raffle_draft"
     | "reserve_raffle_prize"
+    | "close_raffle"
     | "list_ton_withdrawals"
     | "review_ton_withdrawal"
     | "get_referral_kickback_budget"
@@ -2015,13 +2016,29 @@ Deno.serve(async (req: Request) => {
       return json(data);
     }
 
+    if (body.action === "close_raffle") {
+      const raffleId = typeof body.raffle?.id === "string" ? body.raffle.id : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raffleId)) {
+        return json({ error: "A valid raffle ID is required." }, 400);
+      }
+      const { data, error } = await db.rpc("admin_close_raffle", {
+        p_raffle_id: raffleId,
+        p_admin: ADMIN_USERNAME,
+      });
+      if (error || !data || data.success !== true || data.status !== "closed") {
+        console.error("Admin raffle close failed:", error);
+        return json({ error: error?.message ?? data?.error ?? "Could not confirm raffle closing." }, 409);
+      }
+      return json(data);
+    }
+
     // Record externally sourced ZAP only after the signed-in Admin has checked the
     // deposit outside ZORD. The database RPC atomically audits and increases the
     // separate raffle reserve; it never credits a player wallet.
     if (body.action === "list_raffles") {
       const { data: raffles, error } = await db
         .from("raffles")
-        .select("id,title,description,reward_type,reward_code,prize_pool_amount,prize_currency,funding_source,min_bet_zap,entry_mode,winner_count,winner_method,status,starts_at,ends_at,created_at")
+        .select("id,title,description,reward_type,reward_code,prize_pool_amount,prize_currency,funding_source,min_bet_zap,entry_mode,winner_count,winner_method,status,starts_at,ends_at,closed_at,created_at")
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) {
