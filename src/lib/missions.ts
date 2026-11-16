@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { MissionKind, MissionSpec } from '@/lib/game/config';
+import type { MissionKind, MissionSpec, MissionRewardCurrency } from '@/lib/game/config';
 
 interface MissionTaskRow {
   id: string;
@@ -10,7 +10,7 @@ interface MissionTaskRow {
   platform: 'tiktok' | 'youtube' | null;
   action_url: string | null;
   telegram_chat_id: string | null;
-  reward_currency: 'ZP' | 'ZAP';
+  reward_currency: MissionRewardCurrency;
   unlock_cost_zp: number;
   status: 'draft' | 'published' | 'paused' | 'archived';
 }
@@ -18,15 +18,16 @@ interface MissionTaskRow {
 const MISSION_KINDS: MissionKind[] = ['daily', 'social', 'creator'];
 
 export const FALLBACK_MISSIONS: MissionSpec[] = [
-  { id: 'daily-uplink', kind: 'daily', title: 'Daily Uplink', description: 'Check in with ZORD OS for today.', reward: 100 },
-  { id: 'ad-quota', kind: 'daily', title: 'Ad Feed Quota', description: 'Watch 3 interstitial feeds today.', reward: 150 },
-  { id: 'agent-uptime', kind: 'daily', title: 'Agent Uptime', description: 'Keep a ZORD agent running.', reward: 200 },
+  { id: 'daily-uplink', kind: 'daily', title: 'Daily Uplink', description: 'Check in with ZORD OS for today.', reward: 100, rewardCurrency: 'ZP' },
+  { id: 'ad-quota', kind: 'daily', title: 'Ad Feed Quota', description: 'Complete 8 provider-verified advertisements today.', reward: 1, rewardCurrency: 'ZAP' },
+  { id: 'agent-uptime', kind: 'daily', title: 'Agent Uptime', description: 'Keep a paid ZORD agent continuously active for 12 hours.', reward: 10, rewardCurrency: 'ZAP' },
   {
     id: 'join-intel',
     kind: 'social',
     title: 'Join the ZORD Intel Channel',
     description: 'Get field reports from the grid.',
     reward: 250,
+    rewardCurrency: 'ZP',
     actionUrl: 'https://t.me/zord_intel',
   },
   {
@@ -35,15 +36,17 @@ export const FALLBACK_MISSIONS: MissionSpec[] = [
     title: 'Follow the Signal Feed',
     description: 'Catch every fragment drop as it breaks.',
     reward: 250,
+    rewardCurrency: 'ZP',
     actionUrl: 'https://x.com/zord_agent',
   },
-  { id: 'share-uplink', kind: 'social', title: 'Broadcast Your Uplink', description: 'Send your referral link to another operative.', reward: 300 },
+  { id: 'share-uplink', kind: 'social', title: 'Broadcast Your Uplink', description: 'Send your referral link to another operative.', reward: 300, rewardCurrency: 'ZP' },
   {
     id: 'creator-tiktok',
     kind: 'creator',
     title: 'TikTok Content Drop',
     description: 'Submit a TikTok link featuring ZORD Autonomous Agent.',
     reward: 500,
+    rewardCurrency: 'ZP',
     platform: 'tiktok',
   },
   {
@@ -52,6 +55,7 @@ export const FALLBACK_MISSIONS: MissionSpec[] = [
     title: 'YouTube Content Drop',
     description: 'Submit a YouTube link featuring ZORD Autonomous Agent.',
     reward: 500,
+    rewardCurrency: 'ZP',
     platform: 'youtube',
   },
 ];
@@ -74,7 +78,7 @@ export async function fetchMissions(): Promise<MissionSpec[]> {
     return rows
       .filter((row) =>
         row.status === 'published' &&
-        row.reward_currency === 'ZP' &&
+        (row.reward_currency === 'ZP' || row.reward_currency === 'ZAP') &&
         row.unlock_cost_zp === 0 &&
         Number.isFinite(row.reward) &&
         (row.reward ?? 0) > 0 &&
@@ -86,6 +90,7 @@ export async function fetchMissions(): Promise<MissionSpec[]> {
         title: row.title,
         description: row.description,
         reward: row.reward as number,
+        rewardCurrency: row.reward_currency,
         platform: row.platform ?? undefined,
         actionUrl: row.action_url ?? undefined,
         telegramChatId: row.telegram_chat_id ?? undefined,
