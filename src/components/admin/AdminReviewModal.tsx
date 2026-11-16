@@ -49,6 +49,7 @@ import AdminPlayerManager from '@/components/admin/AdminPlayerManager';
 import AdminExternalZapFunding from '@/components/admin/AdminExternalZapFunding';
 import AdminExternalTonFunding from '@/components/admin/AdminExternalTonFunding';
 import AdminTonWithdrawals from '@/components/admin/AdminTonWithdrawals';
+import AdminReferralManager from '@/components/admin/AdminReferralManager';
 import VaultReservesCard from '@/components/admin/VaultReservesCard';
 import { NeonSpinner } from '@/components/NeonSpinner';
 
@@ -104,7 +105,7 @@ function AdminConsole({
   onApproveSubmission: (rewardZp: number) => void;
 }) {
   const [data, setData] = useState<AdminDashboardData>(initialData);
-  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'expeditions' | 'players' | 'raffles' | 'raffle-funding' | 'ton-withdrawals'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'expeditions' | 'players' | 'raffles' | 'raffle-funding' | 'ton-withdrawals' | 'referrals'>('queue');
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -255,6 +256,7 @@ function AdminConsole({
     ] },
     { label: 'Players & funds', items: [
       { id: 'players', label: 'Players', icon: Users },
+      { id: 'referrals', label: 'Referrals', icon: Users },
       { id: 'raffle-funding', label: 'Raffle funding', icon: Wallet },
       { id: 'ton-withdrawals', label: 'GRAM withdrawals', icon: ArrowDownToLine },
     ] },
@@ -264,6 +266,7 @@ function AdminConsole({
     { tab: 'queue', title: 'Review submissions', description: 'Check evidence and approve or reject pending work.', icon: ClipboardCheck, detail: `${data.stats.pendingSubmissions} awaiting review` },
     { tab: 'tasks', title: 'Manage missions', description: 'Create, update and organize player tasks.', icon: ListTodo, detail: `${data.tasks.length} configured tasks` },
     { tab: 'players', title: 'Manage players', description: 'Find player profiles and inspect account activity.', icon: Users },
+    { tab: 'referrals', title: 'Manage referrals', description: 'Set the monthly kickback budget, review allocations and manage referral accounts.', icon: Users },
     { tab: 'expeditions', title: 'Manage Expeditions', description: 'Publish events, review objectives and issue eligible rewards.', icon: Compass },
     { tab: 'raffles', title: 'Manage Raffles', description: 'Configure raffles and review their prize setup.', icon: Ticket },
     { tab: 'raffle-funding', title: 'Manage funding', description: 'Review external prize funding records.', icon: Wallet },
@@ -373,7 +376,7 @@ function AdminConsole({
             </div>
           ))}
         </nav>
-      </aside><main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-white/10 bg-[#0d1510] p-3 sm:rounded-2xl sm:p-5"><div className="mb-4 border-b border-white/10 pb-3 sm:mb-5 sm:pb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Management</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-white">{{ queue: 'Review queue', stats: 'Overview', tasks: 'Task manager', players: 'Player management', raffles: 'Raffle management', 'raffle-funding': 'Raffle funding', 'ton-withdrawals': 'Gram withdrawals', expeditions: 'Expeditions' }[activeTab]}</h2><p className="mt-1 text-xs text-slate-400">Manage ZORD operations from one place.</p></div>
+      </aside><main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-white/10 bg-[#0d1510] p-3 sm:rounded-2xl sm:p-5"><div className="mb-4 border-b border-white/10 pb-3 sm:mb-5 sm:pb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Management</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-white">{{ queue: 'Review queue', stats: 'Overview', tasks: 'Task manager', players: 'Player management', raffles: 'Raffle management', 'raffle-funding': 'Raffle funding', 'ton-withdrawals': 'Gram withdrawals', referrals: 'Referral management', expeditions: 'Expeditions' }[activeTab]}</h2><p className="mt-1 text-xs text-slate-400">Manage ZORD operations from one place.</p></div>
 
       {activeTab === 'queue' && (
         <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm space-y-4">
@@ -662,6 +665,7 @@ function AdminConsole({
 
 
       {activeTab === 'players' && <AdminPlayerManager creds={creds} />}
+      {activeTab === 'referrals' && <AdminReferralManager creds={creds} />
         </main>
       </div>
   );
