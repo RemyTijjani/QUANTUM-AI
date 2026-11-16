@@ -979,3 +979,94 @@ export async function reviewAdminTonWithdrawal(
   }
   return result as { success: true; id: string; status: string; amountNano: string; transactionHash: string | null };
 }
+
+
+export interface AdminReferralBudget {
+  monthStart: string;
+  monthlyBudgetZp: number;
+  allocatedZp: number;
+  remainingBudgetZp: number;
+  summary: {
+    pendingZp: number;
+    verifiedUnfundedZp: number;
+    heldZp: number;
+    claimableZp: number;
+    claimedZp: number;
+    lifetimeGeneratedZp: number;
+  };
+}
+export interface AdminReferralPlayer {
+  id: string;
+  username: string | null;
+  first_name: string | null;
+  referral_code: string;
+  created_at: string;
+  status: 'active' | 'held' | 'suspended';
+  reason: string | null;
+  referralCount: number;
+  levelOneCount: number;
+}
+export interface AdminReferralEntry {
+  id: string;
+  recipient_player_id: string;
+  source_player_id: string;
+  referral_level: number;
+  amount: number | string;
+  allocated_amount: number | string;
+  claimed_amount: number | string;
+  status: string;
+  eligible_at: string;
+  created_at: string;
+  recipientLabel: string;
+}
+export interface AdminReferralBudgetHistory {
+  id: string;
+  month_start: string;
+  old_budget_zp: number | string;
+  new_budget_zp: number | string;
+  admin_username: string;
+  created_at: string;
+}
+export interface AdminReferralManagement {
+  budget: AdminReferralBudget;
+  rates: { directRate: number; secondLevelRate: number; overclockMultiplier: number; pendingHours: number };
+  referralStats: { total: number; directRelationships: number };
+  players: AdminReferralPlayer[];
+  entries: AdminReferralEntry[];
+  history: AdminReferralBudgetHistory[];
+}
+
+export async function getReferralManagement(creds: AdminCredentials): Promise<AdminReferralManagement> {
+  const body = await callAdminApi(creds, { action: 'list_referral_management' });
+  if (!body || typeof body !== 'object') throw new AdminApiError('Could not load referral management data.');
+  const result = body as Partial<AdminReferralManagement> & { success?: unknown };
+  if (result.success !== true || !result.budget || !result.rates || !result.referralStats ||
+      !Array.isArray(result.players) || !Array.isArray(result.entries) || !Array.isArray(result.history)) {
+    throw new AdminApiError('The referral management response could not be verified.');
+  }
+  return result as AdminReferralManagement;
+}
+
+export async function saveReferralKickbackBudget(creds: AdminCredentials, amount: number): Promise<AdminReferralBudget> {
+  const body = await callAdminApi(creds, { action: 'set_referral_kickback_budget', monthlyKickbackBudgetZp: amount });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The monthly referral budget response could not be verified.');
+  const result = body as Partial<AdminReferralBudget> & { success?: unknown };
+  if (result.success !== true || typeof result.monthStart !== 'string' || typeof result.monthlyBudgetZp !== 'number' ||
+      typeof result.allocatedZp !== 'number' || typeof result.remainingBudgetZp !== 'number' || !result.summary) {
+    throw new AdminApiError('The monthly referral budget could not be verified. Refresh before retrying.');
+  }
+  return result as AdminReferralBudget;
+}
+
+export async function setReferralKickbackAccountStatus(
+  creds: AdminCredentials,
+  playerId: string,
+  status: 'active' | 'held' | 'suspended',
+  reason: string,
+): Promise<void> {
+  const body = await callAdminApi(creds, { action: 'set_referral_account_status', playerId, referralStatus: status, reason });
+  if (!body || typeof body !== 'object' || (body as { success?: unknown }).success !== true ||
+      (body as { status?: unknown }).status !== status) {
+    throw new AdminApiError('The referral account status change could not be verified.');
+  }
+}
