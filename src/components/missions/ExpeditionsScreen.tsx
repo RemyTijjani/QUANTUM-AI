@@ -262,6 +262,7 @@ export default function ExpeditionsScreen() {
     if (!window.confirm('Leave this Expedition team? You can only leave before registration closes or the Expedition starts.')) return;
     return perform(item.id, async () => {
       await callExpeditionApi('POST', { action: 'leave_team', expeditionId: item.id });
+      setActivePage('overview');
       setCreatedInvite((current) => {
         const next = { ...current };
         delete next[item.id];
@@ -386,7 +387,7 @@ export default function ExpeditionsScreen() {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[9px]">
-                  <div className="rounded-lg border border-neon/10 bg-black/25 p-2"><p className="label">Starts</p><p className="mt-1 font-mono break-words font-mono text-neon-400">{dateLabel(item.starts_at, item.timezone)}</p></div>
+                  <div className="rounded-lg border border-neon/10 bg-black/25 p-2"><p className="label">Starts</p><p className="mt-1 break-words font-mono text-neon-400">{dateLabel(item.starts_at, item.timezone)}</p></div>
                   <div className="rounded-lg border border-neon/10 bg-black/25 p-2"><p className="label">Ends</p><p className="mt-1 font-mono break-words font-mono text-neon-400">{dateLabel(item.ends_at, item.timezone)}</p></div>
                   <div className="rounded-lg border border-neon/10 bg-black/25 p-2"><p className="label">Registration opens</p><p className="mt-1 font-mono break-words font-mono text-neon-400">{dateLabel(item.registrationOpensAt, item.timezone)}</p></div>
                   <div className="rounded-lg border border-neon/10 bg-black/25 p-2"><p className="label">Registration closes</p><p className="mt-1 font-mono break-words font-mono text-neon-400">{dateLabel(item.registrationClosesAt, item.timezone)}</p></div>
