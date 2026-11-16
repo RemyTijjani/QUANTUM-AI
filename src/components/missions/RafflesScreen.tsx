@@ -237,7 +237,7 @@ export default function RafflesScreen() {
                   : result?.status === 'cancelled'
                     ? 'Raffle cancelled'
                     : result?.status === 'closed'
-                      ? 'Draw pending'
+                      ? 'Awaiting Result'
                       : 'Result pending';
               const delivery = prize?.delivery_status === 'credited' ? 'Prize credited'
                 : prize?.delivery_status === 'withdrawable' ? 'Ready to withdraw'
