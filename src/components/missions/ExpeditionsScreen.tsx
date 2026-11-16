@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   Compass,
   Copy,
   LockKeyhole,
@@ -169,7 +167,8 @@ export default function ExpeditionsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [activePage, setActivePage] = useState<'overview' | 'registration' | 'tasks' | 'team' | 'results'>('overview');
+  const [activeObjectiveIndex, setActiveObjectiveIndex] = useState(0);
   const [selectedExpeditionId, setSelectedExpeditionId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [teamName, setTeamName] = useState<Record<string, string>>({});
@@ -328,7 +327,7 @@ export default function ExpeditionsScreen() {
         </div>
       </div>
 
-      {selectedExpeditionId && <button type="button" onClick={() => { setSelectedExpeditionId(null); setExpanded(null); }} className="inline-flex items-center gap-2 rounded-lg border border-neon/20 px-3 py-2 font-mono text-[10px] text-neon-300 hover:bg-neon/10">← Back to Expeditions</button>}
+      {selectedExpeditionId && <button type="button" onClick={() => { setSelectedExpeditionId(null); setActivePage('overview'); setActiveObjectiveIndex(0); }} className="inline-flex items-center gap-2 rounded-lg border border-neon/20 px-3 py-2 font-mono text-[10px] text-neon-300 hover:bg-neon/10">← Back to Expeditions</button>}
 
       {!selectedExpeditionId && <div className="flex gap-1 overflow-x-auto rounded-xl border border-neon/15 bg-black/30 p-1">
         {(['all', 'available', 'joined', 'locked'] as Filter[]).map((value) => (
@@ -352,12 +351,13 @@ export default function ExpeditionsScreen() {
       ) : (
         <div className="space-y-3">
           {visible.map((item) => {
-            const isOpen = expanded === item.id;
             const joined = !!item.myParticipation;
             const hasTeam = !!item.myTeam;
             const canUseTeams = item.participation_mode === 'team' || item.participation_mode === 'both';
             const busy = busyId === item.id;
             const guide = journeyGuide(item);
+            const activeObjective = item.objectives[activeObjectiveIndex] ?? null;
+            const objectivePosition = Math.min(activeObjectiveIndex, Math.max(0, item.objectives.length - 1));
             const rosterLocked = item.status === 'active' || (!!item.starts_at && new Date(item.starts_at).getTime() <= Date.now());
             return (
               <article key={item.id} className="panel space-y-3 overflow-hidden p-4">
@@ -407,79 +407,177 @@ export default function ExpeditionsScreen() {
                           ? <>Eligible for {item.reward.amount} {item.reward.type.toUpperCase()} — awaiting Admin payment processing.</>
                           : <>Reward eligibility has not been confirmed.</>}
                 </div>}
+
                 {!selectedExpeditionId ? (
-                  <button type="button" onClick={() => { setSelectedExpeditionId(item.id); setExpanded(null); }} className="btn-primary w-full py-3 text-[10px]">View Expedition details →</button>
+                  <button type="button" onClick={() => { setSelectedExpeditionId(item.id); setActivePage('overview'); setActiveObjectiveIndex(0); }} className="btn-primary w-full py-3 text-[10px]">View Expedition details →</button>
                 ) : (
-                  <>
-                    <button type="button" onClick={() => setExpanded(isOpen ? null : item.id)} aria-expanded={isOpen} className="flex w-full items-center justify-between border-t border-neon/10 pt-3 font-mono text-[9px] uppercase text-neon-500 hover:text-neon-300">
-                      <span>{isOpen ? 'Hide objectives & actions' : `Continue to objectives & actions (${item.objectives.length})`}</span>{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-                    {isOpen && (
                   <div className="space-y-3">
-                    <div className="space-y-2">
-                      <p className="label">Mission objectives</p>
-                      {item.objectives.length === 0 ? <p className="font-mono text-[9px] text-amber-300">Objectives are being configured.</p> : item.objectives.map((objective) => (
-                        <div key={objective.id} className="rounded-lg border border-neon/15 bg-black/30 p-3">
-                          <div className="flex items-start justify-between gap-2"><p className="font-mono text-[10px] font-bold text-neon-300">{objective.title}</p><span className="shrink-0 font-mono text-[8px] uppercase text-neon-700">{objective.required ? 'Required' : 'Optional'}</span></div>
-                          <p className="mt-1 font-mono text-[8px] uppercase text-cyan-500">{objective.type.replace(/_/g, ' ')} · {objective.completionScope} completion</p>
-                          {objective.description && <p className="mt-2 font-mono text-[9px] leading-relaxed text-neon-600">{objective.description}</p>}
-                          {objective.instructions && <p className="mt-2 whitespace-pre-wrap font-mono text-[9px] leading-relaxed text-neon-500">{objective.instructions}</p>}
-                          {joined && item.status === 'active' && ([
-                            ...(objective.completionScope === 'individual' || objective.completionScope === 'both' ? [{ scope: 'individual' as const, progress: objective.progress?.individual ?? null, label: 'Your individual submission' }] : []),
-                            ...(hasTeam && (objective.completionScope === 'team' || objective.completionScope === 'both') ? [{ scope: 'team' as const, progress: objective.progress?.team ?? null, label: 'Team submission' }] : []),
-                          ]).map(({ scope, progress, label }) => {
-                            const key = `${item.id}:${objective.id}:${scope}`;
-                            const status = progress?.status ?? 'not_submitted';
-                            const verified = status === 'verified';
-                            const pending = status === 'submitted';
-                            return <div key={scope} className="mt-3 space-y-2 rounded-lg border border-neon/15 bg-black/30 p-2">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <p className="font-mono text-[9px] text-neon-300">{label}</p>
-                                <span className={`rounded-full border px-2 py-1 font-mono text-[8px] uppercase ${verified ? 'border-emerald-400/30 text-emerald-300' : pending ? 'border-amber-400/30 text-amber-200' : status === 'rejected' ? 'border-red-400/30 text-red-300' : 'border-neon/20 text-neon-600'}`}>{status === 'not_submitted' ? 'Not submitted' : status}</span>
-                              </div>
-                              {progress?.reviewReason && status === 'rejected' && <p className="rounded border border-red-400/20 bg-red-400/5 p-2 font-mono text-[9px] text-red-200">Admin feedback: {progress.reviewReason}</p>}
-                              {!verified && !pending && <div className="space-y-2">
-                                <textarea value={evidenceDrafts[key] ?? ''} onChange={(event) => setEvidenceDrafts((current) => ({ ...current, [key]: event.target.value }))} maxLength={3500} rows={2} placeholder="Paste a link or explain what you completed…" className="w-full rounded-lg border border-neon/20 bg-black/50 px-3 py-2 font-mono text-[9px] text-neon-200 outline-none focus:border-neon/50" />
-                                <button type="button" disabled={busy || !(evidenceDrafts[key] ?? '').trim()} onClick={() => void submitObjective(item, objective, scope)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 font-mono text-[9px] uppercase text-cyan-200 disabled:opacity-40"><Send size={12} /> {busy ? 'Submitting…' : status === 'rejected' ? 'Resubmit evidence' : 'Submit evidence'}</button>
-                              </div>}
-                              {pending && <p className="font-mono text-[8px] text-amber-200">Your evidence is waiting for the operations team to review it.</p>}
-                              {verified && <p className="font-mono text-[8px] text-emerald-300">This objective has been verified.</p>}
-                            </div>;
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="rounded-lg border border-neon/15 bg-black/25 p-3">
-                      <p className="label">Participation rules</p>
-                      <p className="mt-1 font-mono text-[9px] text-neon-500">{item.participation_mode === 'solo' ? 'Individual participation' : item.participation_mode === 'team' ? 'Team participation only' : 'Solo or team participation'} · {item.access_mode === 'progressive' ? 'Unlocks after prerequisite completion' : 'Open access'}</p>
-                      {canUseTeams && <p className="mt-1 font-mono text-[9px] text-neon-600">Team size: {item.min_team_size}–{item.max_team_size} · Each member must meet the contribution minimum of {item.min_individual_contributions}. Team membership locks when the Expedition starts.</p>}
+                    <div className="grid grid-cols-4 gap-1" aria-label="Expedition steps">
+                      {([
+                        { id: 'overview', label: 'Overview' },
+                        { id: 'registration', label: 'Register' },
+                        { id: 'tasks', label: 'Tasks' },
+                        { id: 'results', label: 'Results' },
+                      ] as const).map((step, index) => {
+                        const active = activePage === step.id || (activePage === 'team' && step.id === 'tasks');
+                        const complete = step.id === 'overview' || (step.id === 'registration' && joined) || (step.id === 'tasks' && item.status === 'completed');
+                        return (
+                          <button key={step.id} type="button" onClick={() => {
+                            if (step.id === 'registration' && joined) return;
+                            if (step.id === 'tasks' && (!joined || item.status !== 'active')) return;
+                            if (step.id === 'results' && item.status !== 'completed') return;
+                            setActivePage(step.id);
+                          }} disabled={(step.id === 'registration' && joined) || (step.id === 'tasks' && (!joined || item.status !== 'active')) || (step.id === 'results' && item.status !== 'completed')}
+                            className={`rounded-lg border px-1 py-2 font-mono text-[8px] transition ${active ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-200' : complete ? 'border-emerald-400/20 text-emerald-300' : 'border-neon/10 text-neon-700'} disabled:cursor-not-allowed disabled:opacity-60`}>
+                            <span className="block">{index + 1}. {step.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
 
-                    {!joined && !item.isUnlocked && <div className="flex items-center gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 font-mono text-[9px] text-amber-200"><LockKeyhole size={14} />{item.lockedReason || 'Complete the prerequisite first.'}</div>}
-                    {!joined && item.isUnlocked && item.canJoinSolo && item.participation_mode !== 'team' && (
-                      <button type="button" disabled={busy} onClick={() => void joinSolo(item)} className="btn-primary w-full py-3 text-[10px] disabled:opacity-40">{busy ? 'Registering…' : 'Register for Expedition'}</button>
-                    )}
-                    {!joined && item.isUnlocked && canUseTeams && (
-                      <div className="space-y-2 rounded-lg border border-neon/15 bg-black/25 p-3">
-                        <p className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase text-neon-300"><Users size={13} /> Team registration</p>
-                        <label className="block space-y-1"><span className="label">Create a new team</span><input value={teamName[item.id] ?? ''} onChange={(event) => setTeamName((current) => ({ ...current, [item.id]: event.target.value }))} maxLength={80} placeholder="Team name" className="w-full rounded-lg border border-neon/20 bg-black/50 px-3 py-2 font-mono text-[10px] text-neon-200 outline-none focus:border-neon/50" /></label>
-                        <button type="button" disabled={busy || !(teamName[item.id] ?? '').trim()} onClick={() => void createTeam(item)} className="btn-ghost w-full py-2 text-[9px] disabled:opacity-40">{busy ? 'Creating…' : 'Create team & get invite code'}</button>
-                        <div className="border-t border-neon/10 pt-2"><label className="block space-y-1"><span className="label">Or join with an invitation code</span><input value={inviteCode[item.id] ?? ''} onChange={(event) => setInviteCode((current) => ({ ...current, [item.id]: event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16) }))} maxLength={16} placeholder="16-character code" className="w-full rounded-lg border border-neon/20 bg-black/50 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-neon-200 outline-none focus:border-neon/50" /></label><button type="button" disabled={busy || (inviteCode[item.id] ?? '').length !== 16} onClick={() => void joinTeam(item)} className="btn-ghost mt-2 w-full py-2 text-[9px] disabled:opacity-40">{busy ? 'Joining…' : 'Join this team'}</button></div>
+                    {activePage === 'overview' && (
+                      <div className="space-y-3 rounded-xl border border-neon/15 bg-black/25 p-3">
+                        <div>
+                          <p className="label">Step 1 · Expedition overview</p>
+                          <h4 className="mt-1 font-display text-xs font-bold uppercase text-neon-200">{item.title}</h4>
+                          <p className="mt-2 font-mono text-[9px] leading-relaxed text-neon-500">{item.description || 'Review the schedule, participation rules and reward before continuing.'}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-lg border border-neon/10 bg-black/30 p-2"><p className="label">Participation</p><p className="mt-1 font-mono text-[9px] text-neon-300">{item.participation_mode === 'both' ? 'Solo or team' : item.participation_mode}</p></div>
+                          <div className="rounded-lg border border-neon/10 bg-black/30 p-2"><p className="label">Reward</p><p className="mt-1 font-mono text-[9px] text-cyan-200">{rewardLabel(item.reward)}</p></div>
+                          <div className="rounded-lg border border-neon/10 bg-black/30 p-2"><p className="label">Starts</p><p className="mt-1 font-mono text-[9px] text-neon-300">{dateLabel(item.starts_at, item.timezone)}</p></div>
+                          <div className="rounded-lg border border-neon/10 bg-black/30 p-2"><p className="label">Ends</p><p className="mt-1 font-mono text-[9px] text-neon-300">{dateLabel(item.ends_at, item.timezone)}</p></div>
+                        </div>
+                        <div className="rounded-lg border border-neon/10 bg-black/30 p-3">
+                          <p className="label">What you need to do</p>
+                          <ol className="mt-2 list-inside list-decimal space-y-1 font-mono text-[9px] leading-relaxed text-neon-500">
+                            <li>Register before the registration deadline.</li>
+                            <li>Complete each objective and submit evidence where requested.</li>
+                            <li>Wait for verification and check your final reward status.</li>
+                          </ol>
+                        </div>
+                        {joined ? (
+                          <div className="space-y-2">
+                            <p className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-3 font-mono text-[9px] text-emerald-200"><CheckCircle2 size={13} className="mr-1 inline" /> You are registered. {item.status === 'active' ? 'The Expedition is live.' : item.status === 'completed' ? 'The Expedition has ended.' : 'Your place is saved until the start time.'}</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {hasTeam && <button type="button" onClick={() => setActivePage('team')} className="btn-ghost py-3 text-[9px]">View my team</button>}
+                              {item.status === 'active' && <button type="button" onClick={() => { setActiveObjectiveIndex(0); setActivePage('tasks'); }} className="btn-primary py-3 text-[9px]">Go to tasks →</button>}
+                              {item.status === 'completed' && <button type="button" onClick={() => setActivePage('results')} className="btn-primary py-3 text-[9px]">View results →</button>}
+                            </div>
+                          </div>
+                        ) : (
+                          <button type="button" onClick={() => setActivePage('registration')} disabled={!item.isUnlocked || item.status !== 'registration_open'} className="btn-primary w-full py-3 text-[10px] disabled:opacity-40">
+                            {!item.isUnlocked ? 'Complete prerequisite first' : item.status !== 'registration_open' ? 'Registration is not open' : 'Continue to registration →'}
+                          </button>
+                        )}
                       </div>
                     )}
-                    {joined && hasTeam && (
-                      <div className="space-y-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3">
-                        <p className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase text-cyan-200"><Users size={13} /> {item.myTeam?.name ?? 'Your team'}</p>
-                        <p className="font-mono text-[8px] text-neon-600">{item.myTeam?.members.length ?? 0} active member(s) · {rosterLocked ? 'Roster locked' : 'Roster locks when the Expedition starts'}</p>
-                        {createdInvite[item.id] && <div className="space-y-1"><div className="flex items-center gap-2"><input readOnly value={createdInvite[item.id]} aria-label="Team invitation code" onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 rounded-lg border border-neon/20 bg-black/50 px-2 py-2 font-mono text-[10px] tracking-widest text-neon-200" /><button type="button" onClick={() => void copyInvite(createdInvite[item.id])} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-neon/25 px-3 py-2 text-neon-300 hover:bg-neon/10" aria-label="Copy team invite code" title="Copy invitation code">{copiedInvite === createdInvite[item.id] ? <><CheckCircle2 size={14} /><span className="font-mono text-[9px]">Copied</span></> : <><Copy size={14} /><span className="font-mono text-[9px]">Copy</span></>}</button></div><p className="font-mono text-[8px] text-neon-600">{copiedInvite === createdInvite[item.id] ? 'Invitation code copied. Share it with your teammates.' : 'Share this code with players you want to invite.'}</p></div>}
-                        {rosterLocked ? <p className="flex items-center gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 p-2 font-mono text-[9px] text-amber-200"><LockKeyhole size={12} /> Team membership is locked for this Expedition.</p> : <button type="button" disabled={busy} onClick={() => void leaveTeam(item)} className="w-full rounded-lg border border-red-400/25 px-3 py-2 font-mono text-[9px] uppercase text-red-300 disabled:opacity-40">{busy ? 'Leaving…' : 'Leave team'}</button>}
+
+                    {activePage === 'registration' && (
+                      <div className="space-y-3 rounded-xl border border-neon/15 bg-black/25 p-3">
+                        <div>
+                          <p className="label">Step 2 · Registration</p>
+                          <h4 className="mt-1 font-display text-xs font-bold uppercase text-neon-200">Choose how to participate</h4>
+                          <p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-500">Register once. Your place will be saved for the scheduled start. Follow the instructions below to join solo or with a team.</p>
+                        </div>
+                        {!item.isUnlocked && <p className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 font-mono text-[9px] text-amber-200"><LockKeyhole size={13} className="mr-1 inline" /> {item.lockedReason || 'Complete the prerequisite first.'}</p>}
+                        {item.isUnlocked && item.canJoinSolo && item.participation_mode !== 'team' && (
+                          <div className="space-y-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3">
+                            <p className="font-mono text-[10px] font-bold text-cyan-200">Option A · Join solo</p>
+                            <p className="font-mono text-[9px] leading-relaxed text-neon-500">Take part as an individual. Your own verified contributions determine your eligibility.</p>
+                            <button type="button" disabled={busy} onClick={() => void joinSolo(item)} className="btn-primary w-full py-3 text-[9px] disabled:opacity-40">{busy ? 'Registering…' : 'Register as an individual'}</button>
+                          </div>
+                        )}
+                        {item.isUnlocked && canUseTeams && (
+                          <div className="space-y-3 rounded-lg border border-neon/15 bg-black/30 p-3">
+                            <p className="font-mono text-[10px] font-bold text-neon-200">Option B · Join a team</p>
+                            <p className="font-mono text-[9px] leading-relaxed text-neon-500">Create a team and invite members, or enter an invitation code from your team leader.</p>
+                            <div className="space-y-2">
+                              <label className="block space-y-1"><span className="label">Create a team</span><input value={teamName[item.id] ?? ''} onChange={(event) => setTeamName((current) => ({ ...current, [item.id]: event.target.value }))} maxLength={80} placeholder="Enter team name" className="w-full rounded-lg border border-neon/20 bg-black/50 px-3 py-3 font-mono text-[10px] text-neon-200 outline-none focus:border-neon/50" /></label>
+                              <button type="button" disabled={busy || !(teamName[item.id] ?? '').trim()} onClick={() => void createTeam(item)} className="btn-ghost w-full py-3 text-[9px] disabled:opacity-40">{busy ? 'Creating…' : 'Create team & register'}</button>
+                            </div>
+                            <div className="border-t border-neon/10 pt-3">
+                              <label className="block space-y-1"><span className="label">Join an existing team</span><input value={inviteCode[item.id] ?? ''} onChange={(event) => setInviteCode((current) => ({ ...current, [item.id]: event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16) }))} maxLength={16} placeholder="16-character invitation code" className="w-full rounded-lg border border-neon/20 bg-black/50 px-3 py-3 font-mono text-[10px] uppercase tracking-widest text-neon-200 outline-none focus:border-neon/50" /></label>
+                              <button type="button" disabled={busy || (inviteCode[item.id] ?? '').length !== 16} onClick={() => void joinTeam(item)} className="btn-ghost mt-2 w-full py-3 text-[9px] disabled:opacity-40">{busy ? 'Joining…' : 'Join team with code'}</button>
+                            </div>
+                          </div>
+                        )}
+                        {createdInvite[item.id] && <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-3"><p className="font-mono text-[9px] text-emerald-200">Your team is registered. Share this invitation code:</p><div className="mt-2 flex gap-2"><input readOnly value={createdInvite[item.id]} onFocus={(event) => event.currentTarget.select()} aria-label="Team invitation code" className="min-w-0 flex-1 rounded-lg border border-neon/20 bg-black/50 px-2 py-2 font-mono text-[10px] tracking-widest text-neon-200" /><button type="button" onClick={() => void copyInvite(createdInvite[item.id])} className="rounded-lg border border-neon/25 px-3 py-2 font-mono text-[9px] text-neon-300">{copiedInvite === createdInvite[item.id] ? 'Copied' : 'Copy code'}</button></div></div>}
+                        <button type="button" onClick={() => setActivePage('overview')} className="btn-ghost w-full py-2 text-[9px]">← Back to overview</button>
                       </div>
                     )}
-                    {joined && !hasTeam && <div className="rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3 font-mono text-[9px] text-cyan-200"><UserRound size={13} className="mr-1 inline" /> You are registered as an individual participant.</div>}
-                    {item.status === 'active' && <p className="flex items-center gap-2 font-mono text-[8px] text-neon-700"><ShieldCheck size={12} /> Completion evidence is verified by operations or trusted server records.</p>}
+
+                    {activePage === 'tasks' && (
+                      <div className="space-y-3 rounded-xl border border-neon/15 bg-black/25 p-3">
+                        <div>
+                          <p className="label">Step 3 · Live Expedition tasks</p>
+                          <h4 className="mt-1 font-display text-xs font-bold uppercase text-neon-200">Complete one objective at a time</h4>
+                          <p className="mt-1 font-mono text-[9px] text-neon-500">Use Previous and Next to move through the objectives. Your submissions and review status are saved by ZORD.</p>
+                        </div>
+                        {!joined || item.status !== 'active' ? (
+                          <p className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 font-mono text-[9px] text-amber-200">Your tasks will appear here when you are registered and the Expedition is live.</p>
+                        ) : item.objectives.length === 0 ? (
+                          <p className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 font-mono text-[9px] text-amber-200">Objectives are being configured. Please check again later.</p>
+                        ) : activeObjective ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-2"><span className="font-mono text-[9px] uppercase text-cyan-200">Task {objectivePosition + 1} of {item.objectives.length}</span><span className="font-mono text-[8px] uppercase text-neon-600">{activeObjective.required ? 'Required' : 'Optional'}</span></div>
+                            <div className="h-1.5 overflow-hidden rounded-full bg-neon/10"><div className="h-full rounded-full bg-cyan-300 transition-all" style={{ width: `${((objectivePosition + 1) / item.objectives.length) * 100}%` }} /></div>
+                            <article className="space-y-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+                              <div><h5 className="font-display text-sm font-bold uppercase text-cyan-100">{activeObjective.title}</h5><p className="mt-1 font-mono text-[8px] uppercase text-cyan-500">{activeObjective.type.replace(/_/g, ' ')} · {activeObjective.completionScope} completion</p></div>
+                              {activeObjective.description && <p className="font-mono text-[10px] leading-relaxed text-neon-400">{activeObjective.description}</p>}
+                              {activeObjective.instructions && <div className="rounded-lg border border-neon/10 bg-black/30 p-3"><p className="label">How to complete this task</p><p className="mt-2 whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-neon-300">{activeObjective.instructions}</p></div>}
+                              {([
+                                ...(activeObjective.completionScope === 'individual' || activeObjective.completionScope === 'both' ? [{ scope: 'individual' as const, progress: activeObjective.progress?.individual ?? null, label: 'Your submission' }] : []),
+                                ...(hasTeam && (activeObjective.completionScope === 'team' || activeObjective.completionScope === 'both') ? [{ scope: 'team' as const, progress: activeObjective.progress?.team ?? null, label: 'Team submission' }] : []),
+                              ]).map(({ scope, progress, label }) => {
+                                const key = `${item.id}:${activeObjective.id}:${scope}`;
+                                const status = progress?.status ?? 'not_submitted';
+                                const verified = status === 'verified';
+                                const pending = status === 'submitted';
+                                return <div key={scope} className="space-y-2 rounded-lg border border-neon/15 bg-black/30 p-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-mono text-[9px] text-neon-300">{label}</p><span className={`rounded-full border px-2 py-1 font-mono text-[8px] uppercase ${verified ? 'border-emerald-400/30 text-emerald-300' : pending ? 'border-amber-400/30 text-amber-200' : status === 'rejected' ? 'border-red-400/30 text-red-300' : 'border-neon/20 text-neon-600'}`}>{status === 'not_submitted' ? 'Not submitted' : status}</span></div>
+                                  {progress?.reviewReason && status === 'rejected' && <p className="rounded border border-red-400/20 bg-red-400/5 p-2 font-mono text-[9px] text-red-200">Admin feedback: {progress.reviewReason}</p>}
+                                  {!verified && !pending && <div className="space-y-2"><textarea value={evidenceDrafts[key] ?? ''} onChange={(event) => setEvidenceDrafts((current) => ({ ...current, [key]: event.target.value }))} maxLength={3500} rows={3} placeholder="Paste a link or explain what you completed…" className="w-full rounded-lg border border-neon/20 bg-black/50 px-3 py-3 font-mono text-[10px] text-neon-200 outline-none focus:border-neon/50" /><button type="button" disabled={busy || !(evidenceDrafts[key] ?? '').trim()} onClick={() => void submitObjective(item, activeObjective, scope)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-3 font-mono text-[9px] uppercase text-cyan-200 disabled:opacity-40"><Send size={12} /> {busy ? 'Submitting…' : status === 'rejected' ? 'Resubmit evidence' : 'Submit evidence'}</button></div>}
+                                  {pending && <p className="font-mono text-[9px] text-amber-200">Submitted. Waiting for the operations team to review your evidence.</p>}
+                                  {verified && <p className="font-mono text-[9px] text-emerald-300"><CheckCircle2 size={12} className="mr-1 inline" /> This objective is verified.</p>}
+                                </div>;
+                              })}
+                              <div className="flex items-center justify-between gap-2 border-t border-neon/10 pt-3"><button type="button" disabled={objectivePosition === 0} onClick={() => setActiveObjectiveIndex((current) => Math.max(0, current - 1))} className="btn-ghost px-4 py-2 text-[9px] disabled:opacity-30">← Previous task</button><button type="button" disabled={objectivePosition >= item.objectives.length - 1} onClick={() => setActiveObjectiveIndex((current) => Math.min(item.objectives.length - 1, current + 1))} className="btn-primary px-4 py-2 text-[9px] disabled:opacity-30">Next task →</button></div>
+                            </article>
+                          </div>
+                        ) : null}
+                        <button type="button" onClick={() => setActivePage(hasTeam ? 'team' : 'overview')} className="btn-ghost w-full py-2 text-[9px]">{hasTeam ? 'View my team' : '← Back to overview'}</button>
+                      </div>
+                    )}
+
+                    {activePage === 'team' && (
+                      <div className="space-y-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+                        <div><p className="label">Your team</p><h4 className="mt-1 font-display text-xs font-bold uppercase text-cyan-100">{item.myTeam?.name ?? 'Team information'}</h4></div>
+                        {hasTeam ? (
+                          <>
+                            <p className="font-mono text-[9px] text-neon-400">{item.myTeam?.members.length ?? 0} member(s) · {rosterLocked ? 'Roster locked' : 'Roster locks when the Expedition starts'}.</p>
+                            {createdInvite[item.id] && <div className="flex gap-2"><input readOnly value={createdInvite[item.id]} aria-label="Team invitation code" onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 rounded-lg border border-neon/20 bg-black/50 px-2 py-2 font-mono text-[10px] tracking-widest text-neon-200" /><button type="button" onClick={() => void copyInvite(createdInvite[item.id])} className="rounded-lg border border-neon/25 px-3 py-2 font-mono text-[9px] text-neon-300">{copiedInvite === createdInvite[item.id] ? 'Copied' : 'Copy code'}</button></div>}
+                            {rosterLocked ? <p className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 font-mono text-[9px] text-amber-200"><LockKeyhole size={12} className="mr-1 inline" /> Team membership is locked for this Expedition. Members cannot join or leave now.</p> : <button type="button" disabled={busy} onClick={() => void leaveTeam(item)} className="w-full rounded-lg border border-red-400/25 px-3 py-3 font-mono text-[9px] uppercase text-red-300 disabled:opacity-40">{busy ? 'Leaving…' : 'Leave team'}</button>}
+                          </>
+                        ) : <p className="font-mono text-[9px] text-neon-500">You are registered as an individual participant.</p>}
+                        <button type="button" onClick={() => setActivePage(item.status === 'active' ? 'tasks' : 'overview')} className="btn-ghost w-full py-2 text-[9px]">← Back to Expedition</button>
+                      </div>
+                    )}
+
+                    {activePage === 'results' && (
+                      <div className="space-y-3 rounded-xl border border-neon/15 bg-black/25 p-3">
+                        <div><p className="label">Step 4 · Results</p><h4 className="mt-1 font-display text-xs font-bold uppercase text-neon-200">Expedition results</h4></div>
+                        {item.status !== 'completed' ? <p className="font-mono text-[9px] text-neon-500">Final results will appear here after the Expedition ends.</p> : (
+                          <>
+                            <div className="rounded-lg border border-neon/10 bg-black/30 p-3"><p className="label">Your contributions</p><p className="mt-1 font-display text-lg text-cyan-200">{item.myParticipation?.individualContributionCount ?? 0}</p><p className="font-mono text-[8px] text-neon-600">Verified individual contributions</p></div>
+                            <div className="rounded-lg border border-neon/10 bg-black/30 p-3"><p className="label">Reward eligibility</p><p className="mt-1 font-mono text-[10px] text-neon-300">{item.myParticipation?.rewardEligible ? 'Eligible' : 'Not eligible'}</p></div>
+                            {item.myRewardIssuance?.status === 'issued' ? <p className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-3 font-mono text-[10px] text-emerald-200"><CheckCircle2 size={13} className="mr-1 inline" /> Reward paid: {item.myRewardIssuance.amount} {item.myRewardIssuance.type.toUpperCase()}.</p> : item.myRewardIssuance?.status === 'pending' ? <p className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 font-mono text-[9px] text-amber-200">Your reward is approved and awaiting Admin processing.</p> : item.myRewardIssuance?.status === 'voided' ? <p className="rounded-lg border border-red-400/20 bg-red-400/5 p-3 font-mono text-[9px] text-red-200">A reward was not issued because final eligibility requirements were not met.</p> : <p className="rounded-lg border border-neon/10 bg-black/30 p-3 font-mono text-[9px] text-neon-500">{item.myParticipation?.rewardEligible ? 'You are eligible. Reward processing has not yet been recorded.' : 'Your final reward eligibility was not confirmed.'}</p>}
+                          </>
+                        )}
+                        <button type="button" onClick={() => setActivePage('overview')} className="btn-ghost w-full py-2 text-[9px]">← Back to overview</button>
+                      </div>
+                    )}
                   </div>
-                    )}
-                  </>
                 )}
               </article>
             );
