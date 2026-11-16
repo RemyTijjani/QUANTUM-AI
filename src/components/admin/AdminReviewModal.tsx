@@ -19,6 +19,10 @@ import {
   Wallet,
   ArrowDownToLine,
   Compass,
+  MessageSquare,
+  Pickaxe,
+  Trash2,
+  Download,
 } from 'lucide-react';
 
 import { formatZp } from '@/lib/format';
@@ -610,13 +614,17 @@ function AdminConsole({
               </div>
 
               <div className="mt-2 space-y-2">
-                <input
-                  type="text"
+                <button
+                  type="button"
                   disabled
-                  placeholder="Broadcast service is not connected"
-                  className="w-full cursor-not-allowed border border-white/10 bg-[#101a14] px-3 py-1.5 text-xs text-slate-400 opacity-70"
-                />
-                <p className="text-[9px] uppercase tracking-wider text-amber-300">Broadcast delivery is unavailable until a secure server-side broadcast service is integrated.</p>
+                  aria-disabled="true"
+                  title="Coming soon: secure server-side broadcast delivery is not connected."
+                  className="flex w-full cursor-not-allowed items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#101a14] px-3 py-3 text-left text-xs text-slate-400 opacity-80"
+                >
+                  <span className="flex min-w-0 items-center gap-2"><MessageSquare size={15} className="shrink-0" /> <span className="font-semibold">Broadcast messages</span></span>
+                  <span className="shrink-0 rounded-md border border-amber-400/20 bg-amber-400/5 px-2 py-1 text-[9px] uppercase tracking-wider text-amber-300">Coming soon</span>
+                </button>
+                <p className="text-[9px] leading-relaxed text-slate-400">Broadcast delivery will be enabled after secure server-side messaging and admin authorization are integrated.</p>
               </div>
             </div>
 
@@ -626,20 +634,43 @@ function AdminConsole({
                 Economy & Controls
               </h2>
 
-              <div className="space-y-2 border border-amber-400/20 bg-amber-400/5 p-3">
-                <p className="text-[11px] text-amber-300">Global mining controls are not connected.</p>
-                <p className="text-[9px] leading-relaxed text-slate-400">No client-side multiplier can change player earnings. A trusted server-side economy control is required before this setting can be enabled.</p>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Coming soon: trusted server-side global mining controls are not connected."
+                  className="flex w-full cursor-not-allowed items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#101a14] px-3 py-3 text-left text-xs text-slate-400 opacity-80"
+                >
+                  <span className="flex min-w-0 items-center gap-2"><Pickaxe size={15} className="shrink-0" /> <span className="font-semibold">Global mining controls</span></span>
+                  <span className="shrink-0 rounded-md border border-amber-400/20 bg-amber-400/5 px-2 py-1 text-[9px] uppercase tracking-wider text-amber-300">Coming soon</span>
+                </button>
+                <p className="text-[9px] leading-relaxed text-slate-400">Mining settings must use trusted server-side controls; browser-only changes will never alter player earnings.</p>
               </div>
 
-              <div className="mt-auto pt-4 border-t border-white/10 grid grid-cols-2 gap-2">
-                <button type="button" disabled className="cursor-not-allowed border border-red-500/20 bg-red-950/20 px-3 py-2 text-xs uppercase tracking-wider text-red-300/50">
-                  Flush Cache · Unavailable
+              <div className="mt-auto space-y-2 border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Coming soon: secure cache maintenance is not connected."
+                  className="flex w-full cursor-not-allowed items-center justify-between gap-3 rounded-xl border border-red-500/20 bg-red-950/20 px-3 py-3 text-left text-xs text-red-200/70 opacity-80"
+                >
+                  <span className="flex min-w-0 items-center gap-2"><Trash2 size={15} className="shrink-0" /> <span className="font-semibold">Flush Cache</span></span>
+                  <span className="shrink-0 rounded-md border border-amber-400/20 bg-amber-400/5 px-2 py-1 text-[9px] uppercase tracking-wider text-amber-300">Coming soon</span>
                 </button>
-                <button type="button" disabled className="cursor-not-allowed border border-white/10 bg-emerald-400/5 px-3 py-2 text-xs uppercase tracking-wider text-slate-400">
-                  Export Data · Unavailable
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Coming soon: authorized data export is not connected."
+                  className="flex w-full cursor-not-allowed items-center justify-between gap-3 rounded-xl border border-white/10 bg-emerald-400/5 px-3 py-3 text-left text-xs text-slate-300 opacity-80"
+                >
+                  <span className="flex min-w-0 items-center gap-2"><Download size={15} className="shrink-0" /> <span className="font-semibold">Export Data</span></span>
+                  <span className="shrink-0 rounded-md border border-amber-400/20 bg-amber-400/5 px-2 py-1 text-[9px] uppercase tracking-wider text-amber-300">Coming soon</span>
                 </button>
+                <p className="text-[9px] leading-relaxed text-slate-400">Cache maintenance and data export remain disabled until their secure, permission-checked backend operations are available.</p>
               </div>
-              <p className="text-[9px] leading-relaxed text-slate-400">Cache maintenance and telemetry export are not wired to backend operations yet. These controls are intentionally disabled.</p>
             </div>
           </div>
         </div>
