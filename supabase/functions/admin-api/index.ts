@@ -408,7 +408,12 @@ interface AdminRequestBody {
     | "list_ton_withdrawals"
     | "review_ton_withdrawal"
     | "get_referral_kickback_budget"
-    | "set_referral_kickback_budget";
+    | "set_referral_kickback_budget"
+    | "send_broadcast"
+    | "get_global_mining_settings"
+    | "set_global_mining_settings"
+    | "flush_api_cache"
+    | "export_player_data";
   adminUsername?: string;
   search?: string;
   playerId?: string;
@@ -432,6 +437,11 @@ interface AdminRequestBody {
     endsAt?: string | null;
   };
   adminPassword?: string;
+  title?: string;
+  message?: string;
+  channels?: Array<"in_app" | "telegram">;
+  miningEnabled?: boolean;
+  miningRateMultiplier?: number;
   submissionId?: string;
   submissionIds?: string[];
   decision?: "approved" | "rejected";
@@ -2234,6 +2244,199 @@ Deno.serve(async (req: Request) => {
         return json({ error: message }, status);
       }
       return json(data);
+    }
+
+
+    // ADMIN OPERATIONS: all writes remain behind the same server-side admin
+    // credential check and use service-role access only inside this function.
+    if (body.action === "get_global_mining_settings") {
+      const { data, error } = await db.rpc("admin_get_global_gameplay_settings");
+      if (error || !data || typeof data !== "object") {
+        console.error("Global mining settings lookup failed:", error);
+        return json({ error: "Could not load global mining settings. Apply the Admin operations Preview migration first." }, 503);
+      }
+      return json(data);
+    }
+
+    if (body.action === "set_global_mining_settings") {
+      if (typeof body.miningEnabled !== "boolean" ||
+          typeof body.miningRateMultiplier !== "number" ||
+          !Number.isFinite(body.miningRateMultiplier) ||
+          body.miningRateMultiplier < 0.10 || body.miningRateMultiplier > 5.00 ||
+          Math.round(body.miningRateMultiplier * 100) !== body.miningRateMultiplier * 100) {
+        return json({ error: "Mining rate must be between 0.10 and 5.00 with up to two decimal places." }, 400);
+      }
+      const { data, error } = await db.rpc("admin_set_global_gameplay_settings", {
+        p_enabled: body.miningEnabled,
+        p_rate_multiplier: body.miningRateMultiplier,
+        p_admin_username: ADMIN_USERNAME,
+      });
+      if (error || !data || typeof data !== "object") {
+        console.error("Global mining settings update failed:", error);
+        return json({ error: error?.message ?? "Could not update global mining settings." }, 409);
+      }
+      return json(data);
+    }
+
+    if (body.action === "flush_api_cache") {
+      const { data, error } = await db.rpc("admin_flush_api_schema_cache");
+      if (error || !data || typeof data !== "object" || data.success !== true) {
+        console.error("PostgREST schema cache refresh failed:", error);
+        return json({ error: "Could not refresh the PostgREST API schema cache." }, 503);
+      }
+      return json(data);
+    }
+
+    if (body.action === "export_player_data") {
+      const pageSize = 1000;
+      const playerRows: Array<{
+        id: string; username: string | null; first_name: string | null;
+        referral_code: string; created_at: string;
+      }> = [];
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await db.from("players")
+          .select("id, username, first_name, referral_code, created_at")
+          .order("created_at", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (error) {
+          console.error("Admin player export lookup failed:", error);
+          return json({ error: "Could not prepare the player export." }, 500);
+        }
+        playerRows.push(...(data ?? []));
+        if (!data || data.length < pageSize) break;
+        if (playerRows.length >= 10000) {
+          return json({ error: "The export is larger than the safe 10,000-row limit. Use a filtered export workflow." }, 413);
+        }
+      }
+
+      const economyByPlayer = new Map<string, { zp_balance: number; lifetime_zp: number }>();
+      for (let offset = 0; offset < playerRows.length; offset += pageSize) {
+        const ids = playerRows.slice(offset, offset + pageSize).map((player) => player.id);
+        if (!ids.length) continue;
+        const { data, error } = await db.from("player_economy")
+          .select("player_id, zp_balance, lifetime_zp")
+          .in("player_id", ids);
+        if (error) {
+          console.error("Admin player economy export lookup failed:", error);
+          return json({ error: "Could not prepare the player economy export." }, 500);
+        }
+        for (const row of data ?? []) {
+          economyByPlayer.set(row.player_id, {
+            zp_balance: Number(row.zp_balance ?? 0),
+            lifetime_zp: Number(row.lifetime_zp ?? 0),
+          });
+        }
+      }
+
+      return json({
+        success: true,
+        rows: playerRows.map((player) => ({
+          player_id: player.id,
+          username: player.username,
+          first_name: player.first_name,
+          referral_code: player.referral_code,
+          account_created_at: player.created_at,
+          zp_balance: economyByPlayer.get(player.id)?.zp_balance ?? 0,
+          lifetime_zp: economyByPlayer.get(player.id)?.lifetime_zp ?? 0,
+        })),
+        excludedFields: ["telegram_id", "wallet addresses", "authentication credentials", "secrets"],
+      });
+    }
+
+    if (body.action === "send_broadcast") {
+      const title = typeof body.title === "string" ? body.title.trim() : "";
+      const message = typeof body.message === "string" ? body.message.trim() : "";
+      const channels = Array.isArray(body.channels) ? [...new Set(body.channels)] : [];
+      if (!title || title.length > 120 || !message || message.length > 4000 ||
+          title.length + message.length + 2 > 4096 ||
+          channels.length < 1 || channels.some((channel) => !["in_app", "telegram"].includes(channel))) {
+        return json({ error: "Provide a title, a message of up to 4,000 characters, and at least one valid delivery channel. Combined Telegram text must be 4,096 characters or fewer." }, 400);
+      }
+
+      const sendTelegram = channels.includes("telegram");
+      const botToken = Deno.env.get("BOT_TOKEN") ?? "";
+      if (sendTelegram && !botToken) {
+        return json({ error: "Telegram delivery is unavailable because the server-side BOT_TOKEN is not configured." }, 503);
+      }
+
+      let recipients: Array<{ telegram_id: number | string }> = [];
+      if (sendTelegram) {
+        const { data, error } = await db.from("players")
+          .select("telegram_id")
+          .not("telegram_id", "is", null)
+          .order("created_at", { ascending: true })
+          .limit(1001);
+        if (error) {
+          console.error("Telegram broadcast recipient lookup failed:", error);
+          return json({ error: "Could not load Telegram broadcast recipients." }, 500);
+        }
+        recipients = data ?? [];
+        if (recipients.length > 1000) {
+          return json({ error: "This broadcast exceeds the safe 1,000-recipient Preview batch. Split the audience before sending." }, 413);
+        }
+      }
+
+      const { data: announcement, error: announcementError } = await db
+        .from("zord_announcements")
+        .insert({
+          title,
+          message,
+          in_app_enabled: channels.includes("in_app"),
+          telegram_enabled: sendTelegram,
+          created_by: ADMIN_USERNAME,
+          expires_at: channels.includes("in_app") ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
+        })
+        .select("id")
+        .single();
+      if (announcementError || !announcement) {
+        console.error("Admin announcement insert failed:", announcementError);
+        return json({ error: "Could not publish the in-app announcement." }, 500);
+      }
+
+      let telegramSent = 0;
+      let telegramFailed = 0;
+      let telegramSkipped = 0;
+      if (sendTelegram) {
+        const text = title + "\\n\\n" + message;
+        const sendOne = async (chatId: number | string) => {
+          try {
+            const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+            });
+            const result = await response.json().catch(() => null);
+            if (response.ok && result?.ok === true) return "sent" as const;
+            if (response.status === 403 || result?.error_code === 403) return "skipped" as const;
+            return "failed" as const;
+          } catch {
+            return "failed" as const;
+          }
+        };
+
+        for (let offset = 0; offset < recipients.length; offset += 20) {
+          const batch = recipients.slice(offset, offset + 20);
+          const results = await Promise.all(batch.map((recipient) => sendOne(recipient.telegram_id)));
+          telegramSent += results.filter((result) => result === "sent").length;
+          telegramSkipped += results.filter((result) => result === "skipped").length;
+          telegramFailed += results.filter((result) => result === "failed").length;
+          if (offset + 20 < recipients.length) await new Promise((resolve) => setTimeout(resolve, 700));
+        }
+
+        const { error: statsError } = await db.from("zord_announcements")
+          .update({ telegram_sent: telegramSent, telegram_failed: telegramFailed })
+          .eq("id", announcement.id);
+        if (statsError) console.error("Could not save Telegram broadcast delivery counts:", statsError);
+      }
+
+      return json({
+        success: true,
+        announcementId: announcement.id,
+        inAppPublished: channels.includes("in_app"),
+        telegramSent,
+        telegramFailed,
+        telegramSkipped,
+      });
     }
 
     return json({ error: "Unknown action" }, 400);
