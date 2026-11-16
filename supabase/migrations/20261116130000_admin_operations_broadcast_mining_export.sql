@@ -17,7 +17,7 @@ create index if not exists zord_announcements_active_idx
   where in_app_enabled = true;
 alter table public.zord_announcements enable row level security;
 revoke all on public.zord_announcements from public, anon, authenticated;
-grant select on public.zord_announcements to authenticated;
+grant select (id, title, message, created_at) on public.zord_announcements to authenticated;
 create policy "Authenticated players can read active in-app announcements"
   on public.zord_announcements for select to authenticated
   using (in_app_enabled = true and (expires_at is null or expires_at > now()));
