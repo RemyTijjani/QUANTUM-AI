@@ -1051,7 +1051,7 @@ export async function saveReferralKickbackBudget(creds: AdminCredentials, amount
   const body = await callAdminApi(creds, { action: 'set_referral_kickback_budget', monthlyKickbackBudgetZp: amount });
   if (!body || typeof body !== 'object') throw new AdminApiError('The monthly referral budget response could not be verified.');
   const result = body as Partial<AdminReferralBudget> & { success?: unknown };
-  if (result.success !== true || typeof result.monthStart !== 'string' || typeof result.monthlyBudgetZp !== 'number' ||
+  if (typeof result.monthStart !== 'string' || typeof result.monthlyBudgetZp !== 'number' ||
       typeof result.allocatedZp !== 'number' || typeof result.remainingBudgetZp !== 'number' || !result.summary) {
     throw new AdminApiError('The monthly referral budget could not be verified. Refresh before retrying.');
   }
