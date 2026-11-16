@@ -37,14 +37,14 @@ export default function Stage6EngagementHub({
 }) {
   return (
     <>
-      <nav aria-label="Mission experiences" className="grid grid-cols-5 gap-1 rounded-xl border border-neon/20 bg-black/30 p-1">
+      <nav aria-label="Mission experiences" className="flex gap-1 overflow-x-auto rounded-xl border border-neon/20 bg-black/30 p-1 [scrollbar-width:thin]">
         {VIEWS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
             onClick={() => onChange(id)}
             aria-current={active === id ? 'page' : undefined}
-            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 font-mono text-[8px] uppercase tracking-wide transition ${
+            className={`flex min-w-[64px] flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 font-mono text-[8px] uppercase tracking-wide transition ${
               active === id
                 ? 'border border-neon/40 bg-neon/10 text-neon-200'
                 : 'border border-transparent text-neon-600 hover:bg-neon/5 hover:text-neon-400'
