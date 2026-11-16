@@ -94,21 +94,26 @@ export default function MysteryBoxPanel({
     if (quiet) setRefreshing(true);
     else setLoading(true);
     setErrorMessage(null);
-    const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
-      body: { action: 'get_inventory' },
-    });
-    if (error) {
-      setErrorMessage(error.message || 'Could not load your Mystery Box inventory.');
-    } else {
-      const next = (data?.inventory ?? {}) as Partial<Inventory>;
-      setInventory({
-        availableBoxes: Array.isArray(next.availableBoxes) ? next.availableBoxes : [],
-        recentOpenings: Array.isArray(next.recentOpenings) ? next.recentOpenings : [],
+    try {
+      const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
+        body: { action: 'get_inventory' },
       });
-      setRepeatBox(data?.repeatBox && typeof data.repeatBox === 'object' ? data.repeatBox as RepeatBoxState : null);
+      if (error) {
+        setErrorMessage(error.message || 'Could not load your Mystery Box inventory.');
+      } else {
+        const next = (data?.inventory ?? {}) as Partial<Inventory>;
+        setInventory({
+          availableBoxes: Array.isArray(next.availableBoxes) ? next.availableBoxes : [],
+          recentOpenings: Array.isArray(next.recentOpenings) ? next.recentOpenings : [],
+        });
+        setRepeatBox(data?.repeatBox && typeof data.repeatBox === 'object' ? data.repeatBox as RepeatBoxState : null);
+      }
+    } catch (requestError) {
+      setErrorMessage(requestError instanceof Error ? requestError.message : 'Could not load your Mystery Box inventory.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
-    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -221,7 +226,7 @@ export default function MysteryBoxPanel({
           <p className="font-mono text-[10px] font-bold uppercase text-violet-200">How Standard and Premium work</p>
           <p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-400">Every free daily claim or 500 ZP repeat opening awards one randomly selected box: <span className="font-bold text-neon-200">Standard · 80%</span> or <span className="font-bold text-violet-200">Premium · 20%</span>. You cannot choose or purchase a Premium Box directly. When a Premium Box is awarded, it appears in your inventory below.</p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2">
           <div className="rounded-lg border border-neon/20 bg-black/30 p-3"><p className="label">Standard</p><p className="mt-1 font-display text-2xl text-neon-200">{counts.standard}</p><p className="font-mono text-[8px] uppercase text-neon-700">Available</p></div>
           <div className="rounded-lg border border-violet-300/25 bg-black/30 p-3"><p className="label">Premium</p><p className="mt-1 font-display text-2xl text-violet-200">{counts.premium}</p><p className="font-mono text-[8px] uppercase text-violet-400/70">Available</p></div>
         </div>
@@ -240,7 +245,7 @@ export default function MysteryBoxPanel({
           )}
         </div>
         <div className="space-y-3 border-t border-neon/15 pt-4">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-col items-start justify-between gap-2 min-[380px]:flex-row min-[380px]:items-center">
             <div><p className="label">Open another box</p><p className="mt-1 font-mono text-[9px] text-neon-600">Spend 500 ZP for one more randomly tiered box.</p></div>
             <span className="rounded-md border border-amber-300/20 px-2 py-1 font-mono text-[8px] uppercase text-amber-200">500 ZP</span>
           </div>
@@ -287,10 +292,10 @@ export default function MysteryBoxPanel({
         {loading ? <div className="flex items-center justify-center gap-2 py-6 font-mono text-[10px] text-neon-600"><Loader2 size={14} className="animate-spin" /> Loading secure inventory</div> : inventory.availableBoxes.length === 0 ? (
           <div className="py-6 text-center"><Gift size={25} className="mx-auto text-neon-700" /><p className="mt-2 font-mono text-[10px] text-neon-400">No boxes available yet</p><p className="mt-1 font-mono text-[9px] text-neon-700">Boxes will appear here when earned through an enabled reward activity.</p></div>
         ) : inventory.availableBoxes.map((box) => (
-          <article key={box.entitlementId} className="flex items-center gap-3 border border-neon/15 bg-black/20 p-3">
+          <article key={box.entitlementId} className="flex flex-wrap items-center gap-3 border border-neon/15 bg-black/20 p-3">
             <span className={`mystery-box-art flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${box.boxTier === 'premium' ? 'mystery-box-art--premium border-violet-300/30 text-violet-200' : 'border-neon/25 text-neon-300'} ${openingId === box.entitlementId ? 'mystery-box-art--opening' : ''}`}><Gift size={19} /></span>
             <div className="min-w-0 flex-1"><p className="font-display text-xs font-bold uppercase text-neon-200">{box.boxTier} Box</p><p className="mt-1 font-mono text-[8px] text-neon-700">Received {formatDate(box.grantedAt)}</p></div>
-            <button type="button" onClick={() => void openBox(box)} disabled={openingId !== null} className="rounded-lg border border-neon/30 bg-neon/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-neon-200 disabled:opacity-50">
+            <button type="button" onClick={() => void openBox(box)} disabled={openingId !== null} className="ml-auto min-h-10 rounded-lg border border-neon/30 bg-neon/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-neon-200 disabled:opacity-50">
               {openingId === box.entitlementId ? <Loader2 size={13} className="animate-spin" /> : 'Open'}
             </button>
           </article>
