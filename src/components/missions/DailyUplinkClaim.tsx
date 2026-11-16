@@ -24,10 +24,19 @@ export default function DailyUplinkClaim({
   const claim = async () => {
     if (loading || claimed) return;
     setLoading(true);
-    const { data, error } = await supabase.functions.invoke('gameplay-actions', {
-      body: { action: 'claim_daily_uplink' },
-    });
-    setLoading(false);
+    let data: unknown;
+    let error: { message?: string } | null = null;
+    try {
+      const response = await supabase.functions.invoke('gameplay-actions', {
+        body: { action: 'claim_daily_uplink' },
+      });
+      data = response.data;
+      error = response.error;
+    } catch (requestError) {
+      error = { message: requestError instanceof Error ? requestError.message : 'Request failed' };
+    } finally {
+      setLoading(false);
+    }
 
     if (error) {
       notify('Daily Uplink could not be claimed. Please try again.', 'error');
