@@ -46,10 +46,10 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
         )}
       </div>
 
-      {loading && <p className="py-8 text-center font-mono text-xs text-neon-500">Loading verified rankings…</p>}
+      {loading && <p className="py-8 text-center font-mono text-xs text-neon-500">Loading leaderboard…</p>}
       {error && <p role="alert" className="py-4 text-center font-mono text-xs text-red-300">{error}</p>}
       {!loading && !error && entries.length === 0 && (
-        <p className="py-8 text-center font-mono text-xs text-neon-500">No ZAP earnings have been recorded yet.</p>
+        <p className="py-8 text-center font-mono text-xs text-neon-500">No leaderboard entries yet.</p>
       )}
 
       {!loading && !error && entries.length > 0 && (
@@ -60,6 +60,9 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
                 {entry.rank <= 3 ? <Trophy size={16} className="inline" /> : `#${entry.rank}`}
               </span>
               <span className="min-w-0 flex-1 truncate font-mono text-xs text-neon-200">{entry.isYou ? 'YOU' : entry.name}</span>
+              {entry.isSimulated && (
+                <span className="shrink-0 rounded border border-neon/20 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neon-500">Simulated</span>
+              )}
               <span className="shrink-0 font-mono text-xs tabular-nums text-cyan-200">{formatZp(Number(entry.rankingEarned))} ZAP</span>
             </li>
           ))}
@@ -74,7 +77,7 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
       )}
 
       <p className="mt-4 text-center font-mono text-[9px] leading-relaxed text-neon-600">
-        Ranked by net ZAP activity: every ZAP credit increases your score, including ZP-to-ZAP conversions, and every ZAP debit or spend decreases it.
+        Ranked by net ZAP activity. Virtual competitors are simulated leaderboard entries, not real ZORD accounts or spendable ZAP. Their scores reshuffle hourly; real players can overtake them.
       </p>
     </Modal>
   );
