@@ -8,7 +8,7 @@ export const FRAGMENT_ICON: Record<FragmentId, string> = {
 };
 
 export const STATUS_LABEL = {
-  locked: 'Locked',
+  locked: 'Tap to unlock',
   unlocked: 'Tap to fix',
   fixed: 'Online',
 } as const;
