@@ -139,6 +139,18 @@ export default function ZapWalletPanel({
     }
   };
 
+  const handleCopyInviteLink = async () => {
+    if (!player?.referralCode) return;
+    try {
+      await navigator.clipboard.writeText(buildReferralLink(player.referralCode));
+      setCopiedReceiveCode(true);
+      window.setTimeout(() => setCopiedReceiveCode(false), 1800);
+      setTransferError(null);
+    } catch {
+      setTransferError('Could not copy the invite link. Please copy your referral code instead.');
+    }
+  };
+
   const handleConvert = async () => {
     if (!validAmount || submitting) return;
     setSubmitting(true);
@@ -178,7 +190,7 @@ export default function ZapWalletPanel({
 
   return (
     <section className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
         <div className="rounded-xl border border-neon/20 bg-[#07130d] p-3">
           <div className="flex items-center gap-2 text-neon-500">
             <Coins size={14} />
@@ -376,11 +388,15 @@ export default function ZapWalletPanel({
           <h2 className="title">Receive ZAP</h2>
         </div>
         <p className="text-[10px] leading-relaxed text-neon-700">Share your referral code with another ZORD player so they can send ZAP to you.</p>
-        <div className="flex items-center gap-2 rounded-lg border border-neon/15 bg-black/20 p-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-neon/15 bg-black/20 p-3">
           <span className="min-w-0 flex-1 break-all font-mono text-xs text-cyan-200">{player?.referralCode ?? 'Your code is loading…'}</span>
           <button type="button" onClick={() => void handleCopyReceiveCode()} disabled={!player?.referralCode} className="flex shrink-0 items-center gap-1 rounded-md border border-cyan-300/25 px-2 py-2 text-[9px] font-semibold text-cyan-200 disabled:opacity-40"><Copy size={12} />{copiedReceiveCode ? 'Copied' : 'Copy code'}</button>
         </div>
-        {player?.referralCode && <button type="button" onClick={() => void navigator.clipboard.writeText(buildReferralLink(player.referralCode!)).then(() => { setCopiedReceiveCode(true); window.setTimeout(() => setCopiedReceiveCode(false), 1800); }).catch(() => setTransferError('Could not copy the receive link.'))} className="w-full rounded-lg border border-neon/20 px-3 py-2 text-[10px] font-semibold text-neon-300">Copy my ZORD invite link</button>}
+        {player?.referralCode && (
+          <button type="button" onClick={() => void handleCopyInviteLink()} className="w-full rounded-lg border border-neon/20 px-3 py-2 text-[10px] font-semibold text-neon-300 transition hover:bg-neon/10">
+            {copiedReceiveCode ? 'Copied' : 'Copy my ZORD invite link'}
+          </button>
+        )}
       </div>
 
       <div className="panel space-y-3 p-4">
@@ -400,7 +416,7 @@ export default function ZapWalletPanel({
         ) : (
           <div className="space-y-1">
             {wallet.transactions.slice(0, 5).map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between gap-3 border-b border-neon/10 py-3 last:border-0">
+              <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-neon/10 py-3 last:border-0">
                 <div className="min-w-0">
                   <p className="truncate text-xs capitalize text-neon-200">{entry.description || entry.source.replace(/_/g, ' ')}</p>
                   <p className="mt-1 text-[9px] text-neon-700">
