@@ -1,76 +1,61 @@
-import { useEffect, useState } from 'react';
-import { Radio } from 'lucide-react';
+import { Radio, ShieldCheck, Sparkles } from 'lucide-react';
 import Modal from '@/components/Modal';
-import { AD_MAX_SECONDS, AD_MIN_SECONDS, FRAGMENT_NAMES } from '@/lib/game/config';
+import { FRAGMENT_NAMES } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
 
-const TICK_MS = 100;
+const AD_PROVIDERS: Record<FragmentId, { name: string; accent: string; description: string }> = {
+  top: { name: 'AdsGram', accent: 'text-cyan-300 border-cyan-400/30 bg-cyan-400/5', description: 'Dedicated advertising placement for Fragment 1.' },
+  bottom: { name: 'Onclicka', accent: 'text-violet-300 border-violet-400/30 bg-violet-400/5', description: 'Dedicated advertising placement for Fragment 2.' },
+  left: { name: 'RichAds', accent: 'text-amber-300 border-amber-400/30 bg-amber-400/5', description: 'Dedicated advertising placement for Fragment 3.' },
+  right: { name: 'Monetag', accent: 'text-emerald-300 border-emerald-400/30 bg-emerald-400/5', description: 'Dedicated advertising placement for Fragment 4.' },
+};
 
 interface AdModalProps {
   fragmentId: FragmentId;
-  onComplete: () => void;
-  onCancel: () => void;
+  onClose: () => void;
 }
 
-export default function AdModal({ fragmentId, onComplete, onCancel }: AdModalProps) {
-  const [durationMs] = useState(
-    () => Math.round((AD_MIN_SECONDS + Math.random() * (AD_MAX_SECONDS - AD_MIN_SECONDS)) * 1000),
-  );
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const done = elapsedMs >= durationMs;
-
-  useEffect(() => {
-    if (done) return;
-    const started = Date.now();
-    const id = window.setInterval(() => setElapsedMs(Date.now() - started), TICK_MS);
-    return () => window.clearInterval(id);
-  }, [done]);
-
-  const remaining = Math.max(0, Math.ceil((durationMs - elapsedMs) / 1000));
-  const progress = Math.min(1, elapsedMs / durationMs) * 100;
+export default function AdModal({ fragmentId, onClose }: AdModalProps) {
+  const provider = AD_PROVIDERS[fragmentId];
 
   return (
-    <Modal title="Fragment Unlock" onClose={done ? onCancel : undefined}>
-      <div className="space-y-5">
-        <div className="scan-bars relative flex aspect-video flex-col items-center justify-center overflow-hidden rounded-lg border border-cyan-400/40 bg-black/70">
-          <Radio size={28} className="mb-3 text-cyan-300 animate-soft-pulse" />
-          <p className="font-display text-xs uppercase tracking-[0.2em] text-cyan-300">
-            {done ? 'Unlock timer complete' : 'Completing server-timed unlock'}
-          </p>
-          <p className="mt-2 font-mono text-[11px] text-neon-500">
-            Unlocking {FRAGMENT_NAMES[fragmentId]}
-          </p>
-          <span className="absolute bottom-3 right-3 font-display text-2xl font-bold tabular-nums text-cyan-300">
-            {done ? '0' : remaining}s
-          </span>
+    <Modal title="Fragment ad placement" onClose={onClose}>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-neon-600">Fragment unlock</p>
+            <h3 className="mt-1 font-display text-sm font-bold uppercase tracking-wider text-white">{FRAGMENT_NAMES[fragmentId]}</h3>
+          </div>
+          <span className={'rounded-full border px-2.5 py-1 font-mono text-[9px] uppercase tracking-wider ' + provider.accent}>{provider.name}</span>
         </div>
 
-        <p className="font-mono text-[9px] leading-relaxed text-amber-300/80">
-          This is a server-timed fragment unlock. It does not verify that a third-party advertisement was shown or watched.
-        </p>
-
-        <div>
-          <div className="mb-2 flex justify-between font-mono text-[11px] uppercase tracking-wider text-neon-500">
-            <span>Unlock progress</span>
-            <span className="tabular-nums">{Math.round(progress)}%</span>
+        <div className="scan-bars relative flex aspect-video flex-col items-center justify-center overflow-hidden rounded-xl border border-cyan-400/30 bg-black/70 p-5 text-center">
+          <div className="mb-3 grid h-12 w-12 place-items-center rounded-xl border border-cyan-300/25 bg-cyan-300/10">
+            <Radio size={22} className="text-cyan-200" />
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-cyan-400/10">
-            <div
-              className="h-full rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)] transition-[width] duration-100"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">Advertisement placement</p>
+          <p className="mt-2 max-w-[240px] font-mono text-[10px] leading-relaxed text-neon-500">
+            Your {provider.name} advertisement will appear in this space after publisher approval and integration.
+          </p>
+          <Sparkles size={14} className="absolute right-4 top-4 text-cyan-300/60" />
         </div>
 
-        {done ? (
-          <button type="button" onClick={onComplete} className="btn-primary w-full">
-            Complete unlock
-          </button>
-        ) : (
-          <button type="button" onClick={onCancel} className="btn-ghost w-full">
-            Cancel unlock session
-          </button>
-        )}
+        <div className={'rounded-lg border p-3 ' + provider.accent}>
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={15} />
+            <p className="font-mono text-[10px] font-bold uppercase tracking-wider">Provider assigned</p>
+          </div>
+          <p className="mt-1 font-mono text-[10px] leading-relaxed opacity-80">{provider.description}</p>
+        </div>
+
+        <div className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-200">Publisher review preview</p>
+          <p className="mt-1 font-mono text-[9px] leading-relaxed text-amber-100/70">
+            Ads are not active yet. This preview does not start an unlock session, count an ad view, or issue a reward. The Fragment stays locked until the provider is connected and a completed view is verified by ZORD.
+          </p>
+        </div>
+
+        <button type="button" onClick={onClose} className="btn-primary w-full">Close preview</button>
       </div>
     </Modal>
   );
