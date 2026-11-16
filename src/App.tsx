@@ -200,7 +200,6 @@ function GameApp({
   const [missionsInitialView, setMissionsInitialView] = useState<EngagementView>('missions');
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [adFragment, setAdFragment] = useState<FragmentId | null>(null);
-  const [adSessionId, setAdSessionId] = useState<string | null>(null);
 
   // Wait until the cloud save has loaded.
   if (isLoading) {
@@ -242,30 +241,10 @@ function GameApp({
     );
   }
 
-  const startFragmentUnlock = async (fragmentId: FragmentId) => {
-    try {
-      const result = await trustedGameplay.beginUnlock(fragmentId);
-      if (result.alreadyUnlocked || !result.sessionId) {
-        notify('This fragment is already unlocked and ready to fix.', 'info');
-        return;
-      }
-      setAdSessionId(result.sessionId);
-      setAdFragment(fragmentId);
-    } catch (error) {
-      notify(error instanceof Error ? error.message : 'Could not start fragment unlock', 'error');
-    }
-  };
-
-  const completeAd = async () => {
-    if (!adSessionId) return;
-    try {
-      await trustedGameplay.completeUnlock(adSessionId);
-      notify('Fragment unlocked by the trusted gameplay service. No ZP reward was issued.');
-      setAdFragment(null);
-      setAdSessionId(null);
-    } catch (error) {
-      notify(error instanceof Error ? error.message : 'The server could not verify this unlock', 'error');
-    }
+  const startFragmentUnlock = (fragmentId: FragmentId) => {
+    // Publisher-review preview only. Do not create an unlock session until
+    // the assigned ad provider is connected and server-side verification exists.
+    setAdFragment(fragmentId);
   };
 
   const resetSystem = () => {
@@ -364,8 +343,7 @@ function GameApp({
       {adFragment && (
         <AdModal
           fragmentId={adFragment}
-          onComplete={completeAd}
-          onCancel={() => { setAdFragment(null); setAdSessionId(null); }}
+          onClose={() => setAdFragment(null)}
         />
       )}
 
