@@ -326,7 +326,7 @@ export default function ExpeditionsScreen() {
         </div>
       </div>
 
-      {selectedExpeditionId && <button type="button" onClick={() => { setSelectedExpeditionId(null); setActivePage('overview'); setActiveObjectiveIndex((current) => ({ ...current, [item.id]: 0 })); }} className="inline-flex items-center gap-2 rounded-lg border border-neon/20 px-3 py-2 font-mono text-[10px] text-neon-300 hover:bg-neon/10">← Back to Expeditions</button>}
+      {selectedExpeditionId && <button type="button" onClick={() => { setSelectedExpeditionId(null); setActivePage('overview'); setActiveObjectiveIndex({}); }} className="inline-flex items-center gap-2 rounded-lg border border-neon/20 px-3 py-2 font-mono text-[10px] text-neon-300 hover:bg-neon/10">← Back to Expeditions</button>}
 
       {!selectedExpeditionId && <div className="flex gap-1 overflow-x-auto rounded-xl border border-neon/15 bg-black/30 p-1">
         {(['all', 'available', 'joined', 'locked'] as Filter[]).map((value) => (
