@@ -214,12 +214,37 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
       setClaiming(false);
     }
   };
+  const claimAgentUptime = async () => {
+    if (!notify || claiming || claimed || legacyClaimed) return;
+    setClaiming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mission-actions', {
+        body: { missionId: mission.id },
+      });
+      if (error || !data || data.success !== true) {
+        notify(data?.error || error?.message || 'Agent uptime could not be verified. Try again.', 'error');
+        return;
+      }
+      setClaimed(true);
+      notify(data.alreadyClaimed ? 'Your Agent Uptime reward was already claimed today.' : `12 hours verified. +${formatZp(Number(data.rewardZap) || mission.reward)} ZAP credited.`);
+      try {
+        await onRefreshVerifiedEconomy?.();
+      } catch {
+        notify('The ZAP reward was recorded, but the balance display could not refresh. Reopen the Vault or refresh later.', 'error');
+      }
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Agent uptime could not be verified. Try again.', 'error');
+    } finally {
+      setClaiming(false);
+    }
+  };
   const Icon = mission.kind === 'daily' ? CalendarCheck : Megaphone;
   const legacyClaimed = status === 'claimed';
+  const rewardCurrency = mission.rewardCurrency ?? 'ZP';
   const unavailableReason = mission.id === 'ad-quota'
     ? 'Secure ad-view verification and reward claiming are not connected yet. Your progress is shown, but rewards remain locked.'
     : mission.id === 'agent-uptime'
-      ? 'Secure agent-uptime verification and reward claiming are not connected yet. Rewards remain locked.'
+      ? 'A paid agent must remain continuously active for 12 hours. The server checks the rental before issuing 10 ZAP.'
       : mission.id === 'follow-signal'
         ? 'Automatic X follow verification is not connected yet. Rewards remain locked until a trusted verification method is available.'
         : mission.actionUrl?.includes('t.me/')
@@ -235,7 +260,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
         <h3 className="font-display text-sm font-bold tracking-wide text-white">{mission.title}</h3>
         <p className="mt-1.5 text-[11px] leading-relaxed text-neon-500">{mission.description}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px]">
-          <span className="rounded-md border border-neon/20 bg-neon/5 px-2 py-1 font-mono font-semibold text-neon-300">{mission.telegramChatId ? `+ ${formatZp(mission.reward)} ZP` : `Reward: ${formatZp(mission.reward)} ZP`}</span>
+          <span className="rounded-md border border-neon/20 bg-neon/5 px-2 py-1 font-mono font-semibold text-neon-300">Reward: {formatZp(mission.reward)} {rewardCurrency}</span>
           {progressLabel && <span className="rounded-md border border-cyan-300/20 bg-cyan-300/5 px-2 py-1 font-mono text-cyan-200">{progressLabel}</span>}
         </div>
         {mission.actionUrl && <a href={mission.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-cyan-300 underline">Open mission <ExternalLink size={10} /></a>}
@@ -250,11 +275,20 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           >
             {claiming ? 'Checking membership...' : claimed || legacyClaimed ? 'Already claimed' : `Verify & claim +${formatZp(mission.reward)} ZP`}
           </button>
+        ) : mission.id === 'agent-uptime' ? (
+          <button
+            type="button"
+            onClick={() => void claimAgentUptime()}
+            disabled={claiming || claimed || legacyClaimed}
+            className="mt-2 rounded border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-neon-300 disabled:opacity-50"
+          >
+            {claiming ? 'Verifying 12-hour uptime...' : claimed || legacyClaimed ? 'Already claimed today' : 'Verify uptime & claim 10 ZAP'}
+          </button>
         ) : (
           <p className="mt-2 font-mono text-[9px] leading-relaxed text-amber-300">{unavailableReason}</p>
         )}
       </div>
-      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : mission.telegramChatId ? 'Verify' : 'Setup needed'}</span>
+      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : mission.telegramChatId || mission.id === 'agent-uptime' ? 'Verify' : 'Setup needed'}</span>
     </article>
   );
 }
