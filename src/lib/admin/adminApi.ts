@@ -1070,3 +1070,100 @@ export async function setReferralKickbackAccountStatus(
     throw new AdminApiError('The referral account status change could not be verified.');
   }
 }
+
+
+export interface AdminGlobalMiningSettings {
+  success: true;
+  fragmentMiningEnabled: boolean;
+  fragmentMiningRateMultiplier: number;
+  pausedAt: string | null;
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface AdminBroadcastResult {
+  success: true;
+  announcementId: string;
+  inAppPublished: boolean;
+  telegramSent: number;
+  telegramFailed: number;
+  telegramSkipped: number;
+}
+
+export async function sendAdminBroadcast(
+  creds: AdminCredentials,
+  input: { title: string; message: string; channels: Array<'in_app' | 'telegram'> },
+): Promise<AdminBroadcastResult> {
+  const body = await callAdminApi(creds, { action: 'send_broadcast', ...input });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The broadcast response could not be verified.');
+  const result = body as Partial<AdminBroadcastResult>;
+  if (result.success !== true || typeof result.announcementId !== 'string' ||
+      typeof result.inAppPublished !== 'boolean' || !Number.isInteger(result.telegramSent) ||
+      !Number.isInteger(result.telegramFailed) || !Number.isInteger(result.telegramSkipped)) {
+    throw new AdminApiError('The broadcast result could not be verified. Check the announcement history before retrying.');
+  }
+  return result as AdminBroadcastResult;
+}
+
+export async function getAdminGlobalMiningSettings(creds: AdminCredentials): Promise<AdminGlobalMiningSettings> {
+  const body = await callAdminApi(creds, { action: 'get_global_mining_settings' });
+  if (!body || typeof body !== 'object') throw new AdminApiError('Could not load global mining settings.');
+  const result = body as Partial<AdminGlobalMiningSettings>;
+  if (result.success !== true || typeof result.fragmentMiningEnabled !== 'boolean' ||
+      typeof result.fragmentMiningRateMultiplier !== 'number' || typeof result.updatedAt !== 'string') {
+    throw new AdminApiError('The global mining settings response could not be verified.');
+  }
+  return result as AdminGlobalMiningSettings;
+}
+
+export async function setAdminGlobalMiningSettings(
+  creds: AdminCredentials,
+  input: { enabled: boolean; rateMultiplier: number },
+): Promise<AdminGlobalMiningSettings> {
+  const body = await callAdminApi(creds, {
+    action: 'set_global_mining_settings',
+    miningEnabled: input.enabled,
+    miningRateMultiplier: input.rateMultiplier,
+  });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The mining settings response could not be verified.');
+  const result = body as Partial<AdminGlobalMiningSettings>;
+  if (result.success !== true || result.fragmentMiningEnabled !== input.enabled ||
+      result.fragmentMiningRateMultiplier !== input.rateMultiplier || typeof result.updatedAt !== 'string') {
+    throw new AdminApiError('The server did not confirm the requested mining settings. Refresh before retrying.');
+  }
+  return result as AdminGlobalMiningSettings;
+}
+
+export async function flushAdminApiCache(creds: AdminCredentials): Promise<{ success: true; flushedAt: string; scope: string }> {
+  const body = await callAdminApi(creds, { action: 'flush_api_cache' });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The cache refresh response could not be verified.');
+  const result = body as { success?: unknown; flushedAt?: unknown; scope?: unknown };
+  if (result.success !== true || typeof result.flushedAt !== 'string' || typeof result.scope !== 'string') {
+    throw new AdminApiError('The server did not confirm the API cache refresh.');
+  }
+  return result as { success: true; flushedAt: string; scope: string };
+}
+
+export interface AdminExportRow {
+  player_id: string;
+  username: string | null;
+  first_name: string | null;
+  referral_code: string;
+  account_created_at: string;
+  zp_balance: number;
+  lifetime_zp: number;
+}
+
+export async function exportAdminPlayerData(creds: AdminCredentials): Promise<AdminExportRow[]> {
+  const body = await callAdminApi(creds, { action: 'export_player_data' });
+  if (!body || typeof body !== 'object' || !Array.isArray((body as { rows?: unknown }).rows)) {
+    throw new AdminApiError('The player export response could not be verified.');
+  }
+  const rows = (body as { rows: AdminExportRow[] }).rows;
+  if (rows.some((row) => !row || typeof row.player_id !== 'string' ||
+      typeof row.referral_code !== 'string' || typeof row.account_created_at !== 'string' ||
+      !Number.isFinite(Number(row.zp_balance)) || !Number.isFinite(Number(row.lifetime_zp)))) {
+    throw new AdminApiError('The player export contains an invalid row. No file was created.');
+  }
+  return rows;
+}
