@@ -144,7 +144,7 @@ export default function AdminReferralManager({ creds }: { creds: AdminCredential
                   </div>
                   <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
                     <span className={`rounded-md border px-2 py-1 text-[9px] uppercase tracking-wide ${player.status === 'active' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : player.status === 'held' ? 'border-amber-400/30 bg-amber-400/10 text-amber-200' : 'border-red-400/30 bg-red-400/10 text-red-300'}`}>{player.status}</span>
-                    <select aria-label={`Referral status for ${player.referral_code}`} value={player.status} disabled={busyPlayer === player.id || saving} onChange={(event) => void changeStatus(player.id, event.target.value as 'active' | 'held' | 'suspended')} className="admin-field min-h-10 min-w-0 flex-1 py-2 sm:min-w-36 sm:flex-none">
+                    <select aria-label={`Referral status for ${player.referral_code}`} value={player.status} disabled={busyPlayer !== null || saving} onChange={(event) => void changeStatus(player.id, event.target.value as 'active' | 'held' | 'suspended')} className="admin-field min-h-10 min-w-0 flex-1 py-2 sm:min-w-36 sm:flex-none">
                       <option value="active">Active</option><option value="held">Hold rewards</option><option value="suspended">Suspend rewards</option>
                     </select>
                     {busyPlayer === player.id && <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300" role="status"><Loader2 size={14} className="animate-spin" /> Updating</span>}
