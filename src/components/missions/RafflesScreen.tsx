@@ -125,7 +125,7 @@ export default function RafflesScreen() {
           <div className="min-w-0">
             <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-cyan-300/80">Play · Enter · Win</p>
             <h2 className="mt-1 font-display text-xl font-bold text-neon-100">Raffles</h2>
-            <p className="mt-2 max-w-sm text-xs leading-relaxed text-neon-400">Enter with ZAP, receive tickets according to the raffle rules, and follow the draw until winners are announced. Review the entry cost and selection method before confirming.</p>
+            <p className="mt-2 max-w-sm text-xs leading-relaxed text-neon-400">Enter with ZAP, receive tickets according to the raffle rules, and follow the draw until winners are announced. Review the entry cost and raffle rules before confirming.</p>
           </div>
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-300/10 text-cyan-200"><Trophy size={20}/></span>
         </div>
@@ -146,7 +146,7 @@ export default function RafflesScreen() {
         <div className="mt-2 grid gap-3 sm:grid-cols-3">
           <div className="flex gap-2"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-300/10 text-[10px] font-bold text-cyan-200">1</span><p className="text-[10px] leading-relaxed text-neon-500">Choose an open raffle and check its prize pool and minimum ZAP entry.</p></div>
           <div className="flex gap-2"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-300/10 text-[10px] font-bold text-cyan-200">2</span><p className="text-[10px] leading-relaxed text-neon-500">Confirm your ZAP stake. Your ticket count follows that raffle's entry rule.</p></div>
-          <div className="flex gap-2"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-300/10 text-[10px] font-bold text-cyan-200">3</span><p className="text-[10px] leading-relaxed text-neon-500">When entries close, winners are selected using the method shown on the raffle.</p></div>
+          <div className="flex gap-2"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-300/10 text-[10px] font-bold text-cyan-200">3</span><p className="text-[10px] leading-relaxed text-neon-500">When entries close, the draw is completed and winners are announced.</p></div>
         </div>
       </div>
 
@@ -187,7 +187,6 @@ export default function RafflesScreen() {
                   <div className="rounded-lg bg-white/[0.03] p-2.5"><p className="text-[9px] text-neon-600">Minimum entry</p><p className="mt-1 text-xs font-semibold text-neon-200">{fmt(raffle.min_bet_zap)} ZAP</p></div>
                   <div className="rounded-lg bg-white/[0.03] p-2.5"><p className="text-[9px] text-neon-600">Number of winners</p><p className="mt-1 text-xs font-semibold text-neon-200">{raffle.winner_count}</p></div>
                   <div className="rounded-lg bg-white/[0.03] p-2.5"><p className="text-[9px] text-neon-600">How tickets are counted</p><p className="mt-1 text-[10px] text-neon-300">{raffle.entry_mode === 'one_bet_one_entry' ? 'Each qualifying entry = 1 ticket' : 'Each ' + fmt(raffle.min_bet_zap) + ' ZAP = 1 ticket'}</p></div>
-                  <div className="rounded-lg bg-white/[0.03] p-2.5"><p className="text-[9px] text-neon-600">Winner selection</p><p className="mt-1 text-[10px] text-neon-300">{winnerMethodText(raffle)}</p></div>
                   <div className="rounded-lg bg-white/[0.03] p-2.5"><p className="text-[9px] text-neon-600">Your tickets</p><p className="mt-1 text-xs font-semibold text-cyan-200">{tickets}</p></div>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neon/10 px-4 py-3">
@@ -260,7 +259,7 @@ export default function RafflesScreen() {
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/80 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="raffle-entry-title">
           <div className="w-full max-w-md space-y-4 rounded-2xl border border-cyan-300/30 bg-[#07100d] p-4 shadow-2xl sm:p-5">
             <div className="flex items-start justify-between gap-3"><div><p className="text-[9px] uppercase tracking-widest text-cyan-300">Entry details</p><h3 id="raffle-entry-title" className="mt-1 text-lg font-semibold text-neon-100">{selected.title}</h3></div><button type="button" onClick={() => setSelected(null)} className="rounded-lg border border-neon/20 px-3 py-1.5 text-xs text-neon-400">Close</button></div>
-            <div className="rounded-xl border border-neon/15 bg-black/30 p-3"><p className="text-[9px] text-neon-600">Prize pool</p><p className="mt-1 font-display text-lg text-cyan-200">{rewardLabel(selected)}</p><p className="mt-1 text-[10px] text-neon-500">{selected.winner_count} winner(s) · {winnerMethodText(selected)}</p></div>
+            <div className="rounded-xl border border-neon/15 bg-black/30 p-3"><p className="text-[9px] text-neon-600">Prize pool</p><p className="mt-1 font-display text-lg text-cyan-200">{rewardLabel(selected)}</p><p className="mt-1 text-[10px] text-neon-500">{selected.winner_count} winner(s)</p></div>
             <label className="block space-y-1.5"><span className="text-xs text-neon-300">Your entry stake</span><div className="relative"><input type="number" inputMode="decimal" min={selected.min_bet_zap} step="any" value={stake} onChange={(event) => setStake(event.target.value)} className="w-full rounded-xl border border-neon/25 bg-black/50 px-3 py-3 pr-16 text-sm text-neon-100 outline-none focus:border-cyan-300/60"/><span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neon-500">ZAP</span></div><span className="block text-[10px] text-neon-600">Minimum entry: {fmt(selected.min_bet_zap)} ZAP</span></label>
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3"><p className="text-[9px] text-neon-600">You will spend</p><p className="mt-1 text-base font-bold text-cyan-200">{validStake ? fmt(stakeAmount) : '—'} ZAP</p></div>
