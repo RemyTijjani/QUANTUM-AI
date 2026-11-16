@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock, Target, Radio, ShieldCheck } from 'lucide-react';
+import { CalendarCheck, Check, Link2, Megaphone, Video, ExternalLink, Clock, Target } from 'lucide-react';
 import type { MissionSpec } from '@/lib/game/config';
 import { missionStatus } from '@/lib/game/state';
 import type { GameState } from '@/lib/game/state';
@@ -65,7 +65,6 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
           <CalendarCheck size={14} className="text-neon-400" />
           <p className="label">Daily Protocols</p>
         </div>
-        <AdFeedCard />
         {daily.map((mission) => (
           <MissionCard
             key={mission.id}
@@ -118,64 +117,6 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
       </section>
       </div>
     </div>
-  );
-}
-
-function AdFeedCard() {
-  const providers = ['AdsGram', 'Onclicka', 'RichAds', 'Monetag'];
-
-  return (
-    <article className="panel space-y-4 border border-cyan-400/25 bg-gradient-to-br from-cyan-400/10 via-black/40 to-neon/5 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="grid h-10 w-10 place-items-center rounded-xl border border-cyan-300/25 bg-cyan-300/10 text-cyan-200">
-            <Radio size={19} />
-          </div>
-          <div>
-            <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-cyan-500">Daily Ad Feed</p>
-            <h3 className="mt-1 font-display text-sm font-bold uppercase tracking-wide text-white">Watch & earn</h3>
-          </div>
-        </div>
-        <span className="shrink-0 rounded-full border border-amber-300/25 bg-amber-300/5 px-2 py-1 font-mono text-[8px] uppercase tracking-wider text-amber-200">Coming soon</span>
-      </div>
-
-      <div className="rounded-xl border border-cyan-300/15 bg-black/35 p-3">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="font-mono text-[9px] uppercase tracking-wider text-neon-600">Verified ads today</p>
-            <p className="mt-1 font-display text-2xl font-bold tabular-nums text-cyan-100">0 <span className="text-sm text-cyan-700">/ 8</span></p>
-          </div>
-          <div className="text-right">
-            <p className="font-mono text-[9px] uppercase tracking-wider text-neon-600">Daily reward</p>
-            <p className="mt-1 font-display text-xl font-bold text-emerald-200">1 ZAP</p>
-          </div>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-cyan-950">
-          <div className="h-full w-0 rounded-full bg-cyan-300" />
-        </div>
-        <p className="mt-2 font-mono text-[9px] leading-relaxed text-neon-600">
-          Complete 8 advertisements verified by the provider to qualify for the daily ZAP reward.
-        </p>
-      </div>
-
-      <div>
-        <div className="mb-2 flex items-center gap-2 text-neon-500">
-          <ShieldCheck size={13} />
-          <p className="font-mono text-[9px] uppercase tracking-wider">Supported ad networks</p>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {providers.map((provider) => (
-            <div key={provider} className="rounded-lg border border-white/10 bg-black/25 px-3 py-2 font-mono text-[10px] text-neon-300">
-              {provider}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <p className="font-mono text-[9px] leading-relaxed text-amber-200/75">
-        Advertisement slots will activate after publisher approval and integration. This preview does not count ad views or issue ZAP.
-      </p>
-    </article>
   );
 }
 
