@@ -190,12 +190,16 @@ export interface AdminPlayer {
 }
 
 
+export interface AdminXFollowSubmission {
+  id: string; player_id: string; x_username: string;
+  status: 'pending' | 'approved' | 'rejected'; reward_zp: number; created_at: string;
+  players?: { referral_code: string | null; username: string | null; first_name: string | null };
+}
+
 export interface AdminDashboardData {
-  stats: AdminStats;
-  vaultReserves: AdminVaultReserves;
-  submissions: AdminSubmission[];
-  tasks: AdminTask[];
-  events: AdminEvent[];
+  stats: AdminStats; vaultReserves: AdminVaultReserves;
+  submissions: AdminSubmission[]; xFollowSubmissions: AdminXFollowSubmission[];
+  tasks: AdminTask[]; events: AdminEvent[];
 }
 
 export interface AdminVaultReserves {
@@ -274,6 +278,7 @@ function isDashboardData(value: unknown): value is AdminDashboardData {
     !!v.stats &&
     !!v.vaultReserves &&
     Array.isArray(v.submissions) &&
+    Array.isArray(v.xFollowSubmissions) &&
     Array.isArray(v.tasks) &&
     Array.isArray(v.events)
   );
@@ -1166,4 +1171,12 @@ export async function exportAdminPlayerData(creds: AdminCredentials): Promise<Ad
     throw new AdminApiError('The player export contains an invalid row. No file was created.');
   }
   return rows;
+}
+
+export async function reviewXFollowSubmission(creds: AdminCredentials, submissionId: string, decision: 'approved' | 'rejected'): Promise<{ success: true; decision: 'approved' | 'rejected'; rewardZp: number; playerId?: string; xUsername?: string }> {
+  const body = await callAdminApi(creds, { action: 'review_x_follow_submission', submissionId, decision });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The X Follow review response could not be verified.');
+  const result = body as { success?: unknown; decision?: unknown; rewardZp?: unknown; playerId?: unknown; xUsername?: unknown };
+  if (result.success !== true || result.decision !== decision || typeof result.rewardZp !== 'number' || !Number.isFinite(result.rewardZp)) throw new AdminApiError('The X Follow review could not be verified. Refresh the queue and check its status.');
+  return { success: true, decision, rewardZp: result.rewardZp, playerId: typeof result.playerId === 'string' ? result.playerId : undefined, xUsername: typeof result.xUsername === 'string' ? result.xUsername : undefined };
 }
