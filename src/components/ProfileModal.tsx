@@ -25,9 +25,13 @@ export default function ProfileModal({ state, identity, verifiedZpBalance, verif
   const now = Date.now();
   const tier = tierInfo(state.lifetimeZp);
   const rentals = activeAgents(state, now);
-  const displayName = identity?.username
-    ? `@${identity.username}`
-    : identity?.firstName ?? 'Unnamed operative';
+  const displayName = identity?.firstName
+    ? identity.username
+      ? `${identity.firstName} · @${identity.username}`
+      : identity.firstName
+    : identity?.username
+      ? `@${identity.username}`
+      : 'Unnamed operative';
 
   return (
     <Modal title="Operative Profile" onClose={onClose}>
@@ -49,7 +53,7 @@ export default function ProfileModal({ state, identity, verifiedZpBalance, verif
         <dl className="grid grid-cols-2 gap-2 sm:gap-3">
           <Stat label="Game ZP balance" value={formatZp(state.zp)} />
           <Stat label="Verified ZP balance" value={verifiedZpBalance === null ? 'Unavailable' : formatZp(verifiedZpBalance)} />
-          <Stat label="Passive ZP/sec" value={formatRate(passiveRate(state, now))} />
+          <Stat label="Estimated passive ZP/sec" value={formatRate(passiveRate(state, now))} />
           <Stat label="Fragments connected" value={`${fixedCount(state)} / ${FRAGMENT_IDS.length}`} />
           <Stat label="Lifetime game ZP" value={formatZp(state.lifetimeZp)} />
           <Stat label="Verified lifetime ZP" value={verifiedZpLifetime === null ? 'Unavailable' : formatZp(verifiedZpLifetime)} />
@@ -59,7 +63,7 @@ export default function ProfileModal({ state, identity, verifiedZpBalance, verif
           <p className="label">Active hash-agents</p>
           {rentals.length === 0 ? (
             <p className="rounded-lg border border-neon/15 bg-black/40 px-4 py-3 font-mono text-[11px] text-neon-500">
-              No agents online. ZORD Agents are coming soon.
+              No active agents at the moment.
             </p>
           ) : (
             <ul className="space-y-2">
@@ -72,7 +76,7 @@ export default function ProfileModal({ state, identity, verifiedZpBalance, verif
                     {AGENTS[id].name}
                   </span>
                   <span className="font-mono text-[11px] tabular-nums text-neon-400">
-                    {formatRemaining(state.agents[id] - now)}
+                    {formatRemaining(Math.max(state.agents[id], id === 'alpha' ? state.temporaryAgentUntil : 0) - now)}
                   </span>
                 </li>
               ))}
@@ -83,7 +87,7 @@ export default function ProfileModal({ state, identity, verifiedZpBalance, verif
         <section className="space-y-3 border-t border-red-500/25 pt-5">
           <p className="label !text-red-300/80">System utilities</p>
           <p className="font-mono text-xs leading-relaxed text-neon-400">
-            Resets this device's legacy game progress, including its game ZP balance and local game stats. It does not erase server-verified ZP, wallet transactions, or server-owned Fragment records.
+            Resets the legacy game save, including its game ZP balance and local game stats. It does not erase server-verified ZP, wallet transactions, or server-owned Fragment records.
           </p>
           {confirmingReset ? (
             <div className="space-y-3 rounded-lg border border-red-500/35 bg-red-500/5 p-3">
