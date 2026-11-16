@@ -22,7 +22,7 @@ interface CoreTabProps {
   state: GameState;
   notify: Notify;
   onWatchAd: (id: FragmentId) => void;
-  onFixFragment: (id: FragmentId) => Promise<void>;
+  onFixFragment: (id: FragmentId) => Promise<boolean>;
   verifiedZpBalance: number | null;
   verifiedZpLifetime: number | null;
   zapEarned: number | null;
@@ -78,8 +78,10 @@ export default function CoreTab({
         notify('Fragment cooldown is still active', 'info');
         return;
       }
-      void onFixFragment(id).then(() => {
-        notify(`${FRAGMENT_NAMES[id]} mining has started. ZP accrues from server-recorded mining time and each earned amount stays pending for six hours.`, 'info');
+      void onFixFragment(id).then((started) => {
+        if (started) {
+          notify(`${FRAGMENT_NAMES[id]} mining has started. ZP accrues from server-recorded mining time and each earned amount stays pending for six hours.`, 'info');
+        }
       }).catch((error) => {
         notify(error instanceof Error ? error.message : 'Could not verify this fragment action', 'error');
       });
@@ -121,7 +123,7 @@ export default function CoreTab({
           </div>
           <div className="rounded-xl border border-neon/20 bg-black/40 p-3">
             <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{fixed}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
-            <p className="mt-1 text-[9px] text-neon-700">Mining rate: {formatRate(rate)}</p>
+            <p className="mt-1 text-[9px] text-neon-700">Displayed rate estimate: {formatRate(rate)}</p>
           </div>
         </div>
         <div className="relative mt-3 rounded-xl border border-neon/15 bg-black/30 p-3">
