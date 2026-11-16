@@ -44,10 +44,18 @@ export interface ZapAchievement {
   nftTokenId: string | null;
 }
 
+export interface ZapCoreRank {
+  rankNumber: number;
+  currentThreshold: number;
+  nextThreshold: number;
+  progressPercent: number;
+}
+
 export interface ZapAchievements {
   netZap: number;
   currentLevel: number;
   nextLevelAt: number;
+  coreRank?: ZapCoreRank;
   achievements: ZapAchievement[];
 }
 
