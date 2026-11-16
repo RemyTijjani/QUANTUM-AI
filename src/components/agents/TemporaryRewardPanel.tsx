@@ -78,7 +78,7 @@ export default function TemporaryRewardPanel() {
     const isBoost = reward.rewardType === 'fragment_mining_boost';
     const active = reward.status === 'active' && Boolean(reward.expiresAt) && new Date(reward.expiresAt as string).getTime() > now;
     return (
-      <article key={reward.entitlementId} className="flex flex-col gap-3 border border-neon/20 bg-black/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+      <article key={reward.entitlementId} className="flex flex-col gap-3 border border-neon/20 bg-black/30 p-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             {isBoost ? <Zap size={15} className="text-cyan-300" /> : <Gift size={15} className="text-neon-300" />}
@@ -106,7 +106,7 @@ export default function TemporaryRewardPanel() {
             {activating === reward.entitlementId ? <LoaderCircle size={13} className="animate-spin" /> : null}
             Activate
           </button>
-        )}
+        ) : null}
       </article>
     );
   };
