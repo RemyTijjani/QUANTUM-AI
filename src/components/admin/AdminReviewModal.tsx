@@ -280,8 +280,8 @@ function AdminConsole({
   return (
     <div className="fixed inset-0 z-50 box-border flex h-dvh w-full min-w-0 max-w-full flex-col overflow-hidden gap-2 bg-[#080e0a] p-2 font-sans text-slate-100 sm:gap-4 sm:p-5">
       <div className="flex shrink-0 flex-col gap-2 rounded-xl border border-white/10 bg-[#111a14] p-3 shadow-xl sm:gap-3 sm:rounded-2xl sm:p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-emerald-400/10 p-2 text-emerald-300">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="shrink-0 rounded-xl bg-emerald-400/10 p-2 text-emerald-300">
             <Terminal size={24} />
           </div>
 
@@ -290,7 +290,7 @@ function AdminConsole({
               Autonomous Moderation Intelligence
             </p>
 
-            <h1 className="text-xl font-semibold tracking-tight text-white">
+            <h1 className="break-words text-base font-semibold leading-tight tracking-tight text-white sm:text-xl">
               ZORD OS // COMMAND & CONTROL
             </h1>
           </div>
