@@ -3,10 +3,8 @@ import { supabase } from '@/lib/supabase';
 import {
   CheckCircle2,
   Compass,
-  Copy,
   LockKeyhole,
   RefreshCw,
-  Users,
   Send,
 } from 'lucide-react';
 
