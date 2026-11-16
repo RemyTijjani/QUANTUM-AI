@@ -80,7 +80,7 @@ begin
         'rank', r.rank,
         'name', r.display_name,
         'rankingEarned', r.ranking_earned,
-        'isYou', r.player_id = p_player_id,
+        'isYou', coalesce(r.player_id = p_player_id, false),
         'isSimulated', r.is_simulated
       ) order by r.rank)
       from ranked r
