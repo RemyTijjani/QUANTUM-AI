@@ -31,6 +31,7 @@ import {
   AdminApiError,
   fetchDashboard,
   reviewSubmission,
+  reviewXFollowSubmission,
   bulkApproveSubmissions,
   saveTask,
   deleteTask,
@@ -41,6 +42,7 @@ import type {
   AdminCredentials,
   AdminDashboardData,
   AdminSubmission,
+  AdminXFollowSubmission,
   AdminTaskInput,
   AdminVaultReserves,
 } from '@/lib/admin/adminApi';
@@ -110,7 +112,7 @@ function AdminConsole({
   onApproveSubmission: (rewardZp: number) => void;
 }) {
   const [data, setData] = useState<AdminDashboardData>(initialData);
-  const [activeTab, setActiveTab] = useState<'queue' | 'stats' | 'tasks' | 'expeditions' | 'players' | 'raffles' | 'raffle-funding' | 'ton-withdrawals' | 'referrals' | 'operations'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'x-follow' | 'stats' | 'tasks' | 'expeditions' | 'players' | 'raffles' | 'raffle-funding' | 'ton-withdrawals' | 'referrals' | 'operations'>('queue');
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -180,6 +182,20 @@ function AdminConsole({
     } finally {
       setProcessingId(null);
     }
+  };
+
+  const handleXFollowReview = async (submission: AdminXFollowSubmission, decision: 'approved' | 'rejected') => {
+    if (processingId) return;
+    if (decision === 'approved' && !window.confirm(`Confirm that @${submission.x_username} follows @zord_agent and approve the 250 ZP reward?`)) return;
+    if (decision === 'rejected' && !window.confirm(`Reject @${submission.x_username}'s X Follow submission? They can submit again.`)) return;
+    setProcessingId(submission.id); setActionError(null);
+    try {
+      const result = await reviewXFollowSubmission(creds, submission.id, decision);
+      if (decision === 'approved') { onApproveSubmission(result.rewardZp); addLog(`[X FOLLOW APPROVED] @${submission.x_username} verified. +${formatZp(result.rewardZp)} ZP credited.`); }
+      else addLog(`[X FOLLOW REJECTED] @${submission.x_username} rejected. Player may resubmit.`);
+      await refresh();
+    } catch (err) { setActionError(errorMessage(err)); }
+    finally { setProcessingId(null); }
   };
 
   const handleBulkApprove = async () => {
@@ -258,7 +274,8 @@ function AdminConsole({
   const navGroups = [
     { label: 'Overview', items: [{ id: 'stats', label: 'Overview', icon: LayoutDashboard }, { id: 'operations', label: 'Admin operations', icon: Database }] },
     { label: 'Review & build', items: [
-      { id: 'queue', label: 'Review queue', icon: ClipboardCheck, count: data.submissions.length },
+      { id: 'queue', label: 'Creator Ops queue', icon: ClipboardCheck, count: data.submissions.length },
+      { id: 'x-follow', label: 'X Follow review', icon: ShieldCheck, count: data.xFollowSubmissions.length },
       { id: 'tasks', label: 'Task manager', icon: ListTodo, count: data.tasks.length },
       { id: 'expeditions', label: 'Expeditions', icon: Compass },
       { id: 'raffles', label: 'Raffles', icon: Ticket },
@@ -272,7 +289,8 @@ function AdminConsole({
   ] as const;
 
   const overviewActions = [
-    { tab: 'queue', title: 'Review submissions', description: 'Check evidence and approve or reject pending work.', icon: ClipboardCheck, detail: `${data.stats.pendingSubmissions} awaiting review` },
+    { tab: 'queue', title: 'Review Creator Ops', description: 'Check creator evidence and approve or reject pending work.', icon: ClipboardCheck, detail: `${data.stats.pendingSubmissions} awaiting review` },
+    { tab: 'x-follow', title: 'Review X Follow', description: 'Manually check whether submitted X accounts follow @zord_agent.', icon: ShieldCheck, detail: `${data.xFollowSubmissions.length} awaiting review` },
     { tab: 'operations', title: 'Admin operations', description: 'Broadcast announcements, control Fragment mining, refresh API metadata and export player summaries.', icon: Database },
     { tab: 'tasks', title: 'Manage missions', description: 'Create, update and organize player tasks.', icon: ListTodo, detail: `${data.tasks.length} configured tasks` },
     { tab: 'players', title: 'Manage players', description: 'Find player profiles and inspect account activity.', icon: Users },
@@ -388,7 +406,7 @@ function AdminConsole({
             </div>
           ))}
         </nav>
-      </aside><main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-white/10 bg-[#0d1510] p-3 sm:rounded-2xl sm:p-5"><div className="mb-4 border-b border-white/10 pb-3 sm:mb-5 sm:pb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Management</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-white">{{ queue: 'Review queue', stats: 'Overview', tasks: 'Task manager', players: 'Player management', raffles: 'Raffle management', 'raffle-funding': 'Raffle funding', 'ton-withdrawals': 'Gram withdrawals', referrals: 'Referral management', expeditions: 'Expeditions', operations: 'Admin operations' }[activeTab]}</h2><p className="mt-1 text-xs text-slate-400">Manage ZORD operations from one place.</p></div>
+      </aside><main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-white/10 bg-[#0d1510] p-3 sm:rounded-2xl sm:p-5"><div className="mb-4 border-b border-white/10 pb-3 sm:mb-5 sm:pb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Management</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-white">{{ queue: 'Creator Ops review', 'x-follow': 'X Follow review', stats: 'Overview', tasks: 'Task manager', players: 'Player management', raffles: 'Raffle management', 'raffle-funding': 'Raffle funding', 'ton-withdrawals': 'Gram withdrawals', referrals: 'Referral management', expeditions: 'Expeditions', operations: 'Admin operations' }[activeTab]}</h2><p className="mt-1 text-xs text-slate-400">Manage ZORD operations from one place.</p></div>
 
       {activeTab === 'queue' && (
         <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm space-y-4">
@@ -478,6 +496,34 @@ function AdminConsole({
             </ul>
           )}
         </div>
+      )}
+
+      {activeTab === 'x-follow' && (
+        <section className="space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+              <div><h2 className="text-xs font-bold uppercase tracking-widest text-slate-200">Manual X Follow verification</h2><p className="mt-1 text-[10px] text-slate-400">Open each account and check its Following list for @zord_agent. A screenshot is not required.</p></div>
+              <span className="rounded-md border border-emerald-400/20 bg-emerald-400/5 px-2 py-1 font-mono text-[10px] text-emerald-200">250 ZP per approval</span>
+            </div>
+            {refreshing ? <NeonSpinner label="Loading X Follow submissions…" /> : data.xFollowSubmissions.length === 0 ? <div className="py-12 text-center font-mono text-[11px] text-slate-400">No pending X Follow submissions.</div> : (
+              <ul className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                {data.xFollowSubmissions.map((submission) => {
+                  const player = submission.players;
+                  const playerLabel = player?.referral_code || player?.username || player?.first_name || submission.player_id;
+                  return <li key={submission.id} className="space-y-3 rounded-xl border border-white/10 bg-[#0b120e] p-4">
+                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold text-white">@{submission.x_username}</p><p className="mt-1 break-all font-mono text-[9px] text-slate-400">Player: {playerLabel}</p><p className="mt-1 font-mono text-[9px] text-slate-500">Submitted {new Date(submission.created_at).toLocaleString()}</p></div><span className="shrink-0 rounded-md border border-emerald-400/20 bg-emerald-400/5 px-2 py-1 font-mono text-[10px] text-emerald-200">+250 ZP</span></div>
+                    <a href={`https://x.com/${encodeURIComponent(submission.x_username)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[11px] text-cyan-200 hover:border-cyan-300/40"><ExternalLink size={13} /> Open X profile</a>
+                    <p className="text-[10px] leading-relaxed text-slate-400">Inspect the account's Following list and confirm that @zord_agent is present before approving.</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => void handleXFollowReview(submission, 'approved')} disabled={processingId === submission.id} className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-emerald-400/40 bg-emerald-400/10 py-2 text-[10px] font-semibold text-emerald-200 disabled:opacity-50"><Check size={13} /> Approve +250 ZP</button>
+                      <button type="button" onClick={() => void handleXFollowReview(submission, 'rejected')} disabled={processingId === submission.id} className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-red-400/30 bg-red-400/5 py-2 text-[10px] font-semibold text-red-200 disabled:opacity-50"><X size={13} /> Reject</button>
+                    </div>
+                  </li>;
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
       )}
 
       {activeTab === 'stats' && (
