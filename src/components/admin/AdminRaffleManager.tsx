@@ -100,14 +100,16 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
   };
 
   const publishRaffle = async (raffle: AdminRaffleRecord) => {
+    if (!window.confirm(`Publish "${raffle.title}" now? It will become visible to players. Publishing does not draw winners or send prizes.`)) return;
     setError('');
     setNotice('');
     setPublishingId(raffle.id);
     try {
       const result = await publishAdminRaffle(creds, raffle.id);
-      setNotice(`Published "${raffle.title}". It is now visible to players.`);
       if (result.status !== 'published') {
         setError('The server did not confirm that this raffle was published. Refresh the list before retrying.');
+      } else {
+        setNotice(`Published "${raffle.title}". It is now visible to players.`);
       }
       await refresh();
     } catch (publishError) {
