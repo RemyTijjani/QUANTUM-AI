@@ -274,7 +274,7 @@ function GameApp({
     setOverlay(null);
 
     notify(
-      'System memory wiped. Fresh operative online',
+      'Local game progress reset. Server-verified balances and records were not changed.',
       'info',
     );
   };
@@ -373,6 +373,8 @@ function GameApp({
         <ProfileModal
           state={state}
           identity={identity}
+          verifiedZpBalance={verifiedZpBalance}
+          verifiedZpLifetime={verifiedZpLifetime}
           onReset={resetSystem}
           onClose={() => setOverlay(null)}
         />
