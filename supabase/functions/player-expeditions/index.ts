@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
       const { data: expeditions, error: expeditionError } = await admin
         .from("expeditions")
         .select("id, slug, title, description, cover_image_url, category, access_mode, prerequisite_expedition_id, participation_mode, status, starts_at, ends_at, registration_opens_at, registration_closes_at, timezone, min_team_size, max_team_size, min_individual_contributions, require_shared_team_objectives, created_at")
-        .in("status", ["scheduled", "registration_open", "active"])
+        .in("status", ["scheduled", "registration_open", "active", "completed"])
         .order("starts_at", { ascending: true, nullsFirst: false })
         .limit(100);
       if (expeditionError) {
