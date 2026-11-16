@@ -18,6 +18,7 @@ import { formatRate, formatRemaining } from '@/lib/format';
 import {
   encodeTonCommentPayload,
   getTonConnectUI,
+  loadTonConnectUI,
 } from '@/lib/ton-connect';
 import type { TonConnectWallet } from '@/lib/ton-connect';
 
@@ -76,6 +77,7 @@ function AgentRentalCheckout() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [walletNetwork, setWalletNetwork] = useState<string | null>(null);
   const [walletReady, setWalletReady] = useState(false);
+  const [walletError, setWalletError] = useState('');
   const [sendAttempted, setSendAttempted] = useState(false);
   const [transactionSubmitted, setTransactionSubmitted] = useState(false);
 
@@ -91,23 +93,28 @@ function AgentRentalCheckout() {
     let mounted = true;
     let unsubscribe: (() => void) | undefined;
 
-    try {
-      const ui = getTonConnectUI();
-      const syncWallet = (wallet: TonConnectWallet | null) => {
+    const initializeWallet = async () => {
+      try {
+        const ui = await loadTonConnectUI();
         if (!mounted) return;
-        setWalletAddress(wallet?.account.address ?? null);
-        setWalletNetwork(wallet?.account.chain ?? null);
-      };
+        const syncWallet = (wallet: TonConnectWallet | null) => {
+          if (!mounted) return;
+          setWalletAddress(wallet?.account.address ?? null);
+          setWalletNetwork(wallet?.account.chain ?? null);
+        };
 
-      syncWallet(ui.wallet);
-      unsubscribe = ui.onStatusChange(syncWallet);
-      setWalletReady(true);
-    } catch (error) {
-      setWalletReady(false);
-      setNotice(error instanceof Error ? error.message : 'TON Connect could not be initialized.');
-      setNoticeKind('error');
-    }
+        syncWallet(ui.wallet);
+        unsubscribe = ui.onStatusChange(syncWallet);
+        setWalletReady(true);
+        setWalletError('');
+      } catch (error) {
+        if (!mounted) return;
+        setWalletReady(false);
+        setWalletError(error instanceof Error ? error.message : 'TON Connect could not be initialized.');
+      }
+    };
 
+    void initializeWallet();
     return () => {
       mounted = false;
       unsubscribe?.();
@@ -143,10 +150,13 @@ function AgentRentalCheckout() {
 
   const connectWallet = async () => {
     try {
-      await getTonConnectUI().openModal();
+      const ui = await loadTonConnectUI();
+      setWalletReady(true);
+      setWalletError('');
+      await ui.openModal();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Could not open the TON wallet selector.');
-      setNoticeKind('error');
+      setWalletReady(false);
+      setWalletError(error instanceof Error ? error.message : 'Could not open the TON wallet selector.');
     }
   };
 
@@ -289,24 +299,30 @@ function AgentRentalCheckout() {
           <Wallet size={15} className="text-cyan-300" />
           <p className="label">TON wallet</p>
         </div>
-        <div className="mt-2 flex items-center justify-between gap-3">
+        <div className="mt-2 flex flex-col gap-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
           <div className="min-w-0">
             <p className="font-mono text-[11px] text-neon-300">
               {walletAddress ? shortAddress : walletReady ? 'Wallet not connected' : 'Loading wallet connector…'}
             </p>
             <p className="mt-1 font-mono text-[9px] text-neon-600">
-              {walletAddress ? (isMainnetWallet ? 'Connected · TON mainnet' : 'Connected · wrong network') : 'Connect to prepare a secure checkout'}
+              {walletAddress ? (isMainnetWallet ? 'Connected · TON mainnet' : 'Connected · wrong network') : walletError ? 'Wallet connector needs attention' : 'Connect to prepare a secure checkout'}
             </p>
+            {walletError && <p role="alert" className="mt-1 break-words font-mono text-[9px] text-amber-300">{walletError}</p>}
           </div>
           <button
             type="button"
-            className="btn-ghost shrink-0"
-            disabled={!walletReady}
+            className="btn-ghost min-h-10 w-full shrink-0 min-[380px]:w-auto"
             onClick={() => void connectWallet()}
           >
-            {walletAddress ? 'Change wallet' : 'Connect wallet'}
+            {walletAddress ? 'Change wallet' : walletError ? 'Retry connector' : walletReady ? 'Connect wallet' : 'Load wallet connector'}
           </button>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.04] p-3">
+        <p className="font-mono text-[10px] leading-relaxed text-amber-200">
+          Preview safety mode: wallet connection and rental-status viewing are available. Creating checkouts, verifying payments, and sending real GRAM are intentionally locked. No payment can be made from this page.
+        </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -358,7 +374,7 @@ function AgentRentalCheckout() {
         ) : (
           <div className="mt-3 space-y-2">
             {activeRentals.map((rental) => (
-              <div key={rental.agentType} className="flex items-center justify-between gap-3 rounded-lg border border-neon/15 bg-black/25 p-3">
+              <div key={rental.agentType + rental.startsAt} className="flex flex-col gap-3 rounded-lg border border-neon/15 bg-black/25 p-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
                 <div className="min-w-0">
                   <p className="font-display text-xs font-bold text-neon-200">
                     {rental.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}
@@ -377,7 +393,7 @@ function AgentRentalCheckout() {
 
       {intent && (
         <div className="space-y-4 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.04] p-4">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="font-display text-xs font-bold uppercase text-cyan-300">Wallet checkout ready</p>
             <span className="font-mono text-[9px] uppercase text-amber-300">
               {transactionSubmitted ? 'Submitted · verifying' : 'Awaiting wallet'}
@@ -467,7 +483,7 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
         </div>
         <h1 className="mt-3 font-display text-2xl font-bold tracking-wide text-neon-100">ZORD Agents</h1>
         <p className="mt-2 max-w-xl text-xs leading-relaxed text-neon-400">Explore mining agents and community protection services in one place. Compare what each service offers before choosing your next step.</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
           <div className="rounded-xl border border-neon/15 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase tracking-wider text-neon-600">Your active miners</p><p className="mt-1 font-display text-lg font-semibold text-neon-200">{running.length}</p></div>
           <div className="rounded-xl border border-neon/15 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase tracking-wider text-neon-600">Current displayed rate</p><p className="mt-1 font-display text-lg font-semibold text-neon-200">{formatRate(miningRate)} <span className="text-[10px]">ZP/s</span></p></div>
         </div>
@@ -482,16 +498,16 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
           <div><p className="label">Mining operations</p><h2 className="title mt-1">ZP agent activity</h2></div>
           <Activity size={18} className="text-neon-400" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
           <div className="rounded-xl border border-neon/20 bg-black/35 p-3"><p className="label">Active miners</p><p className="mt-1 font-display text-xl text-neon-300">{running.length}</p></div>
           <div className="border border-neon/20 bg-black/40 p-3"><p className="label">Displayed rate</p><p className="mt-1 font-display text-xl text-neon-300">{formatRate(miningRate)} <span className="text-[10px]">ZP/s</span></p></div>
         </div>
         <div className="space-y-2">
           {AGENT_IDS.map((id: AgentId) => {
             const agent = AGENTS[id];
-            const endsAt = state.agents[id];
+            const endsAt = Math.max(state.agents[id], id === 'alpha' ? state.temporaryAgentUntil : 0);
             const isActive = endsAt > now;
-            return <article key={id} className="flex items-start justify-between gap-3 rounded-xl border border-neon/15 bg-black/30 p-3.5">
+            return <article key={id} className="flex flex-col gap-3 rounded-xl border border-neon/15 bg-black/30 p-3.5 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
               <div className="min-w-0"><p className="font-display text-xs font-bold text-neon-300">{agent.name}</p><p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-600">{agent.summary}</p><p className="mt-2 font-mono text-[10px] text-cyan-300">{formatRate(agent.zpPerSec)} ZP/sec while active</p></div>
               <span className={'shrink-0 border px-2 py-1 font-mono text-[9px] uppercase ' + (isActive ? 'border-green-500/40 text-green-300' : 'border-neon/20 text-neon-600')}>{isActive ? formatRemaining(endsAt - now) : 'Inactive'}</span>
             </article>;
