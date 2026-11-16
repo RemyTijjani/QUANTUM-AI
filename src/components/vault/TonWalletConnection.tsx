@@ -46,6 +46,7 @@ export default function TonWalletConnection() {
   const [wallet, setWallet] = useState<TonConnectWallet | null>(null);
   const [walletData, setWalletData] = useState<TonWalletData | null>(null);
   const [ready, setReady] = useState(false);
+  const [connectorRetry, setConnectorRetry] = useState(0);
   const [busy, setBusy] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -123,7 +124,13 @@ export default function TonWalletConnection() {
       mounted = false;
       unsubscribe?.();
     };
-  }, [refreshWalletData]);
+  }, [refreshWalletData, connectorRetry]);
+
+  const retryConnector = () => {
+    setReady(false);
+    setError('');
+    setConnectorRetry((attempt) => attempt + 1);
+  };
 
   const connect = async () => {
     setBusy(true);
@@ -198,7 +205,7 @@ export default function TonWalletConnection() {
       </div>
 
       {wallet ? (
-        <div className="flex items-center justify-between gap-3 border border-neon/20 bg-black/30 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neon/20 bg-black/30 p-3">
           <div className="min-w-0">
             <p className="font-mono text-[11px] text-neon-200">{shortAddress(wallet.account.address)}</p>
             <p className={'mt-1 font-mono text-[9px] ' + (isMainnet ? 'text-emerald-300' : 'text-amber-300')}>
@@ -213,12 +220,17 @@ export default function TonWalletConnection() {
       ) : (
         <div className="space-y-2">
           <p className="font-mono text-[10px] leading-relaxed text-neon-500">
-            Connect Tonkeeper or another supported Gram wallet. ZORD asks your wallet to sign a one-time ownership check. Connecting does not send money.
+            Connect Tonkeeper or another supported TON mainnet wallet. ZORD asks your wallet to sign a one-time ownership check. Connecting does not send money.
           </p>
           <button type="button" className="btn-primary w-full" disabled={!ready || busy} onClick={() => void connect()}>
             {busy || !ready ? <LoaderCircle size={14} className="animate-spin" /> : <Wallet size={14} />}
             {ready ? 'Connect and verify wallet' : 'Loading wallet connector…'}
           </button>
+          {!ready && error && (
+            <button type="button" className="btn-ghost w-full" onClick={retryConnector}>
+              Retry wallet connector
+            </button>
+          )}
         </div>
       )}
 
@@ -255,6 +267,31 @@ export default function TonWalletConnection() {
           <p className="mt-3 text-[10px] leading-relaxed text-amber-300">Connect and verify a Gram network wallet to unlock the withdrawal form. Your eligible TON rewards will remain safe in your Vault until you request a withdrawal.</p>
         )}
       </section>
+
+      {(walletData?.transactions.length ?? 0) > 0 && (
+        <section className="space-y-2">
+          <p className="label">TON transaction history</p>
+          <div className="rounded-lg border border-neon/10 bg-black/20 px-3">
+            {walletData?.transactions.slice(0, 5).map((entry) => {
+              const incoming = entry.direction === 'credit';
+              const title = entry.entry_type.replace(/_/g, ' ');
+              return (
+                <article key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-neon/10 py-3 last:border-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words text-xs capitalize text-neon-200">{title}</p>
+                    <p className="mt-1 text-[9px] text-neon-700">
+                      {entry.created_at && Number.isFinite(Date.parse(entry.created_at)) ? new Date(entry.created_at).toLocaleString() : 'Date unavailable'}
+                    </p>
+                  </div>
+                  <p className={`shrink-0 font-display text-sm font-semibold ${incoming ? 'text-emerald-300' : 'text-amber-300'}`}>
+                    {incoming ? '+' : '−'}{nanoTonToTon(entry.amount_nano)} <span className="text-[10px]">Gram</span>
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {(walletData?.withdrawals.length ?? 0) > 0 && (
         <section className="space-y-2">
