@@ -112,8 +112,10 @@ export default function AdminReferralManager({ creds }: { creds: AdminCredential
             <Metric icon={ShieldAlert} label="Remaining" value={formatZp(budget?.remainingBudgetZp ?? 0)} />
             <Metric icon={Users} label="Verified referrals" value={data.referralStats.total.toLocaleString()} />
             <Metric icon={Clock3} label="Pending hold" value={formatZp(summary?.pendingZp ?? 0)} />
+            <Metric icon={ShieldAlert} label="Held by Admin" value={formatZp(summary?.heldZp ?? 0)} />
             <Metric icon={Coins} label="Verified, unfunded" value={formatZp(summary?.verifiedUnfundedZp ?? 0)} />
             <Metric icon={Activity} label="Claimable" value={formatZp(summary?.claimableZp ?? 0)} />
+            <Metric icon={History} label="Lifetime generated" value={formatZp(summary?.lifetimeGeneratedZp ?? 0)} />
             <Metric icon={History} label="Lifetime claimed" value={formatZp(summary?.claimedZp ?? 0)} />
           </div>
 
@@ -175,7 +177,7 @@ export default function AdminReferralManager({ creds }: { creds: AdminCredential
 }
 
 function Metric({ icon: Icon, label, value }: { icon: typeof Coins; label: string; value: string }) {
-  return <div className="rounded-xl border border-white/10 bg-[#111a14] p-3"><div className="flex items-center gap-2 text-slate-400"><Icon size={13} /><span className="text-[9px] uppercase tracking-wider">{label}</span></div><p className="mt-2 text-lg font-semibold tabular-nums text-emerald-300">{value}</p><p className="text-[9px] text-slate-500">ZP where applicable</p></div>;
+  return <div className="rounded-xl border border-white/10 bg-[#111a14] p-3"><div className="flex items-center gap-2 text-slate-400"><Icon size={13} /><span className="text-[9px] uppercase tracking-wider">{label}</span></div><p className="mt-2 text-lg font-semibold tabular-nums text-emerald-300">{value}</p></div>;
 }
 function Rule({ label, value }: { label: string; value: string }) {
   return <div className="rounded-lg border border-white/10 bg-[#0b120e] p-3"><p className="text-[9px] uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 text-base font-semibold text-emerald-200">{value}</p></div>;
