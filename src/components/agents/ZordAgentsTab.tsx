@@ -85,9 +85,10 @@ function AgentRentalCheckout() {
   // Do not replace this with an environment flag; enabling payments requires
   // separate explicit approval and a reviewed release process.
   const paymentsEnabled = false;
-  // Creating or verifying rental intents writes to the Preview database.
-  // Keep those operations disabled until Preview database-write testing is approved.
-  const rentalBackendActionsEnabled = false;
+  // Preview backend checkout creation and read-only-until-confirmed payment
+  // verification are enabled. Confirmed on-chain payments activate rentals.
+  // Real wallet transfers remain locked until separately approved.
+  const rentalBackendActionsEnabled = true;
 
   useEffect(() => {
     let mounted = true;
@@ -321,7 +322,7 @@ function AgentRentalCheckout() {
 
       <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.04] p-3">
         <p className="font-mono text-[10px] leading-relaxed text-amber-200">
-          Preview safety mode: wallet connection and rental-status viewing are available. Creating checkouts, verifying payments, and sending real GRAM are intentionally locked. No payment can be made from this page.
+          Preview checkout mode: you can create a payment request and ask the server to verify a TON mainnet payment. Confirmed payments activate the rental. The page will not initiate a real GRAM transfer until that separate safety lock is approved.
         </p>
       </div>
 
@@ -402,7 +403,7 @@ function AgentRentalCheckout() {
           <div>
             <p className="label">Exact amount</p>
             <p className="mt-1 font-display text-xl text-cyan-200">
-              {intent.agentType === 'alpha_miner' ? '1.5' : '4.5'} GRAM
+              {(Number(intent.amountNano) / 1_000_000_000).toFixed(3).replace(/\\.?0+$/, '')} GRAM
             </p>
             <p className="font-mono text-[9px] text-neon-600">TON mainnet · native coin · not a jetton</p>
           </div>
@@ -423,11 +424,11 @@ function AgentRentalCheckout() {
             onClick={() => void sendPayment()}
           >
             {busy === 'send' ? <LoaderCircle size={14} className="animate-spin" /> : null}
-            {paymentsEnabled ? 'Approve payment in TON wallet' : 'Wallet transfers disabled in Preview'}
+            {paymentsEnabled ? 'Approve payment in TON wallet' : 'Real GRAM transfer locked in Preview'}
           </button>
           {!paymentsEnabled && (
             <p className="font-mono text-[9px] leading-relaxed text-amber-300">
-              Preview safety lock: wallet connection is enabled, but sending real GRAM is disabled. No funds can be transferred during this test.
+              Your checkout and server-side verification are active in Preview. This final wallet-send step is still locked, so this page cannot move real GRAM yet.
             </p>
           )}
           {sendAttempted && !transactionSubmitted && (
