@@ -14,8 +14,8 @@ export default function VaultTab({
   onRefreshVerifiedEconomy: () => Promise<void> | void;
 }) {
   return (
-    <div className="space-y-4 pb-5">
-      <header className="space-y-2 py-1">
+    <div className="w-full min-w-0 space-y-4 pb-6">
+      <header className="min-w-0 space-y-2 py-1">
         <div className="flex items-center gap-2 text-neon-400">
           <Wallet size={18} />
           <p className="label">Your finances</p>
@@ -31,7 +31,7 @@ export default function VaultTab({
         onConversionComplete={onRefreshVerifiedEconomy}
       />
 
-      <section className="panel space-y-3 p-4">
+      <section className="panel min-w-0 space-y-3 p-4">
         <div className="flex items-center gap-2">
           <ArrowDownLeft size={16} className="text-neon-400" />
           <div>
@@ -53,8 +53,8 @@ export default function VaultTab({
         {transactions.length === 0 ? (
           <div className="rounded-lg border border-neon/10 bg-black/20 px-3 py-6 text-center">
             <Coins size={20} className="mx-auto mb-2 text-neon-700" />
-            <p className="text-xs text-neon-500">No ZP activity yet</p>
-            <p className="mt-1 text-[10px] text-neon-700">Your earned points will appear here.</p>
+            <p className="text-xs text-neon-500">{verifiedZpBalance === null ? 'ZP activity is loading or temporarily unavailable' : 'No ZP activity yet'}</p>
+            <p className="mt-1 text-[10px] text-neon-700">Verified point movements will appear here.</p>
           </div>
         ) : (
           <div className="space-y-1">
@@ -65,7 +65,7 @@ export default function VaultTab({
                 : 'Date unavailable';
               const typeLabel = entry.transactionType.replace(/_/g, ' ');
               return (
-                <article key={entry.id} className="flex items-center justify-between gap-3 border-b border-neon/10 py-3 last:border-0">
+                <article key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-neon/10 py-3 last:border-0">
                   <div className="min-w-0">
                     <p className="truncate text-xs capitalize text-neon-200">{typeLabel}</p>
                     {entry.description && <p className="mt-1 truncate text-[10px] text-neon-700">{entry.description}</p>}
@@ -84,7 +84,7 @@ export default function VaultTab({
         )}
       </section>
 
-      <section className="panel flex items-start gap-3 p-4">
+      <section className="panel flex min-w-0 items-start gap-3 p-4">
         <Image size={17} className="mt-0.5 shrink-0 text-neon-500" />
         <div>
           <h2 className="title">Collectibles</h2>
