@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "GET") {
       const [{ data: raffles, error: raffleError }, { data: entries, error: entryError }] = await Promise.all([
-        admin.from("raffles").select("id,title,description,reward_type,reward_code,prize_pool_amount,prize_currency,min_bet_zap,entry_mode,winner_count,winner_method,status,starts_at,ends_at,published_at").eq("status", "published").order("created_at", { ascending: false }),
+        admin.from("raffles").select("id,title,description,reward_type,reward_code,prize_pool_amount,prize_currency,min_bet_zap,entry_mode,winner_count,winner_method,status,starts_at,ends_at,published_at").in("status", ["published", "closed"]).order("created_at", { ascending: false }),
         admin.from("raffle_entries").select("id,raffle_id,stake_zap,ticket_count,created_at").eq("player_id", player.id).order("created_at", { ascending: false }).limit(100),
       ]);
       if (raffleError || entryError) {
