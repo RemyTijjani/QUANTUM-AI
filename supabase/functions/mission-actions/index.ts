@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Use POST." }, 405);
 
-  if (!SUPABASE_URL || !ANON_KEY || !SERVICE_ROLE_KEY || !BOT_TOKEN) {
+  if (!SUPABASE_URL || !ANON_KEY || !SERVICE_ROLE_KEY) {
     console.error("Mission verification configuration is incomplete.");
     return json({ error: "Mission verification is temporarily unavailable." }, 503);
   }
@@ -95,8 +95,8 @@ Deno.serve(async (req: Request) => {
       .eq("id", authData.user.id)
       .maybeSingle();
 
-    if (playerError || !player || !Number.isSafeInteger(Number(player.telegram_id))) {
-      return json({ error: "Your verified Telegram player profile could not be found." }, 403);
+    if (playerError || !player) {
+      return json({ error: "Your verified player profile could not be found." }, 403);
     }
 
     const { data: mission, error: missionError } = await admin
@@ -106,6 +106,37 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (missionError || !mission) return json({ error: "Mission not found." }, 404);
+
+    if (missionId === "agent-uptime") {
+      if (
+        mission.kind !== "daily" ||
+        mission.status !== "published" ||
+        mission.reward_currency !== "ZAP" ||
+        Number(mission.reward) !== 10 ||
+        Number(mission.unlock_cost_zp) !== 0
+      ) {
+        return json({ error: "Agent Uptime is not configured for verified ZAP claims." }, 409);
+      }
+
+      const { data, error } = await admin.rpc("claim_agent_uptime_mission", {
+        p_player_id: player.id,
+      });
+
+      if (error) {
+        const message = error.message ?? "";
+        if (message.includes("continuously active for 12 hours")) {
+          return json({ error: "Your paid agent must remain continuously active for 12 hours before claiming." }, 403);
+        }
+        console.error("Verified Agent Uptime claim failed:", error);
+        return json({ error: "The Agent Uptime reward could not be credited. Please try again." }, 409);
+      }
+
+      return json(data);
+    }
+
+    if (!BOT_TOKEN || !Number.isSafeInteger(Number(player.telegram_id))) {
+      return json({ error: "Telegram mission verification is temporarily unavailable." }, 503);
+    }
     if (
       mission.kind !== "social" ||
       mission.status !== "published" ||
