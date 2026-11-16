@@ -226,7 +226,7 @@ export default function MysteryBoxPanel({
           <p className="font-mono text-[10px] font-bold uppercase text-violet-200">How Standard and Premium work</p>
           <p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-400">Every free daily claim or 500 ZP repeat opening awards one randomly selected box: <span className="font-bold text-neon-200">Standard · 80%</span> or <span className="font-bold text-violet-200">Premium · 20%</span>. You cannot choose or purchase a Premium Box directly. When a Premium Box is awarded, it appears in your inventory below.</p>
         </div>
-        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-1 min-[380px]:grid-cols-2 gap-2">
           <div className="rounded-lg border border-neon/20 bg-black/30 p-3"><p className="label">Standard</p><p className="mt-1 font-display text-2xl text-neon-200">{counts.standard}</p><p className="font-mono text-[8px] uppercase text-neon-700">Available</p></div>
           <div className="rounded-lg border border-violet-300/25 bg-black/30 p-3"><p className="label">Premium</p><p className="mt-1 font-display text-2xl text-violet-200">{counts.premium}</p><p className="font-mono text-[8px] uppercase text-violet-400/70">Available</p></div>
         </div>
@@ -251,7 +251,7 @@ export default function MysteryBoxPanel({
           </div>
           {repeatBox ? (
             <>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2">
                 <div className="rounded-lg border border-neon/15 bg-black/30 p-3"><p className="label">Your ZP balance</p><p className="mt-1 font-display text-xl text-neon-200">{Number(repeatBox.zpBalance || 0).toLocaleString()}</p></div>
                 <div className="rounded-lg border border-neon/15 bg-black/30 p-3"><p className="label">Next opening</p><p className="mt-1 font-mono text-sm font-bold text-amber-200">{repeatBox.cooldownUntil && new Date(repeatBox.cooldownUntil).getTime() > nowMs ? formatCountdown(new Date(repeatBox.cooldownUntil).getTime() - nowMs) : 'Ready'}</p></div>
               </div>
@@ -259,7 +259,7 @@ export default function MysteryBoxPanel({
                 <p className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 font-mono text-[9px] text-amber-200">Your shared 2-hour cooldown is active. Both repeat options unlock when it ends.</p>
               )}
               {repeatMessage && <p role="alert" className="rounded-lg border border-red-400/20 bg-red-400/5 p-3 font-mono text-[9px] text-red-300">{repeatMessage}</p>}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2">
                 <button type="button" disabled className="min-h-11 rounded-lg border border-neon/15 bg-black/20 px-3 py-2 font-mono text-[9px] font-bold uppercase text-neon-700 disabled:opacity-70" title="AdsGram integration is not enabled yet">Watch Ad · coming soon</button>
                 <button type="button" onClick={() => void openRepeatBox()} disabled={repeatBusy || (repeatBox.cooldownUntil !== null && new Date(repeatBox.cooldownUntil).getTime() > nowMs) || repeatBox.zpBalance < 500} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-amber-100 disabled:opacity-40">
                   {repeatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Open for 500 ZP'}
