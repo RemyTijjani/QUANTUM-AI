@@ -36,6 +36,7 @@ interface CoreTabProps {
   onOpenMissions: () => void;
   onOpenStreaks: () => void;
   onOpenMysteryBoxes: () => void;
+  onOpenRaffles: () => void;
 }
 
 export default function CoreTab({
@@ -55,6 +56,7 @@ export default function CoreTab({
   onOpenMissions,
   onOpenStreaks,
   onOpenMysteryBoxes,
+  onOpenRaffles,
 }: CoreTabProps) {
   const now = Date.now();
   const tier = tierInfo(state.lifetimeZp);
@@ -62,7 +64,10 @@ export default function CoreTab({
   const miningLeft = state.coreMiningUntil - now;
   const fixed = fixedCount(state);
   const zpProgress = verifiedZpLifetime === null ? 0 : Math.min(100, (verifiedZpLifetime % 1000) / 10);
-  const zapProgress = zapEarned === null ? 0 : Math.min(100, zapEarned % 100);
+  const netZapProgress = zapAchievements?.netZap ?? zapEarned;
+  const zapProgress = netZapProgress === null || netZapProgress === undefined
+    ? 0
+    : Math.max(0, Math.min(100, ((netZapProgress % 100) + 100) % 100));
 
   const handleFragment = (id: FragmentId, status: FragmentStatus) => {
     if (status === 'locked') {
@@ -98,7 +103,7 @@ export default function CoreTab({
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Linked
           </span>
         </div>
-        <div className="relative mt-4 grid grid-cols-2 gap-3">
+        <div className="relative mt-4 grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
           <div className="rounded-xl border border-neon/25 bg-black/40 p-3">
             <div className="flex items-center gap-2 text-neon-300"><Coins size={14}/><p className="label">Verified ZP</p></div>
             <p className="mt-2 font-display text-2xl font-bold tabular-nums text-neon-100">{verifiedZpBalance === null ? '—' : formatZp(verifiedZpBalance)}</p>
@@ -122,7 +127,7 @@ export default function CoreTab({
         </div>
         <div className="relative mt-3 rounded-xl border border-neon/15 bg-black/30 p-3">
           <div className="mb-3 flex items-center justify-between"><p className="label">Earning progress</p><span className="text-[9px] text-neon-600">Next milestones</span></div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
             <div className="flex flex-col items-center text-center">
               <div className="grid h-24 w-24 place-items-center rounded-full" style={{background: `conic-gradient(#7cf7c5 ${zpProgress}%, rgba(124,247,197,0.12) 0)`}}>
                 <div className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-[#07110f]">
@@ -139,10 +144,10 @@ export default function CoreTab({
                 </div>
               </div>
               <p className="mt-2 text-[10px] font-semibold text-cyan-200">Net ZAP progress</p>
-              <p className="mt-1 text-[8px] text-cyan-700">{zapLoading || zapEarned === null ? '—' : formatZp(zapEarned % 100)} / 100 ZAP</p>
+              <p className="mt-1 text-[8px] text-cyan-700">{zapLoading || netZapProgress === null || netZapProgress === undefined ? '—' : `${formatZp(zapProgress)} / 100 ZAP`}</p>
             </div>
           </div>
-          <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">ZP progress uses verified lifetime earnings. Each ZAP ring level requires 100 net ZAP. Every credit, including ZP conversions, adds progress; every ZAP spent reduces it.</p>
+          <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">ZP progress uses verified lifetime earnings. Each ZAP ring level requires 100 net ZAP. Progress follows your server-verified net ZAP. Spending reduces unminted progress; minted badges remain yours.</p>
         </div>
       </section>
 
@@ -179,7 +184,7 @@ export default function CoreTab({
         <p className="text-center text-[8px] text-cyan-800">Minting is optional. Once verified on TON, a minted badge stays yours even if your net ZAP later drops. Minting is not available yet.</p>
       </section>
 
-      <section className="grid grid-cols-2 gap-2">
+      <section className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2">
         <button
           type="button"
           onClick={onOpenMissions}
@@ -205,7 +210,7 @@ export default function CoreTab({
           <div><p className="label">Retention systems</p><h2 className="title mt-1">Daily engagement</h2></div>
           <Flame size={18} className="text-orange-300" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
           <button type="button" onClick={onOpenStreaks} className="panel space-y-3 border border-orange-400/25 bg-orange-400/5 p-3 text-left transition hover:border-orange-300/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300">
             <div className="flex items-center justify-between"><Flame size={18} className="text-orange-300" /><span className="border border-emerald-400/25 px-1.5 py-0.5 font-mono text-[8px] uppercase text-emerald-300">Open streak</span></div>
             <div><h3 className="font-display text-xs font-bold uppercase text-orange-200">Daily Streaks</h3><p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-600">View your trusted streak count, claim today's reward and track milestones.</p></div>
@@ -224,10 +229,10 @@ export default function CoreTab({
         </div>
       </section>
 
-      <section className="panel space-y-3 border border-cyan-500/25 bg-cyan-500/5 p-4">
-        <div className="flex items-center gap-2"><Radio size={16} className="text-cyan-300" /><p className="label">Intelligence briefing</p></div>
-        <div><h2 className="title mt-1">Mission intelligence feed</h2><p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-500">Briefings, operational notices and special assignments are presented in Mission Control when published.</p></div>
-        <button type="button" onClick={onOpenMissions} className="btn-ghost w-full"><Radio size={13} /> Open Mission Control <ArrowUpRight size={13} /></button>
+      <section className="panel space-y-3 border border-amber-400/25 bg-amber-400/5 p-4">
+        <div className="flex items-center gap-2"><Gift size={16} className="text-amber-300" /><p className="label">Community prize draws</p></div>
+        <div><h2 className="title mt-1">Live ZORD Raffles</h2><p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-500">Explore active raffles, review prize details and manage your entries in one place.</p></div>
+        <button type="button" onClick={onOpenRaffles} className="btn-ghost w-full"><Gift size={13} /> Open Raffles <ArrowUpRight size={13} /></button>
       </section>
 
       <button
@@ -252,10 +257,10 @@ export default function CoreTab({
         onFragmentPress={(id) => handleFragment(id, state.fragments[id])}
       />
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
-        {miningLeft > 0 ? `Core timer: ${formatRemaining(miningLeft)} left` : 'Core timer inactive. Fix a fragment to restart the local game timer.'}
+        {miningLeft > 0 ? `Core timer: ${formatRemaining(miningLeft)} left` : 'No active fragment mining session. Fix an unlocked fragment to start server-recorded mining.'}
       </p>
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
-        Complete the timed unlock, then fix the fragment into the core. Pending ZP is calculated from server-recorded mining time; each earned amount becomes Verified ZP six hours after it is mined. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
+        Complete the timed unlock, then fix the fragment into the core. Mining is recorded by the trusted server; earned ZP stays pending for six hours before becoming Verified ZP. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
       </p>
       <CharacterCard fixed={fixed} lifetimeZp={formatZp(state.lifetimeZp)} rate={formatRate(rate)} />
 
@@ -269,7 +274,7 @@ export default function CoreTab({
           <div className="border border-neon/20 bg-black/40 p-3"><p className="font-display text-xs font-bold text-neon-300">Poly-Shield</p><p className="mt-1 font-mono text-[9px] text-neon-600">Tier 2 · Advanced community defense</p></div>
           <div className="border border-neon/20 bg-black/40 p-3 sm:col-span-2"><p className="font-display text-xs font-bold text-neon-300">Omini Glitch</p><p className="mt-1 font-mono text-[9px] text-neon-600">Tier 3 · Protection plus AI content and meme creation</p></div>
         </div>
-        <p className="font-mono text-[9px] uppercase tracking-wider text-amber-300">Listings are previews. Rental checkout, payment and provisioning are not live.</p>
+        <p className="font-mono text-[9px] uppercase tracking-wider text-amber-300">Agent rental checkout and server-side payment verification are enabled in Preview. Real GRAM wallet transfers and Telegram bot provisioning remain locked.</p>
       </section>
     </div>
   );
