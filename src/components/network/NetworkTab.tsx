@@ -228,7 +228,7 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
               <div key={activity.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
                   <p className="font-display text-xs font-bold text-neon-300">
-                    {activity.eventType.replaceAll('_', ' ')}
+                    {activity.eventType.replace(/_/g, ' ')}
                     {activity.referralLevel ? ` · Level ${activity.referralLevel}` : ''}
                   </p>
                   <p className="mt-1 font-mono text-[9px] text-neon-600">
