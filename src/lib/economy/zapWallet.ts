@@ -24,12 +24,14 @@ export interface ZapLeaderboardEntry {
   name: string;
   rankingEarned: number;
   isYou: boolean;
+  isSimulated: boolean;
 }
 
 export interface ZapLeaderboard {
   entries: ZapLeaderboardEntry[];
   me: ZapLeaderboardEntry;
   limit: number;
+  simulatedCount?: number;
 }
 
 export interface ZapAchievement {
