@@ -47,7 +47,7 @@ declare global {
 }
 
 const TON_CONNECT_MANIFEST_URL =
-  'https://zord-autonomous-agent-git-security-fd8d9b-remytijjanis-projects.vercel.app/tonconnect-manifest.json';
+  'https://zord-autonomous-agent.vercel.app/tonconnect-manifest.json';
 
 let tonConnectUI: TonConnectUIInstance | null = null;
 let tonConnectScriptPromise: Promise<void> | null = null;
