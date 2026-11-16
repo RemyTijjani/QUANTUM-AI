@@ -31,17 +31,20 @@ export default function TemporaryRewardPanel() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
-      body: { action: 'get_reward_entitlements' },
-    });
-    if (requestError || !data?.success || !Array.isArray(data.rewards)) {
-      setError('Could not load your reward inventory.');
+    try {
+      const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
+        body: { action: 'get_reward_entitlements' },
+      });
+      if (requestError || !data?.success || !Array.isArray(data.rewards)) {
+        throw new Error(data?.error || requestError?.message || 'Could not load your reward inventory.');
+      }
+      setRewards(data.rewards as Reward[]);
+      setError('');
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Could not load your reward inventory.');
+    } finally {
       setLoading(false);
-      return;
     }
-    setRewards(data.rewards as Reward[]);
-    setError('');
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -51,17 +54,22 @@ export default function TemporaryRewardPanel() {
   }, [refresh]);
 
   const activate = async (entitlementId: string) => {
+    if (activating !== null || loading) return;
     setActivating(entitlementId);
     setError('');
-    const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
-      body: { action: 'activate_reward_entitlement', entitlementId },
-    });
-    setActivating(null);
-    if (requestError || !data?.success) {
-      setError(data?.error || 'Could not activate this reward.');
-      return;
+    try {
+      const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
+        body: { action: 'activate_reward_entitlement', entitlementId },
+      });
+      if (requestError || !data?.success) {
+        throw new Error(data?.error || requestError?.message || 'Could not activate this reward.');
+      }
+      await refresh();
+    } catch (activationError) {
+      setError(activationError instanceof Error ? activationError.message : 'Could not activate this reward.');
+    } finally {
+      setActivating(null);
     }
-    await refresh();
   };
 
   const boost = rewards.filter(r => r.rewardType === 'fragment_mining_boost');
@@ -79,16 +87,20 @@ export default function TemporaryRewardPanel() {
             </p>
           </div>
           <p className="mt-1 font-mono text-[9px] text-neon-600">
-            {active ? `Active · ${remaining(reward.expiresAt, now)} remaining` : 'Available to activate'}
+            {active
+              ? `Active · ${remaining(reward.expiresAt, now)} remaining`
+              : reward.status === 'available'
+                ? 'Available to activate'
+                : 'Expired · refresh inventory'}
           </p>
         </div>
         {active ? (
           <span className="inline-flex items-center gap-1 font-mono text-[9px] uppercase text-green-300"><CheckCircle2 size={13} /> Active</span>
-        ) : (
+        ) : reward.status === 'available' ? (
           <button
             type="button"
-            className="btn-primary shrink-0"
-            disabled={loading || activating !== null || reward.status !== 'available'}
+            className="btn-primary min-h-10 w-full shrink-0 sm:w-auto"
+            disabled={loading || activating !== null}
             onClick={() => void activate(reward.entitlementId)}
           >
             {activating === reward.entitlementId ? <LoaderCircle size={13} className="animate-spin" /> : null}
