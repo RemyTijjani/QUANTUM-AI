@@ -91,7 +91,7 @@ export interface MissionSpec {
   telegramChatId?: string;
 }
 
-export const AD_QUOTA_TARGET = 3;
+export const AD_QUOTA_TARGET = 8;
 
 export const RIVALS = [
   { name: 'NEON_WRAITH', zp: 184200 },
