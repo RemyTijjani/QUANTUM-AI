@@ -127,12 +127,16 @@ function AdminConsole({
     setLoadError(null);
 
     try {
-      setData(await fetchDashboard(creds));
+      const nextData = await fetchDashboard(creds);
+      setData(nextData);
+      setSelectedSubmissionIds((current) =>
+        current.filter((id) => nextData.submissions.some((submission) => submission.id === id)),
+      );
     } catch (err) {
       setLoadError(errorMessage(err));
+    } finally {
+      setRefreshing(false);
     }
-
-    setRefreshing(false);
   }, [creds]);
 
   const handleReview = async (
@@ -168,9 +172,9 @@ function AdminConsole({
       await refresh();
     } catch (err) {
       setActionError(errorMessage(err));
+    } finally {
+      setProcessingId(null);
     }
-
-    setProcessingId(null);
   };
 
   const handleBulkApprove = async () => {
@@ -223,9 +227,9 @@ function AdminConsole({
       await refresh();
     } catch (err) {
       setActionError(errorMessage(err));
+    } finally {
+      setBusyTaskId(null);
     }
-
-    setBusyTaskId(null);
   };
 
   const handleSaveVaultReserves = async (
@@ -269,6 +273,7 @@ function AdminConsole({
     { tab: 'referrals', title: 'Manage referrals', description: 'Set the monthly kickback budget, review allocations and manage referral accounts.', icon: Users },
     { tab: 'expeditions', title: 'Manage Expeditions', description: 'Publish events, review objectives and issue eligible rewards.', icon: Compass },
     { tab: 'raffles', title: 'Manage Raffles', description: 'Configure raffles and review their prize setup.', icon: Ticket },
+    { tab: 'ton-withdrawals', title: 'Review GRAM withdrawals', description: 'Review, process and record player withdrawal requests.', icon: ArrowDownToLine },
     { tab: 'raffle-funding', title: 'Manage funding', description: 'Review external prize funding records.', icon: Wallet },
   ] as const;
 
@@ -342,6 +347,7 @@ function AdminConsole({
         </div>
       )}
 
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 md:flex-row md:gap-4">
       <aside className="w-full shrink-0 rounded-xl border border-white/10 bg-[#111a14] p-1.5 sm:rounded-2xl sm:p-2 md:w-60 md:p-3">
         <p className="hidden px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 md:block">Admin workspace</p>
         <nav aria-label="Admin sections" className="no-scrollbar flex flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain md:flex-col md:items-stretch md:gap-3 md:overflow-visible">
@@ -667,6 +673,7 @@ function AdminConsole({
       {activeTab === 'players' && <AdminPlayerManager creds={creds} />}
       {activeTab === 'referrals' && <AdminReferralManager creds={creds} />}
         </main>
+      </div>
       </div>
   );
 }
