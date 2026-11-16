@@ -6,9 +6,7 @@ import {
   Copy,
   LockKeyhole,
   RefreshCw,
-  ShieldCheck,
   Users,
-  UserRound,
   Send,
 } from 'lucide-react';
 
@@ -420,10 +418,10 @@ export default function ExpeditionsScreen() {
                         { id: 'results', label: 'Results' },
                       ] as const).map((step, index) => {
                         const active = activePage === step.id || (activePage === 'team' && step.id === 'tasks');
-                        const complete = step.id === 'overview' || (step.id === 'registration' && joined) || (step.id === 'tasks' && item.status === 'completed');
+                        const complete = step.id === 'overview' || (step.id === 'registration' && (joined || !item.isUnlocked || item.status !== 'registration_open')) || (step.id === 'tasks' && item.status === 'completed');
                         return (
                           <button key={step.id} type="button" onClick={() => {
-                            if (step.id === 'registration' && joined) return;
+                            if (step.id === 'registration' && (joined || !item.isUnlocked || item.status !== 'registration_open')) return;
                             if (step.id === 'tasks' && (!joined || item.status !== 'active')) return;
                             if (step.id === 'results' && item.status !== 'completed') return;
                             setActivePage(step.id);
@@ -480,15 +478,15 @@ export default function ExpeditionsScreen() {
                           <h4 className="mt-1 font-display text-xs font-bold uppercase text-neon-200">Choose how to participate</h4>
                           <p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-500">Register once. Your place will be saved for the scheduled start. Follow the instructions below to join solo or with a team.</p>
                         </div>
-                        {!item.isUnlocked && <p className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 font-mono text-[9px] text-amber-200"><LockKeyhole size={13} className="mr-1 inline" /> {item.lockedReason || 'Complete the prerequisite first.'}</p>}
-                        {item.isUnlocked && item.canJoinSolo && item.participation_mode !== 'team' && (
+                        {!joined && !item.isUnlocked && <p className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 font-mono text-[9px] text-amber-200"><LockKeyhole size={13} className="mr-1 inline" /> {item.lockedReason || 'Complete the prerequisite first.'}</p>}
+                        {!joined && item.isUnlocked && item.status === 'registration_open' && item.canJoinSolo && item.participation_mode !== 'team' && (
                           <div className="space-y-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3">
                             <p className="font-mono text-[10px] font-bold text-cyan-200">Option A · Join solo</p>
                             <p className="font-mono text-[9px] leading-relaxed text-neon-500">Take part as an individual. Your own verified contributions determine your eligibility.</p>
                             <button type="button" disabled={busy} onClick={() => void joinSolo(item)} className="btn-primary w-full py-3 text-[9px] disabled:opacity-40">{busy ? 'Registering…' : 'Register as an individual'}</button>
                           </div>
                         )}
-                        {item.isUnlocked && canUseTeams && (
+                        {!joined && item.isUnlocked && item.status === 'registration_open' && canUseTeams && (
                           <div className="space-y-3 rounded-lg border border-neon/15 bg-black/30 p-3">
                             <p className="font-mono text-[10px] font-bold text-neon-200">Option B · Join a team</p>
                             <p className="font-mono text-[9px] leading-relaxed text-neon-500">Create a team and invite members, or enter an invitation code from your team leader.</p>
@@ -502,6 +500,7 @@ export default function ExpeditionsScreen() {
                             </div>
                           </div>
                         )}
+                        {joined && <div className="space-y-2 rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-3"><p className="font-mono text-[9px] text-emerald-200"><CheckCircle2 size={13} className="mr-1 inline" /> Registration complete. Your place is saved.</p><button type="button" onClick={() => setActivePage(hasTeam ? 'team' : item.status === 'active' ? 'tasks' : 'overview')} className="btn-primary w-full py-3 text-[9px]">{hasTeam ? 'View my team →' : item.status === 'active' ? 'Go to tasks →' : 'Back to overview'}</button></div>}
                         {createdInvite[item.id] && <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-3"><p className="font-mono text-[9px] text-emerald-200">Your team is registered. Share this invitation code:</p><div className="mt-2 flex gap-2"><input readOnly value={createdInvite[item.id]} onFocus={(event) => event.currentTarget.select()} aria-label="Team invitation code" className="min-w-0 flex-1 rounded-lg border border-neon/20 bg-black/50 px-2 py-2 font-mono text-[10px] tracking-widest text-neon-200" /><button type="button" onClick={() => void copyInvite(createdInvite[item.id])} className="rounded-lg border border-neon/25 px-3 py-2 font-mono text-[9px] text-neon-300">{copiedInvite === createdInvite[item.id] ? 'Copied' : 'Copy code'}</button></div></div>}
                         <button type="button" onClick={() => setActivePage('overview')} className="btn-ghost w-full py-2 text-[9px]">← Back to overview</button>
                       </div>
