@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { Activity, Clock3, Coins, History, Loader2, RefreshCw, Save, ShieldAlert, Users } from 'lucide-react';
 import { formatZp } from '@/lib/format';
 import { AdminApiError, getReferralManagement, saveReferralKickbackBudget, setReferralKickbackAccountStatus } from '@/lib/admin/adminApi';
@@ -36,7 +37,7 @@ export default function AdminReferralManager({ creds }: { creds: AdminCredential
       [player.username, player.first_name, player.referral_code].some((value) => value?.toLowerCase().includes(term)));
   }, [data, search]);
 
-  const saveBudget = async (event: React.FormEvent<HTMLFormElement>) => {
+  const saveBudget = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const amount = Number(budgetInput);
     if (!Number.isFinite(amount) || amount < 0 || Number(amount.toFixed(6)) !== amount) {
