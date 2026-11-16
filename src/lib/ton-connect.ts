@@ -60,19 +60,40 @@ export async function loadTonConnectUI(): Promise<TonConnectUIInstance> {
       const existing = document.querySelector<HTMLScriptElement>('script[data-zord-ton-connect]');
       const script = existing ?? document.createElement('script');
 
-      const onLoad = () => {
-        if (window.TON_CONNECT_UI?.TonConnectUI) resolve();
-        else reject(new Error('TON Connect loaded but its interface was unavailable. Please reload the Mini App.'));
-      };
-      const onError = () => reject(new Error('TON Connect could not be downloaded. Check your connection and reload the Mini App.'));
+      // A completed script without the expected global is unusable; remove it
+      // so a retry can fetch a clean copy instead of waiting for an old event.
+      if (existing?.dataset.loaded === 'true') {
+        existing.remove();
+      }
 
-      script.addEventListener('load', onLoad, { once: true });
-      script.addEventListener('error', onError, { once: true });
-      if (!existing) {
-        script.src = 'https://unpkg.com/@tonconnect/ui@5.0.1/dist/tonconnect-ui.min.js';
-        script.async = true;
-        script.dataset.zordTonConnect = 'true';
-        document.head.appendChild(script);
+      const activeScript = existing?.dataset.loaded === 'true' ? document.createElement('script') : script;
+      const cleanup = () => {
+        activeScript.removeEventListener('load', onLoad);
+        activeScript.removeEventListener('error', onError);
+      };
+      const onLoad = () => {
+        cleanup();
+        if (window.TON_CONNECT_UI?.TonConnectUI) {
+          activeScript.dataset.loaded = 'true';
+          resolve();
+        } else {
+          activeScript.remove();
+          reject(new Error('TON Connect loaded but its interface was unavailable. Please retry.'));
+        }
+      };
+      const onError = () => {
+        cleanup();
+        activeScript.remove();
+        reject(new Error('TON Connect could not be downloaded. Check your connection and retry.'));
+      };
+
+      activeScript.addEventListener('load', onLoad, { once: true });
+      activeScript.addEventListener('error', onError, { once: true });
+      if (!activeScript.parentElement) {
+        activeScript.src = 'https://unpkg.com/@tonconnect/ui@5.0.1/dist/tonconnect-ui.min.js';
+        activeScript.async = true;
+        activeScript.dataset.zordTonConnect = 'true';
+        document.head.appendChild(activeScript);
       }
     }).catch((error: unknown) => {
       tonConnectScriptPromise = null;
