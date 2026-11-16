@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Copy, Share2, Users } from 'lucide-react';
+import { CheckCircle2, Clock3, Coins, Copy, Gift, History, Share2, Users } from 'lucide-react';
 import { buildReferralLink } from '@/lib/referral';
 import { openTelegramLink } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
+import { claimReferralKickbacks, fetchReferralKickbacks } from '@/lib/economy/referralKickbacks';
+import type { ReferralKickbackSummary } from '@/lib/economy/referralKickbacks';
+import { formatZp } from '@/lib/format';
 import type { GameState } from '@/lib/game/state';
 import type { Notify } from '@/hooks/useToast';
 import MilestonesList from '@/components/network/MilestonesList';
@@ -26,6 +29,10 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
   const [referrals, setReferrals] = useState<VerifiedReferral[]>([]);
   const [loadingReferrals, setLoadingReferrals] = useState(true);
   const [referralError, setReferralError] = useState(false);
+  const [kickbacks, setKickbacks] = useState<ReferralKickbackSummary | null>(null);
+  const [loadingKickbacks, setLoadingKickbacks] = useState(true);
+  const [kickbackError, setKickbackError] = useState(false);
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +56,26 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadKickbacks = async () => {
+      setLoadingKickbacks(true);
+      try {
+        const summary = await fetchReferralKickbacks();
+        if (cancelled) return;
+        setKickbacks(summary);
+        setKickbackError(false);
+      } catch {
+        if (cancelled) return;
+        setKickbackError(true);
+      } finally {
+        if (!cancelled) setLoadingKickbacks(false);
+      }
+    };
+    void loadKickbacks();
+    return () => { cancelled = true; };
+  }, []);
+
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(link);
@@ -62,6 +89,43 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(SHARE_TEXT)}`;
     openTelegramLink(url);
   };
+
+  const refreshKickbacks = async () => {
+    const summary = await fetchReferralKickbacks();
+    setKickbacks(summary);
+    setKickbackError(false);
+  };
+
+  const handleClaim = async () => {
+    if (claiming || !kickbacks || kickbacks.claimableWholeZp < 1) return;
+    setClaiming(true);
+    try {
+      const result = await claimReferralKickbacks();
+      if (!result.success) {
+        await refreshKickbacks();
+        notify(
+          result.reason === 'no_whole_zp_available'
+            ? 'There is no whole ZP available to claim yet.'
+            : 'No referral kickback is currently available to claim.',
+          'error',
+        );
+        return;
+      }
+      await refreshKickbacks();
+      notify(`${formatZp(result.claimedZp ?? 0)} ZP referral kickback claimed successfully`);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not claim referral kickbacks.', 'error');
+      try {
+        await refreshKickbacks();
+      } catch {
+        setKickbackError(true);
+      }
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  const claimableWholeZp = kickbacks?.claimableWholeZp ?? 0;
 
   return (
     <div className="space-y-6 pb-2">
@@ -91,13 +155,93 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
           </button>
         </div>
 
-        <div className="rounded-lg border border-amber-400/25 bg-amber-400/5 p-4">
-          <p className="label text-amber-300">Referral rewards</p>
-          <p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-400">
-            Referral bonuses and kickbacks are not enabled yet. No ZP is claimable from this screen.
-          </p>
+        <div className="rounded-lg border border-neon/20 bg-black/20 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Gift size={15} className="text-neon-300" />
+            <p className="label">Referral kickbacks</p>
+          </div>
+
+          {loadingKickbacks ? (
+            <p className="font-mono text-[10px] text-neon-500">Loading verified referral rewards...</p>
+          ) : kickbackError || !kickbacks ? (
+            <p className="font-mono text-[10px] leading-relaxed text-amber-300">
+              Referral reward totals could not be loaded. Reopen this section or try again shortly.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-neon/15 bg-black/30 p-3">
+                  <div className="flex items-center gap-1.5 text-neon-500">
+                    <Clock3 size={12} />
+                    <span className="font-mono text-[9px] uppercase tracking-wider">Pending</span>
+                  </div>
+                  <p className="mt-1 font-display text-lg font-bold text-neon-300">{formatZp(kickbacks.pendingZp)} <span className="text-[10px]">ZP</span></p>
+                </div>
+                <div className="rounded-lg border border-neon/25 bg-neon/5 p-3">
+                  <div className="flex items-center gap-1.5 text-neon-400">
+                    <Coins size={12} />
+                    <span className="font-mono text-[9px] uppercase tracking-wider">Claimable</span>
+                  </div>
+                  <p className="mt-1 font-display text-lg font-bold text-neon-200">{formatZp(kickbacks.claimableZp)} <span className="text-[10px]">ZP</span></p>
+                </div>
+                <div className="rounded-lg border border-neon/15 bg-black/30 p-3">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-neon-500">Lifetime earned</span>
+                  <p className="mt-1 font-display text-base font-bold text-neon-300">{formatZp(kickbacks.lifetimeEarnedZp)} <span className="text-[10px]">ZP</span></p>
+                </div>
+                <div className="rounded-lg border border-neon/15 bg-black/30 p-3">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-neon-500">Already claimed</span>
+                  <p className="mt-1 font-display text-base font-bold text-neon-300">{formatZp(kickbacks.lifetimeClaimedZp)} <span className="text-[10px]">ZP</span></p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleClaim}
+                disabled={claiming || claimableWholeZp < 1}
+                className="btn-cyan flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {claiming ? (
+                  <>Claiming referral ZP...</>
+                ) : (
+                  <><CheckCircle2 size={14} /> Claim {formatZp(claimableWholeZp)} ZP</>
+                )}
+              </button>
+              <p className="font-mono text-[9px] leading-relaxed text-neon-500">
+                Only allocated whole ZP can be claimed. Eligible kickbacks first pass a 24-hour verification hold and are then allocated from the monthly referral budget.
+              </p>
+            </>
+          )}
         </div>
       </section>
+
+      {kickbacks && kickbacks.recentActivity.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <History size={14} className="text-neon-400" />
+            <div>
+              <p className="label">Referral reward history</p>
+              <h2 className="title mt-1">Recent activity</h2>
+            </div>
+          </div>
+          <div className="panel divide-y divide-neon/10">
+            {kickbacks.recentActivity.map((activity) => (
+              <div key={activity.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="font-display text-xs font-bold text-neon-300">
+                    {activity.eventType.replaceAll('_', ' ')}
+                    {activity.referralLevel ? ` · Level ${activity.referralLevel}` : ''}
+                  </p>
+                  <p className="mt-1 font-mono text-[9px] text-neon-600">
+                    {new Date(activity.createdAt).toLocaleString()}
+                    {activity.status ? ` · ${activity.status}` : ''}
+                  </p>
+                </div>
+                <span className="shrink-0 font-mono text-xs text-neon-300">{formatZp(activity.amount)} ZP</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <div className="px-1">
@@ -142,7 +286,9 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
               {loadingReferrals ? 'Referral count pending' : `${referrals.length} verified registrations`}
             </p>
           </div>
-          <p className="border-t border-amber-400/20 px-4 py-3 font-mono text-[9px] leading-relaxed text-amber-300">Only server-registered referrals are counted. Estimated ZP generation has been removed; referral payouts are not yet active.</p>
+          <p className="border-t border-neon/15 px-4 py-3 font-mono text-[9px] leading-relaxed text-neon-500">
+            Only server-registered referrals are counted. Reward eligibility and claims are calculated by the secure referral service.
+          </p>
         </div>
       </section>
     </div>
