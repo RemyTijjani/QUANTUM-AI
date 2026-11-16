@@ -273,7 +273,7 @@ function AdminConsole({
 
   const overviewActions = [
     { tab: 'queue', title: 'Review submissions', description: 'Check evidence and approve or reject pending work.', icon: ClipboardCheck, detail: `${data.stats.pendingSubmissions} awaiting review` },
-    { tab: 'operations', title: 'Admin operations', description: 'Broadcast announcements, control mining, refresh API metadata and export player summaries.', icon: Database },
+    { tab: 'operations', title: 'Admin operations', description: 'Broadcast announcements, control Fragment mining, refresh API metadata and export player summaries.', icon: Database },
     { tab: 'tasks', title: 'Manage missions', description: 'Create, update and organize player tasks.', icon: ListTodo, detail: `${data.tasks.length} configured tasks` },
     { tab: 'players', title: 'Manage players', description: 'Find player profiles and inspect account activity.', icon: Users },
     { tab: 'referrals', title: 'Manage referrals', description: 'Set the monthly kickback budget, review allocations and manage referral accounts.', icon: Users },
@@ -640,10 +640,10 @@ function AdminConsole({
                   onClick={() => setActiveTab('operations')}
                   className="flex w-full cursor-not-allowed items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#101a14] px-3 py-3 text-left text-xs text-slate-400 opacity-80"
                 >
-                  <span className="flex min-w-0 items-center gap-2"><Pickaxe size={15} className="shrink-0" /> <span className="font-semibold">Global mining controls</span></span>
+                  <span className="flex min-w-0 items-center gap-2"><Pickaxe size={15} className="shrink-0" /> <span className="font-semibold">Global Fragment mining controls</span></span>
                   <span className="shrink-0 rounded-md border border-amber-400/20 bg-amber-400/5 px-2 py-1 text-[9px] uppercase tracking-wider text-amber-300">Coming soon</span>
                 </button>
-                <p className="text-[9px] leading-relaxed text-slate-400">Open Admin operations to pause or resume mining and change the server-enforced base rate multiplier.</p>
+                <p className="text-[9px] leading-relaxed text-slate-400">Open Admin operations to pause or resume Fragment mining and change its server-enforced base rate multiplier.</p>
               </div>
 
               <div className="mt-auto space-y-2 border-t border-white/10 pt-4">
