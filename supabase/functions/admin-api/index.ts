@@ -2167,6 +2167,94 @@ Deno.serve(async (req: Request) => {
       return json(data);
     }
 
+    if (body.action === "list_referral_management") {
+      const { data: budget, error: budgetError } = await db.rpc("admin_get_referral_kickback_budget");
+      if (budgetError || !budget || typeof budget !== "object") {
+        console.error("Referral management budget lookup failed:", budgetError);
+        return json({ error: "Could not load the referral budget." }, 500);
+      }
+
+      const [configResult, playersResult, controlsResult, entriesResult, historyResult, referralsResult] = await Promise.all([
+        db.schema("app_private").from("referral_kickback_config").select("direct_rate,second_level_rate,overclock_multiplier,pending_hours").eq("singleton", true).maybeSingle(),
+        db.from("players").select("id,username,first_name,referral_code,created_at").order("created_at", { ascending: false }).limit(200),
+        db.schema("app_private").from("referral_kickback_account_controls").select("player_id,status,reason,updated_by,updated_at"),
+        db.schema("app_private").from("referral_kickback_entries").select("id,recipient_player_id,source_player_id,referral_level,amount,allocated_amount,claimed_amount,status,eligible_at,created_at").order("created_at", { ascending: false }).limit(100),
+        db.schema("app_private").from("referral_kickback_budget_history").select("id,month_start,old_budget_zp,new_budget_zp,admin_username,created_at").order("created_at", { ascending: false }).limit(50),
+        db.from("referral_sub_nodes").select("referrer_id,recruit_id").limit(10000),
+      ]);
+
+      const lookupError = configResult.error || playersResult.error || controlsResult.error || entriesResult.error || historyResult.error || referralsResult.error;
+      if (lookupError) {
+        console.error("Referral management data lookup failed:", lookupError);
+        return json({ error: "Could not load all referral management records." }, 500);
+      }
+
+      const playerRows = playersResult.data ?? [];
+      const controlByPlayer = new Map((controlsResult.data ?? []).map((item) => [item.player_id, item]));
+      const referralCounts = new Map<string, number>();
+      for (const relation of referralsResult.data ?? []) {
+        if (relation.referrer_id) referralCounts.set(relation.referrer_id, (referralCounts.get(relation.referrer_id) ?? 0) + 1);
+      }
+      const playerById = new Map(playerRows.map((player) => [player.id, player]));
+      const players = playerRows.map((player) => {
+        const control = controlByPlayer.get(player.id);
+        return {
+          ...player,
+          status: control?.status ?? "active",
+          reason: control?.reason ?? null,
+          referralCount: referralCounts.get(player.id) ?? 0,
+          levelOneCount: referralCounts.get(player.id) ?? 0,
+        };
+      });
+      const entries = (entriesResult.data ?? []).map((entry) => {
+        const recipient = playerById.get(entry.recipient_player_id);
+        return {
+          ...entry,
+          recipientLabel: recipient?.username
+            ? `@${recipient.username}`
+            : recipient?.first_name || recipient?.referral_code || entry.recipient_player_id,
+        };
+      });
+      return json({
+        success: true,
+        budget,
+        rates: {
+          directRate: Number(configResult.data?.direct_rate ?? 0.05),
+          secondLevelRate: Number(configResult.data?.second_level_rate ?? 0.01),
+          overclockMultiplier: Number(configResult.data?.overclock_multiplier ?? 2),
+          pendingHours: Number(configResult.data?.pending_hours ?? 24),
+        },
+        referralStats: {
+          total: (referralsResult.data ?? []).length,
+          directRelationships: (referralsResult.data ?? []).length,
+        },
+        players,
+        entries,
+        history: historyResult.data ?? [],
+      });
+    }
+
+    if (body.action === "set_referral_account_status") {
+      const playerId = typeof body.playerId === "string" ? body.playerId : "";
+      const status = body.referralStatus;
+      const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!validUuid.test(playerId)) return json({ error: "A valid player account is required." }, 400);
+      if (!["active", "held", "suspended"].includes(String(status))) return json({ error: "Choose a valid referral account status." }, 400);
+      if (reason.length > 500) return json({ error: "The referral account reason must be 500 characters or fewer." }, 400);
+      const { data, error } = await db.rpc("admin_set_referral_kickback_account_status", {
+        p_player_id: playerId,
+        p_status: status,
+        p_reason: reason || null,
+        p_admin_username: ADMIN_USERNAME,
+      });
+      if (error || !data || typeof data !== "object" || data.success !== true || data.status !== status) {
+        console.error("Referral account status update failed:", error);
+        return json({ error: error?.message ?? "Could not update the referral account." }, 409);
+      }
+      return json(data);
+    }
+
     if (body.action === "list_ton_withdrawals") {
       const { data, error } = await db.rpc("admin_list_ton_withdrawals");
       if (error || !data || typeof data !== "object") {
