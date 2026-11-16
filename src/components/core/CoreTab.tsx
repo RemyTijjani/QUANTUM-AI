@@ -58,12 +58,17 @@ export default function CoreTab({
   onOpenRaffles,
 }: CoreTabProps) {
   const now = Date.now();
-  const tier = tierInfo(state.lifetimeZp);
   const rate = passiveRate(state, now);
   const miningLeft = state.coreMiningUntil - now;
   const fixed = fixedCount(state);
   const zpProgress = verifiedZpLifetime === null ? 0 : Math.min(100, (verifiedZpLifetime % 1000) / 10);
   const netZapProgress = zapAchievements?.netZap ?? zapEarned;
+  const tier = tierInfo(netZapProgress ?? 0);
+  const coreRank = zapAchievements?.coreRank;
+  const rankNumber = coreRank?.rankNumber ?? tier.tier;
+  const rankProgress = Math.max(0, Math.min(100, coreRank?.progressPercent ?? tier.progress * 100));
+  const rankNextThreshold = coreRank?.nextThreshold ?? rankNumber * 500;
+  const rankRemaining = Math.max(0, rankNextThreshold - (netZapProgress ?? 0));
   const zapProgress = netZapProgress === null || netZapProgress === undefined
     ? 0
     : Math.max(0, Math.min(100, ((netZapProgress % 100) + 100) % 100));
@@ -119,7 +124,9 @@ export default function CoreTab({
             <p className="mt-2 text-[9px] text-cyan-700">Rank & achievement score</p>
           </div>
           <div className="rounded-xl border border-cyan-400/20 bg-black/40 p-3">
-            <p className="label">Core rank</p><p className="mt-1 font-display text-xl text-cyan-200">{tier.rank}</p><p className="mt-1 text-[9px] text-cyan-700">Gameplay tier {tier.tier}</p>
+            <p className="label">Core rank</p>
+            <p className="mt-1 break-words font-display text-xl text-cyan-200">{tier.rank}</p>
+            <p className="mt-1 text-[9px] text-cyan-700">Rank {rankNumber} · {formatZp(netZapProgress ?? 0)} net ZAP</p>
           </div>
           <div className="rounded-xl border border-neon/20 bg-black/40 p-3">
             <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{fixed}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
@@ -147,6 +154,23 @@ export default function CoreTab({
               <p className="mt-2 text-[10px] font-semibold text-cyan-200">Net ZAP progress</p>
               <p className="mt-1 text-[8px] text-cyan-700">{zapLoading || netZapProgress === null || netZapProgress === undefined ? '—' : `${formatZp(zapProgress)} / 100 ZAP`}</p>
             </div>
+          </div>
+          <div className="mt-4 rounded-lg border border-cyan-300/15 bg-cyan-950/20 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="label">Core rank progression</p>
+                <p className="mt-1 text-xs font-semibold text-cyan-100">{tier.rank} · Rank {rankNumber}</p>
+              </div>
+              <p className="font-mono text-[10px] tabular-nums text-cyan-200">{rankProgress.toFixed(1)}%</p>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-cyan-950" role="progressbar" aria-label="Core rank progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(rankProgress)}>
+              <div className="h-full rounded-full bg-cyan-300 transition-all duration-500" style={{ width: String(rankProgress) + '%' }} />
+            </div>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[9px] text-cyan-700">
+              <span>{formatZp(netZapProgress ?? 0)} / {formatZp(rankNextThreshold)} net ZAP</span>
+              <span>{rankRemaining === 0 ? 'Rank threshold reached' : `${formatZp(rankRemaining)} ZAP to next rank`}</span>
+            </div>
+            <p className="mt-2 text-[8px] leading-relaxed text-cyan-800">Every 500 net ZAP advances your Core Rank. Spending ZAP can lower your rank; earning or receiving ZAP can raise it.</p>
           </div>
           <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">ZP progress uses verified lifetime earnings. Each ZAP ring level requires 100 net ZAP. Progress follows your server-verified net ZAP. Spending reduces unminted progress; minted badges remain yours.</p>
         </div>
