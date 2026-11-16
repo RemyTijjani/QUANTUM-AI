@@ -5,7 +5,6 @@ import {
   Flame,
   Gift,
   Compass,
-  Radio,
   Target,
 } from 'lucide-react';
 import type { FragmentId } from '@/lib/game/config';
