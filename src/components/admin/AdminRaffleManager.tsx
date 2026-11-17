@@ -166,11 +166,11 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
     const shareMap = customWinnerShares[raffle.id] ?? {};
     const enteredShares = selected.map((id) => shareMap[id]?.trim() ?? '');
     const hasAnyCustomShare = enteredShares.some((value) => value !== '');
-    if (hasAnyCustomShare && enteredShares.some((value) => value === '' || !Number.isFinite(Number(value)) || Number(value) <= 0)) {
+    if (hasAnyCustomShare && enteredShares.some((value) => !/^(?:0|[1-9]\d{0,10})(?:\.\d{1,9})?$/.test(value) || !Number.isFinite(Number(value)) || Number(value) <= 0)) {
       setError('Enter a positive custom prize share for every selected winner, or leave all shares blank for equal distribution.');
       return;
     }
-    const prizeShares = hasAnyCustomShare ? enteredShares.map(Number) : undefined;
+    const prizeShares = hasAnyCustomShare ? enteredShares : undefined;
     if (!window.confirm(raffle.winner_method === 'random'
       ? `Run the random draw for "${raffle.title}" now? Winners cannot be changed after selection.`
       : `Confirm these ${selected.length} winner(s) for "${raffle.title}"? Winners cannot be changed after selection.`)) return;
@@ -209,10 +209,11 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
     setError('');
     setNotice('');
     if (title.trim().length < 3) { setError('Give your raffle a title with at least 3 characters.'); return; }
-    const amount = Number(prizeAmount);
+    const amount = prizeAmount.trim();
+    const amountValue = Number(amount);
     const minBet = Number(minimumBet);
     const winners = Number(winnerCount);
-    if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(minBet) || minBet <= 0 || !Number.isInteger(winners) || winners < 1 || winners > 100) {
+    if (!/^(?:0|[1-9]\d{0,10})(?:\.\d{1,9})?$/.test(amount) || !Number.isFinite(amountValue) || amountValue <= 0 || !Number.isFinite(minBet) || minBet <= 0 || !Number.isInteger(winners) || winners < 1 || winners > 100) {
       setError('Check the prize amount, minimum bet and number of winners.'); return;
     }
     if (startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
