@@ -170,3 +170,7 @@ The applied Preview migration `20261114134618_trusted_daily_streak_rewards.sql` 
 The `gameplay-actions` Edge Function source exposes `get_daily_streak_state` and `claim_daily_streak`, deriving the player ID from the verified Supabase session. The Stage 6 Streaks screen source calls these actions and refreshes verified ZP after ZP rewards.
 
 `gameplay-actions` v8 is deployed and its source matches the Preview branch. The Daily Streak UI source is committed and passed the CI build, but the Vercel Preview deployment is behind the latest branch. No live player streak claim was run during this audit. The 2× boost mining effect and temporary Agent 1 runtime activation are not claimed to be live until their activation integrations are implemented and verified.
+
+
+### Runtime integration update — 2026-11-17
+The free Agent 1 entitlement is displayed as Free Alpha Miner in the player UI and maps to the configured Alpha Miner rate of 0.1 ZP/second. Preview migration 20261117194303_accrue_free_alpha_miner_reward_zp.sql now accrues that entitlement into verified ZP through a separate private, idempotent accrual ledger. It remains separate from paid rental records. A controlled test entitlement is still required before Stage 6 can be signed off.
