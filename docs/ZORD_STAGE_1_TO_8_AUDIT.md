@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-17  
 **Target environment:** Supabase Preview `lchkctclxzwwvfwosava` and GitHub Preview branch `security/trusted-gameplay-migration`  
-**Current branch baseline at this audit pass:** `796b257ea73c9f9305294895c1f4b1684cf00c95`  
+**Current code baseline at this audit pass:** `0f4a65b7a7ee3be29420461766eaaefd4d19aee2`  
 **Production:** Out of scope. No merge to `main`, Production database change, or Production deployment is authorized by this audit.  
 **Scope exclusion:** Stage 9 / ZORD platform expansion and the separate Zord-Agents-bot project are not part of this repository audit.
 
@@ -55,7 +55,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 ### Stage 5 — Trusted Gameplay Backend Migration
 
 - Trusted gameplay, mission claims, fragment unlock/fix, daily streak claims, reward entitlements, and player-owned identity checks are present.
-- The Preview migration ledger currently contains 111 versions, while the branch contains 115 SQL migration files. A comparison found 19 branch migration versions absent from the applied ledger and 15 applied versions without a matching filename in the branch. These are historical migration mismatches; no missing migration was blindly replayed. This is migration-history drift, not permission to replay files.
+- The Preview migration ledger currently contains 112 versions, while the branch contains 116 SQL migration files. A comparison found 19 branch migration versions absent from the applied ledger and 15 applied versions without a matching filename in the branch. These are historical migration mismatches; no missing migration was blindly replayed. This is migration-history drift, not permission to replay files.
 - The Stage 5 reconciliation plan now includes a dated 2026-11-17 update and explicitly supersedes the earlier no-ledger snapshot.
 - No bulk migration replay, migration repair, baseline replacement, or schema reset has been performed during this audit.
 - Supabase advisors report missing foreign-key indexes and RLS init-plan opportunities. These need table-by-table review before adding indexes or changing policies.
@@ -100,7 +100,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 - Earlier failed CI runs were caused by one unused import in `ZapWalletPanel.tsx`; that error is fixed.
 - The dependency remediation workflow committed the refreshed lockfile (d867cc416ef56b6ee9f85d9e5068d851e01b213f). Its post-fix audit reported 0 vulnerabilities (0 low/moderate/high/critical).
 - Security advisor also reports leaked-password protection disabled. This is an Auth configuration item to review and enable safely.
-- The latest READY Vercel Preview observed is commit `0391b7b882af292d66a44aab4c48894db17fede8` (deployment `dpl_2VsqMy6LG1b7Ax5dyaHgUwSiRzSv`). The active branch is seven commits ahead at `796b257ea73c9f9305294895c1f4b1684cf00c95`. The difference includes raffle Gram precision UI, the ZAP transfer Edge Function fix, and the database minimum-transfer migration. Frontend checks passed for the changed UI/source commits, but these latest changes are not yet in the READY Preview. Do not call them deployed.
+- The latest READY Vercel Preview observed is commit `0391b7b882af292d66a44aab4c48894db17fede8`. The active branch is 23 commits ahead at `0f4a65b7a7ee3be29420461766eaaefd4d19aee2`. The difference includes raffle Gram precision UI, exact-string funding/prize handling, the ZAP transfer Edge Function fix, the minimum-transfer migration, and free Alpha Miner accrual. These changes are not yet in the READY Preview. Do not call them deployed.
 - Production has not been changed.
 
 ## Repair order
@@ -109,7 +109,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 2. Finish the Stage 5 security review and safe database advisor improvements.
 3. Complete missing Missions actions, beginning with a verifiable Share Uplink flow; keep unverified rewards locked.
 4. Audit every player/admin button against its backend action and visible success/failure state.
-5. Dependency remediation is complete: the latest npm audit reported 0 vulnerabilities. Continue running type-check, lint, build, and tests after each code change.
+5. Resolve or formally mitigate the new dev-toolchain picomatch advisory when a safe upstream fix is available; keep production dependencies audited separately. Continue running type-check, lint, build, and tests after each code change.
 6. Verify ZP/ZAP, streak, box, raffle, expedition, creator, wallet, and referral flows using safe Preview test accounts and rollback-safe tests.
 7. Finish ad-provider and TON Connect integration checks; keep real mainnet transfers disabled until separately approved.
 8. Deploy the latest branch to Vercel Preview when the remaining audit fixes are ready, then perform the full Preview acceptance test. Verify the deployment's commit SHA; do not assume a branch push is live.
@@ -132,7 +132,7 @@ This section supersedes older point-in-time statements in this tracker where the
 - Broad default privileges for objects created by postgres in public were restricted for future tables, sequences, and functions; existing grants were not changed. The equivalent defaults for supabase_admin remain broad because the current SQL execution role cannot alter that role's default privileges. This is a residual hardening item, not evidence that current public objects are exposed.
 
 ### Stage 5 — migration and backend repair
-- Preview migration ledger is present and currently records 111 versions. The branch contains 115 migration files: 19 branch versions are not recorded remotely and 15 remote versions have no matching filename in the branch. Do not replay or repair these histories without the migration-by-migration reconciliation and data-effect review.
+- Preview migration ledger is present and currently records 112 versions. The branch contains 116 migration files: 19 branch versions are not recorded remotely and 15 remote versions have no matching filename in the branch. Do not replay or repair these histories without the migration-by-migration reconciliation and data-effect review.
 - Applied and tracked Preview hardening migrations:
   - 20261117160203_harden_internal_raffle_helper_execute_grants.sql
   - 20261117160739_restrict_postgres_public_default_client_privileges.sql
@@ -148,13 +148,14 @@ This section supersedes older point-in-time statements in this tracker where the
 ### Stage 6 — mission and reward fixes
 - Mission cards now use the server-derived task status for both daily and social tasks. X Follow status is included in the server summary, and submitting an X account triggers a refresh.
 - Daily Streak status refreshes on app focus and every 60 seconds; Mystery Box inventory refreshes on app focus and every 60 seconds.
+- Free Alpha Miner (the 24-hour Agent 1 reward) now accrues 0.1 verified ZP/second through a separate private accrual ledger. The trusted paid-rental accrual function and reward-inventory lookup both settle it; it does not create a paid rental row. The migration is applied in Preview, with zero existing free-agent accrual rows or active/available free-agent entitlements at audit time. No player balance was changed by applying the migration.
 - Agent Uptime claim is disabled until the server confirms the required 12 continuous active rental hours.
 - Broadcast Your Uplink now has a Copy Referral Link action. Its 300 ZP reward remains unclaimable until a verifiable qualifying-referral completion rule is implemented.
 - Join Intel points to https://t.me/zordcommunity and uses @zordcommunity for membership verification. The ZORD Telegram bot still needs to be confirmed as an administrator of that channel before live membership checks can succeed.
-- Daily Streak boost and temporary Agent 1 rewards remain entitlement grants; their actual mining/agent activation runtime integration still needs verification.
+- The 2× Fragment Mining boost already applies to the server-side fragment accrual calculation for six hours after activation. The temporary Agent 1 accrual path is now connected to verified ZP; end-to-end timing and credit still need a controlled test entitlement.
 
 ### CI and deployment
-- Dependency remediation workflow 44121436055 succeeded. It updated compatible packages, ran the force-enabled audit remediation, passed npm run typecheck, npm run lint, and npm run build, and reported 0 remaining npm vulnerabilities.
+- The earlier dependency remediation workflow 44121436055 reported 0 vulnerabilities at that point in time. A new GitHub advisory was added on 2026-11-17 for picomatch through 4.0.7 (GHSA-fc5q-39xc-vjpf / CVE-2026-112366); the latest CI audit now reports 17 HIGH findings across the build/tooling dependency tree. The affected lockfile entries are marked dev-only. The advisory currently lists no fixed version, so do not force a major toolchain downgrade or pretend this is resolved; monitor the upstream fix. The production/runtime dependency tree should be audited separately.
 - The latest READY Vercel Preview observed is commit `0391b7b882af292d66a44aab4c48894db17fede8`; the active branch is seven commits ahead at `796b257ea73c9f9305294895c1f4b1684cf00c95`. The branch's raffle Gram precision UI, ZAP transfer Edge Function fix, and database minimum-transfer migration are not yet included in that Preview deployment.
 - Production, main, and the separate Zord-Agents-bot project remain untouched.
 
@@ -165,7 +166,7 @@ This section supersedes older point-in-time statements in this tracker where the
 4. Complete safe end-to-end tests for TON raffle selection/credit, ZAP transfer symmetry/idempotency, daily streak duplicate/concurrent claims, Mystery Box activation, expedition rewards, Creator Ops review isolation, and referral kickback claims.
 5. Implement a verifiable Share Uplink completion path; keep its reward locked until then.
 6. Confirm the bot is an admin in @zordcommunity and verify membership checks.
-7. Complete timed boost and free Agent 1 activation integrations.
+7. Run a controlled test for the 6-hour boost and 24-hour free Alpha Miner accrual; verify server timer, exact 0.1 ZP/s ledger credit, idempotency, and expiry.
 8. Wait for Vercel's deployment limit to reset, deploy the current branch to Preview, and run the full mobile/desktop acceptance checklist.
 9. Keep real mainnet payment initiation disabled until all wallet proof, funding, reconciliation, and failure-path tests pass.
 
@@ -201,3 +202,11 @@ Stage 1–8 remain **in progress**. This update does not authorize Production de
 | 8 — Integrations & Payments | Finish ad provider adapters and verified callbacks, TON proof test, rental payment reconciliation, withdrawal and failure paths | No reward from ad click alone; callbacks signed/idempotent; wallet ownership proven; payment receipts reconcile; real payments remain off until separately approved |
 
 The roadmap is sequential: do not mark a later stage complete because its UI exists. A stage passes only after its acceptance gate is evidenced in Preview. Stage 1–8 remain **in progress**; Production is a separate release decision and is not authorized by this roadmap.
+
+
+### Additional Stage 6 and Stage 7 findings — 2026-11-17
+- The free Agent 1 entitlement previously activated a timer but was not included in verified ZP accrual. The new Preview migration 20261117194303_accrue_free_alpha_miner_reward_zp.sql creates a private idempotent accrual ledger and settles the configured Alpha Miner rate of 0.1 ZP/second through player_economy and economy_ledger. It is integrated into the existing scheduled/GET accrual entry point and reward inventory refresh.
+- The new accrual table has RLS enabled and no direct grants to client roles; the accrual RPC is service_role-only. Preview currently has zero rows in the new accrual table and zero available/active Agent 1 entitlements, so no real player balance changed during this repair.
+- Raffle prize-pool amounts and custom winner shares now remain decimal strings from the Admin UI through admin-api; Gram external funding amounts are also passed as strings and validated to at most nine decimals. Supabase Preview admin-api v98 is ACTIVE and matches the branch. Its verify_jwt=false setting is intentional: this admin endpoint performs its own rate-limited admin-credential check before processing any action.
+- Preview CI type-check previously caught a type regression where the ZAP funding helper was accidentally changed to accept strings. That was corrected; the next Preview frontend check is running against the corrected branch.
+- The latest read-only migration-status workflow reports the Join Intel task's telegram_chat_id as @zordcommunity (not null) and its action link as the correct channel URL. Whether the bot is an administrator of that channel has not yet been confirmed.
