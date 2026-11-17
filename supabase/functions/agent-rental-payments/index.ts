@@ -13,6 +13,8 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const TONCENTER_API_KEY = Deno.env.get("TONCENTER_API_KEY") ?? "";
 const TREASURY_ADDRESS = Deno.env.get("ZORD_GRAM_TREASURY_ADDRESS") ?? "";
 const VERIFICATION_GRACE_MS = 10 * 60 * 1000;
+// Hard stop: no new mainnet rental payment requests until live-launch approval.
+const MAINNET_RENTAL_INTENTS_ENABLED = false;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -150,6 +152,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body.action === "create_intent") {
+      if (!MAINNET_RENTAL_INTENTS_ENABLED) {
+        return json({ error: "Mainnet agent rental payments are disabled until ZORD launch approval." }, 403);
+      }
       if (body.agentType !== "alpha_miner" && body.agentType !== "overclocked_core") {
         return json({ error: "Choose a valid agent." }, 400);
       }
