@@ -29,6 +29,9 @@ jobs:
       - name: Install current lockfile
         run: npm ci
 
+      - name: Update compatible dependency versions
+        run: npm update --ignore-scripts --no-fund
+
       - name: Generate force-enabled audit fix proposal
         run: npm audit fix --force --ignore-scripts --no-fund || true
 
@@ -65,6 +68,7 @@ jobs:
           git add package.json package-lock.json
           git commit -m "chore: update audited npm dependencies"
           AUTH_HEADER="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="AUTHORIZATION: basic $AUTH_HEADER" pull --rebase origin security/trusted-gameplay-migration
           git -c http.extraheader="AUTHORIZATION: basic $AUTH_HEADER" push origin HEAD:security/trusted-gameplay-migration
 
       - name: Upload proposed dependency files
