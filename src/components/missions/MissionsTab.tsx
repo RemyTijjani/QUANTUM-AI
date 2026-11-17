@@ -263,7 +263,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           <p className="mt-2 font-mono text-[9px] leading-relaxed text-amber-300">{unavailableReason}</p>
         )}
       </div>
-      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : pendingReview ? 'Pending review' : mission.id === 'follow-signal' ? 'Submit' : mission.telegramChatId || mission.id === 'agent-uptime' ? 'Verify' : 'Setup needed'}</span>
+      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : pendingReview ? 'border-amber-300/20 bg-amber-300/5 text-amber-200' : mission.id === 'daily-uplink' || mission.id === 'follow-signal' || mission.telegramChatId || (mission.id === 'agent-uptime' && status === 'ready') ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : pendingReview ? 'Pending review' : mission.id === 'daily-uplink' ? 'Claim' : mission.id === 'follow-signal' ? 'Submit' : mission.id === 'agent-uptime' ? status === 'ready' ? 'Verify' : 'Locked' : mission.telegramChatId ? 'Verify' : 'Setup needed'}</span>
     </article>
   );
 }
