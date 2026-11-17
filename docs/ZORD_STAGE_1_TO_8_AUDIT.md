@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-17  
 **Target environment:** Supabase Preview `lchkctclxzwwvfwosava` and GitHub Preview branch `security/trusted-gameplay-migration`  
-**Current branch baseline:** `117d654ccd68bf88ec39c97ede5b5cbfd3a427f8`  
+**Current branch baseline at this audit pass:** `5e386a67c88dae36d380ba7b7e00e59c39272da0`  
 **Production:** Out of scope. No merge to `main`, Production database change, or Production deployment is authorized by this audit.  
 **Scope exclusion:** Stage 9 / ZORD platform expansion and the separate Zord-Agents-bot project are not part of this repository audit.
 
@@ -55,7 +55,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 ### Stage 5 — Trusted Gameplay Backend Migration
 
 - Trusted gameplay, mission claims, fragment unlock/fix, daily streak claims, reward entitlements, and player-owned identity checks are present.
-- The Preview migration ledger currently contains 101 versions, while the branch contains 105 SQL migration files. A comparison found 19 branch migration versions absent from the applied ledger and 15 applied versions without a matching filename in the branch. This is migration-history drift, not permission to replay files.
+- The Preview migration ledger currently contains 110 versions, while the branch contains 114 SQL migration files. A comparison found 19 branch migration versions absent from the applied ledger and 15 applied versions without a matching filename in the branch. These are historical migration mismatches; no missing migration was blindly replayed. This is migration-history drift, not permission to replay files.
 - The existing `docs/stage5-preview-migration-history-reconciliation-plan.md` is outdated: it describes an earlier snapshot with no migration ledger. Update it only after the full migration comparison is complete.
 - No bulk migration replay, migration repair, baseline replacement, or schema reset has been performed during this audit.
 - Supabase advisors report missing foreign-key indexes and RLS init-plan opportunities. These need table-by-table review before adding indexes or changing policies.
@@ -73,14 +73,14 @@ This is a living audit tracker. A feature is not marked complete merely because 
   - The unused ZAP wallet icon import that failed lint was removed.
   - The Join mission now points to `https://t.me/zordcommunity` and uses `@zordcommunity` for membership verification.
 - The ZORD Telegram bot must still be an administrator in `@zordcommunity` before Telegram membership verification can succeed.
-- Remaining feature gap: `share-uplink` has no verified completion/claim path yet. Do not award its configured ZP merely for copying a link.
+- `share-uplink` now has a Copy Referral Link action, but no verified completion/claim path. The 300 ZP reward remains locked; do not award it merely for copying a link.
 - Remaining: test every visible button and state transition, including mobile layouts, loading/error states, empty states, admin actions, and refresh behavior.
 
 ### Stage 7 — ZAP Economy
 
 - ZP-to-ZAP conversion and internal ZAP transfer backend paths exist.
 - Approved rules: 1,000 ZP = 1 ZAP; minimum internal transfer 100 ZAP; working agents generate ZP, not ZAP; ZAP withdrawal is removed from the roadmap; rank/achievement progression is based on net ZAP.
-- Raffle ZAP prize selection/credit functions exist in Preview; the scheduled raffle close job is active.
+- Raffle winner selection/credit functions exist in Preview; winner selection now supports both ZAP and TON/Gram, and TON prize amounts/reservations preserve nine decimal places. The Admin API UUID validators for raffle selection and credit were corrected; admin-api v95 is ACTIVE in Preview. The existing LUCKY BOY raffle is currently drawn and credited (one winner); this audit did not change that raffle or issue a prize.
 - The ZAP wallet endpoint was aligned with the database-confirmed transfer amount, rather than echoing the submitted amount.
 - Remaining: test conversion/transfer idempotency, sender/recipient ledger symmetry, insufficient balance, minimum transfer, self-transfer rejection, net-rank rollback on spend/send, and permanent minted-badge behavior.
 
@@ -96,11 +96,11 @@ This is a living audit tracker. A feature is not marked complete merely because 
 
 ## CI, deployments, and security snapshot
 
-- Latest Preview frontend check at baseline `117d654ccd68bf88ec39c97ede5b5cbfd3a427f8` completed successfully: type-check, lint, and build.
+- Preview frontend checks on the latest feature-source commits completed successfully. Dependency remediation workflow 44121436055 updated compatible packages, ran npm audit fix --force, then passed type-check, lint, and build.
 - Earlier failed CI runs were caused by one unused import in `ZapWalletPanel.tsx`; that error is fixed.
-- `npm ci` reported 14 dependency advisories (1 low, 4 moderate, 9 high). The exact vulnerable dependency paths still need an `npm audit` review before updating the lockfile.
+- The dependency remediation workflow committed the refreshed lockfile (d867cc416ef56b6ee9f85d9e5068d851e01b213f). Its post-fix audit reported 0 vulnerabilities (0 low/moderate/high/critical).
 - Security advisor also reports leaked-password protection disabled. This is an Auth configuration item to review and enable safely.
-- The latest READY Vercel Preview is commit `cf2c36c2e96be7b230cb9878ba19643ab03735ad`, behind this branch baseline. Vercel previously rejected newer Preview deployment attempts because the daily deployment limit was reached. Do not retry deployment until the limit resets.
+- The latest READY Vercel Preview observed is commit a13faab6216462957326cd5dae881af62f9d18b5, behind the current branch. Newer UI/source changes are committed and passed CI but are not yet on the deployed Preview. Earlier deployment attempts hit Vercel's daily deployment limit; do not retry until it resets.
 - Production has not been changed.
 
 ## Repair order
@@ -116,3 +116,57 @@ This is a living audit tracker. A feature is not marked complete merely because 
 9. Only after the Preview acceptance checklist passes, prepare a separate Production release plan for approval.
 
 **Never treat this tracker as approval to change Production, initiate real payments, replay migrations, or delete player data.**
+
+
+## Fresh audit update — 2026-11-17
+
+This section supersedes older point-in-time statements in this tracker where they conflict. It records only work verified against the active Preview project and branch.
+
+### Stage 1 — current security posture
+- Fourteen Supabase Edge Functions are ACTIVE in Preview.
+- Critical deployed function sources were compared with branch source; admin-api was redeployed as version 95 after correcting two malformed UUID validators used by raffle credit actions. gameplay-actions v8, mission-actions v6, and mystery-box-actions v5 are active.
+- The nine functions with verify_jwt=false must be understood individually: authenticated functions perform their own bearer-token/admin verification; public-events is an intentional public GET-only read of published future events. Do not treat the setting alone as a vulnerability.
+- Public raffle RPC wrappers for winner selection and ZAP/TON credit are executable by service_role only. Direct EXECUTE has been revoked from PUBLIC/anon/authenticated on the internal raffle helpers.
+- Public application tables with RLS enabled but no policies were checked for direct anon/authenticated privileges; no exposed client table access was found for those no-policy tables. The 76 advisor notices are informational and include private-schema tables intentionally accessed through trusted functions.
+- The security advisor still reports one warning: leaked-password protection is disabled. This is an Auth configuration setting and remains to be enabled through Supabase Auth settings.
+- Broad default privileges for objects created by postgres in public were restricted for future tables, sequences, and functions; existing grants were not changed. The equivalent defaults for supabase_admin remain broad because the current SQL execution role cannot alter that role's default privileges. This is a residual hardening item, not evidence that current public objects are exposed.
+
+### Stage 5 — migration and backend repair
+- Preview migration ledger is present and currently records 110 versions. The branch contains 114 migration files: 19 branch versions are not recorded remotely and 15 remote versions have no matching filename in the branch. Do not replay or repair these histories without the migration-by-migration reconciliation and data-effect review.
+- Applied and tracked Preview hardening migrations:
+  - 20261117160203_harden_internal_raffle_helper_execute_grants.sql
+  - 20261117160739_restrict_postgres_public_default_client_privileges.sql
+  - 20261117161031_correct_daily_streak_zap_reward_range.sql
+  - 20261117161446_support_gram_raffle_winner_selection.sql
+  - 20261117161650_support_gram_raffle_reservation_precision.sql
+- Daily Streak Days 8–30 now award a uniformly selected whole-number amount from 10–20 ZAP (35% outcome). This is separate from the Premium Mystery Box's 10% 1–10 ZAP prize. The corrective database migration is applied and the function definition was read back to verify the new range.
+- Raffle winner selection now supports both zap and ton; the currency is stored as ZAP or TON accordingly. Raffle pool, winner amount, and reservation amount columns now preserve nine decimal places for Gram/TON. The reservation helper now keeps nine-decimal balance precision.
+- Raffle Admin API UUID validation was corrected for the selection and both credit actions. Supabase Preview admin-api version 95 is ACTIVE and its deployed source matches the branch.
+- The existing LUCKY BOY sample raffle is now drawn with one ZAP winner marked credited by Admin. The audit did not select or credit that winner; no real player prize was issued by these audit changes.
+- A rollback-only TON test fixture was attempted but blocked by the SQL tool's write-safety guard. Therefore TON winner selection/credit is statically and schema-verified but not yet end-to-end tested with a test raffle. Do not mark Gram raffle payout as fully accepted until a safe Preview test is completed.
+
+### Stage 6 — mission and reward fixes
+- Mission cards now use the server-derived task status for both daily and social tasks. X Follow status is included in the server summary, and submitting an X account triggers a refresh.
+- Daily Streak status refreshes on app focus and every 60 seconds; Mystery Box inventory refreshes on app focus and every 60 seconds.
+- Agent Uptime claim is disabled until the server confirms the required 12 continuous active rental hours.
+- Broadcast Your Uplink now has a Copy Referral Link action. Its 300 ZP reward remains unclaimable until a verifiable qualifying-referral completion rule is implemented.
+- Join Intel points to https://t.me/zordcommunity and uses @zordcommunity for membership verification. The ZORD Telegram bot still needs to be confirmed as an administrator of that channel before live membership checks can succeed.
+- Daily Streak boost and temporary Agent 1 rewards remain entitlement grants; their actual mining/agent activation runtime integration still needs verification.
+
+### CI and deployment
+- Dependency remediation workflow 44121436055 succeeded. It updated compatible packages, ran the force-enabled audit remediation, passed npm run typecheck, npm run lint, and npm run build, and reported 0 remaining npm vulnerabilities.
+- The latest READY Vercel Preview observed remains commit a13faab6216462957326cd5dae881af62f9d18b5; it does not include all later Mission UI changes or the latest lockfile. The current branch has newer tested source, but a fresh Vercel Preview deployment is still blocked by the earlier daily deployment cap.
+- Production, main, and the separate Zord-Agents-bot project remain untouched.
+
+### Remaining blockers before Stage 1–8 sign-off
+1. Reconcile all 19 pending branch migration versions and 15 remote-only versions without replaying historical SQL blindly.
+2. Enable leaked-password protection in Supabase Auth settings.
+3. Resolve supabase_admin default-privilege hardening through an authorized owner-level change, without modifying managed-schema defaults.
+4. Complete safe end-to-end tests for TON raffle selection/credit, ZAP transfer symmetry/idempotency, daily streak duplicate/concurrent claims, Mystery Box activation, expedition rewards, Creator Ops review isolation, and referral kickback claims.
+5. Implement a verifiable Share Uplink completion path; keep its reward locked until then.
+6. Confirm the bot is an admin in @zordcommunity and verify membership checks.
+7. Complete timed boost and free Agent 1 activation integrations.
+8. Wait for Vercel's deployment limit to reset, deploy the current branch to Preview, and run the full mobile/desktop acceptance checklist.
+9. Keep real mainnet payment initiation disabled until all wallet proof, funding, reconciliation, and failure-path tests pass.
+
+Stage 1–8 remain **in progress**. This update does not authorize Production deployment, migration replay/repair, real payments, or any changes to player balances beyond the specifically listed schema/function hardening.
