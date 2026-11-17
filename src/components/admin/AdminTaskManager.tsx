@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { Database, Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Database, Plus, Edit2, Archive, Loader2 } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { formatZp } from '@/lib/format';
 import { AdminApiError } from '@/lib/admin/adminApi';
@@ -9,10 +9,10 @@ interface AdminTaskManagerProps {
   tasks: AdminTask[];
   busyTaskId: string | null;
   onSave: (input: AdminTaskInput) => Promise<void>;
-  onDelete: (taskId: string) => Promise<void>;
+  onArchive: (taskId: string) => Promise<void>;
 }
 
-export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }: AdminTaskManagerProps) {
+export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive }: AdminTaskManagerProps) {
   const [editingTask, setEditingTask] = useState<AdminTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | AdminTask['status']>('all');
@@ -114,15 +114,15 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onDelete }
                 </button>
                 <button
                   onClick={() => {
-                    if (window.confirm(`Delete "${task.title}"? This cannot be undone.`)) {
-                      void onDelete(task.id);
+                    if (window.confirm(`Archive "${task.title}"? It will be hidden from players, while existing submissions and claim history are preserved.`)) {
+                      void onArchive(task.id);
                     }
                   }}
                   disabled={busyTaskId === task.id}
-                  aria-label={`Delete ${task.title}`}
-                  className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+                  aria-label={`Archive ${task.title}`}
+                  className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
                 >
-                  {busyTaskId === task.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                  {busyTaskId === task.id ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />}
                 </button>
               </div>
             </article>
