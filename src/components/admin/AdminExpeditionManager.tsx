@@ -72,7 +72,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     try { setReviewQueue(await listAdminExpeditionObjectiveReviews(creds)); setReviewMessage(''); }
     catch (error) { setReviewMessage(error instanceof Error ? error.message : 'Could not load objective reviews.'); }
     finally { setLoadingReviews(false); }
-  }, [creds.username, creds.password]);
+  }, [creds]);
   useEffect(() => { void loadReviews(); }, [loadReviews]);
 
   const submitReview = async (item: AdminExpeditionObjectiveReview, scope: 'individual' | 'team', decision: 'verified' | 'rejected') => {
