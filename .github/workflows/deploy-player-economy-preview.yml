@@ -7,7 +7,6 @@ on:
       - security/trusted-gameplay-migration
     paths:
       - 'supabase/functions/player-economy/**'
-      - '.github/workflows/deploy-player-economy-preview.yml'
   workflow_dispatch:
 
 permissions:
@@ -35,6 +34,10 @@ jobs:
         run: |
           if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_PROJECT_REF" ]; then
             echo "Required Supabase GitHub secret or variable is missing."
+            exit 1
+          fi
+          if [ "$SUPABASE_PROJECT_REF" != "lchkctclxzwwvfwosava" ]; then
+            echo "Refusing deployment: this workflow is Preview-only and must target lchkctclxzwwvfwosava."
             exit 1
           fi
           supabase functions deploy player-economy --project-ref "$SUPABASE_PROJECT_REF" --yes
