@@ -7,6 +7,7 @@ export interface ReferralKickbackActivity {
   createdAt: string;
   referralLevel: number | null;
   status: string | null;
+  sourceEventType: string | null;
 }
 
 export interface ReferralKickbackSummary {
@@ -100,6 +101,7 @@ export async function fetchReferralKickbacks(): Promise<ReferralKickbackSummary>
         createdAt: item.createdAt,
         referralLevel: typeof item.referralLevel === 'number' ? item.referralLevel : null,
         status: typeof item.status === 'string' ? item.status : null,
+        sourceEventType: typeof item.sourceEventType === 'string' ? item.sourceEventType : null,
       }];
     })
     : [];
