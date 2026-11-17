@@ -1,6 +1,6 @@
 # Stage 6 Shared ZAP Wallet and Reward Entitlements — Architecture Design
 
-Status: Product design approved. Source-only Preview implementation committed on the active security branch; migration not applied, Edge Function not deployed, and no data, balance, or Production changes.
+Status: The private ZAP wallet/ledger, reward entitlements, Mystery Box catalog/inventory, and Daily Streak RPCs are present in Preview. `mystery-box-actions` v5 and `gameplay-actions` v8 are ACTIVE. Daily Streak Days 8–30 award 10–20 whole ZAP; Premium Mystery Boxes separately retain a 10% chance of 1–10 whole ZAP. No live reward claim was created during this audit.
 Target: Supabase Preview project `lchkctclxzwwvfwosava`; active branch `security/trusted-gameplay-migration`.
 
 ## 1. Goals
@@ -22,7 +22,7 @@ Read-only Preview inspection confirms:
 - `player_agent_rentals` represents agent rentals and has a required `last_payment_intent_id`. It is not suitable for a free reward without weakening or misrepresenting the paid-rental model.
 - `agent_rental_payment_intents` records payment intents and defaults to GRAM/mainnet. It must not be used for free reward grants.
 - Existing event tables have a `reward_zap` field, but this does not establish that a player ZAP wallet or ZAP ledger exists.
-- No dedicated ZAP wallet/ledger, boost inventory, or Mystery Box inventory was found in the previously inspected Preview public tables.
+- The initial design snapshot did not include a dedicated ZAP wallet/ledger or Mystery Box inventory. Subsequent Preview migrations created these under `app_private`, together with reward entitlements and the versioned reward catalog.
 
 ## 3. Proposed architecture
 
@@ -68,7 +68,7 @@ Append-only financial audit trail:
 - Unique constraint on `(player_id, idempotency_key)`; unique source reference where the business rule requires one grant per source.
 - No UPDATE/DELETE for application roles. Corrections use a new reversal/adjustment entry referencing the original.
 
-Store ZAP as whole units only. The approved Daily Streak ZAP reward range is a random whole-number amount from 1 to 10 ZAP.
+Store ZAP as whole units only. The approved Daily Streak ZAP reward range is a random whole-number amount from 10 to 20 ZAP. Premium Mystery Boxes separately have a 10% chance to award 1 to 10 whole ZAP.
 
 ### 4.3 `player_reward_entitlements`
 
@@ -194,13 +194,13 @@ Keep this distinct from paid `player_agent_rentals` and `agent_rental_payment_in
 
 - Days 1–7: use the existing trusted ZP economy credit path and `economy_ledger`, with the streak claim and credit in one transaction.
 - Days 8–30: select one reward using the published 35/34/30/1 pool (3500/3400/3000/100 basis points).
-- ZAP outcome: call the shared atomic ZAP credit function for 1–10 whole ZAP.
+- ZAP outcome: call the shared atomic ZAP credit function for 10–20 whole ZAP.
 - Boost, Mystery Box, and temporary mining agent outcomes: create one corresponding entitlement.
 - Persist the selected pool version and outcome before returning success.
 - A retry returns the same result; it never redraws.
 - If a required wallet or entitlement service is unavailable, roll back the claim instead of recording an unfulfilled reward.
 
-For the 1–10 ZAP amount, uniform selection across the ten whole-number values is the proposed draw rule. The 35% is the chance of the ZAP outcome, not an amount multiplier.
+For the Daily Streak 10–20 ZAP amount, uniform selection across the 11 whole-number values is the approved draw rule. This is separate from the Premium Mystery Box's 1–10 whole-ZAP reward. The 35% is the chance of the ZAP outcome, not an amount multiplier.
 
 ## 8. Access control and API boundaries
 
@@ -232,7 +232,7 @@ Each migration application, database mutation, Edge Function source change/deplo
 ## 10. Decisions required before implementation
 
 1. **ZAP precision — approved:** whole ZAP only.
-2. **Daily Streak ZAP amount — approved:** random whole-number amount from 1 to 10 ZAP. Uniform selection across the ten values is proposed.
+2. **Daily Streak ZAP amount — approved:** random whole-number amount from 10 to 20 ZAP, uniformly selected across the 11 values. Premium Mystery Box ZAP remains a separate 1–10 whole-ZAP prize with 10% probability.
 3. **Boost — approved:** 2× Fragment Mining for six hours, timer starts on activation, no stacking and no extension of an active boost. Mystery Box Fragment rewards use this same effect on the player's current mining rate.
 4. **Mystery Box tier selection — approved:** 80% Standard / 20% Premium when a Streak draw awards a box. The Premium Box's 10% ZAP prize chance and 10% 2× Fragment Mining boost chance are approved; its remaining contents and odds, and all Standard Box contents and odds, remain open and must be approved separately.
 5. **Temporary mining agent — partly approved:** Agent 1 is the eligible type. Starting its 24-hour timer on activation remains a recommended policy, but is not yet explicitly approved.
@@ -251,9 +251,9 @@ Each migration application, database mutation, Edge Function source change/deplo
 
 ## 12. Source implementation status
 
-The source-only implementation is in:
+The Preview implementation is tracked in:
 - `supabase/migrations/20261114160000_mystery_box_reward_system.sql` — private wallet, ledger, entitlement, versioned pool catalog, idempotent grant/open/inventory RPCs, and atomic ZP/ZAP/boost outcomes.
 - `supabase/functions/mystery-box-actions/index.ts` — authenticated inventory and open endpoint; player identity is derived from the verified Supabase user.
 - `supabase/tests/mystery_box_reward_system.test.sql` — read-only post-migration assertions for pool totals, approved odds, and RPC/table privileges.
 
-The migration and function are source only. They have not been applied or deployed. The next step is static/CI validation, followed by a separately approved Preview migration application and function deployment. No player reward has been granted or opened.
+The wallet, ledger, entitlement, reward catalog, and Mystery Box RPCs are present in Preview; `mystery-box-actions` v5 is ACTIVE. Daily Streak state/claim RPCs are applied and `gameplay-actions` v8 is ACTIVE. The latest Stage 6 correction is tracked in `supabase/migrations/20261117161031_correct_daily_streak_zap_reward_range.sql`. This audit did not create a live player reward claim or open a player box. The activation integration for timed boosts and free Agent 1 remains a separate verification gate.
