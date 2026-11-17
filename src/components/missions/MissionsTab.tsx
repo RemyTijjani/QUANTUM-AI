@@ -23,6 +23,27 @@ interface MissionsTabProps {
 
 export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRefreshVerifiedEconomy, initialView = 'missions' }: MissionsTabProps) {
   const now = Date.now();
+  const [taskSummary, setTaskSummary] = useState<{ available: number; ready: number; claimed: number; statuses: Record<string, 'claimed' | 'ready' | 'locked' | 'pending'> } | null>(null);
+  const refreshTaskSummary = async () => {
+    const { data, error } = await supabase.rpc('get_player_mission_task_statuses');
+    if (error || !data || typeof data !== 'object') return;
+    const result = data as { available?: unknown; ready?: unknown; claimed?: unknown; statuses?: unknown };
+    if (typeof result.available !== 'number' || typeof result.ready !== 'number' || typeof result.claimed !== 'number' || !result.statuses || typeof result.statuses !== 'object') return;
+    setTaskSummary({ available: result.available, ready: result.ready, claimed: result.claimed, statuses: result.statuses as Record<string, 'claimed' | 'ready' | 'locked' | 'pending'> });
+  };
+  useEffect(() => {
+    void refreshTaskSummary();
+    const interval = window.setInterval(() => void refreshTaskSummary(), 30000);
+    window.addEventListener('focus', refreshTaskSummary);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshTaskSummary);
+    };
+  }, [missions]);
+  const refreshAfterTaskAction = async () => {
+    await onRefreshVerifiedEconomy();
+    await refreshTaskSummary();
+  };
   const [activeView, setActiveView] = useState<EngagementView>(initialView);
   useEffect(() => {
     setActiveView(initialView);
@@ -32,8 +53,10 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
   const daily = trackedMissions.filter((m) => m.kind === 'daily');
   const social = missions.filter((m) => m.kind === 'social');
   const creator = missions.filter((m) => m.kind === 'creator');
-  const readyCount = trackedMissions.filter((mission) => missionStatus(state, mission, now) === 'ready').length;
-  const claimedCount = trackedMissions.filter((mission) => missionStatus(state, mission, now) === 'claimed').length;
+  const readyCount = taskSummary?.ready ?? trackedMissions.filter((mission) => missionStatus(state, mission, now) === 'ready').length;
+  const claimedCount = taskSummary?.claimed ?? trackedMissions.filter((mission) => missionStatus(state, mission, now) === 'claimed').length;
+  const availableCount = taskSummary?.available ?? Math.max(0, trackedMissions.length - claimedCount);
+  const statusForMission = (mission: MissionSpec) => taskSummary?.statuses[mission.id] ?? missionStatus(state, mission, now);
 
   return (
     <div className="min-w-0 space-y-5 pb-3 sm:space-y-6 sm:pb-2">
@@ -51,7 +74,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
           </div>
         </div>
         <div className="relative mt-4 grid grid-cols-3 gap-2 sm:mt-5 sm:gap-3">
-          <div className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Available</p><p className="mt-1 font-display text-xl text-white">{trackedMissions.length - claimedCount}</p></div>
+          <div className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Available</p><p className="mt-1 font-display text-xl text-white">{availableCount}</p></div>
           <div className="min-w-0 rounded-xl border border-neon/20 bg-neon/5 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-500">Ready</p><p className="mt-1 font-display text-xl text-neon-200">{readyCount}</p></div>
           <div className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Claimed</p><p className="mt-1 font-display text-xl text-cyan-200">{claimedCount}</p></div>
         </div>
@@ -69,9 +92,9 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
           <MissionCard
             key={mission.id}
             mission={mission}
-            status={missionStatus(state, mission, now)}
+            status={statusForMission(mission)}
             notify={notify}
-            onRefreshVerifiedEconomy={onRefreshVerifiedEconomy}
+            onRefreshVerifiedEconomy={refreshAfterTaskAction}
           />
         ))}
       </section>
@@ -112,6 +135,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             mission={mission}
             state={state}
             notify={notify}
+            onStatusChanged={refreshTaskSummary}
           />
         ))}
       </section>
@@ -122,7 +146,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
 
 interface MissionCardProps {
   mission: MissionSpec;
-  status: 'claimed' | 'ready' | 'locked';
+  status: 'claimed' | 'ready' | 'locked' | 'pending';
   progressLabel?: string;
   notify?: Notify;
   onRefreshVerifiedEconomy?: () => Promise<void>;
@@ -181,6 +205,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
   };
   const Icon = mission.kind === 'daily' ? CalendarCheck : Megaphone;
   const legacyClaimed = status === 'claimed';
+  const pendingReview = status === 'pending';
   const rewardCurrency = mission.rewardCurrency ?? 'ZP';
   const unavailableReason = mission.id === 'ad-quota'
     ? 'Secure ad-view verification and reward claiming are not connected yet. Your progress is shown, but rewards remain locked.'
@@ -194,8 +219,8 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
 
   return (
     <article className="panel flex min-w-0 flex-wrap items-start gap-3 p-3 sm:p-4 sm:gap-4">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${legacyClaimed || claimed ? 'border-cyan-300/30 bg-cyan-300/5 text-cyan-200' : 'border-neon/30 bg-neon/5 text-neon-300'}`}>
-        {legacyClaimed || claimed ? <Check size={20} /> : <Icon size={20} />}
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${legacyClaimed || claimed ? 'border-cyan-300/30 bg-cyan-300/5 text-cyan-200' : pendingReview ? 'border-amber-300/30 bg-amber-300/5 text-amber-200' : 'border-neon/30 bg-neon/5 text-neon-300'}`}>
+        {legacyClaimed || claimed ? <Check size={20} /> : pendingReview ? <Clock size={20} /> : <Icon size={20} />}
       </div>
       <div className="min-w-0 flex-1">
         <h3 className="break-words font-display text-sm font-bold tracking-wide text-white">{mission.title}</h3>
@@ -231,7 +256,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           <p className="mt-2 font-mono text-[9px] leading-relaxed text-amber-300">{unavailableReason}</p>
         )}
       </div>
-      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : mission.telegramChatId || mission.id === 'agent-uptime' ? 'Verify' : 'Setup needed'}</span>
+      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : pendingReview ? 'Pending review' : mission.telegramChatId || mission.id === 'agent-uptime' ? 'Verify' : 'Setup needed'}</span>
     </article>
   );
 }
@@ -240,10 +265,12 @@ function CreatorOpsCard({
   mission,
   state,
   notify,
+  onStatusChanged,
 }: {
   mission: MissionSpec;
   state: GameState;
   notify: Notify;
+  onStatusChanged: () => Promise<void>;
 }) {
   const [link, setLink] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -319,6 +346,7 @@ function CreatorOpsCard({
 
     setSubmission(data as CreatorOpsSubmission);
     setLink('');
+    await onStatusChanged();
     notify('Link submitted for admin review. ZP credited on approval.');
   };
 
