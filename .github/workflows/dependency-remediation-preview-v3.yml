@@ -8,7 +8,7 @@ on:
       - .github/workflows/dependency-remediation-preview-v3.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   propose:
@@ -51,7 +51,24 @@ jobs:
           }
           NODE
 
+      - name: Commit verified dependency updates to Preview
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "No dependency updates to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore: update audited npm dependencies"
+          AUTH_HEADER="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="AUTHORIZATION: basic $AUTH_HEADER" push origin HEAD:security/trusted-gameplay-migration
+
       - name: Upload proposed dependency files
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: preview-dependency-remediation-v3
