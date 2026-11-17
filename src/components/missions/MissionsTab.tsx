@@ -24,14 +24,22 @@ interface MissionsTabProps {
 export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRefreshVerifiedEconomy, initialView = 'missions' }: MissionsTabProps) {
   const now = Date.now();
   const [taskSummary, setTaskSummary] = useState<{ available: number; ready: number; claimed: number; statuses: Record<string, 'claimed' | 'ready' | 'locked' | 'pending'> } | null>(null);
+  const [taskSummaryError, setTaskSummaryError] = useState(false);
   const refreshTaskSummary = async () => {
     const { data, error } = await supabase.functions.invoke('mission-actions', {
       body: { action: 'get_task_statuses' },
     });
-    if (error || !data || data.success !== true || typeof data !== 'object') return;
+    if (error || !data || data.success !== true || typeof data !== 'object') {
+      setTaskSummaryError(true);
+      return;
+    }
     const result = data as { available?: unknown; ready?: unknown; claimed?: unknown; statuses?: unknown };
-    if (typeof result.available !== 'number' || typeof result.ready !== 'number' || typeof result.claimed !== 'number' || !result.statuses || typeof result.statuses !== 'object') return;
+    if (typeof result.available !== 'number' || typeof result.ready !== 'number' || typeof result.claimed !== 'number' || !result.statuses || typeof result.statuses !== 'object') {
+      setTaskSummaryError(true);
+      return;
+    }
     setTaskSummary({ available: result.available, ready: result.ready, claimed: result.claimed, statuses: result.statuses as Record<string, 'claimed' | 'ready' | 'locked' | 'pending'> });
+    setTaskSummaryError(false);
   };
   useEffect(() => {
     void refreshTaskSummary();
@@ -55,9 +63,6 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
   const daily = trackedMissions.filter((m) => m.kind === 'daily');
   const social = missions.filter((m) => m.kind === 'social');
   const creator = missions.filter((m) => m.kind === 'creator');
-  const readyCount = taskSummary?.ready ?? trackedMissions.filter((mission) => missionStatus(state, mission, now) === 'ready').length;
-  const claimedCount = taskSummary?.claimed ?? trackedMissions.filter((mission) => missionStatus(state, mission, now) === 'claimed').length;
-  const availableCount = taskSummary?.available ?? Math.max(0, trackedMissions.length - claimedCount);
   const statusForMission = (mission: MissionSpec) => taskSummary?.statuses[mission.id] ?? missionStatus(state, mission, now);
 
   return (
@@ -76,10 +81,11 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
           </div>
         </div>
         <div className="relative mt-4 grid grid-cols-3 gap-2 sm:mt-5 sm:gap-3">
-          <div className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Available</p><p className="mt-1 font-display text-xl text-white">{availableCount}</p></div>
-          <div className="min-w-0 rounded-xl border border-neon/20 bg-neon/5 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-500">Ready</p><p className="mt-1 font-display text-xl text-neon-200">{readyCount}</p></div>
-          <div className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Claimed</p><p className="mt-1 font-display text-xl text-cyan-200">{claimedCount}</p></div>
+          <div className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Available</p><p className="mt-1 font-display text-xl text-white">{taskSummary ? taskSummary.available : '—'}</p></div>
+          <div className="min-w-0 rounded-xl border border-neon/20 bg-neon/5 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-500">Ready</p><p className="mt-1 font-display text-xl text-neon-200">{taskSummary ? taskSummary.ready : '—'}</p></div>
+          <div className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Claimed</p><p className="mt-1 font-display text-xl text-cyan-200">{taskSummary ? taskSummary.claimed : '—'}</p></div>
         </div>
+        {taskSummaryError && <p className="relative mt-2 text-[10px] text-amber-300">Live task counts could not be refreshed. Please try again shortly.</p>}
       </section>
 
       <Stage6EngagementHub active={activeView} onChange={setActiveView} onZpReward={onRefreshVerifiedEconomy} notify={notify} />
