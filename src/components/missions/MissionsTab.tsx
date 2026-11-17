@@ -36,24 +36,24 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
   const claimedCount = trackedMissions.filter((mission) => missionStatus(state, mission, now) === 'claimed').length;
 
   return (
-    <div className="space-y-6 pb-2">
-      <section className="relative overflow-hidden rounded-2xl border border-neon/25 bg-gradient-to-br from-neon/10 via-[#07110d] to-cyan-500/5 p-5">
+    <div className="min-w-0 space-y-5 pb-3 sm:space-y-6 sm:pb-2">
+      <section className="relative min-w-0 overflow-hidden rounded-2xl border border-neon/25 bg-gradient-to-br from-neon/10 via-[#07110d] to-cyan-500/5 p-4 sm:p-5">
         <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-neon/10 blur-3xl" />
-        <div className="relative flex items-start justify-between gap-3">
+        <div className="relative flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-neon-300"><Target size={16} /><p className="label">Task-to-Earn</p></div>
             <h2 className="mt-2 font-display text-2xl font-bold tracking-wide text-white">Your Missions</h2>
             <p className="mt-1 max-w-[260px] text-[11px] leading-relaxed text-neon-500">Complete activities, verify your progress and collect eligible rewards.</p>
           </div>
-          <div className="shrink-0 rounded-xl border border-neon/20 bg-black/30 px-3 py-2 text-right">
+          <div className="shrink-0 rounded-xl border border-neon/20 bg-black/30 px-3 py-2 text-left min-[380px]:text-right">
             <p className="label">Daily reset</p>
             <p className="mt-1 font-display text-sm font-bold tabular-nums text-neon-200">{formatClock(msUntilNextDay(now))}</p>
           </div>
         </div>
-        <div className="relative mt-5 grid grid-cols-1 min-[380px]:grid-cols-3 gap-2">
-          <div className="rounded-xl border border-white/10 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Available</p><p className="mt-1 font-display text-xl text-white">{trackedMissions.length - claimedCount}</p></div>
-          <div className="rounded-xl border border-neon/20 bg-neon/5 p-3"><p className="font-mono text-[9px] uppercase text-neon-500">Ready</p><p className="mt-1 font-display text-xl text-neon-200">{readyCount}</p></div>
-          <div className="rounded-xl border border-white/10 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Claimed</p><p className="mt-1 font-display text-xl text-cyan-200">{claimedCount}</p></div>
+        <div className="relative mt-4 grid grid-cols-3 gap-2 sm:mt-5 sm:gap-3">
+          <div className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Available</p><p className="mt-1 font-display text-xl text-white">{trackedMissions.length - claimedCount}</p></div>
+          <div className="min-w-0 rounded-xl border border-neon/20 bg-neon/5 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-500">Ready</p><p className="mt-1 font-display text-xl text-neon-200">{readyCount}</p></div>
+          <div className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-2.5 sm:p-3"><p className="font-mono text-[9px] uppercase text-neon-600">Claimed</p><p className="mt-1 font-display text-xl text-cyan-200">{claimedCount}</p></div>
         </div>
       </section>
 
@@ -95,12 +95,12 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
       <section className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <Video size={14} className="text-neon-400" />
-          <div className="flex flex-1 items-center justify-between">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">
             <p className="label">Creator Ops</p>
             <button
               type="button"
               onClick={onOpenAdmin}
-              className="font-mono text-[10px] uppercase tracking-wider text-neon-500 transition hover:text-neon-300"
+              className="min-h-9 rounded-md px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-neon-500 transition hover:text-neon-300 sm:text-[10px]"
             >
               Admin Review Queue
             </button>
@@ -193,12 +193,12 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           : 'A trusted verification method has not been configured for this mission. Its reward remains locked.';
 
   return (
-    <article className="panel flex flex-wrap items-start gap-3 p-4 transition-colors hover:border-neon/25 sm:flex-nowrap sm:gap-4">
+    <article className="panel flex min-w-0 flex-wrap items-start gap-3 p-3 sm:p-4 sm:gap-4">
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${legacyClaimed || claimed ? 'border-cyan-300/30 bg-cyan-300/5 text-cyan-200' : 'border-neon/30 bg-neon/5 text-neon-300'}`}>
         {legacyClaimed || claimed ? <Check size={20} /> : <Icon size={20} />}
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="font-display text-sm font-bold tracking-wide text-white">{mission.title}</h3>
+        <h3 className="break-words font-display text-sm font-bold tracking-wide text-white">{mission.title}</h3>
         <p className="mt-1.5 text-[11px] leading-relaxed text-neon-500">{mission.description}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px]">
           <span className="rounded-md border border-neon/20 bg-neon/5 px-2 py-1 font-mono font-semibold text-neon-300">Reward: {formatZp(mission.reward)} {rewardCurrency}</span>
@@ -214,7 +214,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
             type="button"
             onClick={() => void claimTelegramMission()}
             disabled={claiming || claimed || legacyClaimed}
-            className="mt-2 rounded border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-neon-300 disabled:opacity-50"
+            className="mt-2 min-h-11 rounded border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[9px] uppercase tracking-wide text-neon-300 disabled:opacity-50 sm:text-[10px]"
           >
             {claiming ? 'Checking membership...' : claimed || legacyClaimed ? 'Already claimed' : `Verify & claim +${formatZp(mission.reward)} ZP`}
           </button>
@@ -325,8 +325,8 @@ function CreatorOpsCard({
   const Icon = Video;
 
   return (
-    <div className="panel space-y-3 p-4">
-      <div className="flex items-center gap-3">
+    <div className="panel min-w-0 space-y-3 p-3 sm:p-4">
+      <div className="flex min-w-0 items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neon/30 text-neon-400">
           <Icon size={20} />
         </div>
@@ -344,7 +344,7 @@ function CreatorOpsCard({
           <Clock size={12} className="mr-1.5 animate-spin" /> Checking status...
         </div>
       ) : status === 'pending' ? (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2.5 font-mono text-[11px] text-amber-200">
+        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2.5 font-mono text-[10px] text-amber-200 sm:text-[11px]">
           <Clock size={14} className="shrink-0" />
           <span className="flex-1 truncate">Submitted — pending admin review</span>
           <a
@@ -357,7 +357,7 @@ function CreatorOpsCard({
           </a>
         </div>
       ) : status === 'approved' ? (
-        <div className="flex items-center gap-2 rounded-lg border border-neon/40 bg-neon/10 px-3 py-2.5 font-mono text-[11px] text-neon-300">
+        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-neon/40 bg-neon/10 px-3 py-2.5 font-mono text-[10px] text-neon-300 sm:text-[11px]">
           <Check size={14} className="shrink-0" />
           <span className="flex-1">Approved — +{formatZp(submission?.reward_zp ?? mission.reward)} ZP credited</span>
         </div>
@@ -387,7 +387,7 @@ function LinkInput({
   submitting: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-2 min-[420px]:flex-row">
+    <div className="flex min-w-0 flex-col gap-2 min-[420px]:flex-row">
       <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-neon/25 bg-black/50 px-3 py-2">
         <Link2 size={14} className="shrink-0 text-neon-500" />
         <input
@@ -402,7 +402,7 @@ function LinkInput({
         type="button"
         onClick={onSubmit}
         disabled={submitting || !link.trim()}
-        className="btn-primary w-full shrink-0 px-3 py-2 text-[10px] min-[420px]:w-auto"
+        className="btn-primary min-h-11 w-full shrink-0 px-3 py-2 text-[10px] min-[420px]:w-auto"
       >
         {submitting ? 'Sending' : 'Submit'}
       </button>
