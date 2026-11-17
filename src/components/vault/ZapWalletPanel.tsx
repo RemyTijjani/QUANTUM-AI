@@ -315,12 +315,6 @@ export default function ZapWalletPanel({
         <p className="text-[9px] leading-relaxed text-neon-700">
           Conversions are processed securely. The minimum conversion is 1,000 ZP, and ZAP is credited to your ZORD wallet.
         </p>
-      <div className="pt-1">
-        <div className="flex items-center gap-2 text-cyan-300">
-          <Send size={16} />
-          <h2 className="title">Transfer ZAP</h2>
-        </div>
-      </div>
       <div>
         <div className="flex items-center gap-2 text-cyan-300">
           <Send size={16} />
