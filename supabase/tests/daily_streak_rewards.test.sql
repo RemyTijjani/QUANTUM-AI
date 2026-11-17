@@ -61,11 +61,13 @@ begin
     raise exception 'Daily Streak Agent 1 entitlement type is not enabled';
   end if;
 
-  if position('3500' in pg_get_functiondef('public.claim_daily_streak(uuid)'::regprocedure)) = 0
-     or position('3400' in pg_get_functiondef('public.claim_daily_streak(uuid)'::regprocedure)) = 0
-     or position('3000' in pg_get_functiondef('public.claim_daily_streak(uuid)'::regprocedure)) = 0
-     or position('9900' in pg_get_functiondef('public.claim_daily_streak(uuid)'::regprocedure)) = 0 then
-    raise exception 'Daily Streak reward draw buckets do not match approved 35/34/30/1 odds';
+  -- The function uses cumulative boundaries: 3500, 6900, and 9900.
+  -- These produce mutually exclusive buckets of 3500/3400/3000/100 bps.
+  if position('v_roll < 3500' in pg_get_functiondef('public.claim_daily_streak(uuid)'::regprocedure)) = 0
+     or position('v_roll < 6900' in pg_get_functiondef('public.claim_daily_streak(uuid)'::regprocedure)) = 0
+     or position('v_roll < 9900' in pg_get_functiondef('public.claim_daily_streak(uuid)'::regprocedure)) = 0
+     or position('v_reward_type := ''temporary_agent''' in pg_get_functiondef('public.claim_daily_streak(uuid)'::regprocedure)) = 0 then
+    raise exception 'Daily Streak reward draw boundaries do not match approved 35/34/30/1 odds';
   end if;
 end;
 $$;
