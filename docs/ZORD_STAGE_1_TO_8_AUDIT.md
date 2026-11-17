@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-17  
 **Target environment:** Supabase Preview `lchkctclxzwwvfwosava` and GitHub Preview branch `security/trusted-gameplay-migration`  
-**Current code baseline at this audit pass:** `0f4a65b7a7ee3be29420461766eaaefd4d19aee2`  
+**Current code baseline at this audit pass:** `d1bc5c94f652de43762a9d4fe05f9c9b6cee5302`  
 **Production:** Out of scope. No merge to `main`, Production database change, or Production deployment is authorized by this audit.  
 **Scope exclusion:** Stage 9 / ZORD platform expansion and the separate Zord-Agents-bot project are not part of this repository audit.
 
@@ -100,7 +100,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 - Earlier failed CI runs were caused by one unused import in `ZapWalletPanel.tsx`; that error is fixed.
 - The dependency remediation workflow committed the refreshed lockfile (d867cc416ef56b6ee9f85d9e5068d851e01b213f). Its post-fix audit reported 0 vulnerabilities (0 low/moderate/high/critical).
 - Security advisor also reports leaked-password protection disabled. This is an Auth configuration item to review and enable safely.
-- The latest READY Vercel Preview observed is commit `0391b7b882af292d66a44aab4c48894db17fede8`. The active branch is 23 commits ahead at `0f4a65b7a7ee3be29420461766eaaefd4d19aee2`. The difference includes raffle Gram precision UI, exact-string funding/prize handling, the ZAP transfer Edge Function fix, the minimum-transfer migration, and free Alpha Miner accrual. These changes are not yet in the READY Preview. Do not call them deployed.
+- The latest READY Vercel Preview observed is commit `67071773275a1413f58b1492a1a457e2a210b3fb` (deployment `dpl_AMsxhtuZB1fsKh2PrxpkeitQKzH9`). The active branch is 13 commits ahead at `d1bc5c94f652de43762a9d4fe05f9c9b6cee5302`. The branch includes exact Gram amount handling, the new free Alpha Miner accrual, and the Telegram magic-link login migration; these latest changes are not yet in that READY Preview. Do not test Preview login until the frontend and backend are on matching versions.
 - Production has not been changed.
 
 ## Repair order
@@ -124,10 +124,11 @@ This section supersedes older point-in-time statements in this tracker where the
 
 ### Stage 1 — current security posture
 - Fourteen Supabase Edge Functions are ACTIVE in Preview; all 14 deployed function sources were compared with the active branch and match (one file differs only by a trailing newline). The shared event-verification module used by event-participation also matches.
-- Critical deployed function sources were compared with branch source; admin-api was redeployed as version 95 after correcting two malformed UUID validators used by raffle credit actions. gameplay-actions v8, mission-actions v6, and mystery-box-actions v5 are active.
+- Critical deployed function sources were compared with branch source; admin-api v98 is ACTIVE, zap-wallet v7 is ACTIVE, telegram-auth v10 is ACTIVE, gameplay-actions v8, mission-actions v6, mystery-box-actions v5, and ton-wallet v4 are ACTIVE.
 - The nine functions with verify_jwt=false must be understood individually: authenticated functions perform their own bearer-token/admin verification; public-events is an intentional public GET-only read of published future events. Do not treat the setting alone as a vulnerability.
 - Public raffle RPC wrappers for winner selection and ZAP/TON credit are executable by service_role only. Direct EXECUTE has been revoked from PUBLIC/anon/authenticated on the internal raffle helpers.
 - Public application tables with RLS enabled but no policies were checked for direct anon/authenticated privileges; no exposed client table access was found for those no-policy tables. The 76 advisor notices are informational and include private-schema tables intentionally accessed through trusted functions.
+- Telegram authentication was hardened: Preview telegram-auth v10 validates signed initData no older than 10 minutes, rejects initData over 8 KB, no longer derives or returns a reusable password, rotates legacy deterministic passwords once, and returns a one-time Supabase magic-link token hash. The frontend now verifies that token with verifyOtp. The Edge Function is verify_jwt=true and its deployed source matches the branch. This needs an end-to-end Telegram login test after the matching frontend Preview is deployed.
 - The security advisor still reports one warning: leaked-password protection is disabled. This is an Auth configuration setting and remains to be enabled through Supabase Auth settings.
 - Broad default privileges for objects created by postgres in public were restricted for future tables, sequences, and functions; existing grants were not changed. The equivalent defaults for supabase_admin remain broad because the current SQL execution role cannot alter that role's default privileges. This is a residual hardening item, not evidence that current public objects are exposed.
 
@@ -156,7 +157,7 @@ This section supersedes older point-in-time statements in this tracker where the
 
 ### CI and deployment
 - The earlier dependency remediation workflow 44121436055 reported 0 vulnerabilities at that point in time. A new GitHub advisory was added on 2026-11-17 for picomatch through 4.0.7 (GHSA-fc5q-39xc-vjpf / CVE-2026-112366); the latest CI audit now reports 17 HIGH findings across the build/tooling dependency tree. The affected lockfile entries are marked dev-only. The advisory currently lists no fixed version, so do not force a major toolchain downgrade or pretend this is resolved; monitor the upstream fix. The production/runtime dependency tree should be audited separately.
-- The latest READY Vercel Preview observed is commit `0391b7b882af292d66a44aab4c48894db17fede8`; the active branch is seven commits ahead at `796b257ea73c9f9305294895c1f4b1684cf00c95`. The branch's raffle Gram precision UI, ZAP transfer Edge Function fix, and database minimum-transfer migration are not yet included in that Preview deployment.
+- The latest READY Vercel Preview observed is commit `67071773275a1413f58b1492a1a457e2a210b3fb`; the active branch is 13 commits ahead at `d1bc5c94f652de43762a9d4fe05f9c9b6cee5302`. It does not yet include the Telegram magic-link frontend change or later raffle currency-label changes.
 - Production, main, and the separate Zord-Agents-bot project remain untouched.
 
 ### Remaining blockers before Stage 1–8 sign-off
@@ -192,7 +193,7 @@ Stage 1–8 remain **in progress**. This update does not authorize Production de
 
 | Stage | Work to finish | Acceptance gate before sign-off |
 |---|---|---|
-| 1 — System Audit | Complete feature inventory, security grants, RLS, function auth, scheduled-job review, and error-path matrix | Every exposed action has an identified owner, auth boundary, and safe test; no unexplained client-accessible privileged function |
+| 1 — System Audit | Complete feature inventory, security grants, RLS, function auth, scheduled-job review, Telegram login hardening, and error-path matrix | Every exposed action has an identified owner, auth boundary, and safe test; no unexplained client-accessible privileged function; Telegram sign-in uses a fresh signed initData and one-time Auth token |
 | 2 — ZP Economy | Verify rental accrual, fragment accrual, six-hour maturity, pending/verified balances, expiry and retry behavior | Two-player isolation, exact accrual boundary, duplicate-job idempotency, and no direct client balance writes |
 | 3 — Legacy Progression | Test cloud-save version conflicts, reconnect, recovery, and local-state tampering | Stale writes rejected; retries recover; local data cannot overwrite verified economy/progression |
 | 4 — Creator Ops | Test YouTube/TikTok identity, X review, admin queue, duplicate submission, approval/rejection and reward issue | Player-only records, admin-only review, atomic once-only reward, audit history and retry-safe state transitions |
@@ -208,5 +209,13 @@ The roadmap is sequential: do not mark a later stage complete because its UI exi
 - The free Agent 1 entitlement previously activated a timer but was not included in verified ZP accrual. The new Preview migration 20261117194303_accrue_free_alpha_miner_reward_zp.sql creates a private idempotent accrual ledger and settles the configured Alpha Miner rate of 0.1 ZP/second through player_economy and economy_ledger. It is integrated into the existing scheduled/GET accrual entry point and reward inventory refresh.
 - The new accrual table has RLS enabled and no direct grants to client roles; the accrual RPC is service_role-only. Preview currently has zero rows in the new accrual table and zero available/active Agent 1 entitlements, so no real player balance changed during this repair.
 - Raffle prize-pool amounts and custom winner shares now remain decimal strings from the Admin UI through admin-api; Gram external funding amounts are also passed as strings and validated to at most nine decimals. Supabase Preview admin-api v98 is ACTIVE and matches the branch. Its verify_jwt=false setting is intentional: this admin endpoint performs its own rate-limited admin-credential check before processing any action.
-- Preview CI type-check previously caught a type regression where the ZAP funding helper was accidentally changed to accept strings. That was corrected; the next Preview frontend check is running against the corrected branch.
+- Preview CI caught and corrected two frontend typing regressions during the decimal-string and magic-link work. The last fully successful check was run 44161862936 at commit 0f4a65b; the latest check for Telegram auth commit d1bc5c94 is still running.
 - The latest read-only migration-status workflow reports the Join Intel task's telegram_chat_id as @zordcommunity (not null) and its action link as the correct channel URL. Whether the bot is an administrator of that channel has not yet been confirmed.
+
+
+### Additional Stage 1 authentication repair — 2026-11-17
+- The prior Telegram login design derived a permanent Supabase password from BOT_TOKEN and returned it to the browser. It also accepted signed initData for 24 hours.
+- Preview telegram-auth v10 now limits initData age to 600 seconds and size to 8192 bytes, rotates legacy deterministic passwords once to random undisclosed passwords, and returns only a one-time magic-link token hash generated by Supabase Auth. The frontend calls verifyOtp with type magiclink.
+- The version marker is stored in protected app_metadata (not user_metadata), so a client cannot skip password rotation by editing its own profile metadata.
+- The Supabase function is ACTIVE, verify_jwt=true, and its source matches the active branch. The frontend change has not yet reached the latest READY Vercel Preview, so the Preview login flow must not be tested until the matching frontend deployment is READY.
+- No production Auth user, password, or session was changed. Existing Preview users are rotated only when they next complete Telegram authentication through the new function.
