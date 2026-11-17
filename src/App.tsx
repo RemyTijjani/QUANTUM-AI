@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import Header from '@/components/Header';
@@ -18,7 +18,10 @@ import MissionsTab from '@/components/missions/MissionsTab';
 import type { EngagementView } from '@/components/missions/Stage6EngagementHub';
 import VaultTab from '@/components/vault/VaultTab';
 import ZordAgentsTab from '@/components/agents/ZordAgentsTab';
-import { AdminDashboard } from '@/components/admin/AdminReviewModal';
+const AdminDashboard = lazy(async () => {
+  const module = await import('@/components/admin/AdminReviewModal');
+  return { default: module.AdminDashboard };
+});
 import PlayerAnnouncements from '@/components/PlayerAnnouncements';
 
 import { useGame } from '@/hooks/useGame';
@@ -362,14 +365,16 @@ function GameApp({
       )}
 
       {overlay === 'admin' && (
-        <AdminDashboard
-          onClose={() => setOverlay(null)}
-          onApproveSubmission={(rewardZp) => {
-            notify(
-              `Submission approved. +${formatZp(rewardZp)} ZP credited to submitting player`,
-            );
-          }}
-        />
+        <Suspense fallback={<div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 font-mono text-xs text-neon-300">Loading admin console…</div>}>
+          <AdminDashboard
+            onClose={() => setOverlay(null)}
+            onApproveSubmission={(rewardZp) => {
+              notify(
+                `Submission approved. +${formatZp(rewardZp)} ZP credited to submitting player`,
+              );
+            }}
+          />
+        </Suspense>
       )}
 
       <Toast toast={toast} />
