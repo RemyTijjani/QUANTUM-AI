@@ -121,7 +121,6 @@ export default function RafflesScreen() {
     return raffle.status === 'published' ? 'open' : 'closed';
   };
 
-  const winnerMethodText = (raffle: Raffle) => raffle.winner_method === 'random' ? 'Random draw' : 'Admin selected';
 
   const statusText = (raffle: Raffle) => {
     const state = raffleState(raffle);
@@ -201,7 +200,6 @@ export default function RafflesScreen() {
                   <div className="rounded-lg bg-white/[0.03] p-2.5"><p className="text-[9px] text-neon-600">Number of winners</p><p className="mt-1 text-xs font-semibold text-neon-200">{raffle.winner_count}</p></div>
                   <div className="rounded-lg bg-white/[0.03] p-2.5"><p className="text-[9px] text-neon-600">How tickets are counted</p><p className="mt-1 text-[10px] text-neon-300">{raffle.entry_mode === 'one_bet_one_entry' ? 'Each qualifying entry = 1 ticket' : 'Each ' + fmt(raffle.min_bet_zap) + ' ZAP = 1 ticket'}</p></div>
                   <div className="rounded-lg bg-white/[0.03] p-2.5"><p className="text-[9px] text-neon-600">Your tickets</p><p className="mt-1 text-xs font-semibold text-cyan-200">{tickets}</p></div>
-                  <div className="rounded-lg bg-white/[0.03] p-2.5"><p className="text-[9px] text-neon-600">Winner selection</p><p className="mt-1 text-xs font-semibold text-neon-200">{winnerMethodText(raffle)}</p></div>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neon/10 px-4 py-3">
                   <span className="flex items-center gap-1.5 text-[9px] text-neon-600"><Clock3 size={12}/>{statusText(raffle)}</span>
