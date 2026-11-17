@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  Activity,
   Bot,
   Cpu,
   LoaderCircle,
@@ -8,7 +7,6 @@ import {
   ShieldCheck,
   Sparkles,
   Wallet,
-  Zap,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { AGENTS, AGENT_IDS } from '@/lib/game/config';
