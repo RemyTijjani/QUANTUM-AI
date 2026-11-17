@@ -69,7 +69,7 @@ async function authenticateWithBackend(
       type: 'magiclink',
     });
 
-  if (signInError || !sessionData.session) {
+  if (signInError || !sessionData.session || !sessionData.user) {
     throw new Error(
       signInError?.message || 'Failed to establish Supabase session.',
     );
