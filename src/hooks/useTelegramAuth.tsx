@@ -288,6 +288,7 @@ export function AuthProvider({
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
 
@@ -300,6 +301,7 @@ export function useAuth() {
   return ctx;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getStoredReferrerCode(): string | null {
   try {
     return window.localStorage.getItem(REFERRER_KEY);
@@ -308,6 +310,7 @@ export function getStoredReferrerCode(): string | null {
   }
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getStoredPlayer(): AuthPlayer | null {
   return loadStoredPlayer();
 }
