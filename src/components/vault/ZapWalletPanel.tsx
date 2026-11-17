@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowDownUp, CheckCircle2, Coins, Copy, RefreshCw, Send, Wallet } from 'lucide-react';
+import { ArrowDownUp, ArrowLeftRight, CheckCircle2, Coins, Copy, RefreshCw, Send, Wallet, Zap } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { buildReferralLink } from '@/lib/referral';
 import { formatZp } from '@/lib/format';
@@ -228,7 +228,7 @@ export default function ZapWalletPanel({
       <div className="panel space-y-4 p-4">
         <div>
           <div className="flex items-center gap-2 text-cyan-300">
-            <ArrowDownUp size={17} />
+            <Zap size={17} />
             <h2 className="title">Convert points to ZAP</h2>
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-neon-600">
@@ -298,7 +298,7 @@ export default function ZapWalletPanel({
           disabled={!validAmount || submitting || loading || !wallet}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-xs font-bold text-[#041016] transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <ArrowDownUp size={15} className={submitting ? 'animate-pulse' : ''} />
+          <ArrowLeftRight size={15} className={submitting ? 'animate-pulse' : ''} />
           {submitting ? 'Converting…' : 'Convert ZP to ZAP'}
         </button>
 
@@ -315,12 +315,15 @@ export default function ZapWalletPanel({
         <p className="text-[9px] leading-relaxed text-neon-700">
           Conversions are processed securely. The minimum conversion is 1,000 ZP, and ZAP is credited to your ZORD wallet.
         </p>
+      <div className="pt-1">
+        <div className="flex items-center gap-2 text-cyan-300">
+          <Send size={16} />
+          <h2 className="title">Transfer ZAP</h2>
+        </div>
       </div>
-
-      <div className="panel space-y-4 p-4">
-        <div>
-          <div className="flex items-center gap-2 text-cyan-300">
-            <Send size={16} />
+      <div>
+        <div className="flex items-center gap-2 text-cyan-300">
+          <Send size={16} />
             <h2 className="title">Send ZAP</h2>
           </div>
           <p className="mt-1 text-[10px] leading-relaxed text-neon-700">Send ZAP instantly to another ZORD player using their username or referral code.</p>
