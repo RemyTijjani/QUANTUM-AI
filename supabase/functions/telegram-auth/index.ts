@@ -48,6 +48,7 @@ async function validateInitData(
   }
 
   try {
+    if (initData.length > 8192) return null;
     const params = new URLSearchParams(initData);
     const hash = params.get("hash");
 
@@ -114,7 +115,7 @@ async function validateInitData(
     const nowSeconds = Math.floor(Date.now() / 1000);
 
     if (
-      !Number.isFinite(authDate) ||
+      !Number.isSafeInteger(authDate) ||
       authDate <= 0 ||
       nowSeconds - authDate > MAX_INIT_DATA_AGE_SECONDS ||
       authDate > nowSeconds + 60
