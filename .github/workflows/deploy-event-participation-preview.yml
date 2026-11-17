@@ -8,7 +8,6 @@ on:
     paths:
       - 'supabase/functions/event-participation/**'
       - 'supabase/functions/_shared/**'
-      - '.github/workflows/deploy-event-participation-preview.yml'
   workflow_dispatch:
 
 permissions:
@@ -44,6 +43,10 @@ jobs:
         run: |
           if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_PROJECT_REF" ]; then
             echo "Required Supabase GitHub secret or variable is missing."
+            exit 1
+          fi
+          if [ "$SUPABASE_PROJECT_REF" != "lchkctclxzwwvfwosava" ]; then
+            echo "Refusing deployment: this workflow is Preview-only and must target lchkctclxzwwvfwosava."
             exit 1
           fi
           supabase functions deploy event-participation --project-ref "$SUPABASE_PROJECT_REF" --yes
