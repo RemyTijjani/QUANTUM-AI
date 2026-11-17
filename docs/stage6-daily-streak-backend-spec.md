@@ -1,6 +1,6 @@
 # Stage 6 Daily Streaks — Backend Implementation Specification
 
-Status: Product rules approved; Daily Streak migration, trusted gameplay action, and UI source are committed on the active branch. The new migration has not been applied and the updated gameplay Edge Function has not been deployed.
+Status: Daily Streak state/claim RPCs are applied in Preview; `gameplay-actions` v8 is ACTIVE and matches branch source. The approved Days 8–30 ZAP amount is 10–20 whole ZAP (corrected by migration `20261117161031`). UI source is committed and CI type-check/lint/build passed; current Vercel Preview deployment is behind the branch. No live player claim was created during this audit.
 Target: Preview only, active branch `security/trusted-gameplay-migration`.
 Scope: Daily Streak reward claim and progression. Mystery Discovery and Expeditions are separate follow-on services.
 
@@ -24,7 +24,7 @@ Each eligible daily claim selects exactly one outcome from this distribution:
 
 | Outcome | Probability | Reward detail |
 |---|---:|---|
-| ZAP | 35% | Random whole-number amount from 1 to 10 ZAP |
+| ZAP | 35% | Random whole-number amount from 10 to 20 ZAP |
 | Boost | 34% | Daily Streak boost entitlement: 2× Fragment Mining for 6 hours from activation; boosts do not stack or extend an active boost |
 | Mystery Box | 30% | One box: 80% Standard / 20% Premium selection probability; Standard excludes ZAP and the 2× Fragment Mining boost; Premium has separate 10% chances of 1–10 whole ZAP and the 2× Fragment Mining boost; both exclude temporary Agent 1 access |
 | Temporary mining agent | 1% | One free Agent 1 entitlement lasting 24 hours |
@@ -47,7 +47,7 @@ Read-only inspection of Preview project `lchkctclxzwwvfwosava` found:
 - Existing temporary/paid agent rental records: `player_agent_rentals` and `agent_rental_payment_intents`.
 - Existing event participation has a `progress jsonb` field and event definitions include `reward_zap`.
 
-No dedicated Daily Streak state or claim ledger was found. The Mystery Box migration has since created the private ZAP wallet/ledger, reward entitlement, and box inventory tables. Paid agent rental rows remain unsuitable for representing a free 24-hour Agent 1 reward.
+At the initial design snapshot, no dedicated Daily Streak state or claim ledger was found. The subsequent Preview migrations created the private Daily Streak state/claim ledger, ZAP wallet/ledger, reward entitlements, and Mystery Box inventory. Paid agent rental rows remain unsuitable for representing a free 24-hour Agent 1 reward.
 
 ## 3. Proposed trusted data model
 
@@ -116,7 +116,7 @@ Extend `gameplay-actions` with a minimal action such as `claim_daily_streak`.
 ## 7. Decisions/prerequisites still open
 
 These are not invented by this specification:
-1. The 1–10 whole-ZAP amount is uniformly selected; each amount has equal probability.
+1. The 10–20 whole-ZAP amount is uniformly selected across the 11 integer values; each amount has equal probability. This is separate from the Premium Mystery Box's 10% prize of 1–10 whole ZAP.
 2. Standard Box excludes ZAP. Premium Box has a 10% chance to award 1–10 whole ZAP. Free Agent 1 remains exclusive to the 1% Daily Streak outcome. A Fragment reward is available in Premium Boxes only, with a 10% prize chance. It is a 2× multiplier on the player's current Fragment Mining rate for six hours from activation. Standard Boxes do not contain this boost. It is not a fixed fragment amount; the extra mining output can contribute toward both unlocking new fragments and repairing damaged fragments. It follows the same no-stacking/no-extension rule as the approved boost. Both Standard and Premium Boxes may award one of ten ZP prizes: 100, 200, 300, 400, 500, 600, 700, 800, 900, or 1,000 ZP. The approved Premium Box distribution is:
 
 | Premium Box prize | Probability |
@@ -160,13 +160,13 @@ Standard excludes ZAP and the Fragment Mining boost. It has an 11% chance of an 
 6. Boost, box, and temporary Agent 1 rewards use the private entitlement model. Activation and the corresponding live mining/agent effects remain separate integration work.
 7. The ad provider will be supplied later; design an ad reward slot, but do not integrate a provider until selected.
 
-No migration, database write, reward claim, Edge Function deployment, or Production change is authorized or performed by this specification commit.
+Historical note: this specification began as a design-only document. Subsequent Preview migrations and deployments are recorded in the Stage 1–8 audit tracker; Production remains untouched.
 
 
 ## 8. Current source implementation notes
 
-The source-only migration `20261114180000_trusted_daily_streak_rewards.sql` creates private UTC streak state and immutable claim records, extends reward entitlements with a Daily Streak Agent 1 type, and provides service-role-only claim/state RPCs. The claim RPC uses a row lock to serialize claims, applies ZP/ZAP credits and ledgers atomically, and calls the existing idempotent Mystery Box grant RPC for box outcomes. Boost and Agent 1 are issued as activation entitlements with six-hour and 24-hour durations respectively.
+The applied Preview migration `20261114134618_trusted_daily_streak_rewards.sql` creates private UTC streak state and immutable claim records, extends reward entitlements with a Daily Streak Agent 1 type, and provides service-role-only claim/state RPCs. The corrective migration `20261117161031_correct_daily_streak_zap_reward_range.sql` changes the Days 8–30 ZAP draw to uniform 10–20 whole ZAP. The claim RPC uses a row lock to serialize claims, applies ZP/ZAP credits and ledgers atomically, and calls the idempotent Mystery Box grant RPC for box outcomes. Boost and Agent 1 are issued as activation entitlements with six-hour and 24-hour durations respectively.
 
 The `gameplay-actions` Edge Function source exposes `get_daily_streak_state` and `claim_daily_streak`, deriving the player ID from the verified Supabase session. The Stage 6 Streaks screen source calls these actions and refreshes verified ZP after ZP rewards.
 
-The new migration, Edge Function source update, and UI source have not been deployed or applied. No streak claim or reward transaction has been run. The 2× boost mining effect and temporary Agent 1 runtime activation are not claimed to be live until their activation integrations are implemented and verified.
+`gameplay-actions` v8 is deployed and its source matches the Preview branch. The Daily Streak UI source is committed and passed the CI build, but the Vercel Preview deployment is behind the latest branch. No live player streak claim was run during this audit. The 2× boost mining effect and temporary Agent 1 runtime activation are not claimed to be live until their activation integrations are implemented and verified.
