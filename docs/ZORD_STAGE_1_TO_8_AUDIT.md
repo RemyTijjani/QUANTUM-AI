@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-17  
 **Target environment:** Supabase Preview `lchkctclxzwwvfwosava` and GitHub Preview branch `security/trusted-gameplay-migration`  
-**Current code baseline at this audit pass:** `a7f0badfd8d8a1c8b54a52a3cf2840467c948136`  
+**Current code baseline at this audit pass:** `d2c834bb15cac07c74f0d0c396a2473f5105b990`  
 **Production:** Out of scope. No merge to `main`, Production database change, or Production deployment is authorized by this audit.  
 **Scope exclusion:** Stage 9 / ZORD platform expansion and the separate Zord-Agents-bot project are not part of this repository audit.
 
@@ -55,7 +55,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 ### Stage 5 — Trusted Gameplay Backend Migration
 
 - Trusted gameplay, mission claims, fragment unlock/fix, daily streak claims, reward entitlements, and player-owned identity checks are present.
-- The Preview migration ledger currently contains 112 versions, while the branch contains 116 SQL migration files. A comparison found 19 branch migration versions absent from the applied ledger and 15 applied versions without a matching filename in the branch. These are historical migration mismatches; no missing migration was blindly replayed. This is migration-history drift, not permission to replay files.
+- The Preview migration ledger currently contains 113 versions, while the branch contains 117 SQL migration files. A comparison found 19 branch migration versions absent from the applied ledger and 15 applied versions without a matching filename in the branch. These are historical migration mismatches; no missing migration was blindly replayed. This is migration-history drift, not permission to replay files.
 - The Stage 5 reconciliation plan now includes a dated 2026-11-17 update and explicitly supersedes the earlier no-ledger snapshot.
 - No bulk migration replay, migration repair, baseline replacement, or schema reset has been performed during this audit.
 - Supabase advisors report missing foreign-key indexes and RLS init-plan opportunities. These need table-by-table review before adding indexes or changing policies.
@@ -100,7 +100,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 - Earlier failed CI runs were caused by one unused import in `ZapWalletPanel.tsx`; that error is fixed.
 - The dependency remediation workflow committed the refreshed lockfile (d867cc416ef56b6ee9f85d9e5068d851e01b213f). Its post-fix audit reported 0 vulnerabilities (0 low/moderate/high/critical).
 - Security advisor also reports leaked-password protection disabled. This is an Auth configuration item to review and enable safely.
-- The latest READY Vercel Preview observed is commit `67071773275a1413f58b1492a1a457e2a210b3fb` (deployment `dpl_AMsxhtuZB1fsKh2PrxpkeitQKzH9`). The active branch is 16 commits ahead at `a7f0badfd8d8a1c8b54a52a3cf2840467c948136`. The branch includes exact Gram amount handling, the new free Alpha Miner accrual, and the Telegram magic-link login migration; these latest changes are not yet in that READY Preview. Do not test Preview login until the frontend and backend are on matching versions.
+- The latest READY Vercel Preview observed is commit `67071773275a1413f58b1492a1a457e2a210b3fb` (deployment `dpl_AMsxhtuZB1fsKh2PrxpkeitQKzH9`). The active branch is 21 commits ahead at `d2c834bb15cac07c74f0d0c396a2473f5105b990`. The branch includes exact Gram amount handling, the new free Alpha Miner accrual, and the Telegram magic-link login migration; these latest changes are not yet in that READY Preview. Do not test Preview login until the frontend and backend are on matching versions.
 - Production has not been changed.
 
 ## Repair order
@@ -133,7 +133,7 @@ This section supersedes older point-in-time statements in this tracker where the
 - Broad default privileges for objects created by postgres in public were restricted for future tables, sequences, and functions; existing grants were not changed. The equivalent defaults for supabase_admin remain broad because the current SQL execution role cannot alter that role's default privileges. This is a residual hardening item, not evidence that current public objects are exposed.
 
 ### Stage 5 — migration and backend repair
-- Preview migration ledger is present and currently records 112 versions. The branch contains 116 migration files: 19 branch versions are not recorded remotely and 15 remote versions have no matching filename in the branch. Do not replay or repair these histories without the migration-by-migration reconciliation and data-effect review.
+- Preview migration ledger is present and currently records 113 versions. The branch contains 117 migration files: 19 branch versions are not recorded remotely and 15 remote versions have no matching filename in the branch. Do not replay or repair these histories without the migration-by-migration reconciliation and data-effect review.
 - Applied and tracked Preview hardening migrations:
   - 20261117160203_harden_internal_raffle_helper_execute_grants.sql
   - 20261117160739_restrict_postgres_public_default_client_privileges.sql
@@ -164,7 +164,7 @@ This section supersedes older point-in-time statements in this tracker where the
 1. Reconcile all 19 pending branch migration versions and 15 remote-only versions without replaying historical SQL blindly.
 2. Enable leaked-password protection in Supabase Auth settings.
 3. Resolve supabase_admin default-privilege hardening through an authorized owner-level change, without modifying managed-schema defaults.
-4. Complete safe end-to-end tests for TON raffle selection/credit, ZAP transfer symmetry/idempotency, daily streak duplicate/concurrent claims, Mystery Box activation, expedition rewards, Creator Ops review isolation, and referral kickback claims.
+4. Complete safe end-to-end tests for TON raffle selection/credit, ZAP transfer symmetry/idempotency, daily streak duplicate/concurrent claims, Mystery Box activation, expedition rewards, Creator Ops review isolation, and the new multi-source referral kickback claim flow.
 5. Implement a verifiable Share Uplink completion path; keep its reward locked until then.
 6. Confirm the bot is an admin in @zordcommunity and verify membership checks.
 7. Run a controlled test for the 6-hour boost and 24-hour free Alpha Miner accrual; verify server timer, exact 0.1 ZP/s ledger credit, idempotency, and expiry.
@@ -210,6 +210,7 @@ The roadmap is sequential: do not mark a later stage complete because its UI exi
 ### Additional Stage 6 and Stage 7 findings — 2026-11-17
 - The free Agent 1 entitlement previously activated a timer but was not included in verified ZP accrual. The new Preview migration 20261117194303_accrue_free_alpha_miner_reward_zp.sql creates a private idempotent accrual ledger and settles the configured Alpha Miner rate of 0.1 ZP/second through player_economy and economy_ledger. It is integrated into the existing scheduled/GET accrual entry point and reward inventory refresh.
 - The new accrual table has RLS enabled and no direct grants to client roles; the accrual RPC is service_role-only. Preview currently has zero rows in the new accrual table and zero available/active Agent 1 entitlements, so no real player balance changed during this repair.
+- Referral kickbacks now support legacy Fragment rewards, current Fragment accruals, paid-agent accruals, and free Agent 1 accruals. The new private source-event ledger preserves direct 5%, second-level 1%, Overclock 2×, 24-hour hold, and monthly-budget allocation. Preview had zero referral relationships and zero kickback entries/ledger rows when applied, so no historical or player credit was created. A controlled referral-chain test remains pending.
 - Raffle prize-pool amounts and custom winner shares now remain decimal strings from the Admin UI through admin-api; Gram external funding amounts are also passed as strings and validated to at most nine decimals. Supabase Preview admin-api v98 is ACTIVE and matches the branch. Its verify_jwt=false setting is intentional: this admin endpoint performs its own rate-limited admin-credential check before processing any action.
 - Preview CI caught and corrected two frontend typing regressions during the decimal-string and magic-link work. The last fully successful check was run 44161862936 at commit 0f4a65b; the latest check for Telegram auth commit d1bc5c94 is still running.
 - The latest read-only migration-status workflow reports the Join Intel task's telegram_chat_id as @zordcommunity (not null) and its action link as the correct channel URL. Whether the bot is an administrator of that channel has not yet been confirmed.
@@ -228,3 +229,11 @@ The roadmap is sequential: do not mark a later stage complete because its UI exi
 - Preview agent-rental-payments v4 now hard-blocks create_intent until explicit live-launch approval. verify_payment remains available only for already-created intents so a transfer already sent can still be reconciled. The underlying RPCs are service_role-only.
 - Two pending payment intents remain in Preview (one expired, one near its expiry at audit time), both without a transaction hash in the database. No new intent was created by this repair, no payment was verified, and no rental was activated. Do not cancel or mark these records paid until their on-chain state is reconciled.
 - Vercel's deployment API rejected the current Preview build with HTTP 402 (api-deployments-free-per-day; retry after 24 hours). The latest READY Preview remains commit 67071773275a1413f58b1492a1a457e2a210b3fb. The current branch is 16 commits ahead. The frontend auth migration is therefore not yet on the READY Preview; do not test Telegram login on the old Preview frontend against the new telegram-auth backend until Vercel quota is resolved and the matching build is READY.
+
+
+### Additional Stage 7 referral accounting repair — 2026-11-17
+- Preview migration 20261117200445_generalize_referral_kickbacks_for_all_mining_sources.sql adds source-event identity to the private referral entries and ledger tables.
+- A single private SECURITY DEFINER recorder now accepts validated source records from legacy Fragment rewards, current Fragment mining accruals, paid-agent rental accruals, and the free Alpha Miner entitlement. Fragment release, paid-agent accrual, and free-agent accrual call it only after the ZP credit is committed in the same database transaction.
+- The old Fragment referral recorder now delegates to the generic source recorder. Allocation, player history, and claim ledger entries preserve the source-event type and ID.
+- The new recorder has no EXECUTE grants for PUBLIC, anon, authenticated, or service_role; it is invoked only by trusted SECURITY DEFINER functions. The new private tables/columns remain inaccessible to client roles.
+- Preview had zero referral relationships, zero kickback entries, and zero kickback ledger rows at migration time. A no-referrer dry call returned without creating rows. No existing mining accruals were backdated and no player balances changed.
