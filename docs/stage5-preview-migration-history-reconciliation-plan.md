@@ -507,8 +507,8 @@ All checks in run `43573581263` were read-only. No database write, ACL change, m
 
 The earlier 48-file / zero-ledger snapshot above is historical and must not be used as the current migration baseline.
 
-- The Preview migration ledger now exists and records 112 applied versions.
-- The active branch currently contains 116 SQL migration files. The latest comparison found 19 branch migration versions absent from the remote ledger and 15 remote applied versions without a matching filename in the branch.
+- The Preview migration ledger now exists and records 113 applied versions.
+- The active branch currently contains 117 SQL migration files. The latest comparison found 19 branch migration versions absent from the remote ledger and 15 remote applied versions without a matching filename in the branch.
 - These 34 mismatches are not permission to replay, repair, delete, rename, or baseline migrations. Reconcile each version against the live schema, function definitions, data effects, and the exact historical SQL before proposing any migration-history operation.
 - New Preview migrations applied and tracked after the earlier snapshot:
   - 20261117160203_harden_internal_raffle_helper_execute_grants.sql
@@ -518,6 +518,7 @@ The earlier 48-file / zero-ledger snapshot above is historical and must not be u
   - 20261117161650_support_gram_raffle_reservation_precision.sql
   - 20261117162619_enforce_minimum_zap_transfer_in_database.sql
   - 20261117194303_accrue_free_alpha_miner_reward_zp.sql
+  - 20261117200445_generalize_referral_kickbacks_for_all_mining_sources.sql
 - Direct EXECUTE on internal raffle SECURITY DEFINER helpers has been revoked from PUBLIC, anon, and authenticated. Public raffle winner-selection and credit wrappers remain service_role-only.
 - Default privileges for future public-schema objects created by postgres now revoke client access to tables, sequences, and functions. The corresponding supabase_admin defaults remain broad because the current execution role cannot alter that role's defaults; this requires an authorized owner-level change.
 - The current security advisor reports 76 INFO notices for RLS-enabled tables without policies and one WARN for leaked-password protection disabled. Public no-policy tables were checked for direct anon/authenticated privileges; no exposed client table access was found in that check.
@@ -529,3 +530,7 @@ The earlier statements in this document that the migration ledger is absent, tha
 
 ## Telegram authentication hardening note — 2026-11-17
 The Preview Edge Function telegram-auth is now v10. It uses a 10-minute signed-initData freshness window, rejects payloads over 8 KB, migrates legacy deterministic-password accounts to random undisclosed passwords once, and returns a one-time Supabase magic-link token hash. The matching frontend verifies the token with verifyOtp. This is a Preview-only auth change; an end-to-end login test remains pending until the matching Vercel Preview frontend is READY.
+
+
+## Referral source-event migration — 2026-11-17
+Preview migration 20261117200445_generalize_referral_kickbacks_for_all_mining_sources.sql extends the private kickback ledger to reference Fragment, paid-agent, and free-Agent-1 accrual events. It does not create retroactive entries. The Preview currently has no referral graph/entries, so the migration is schema and function integration only; a controlled two-level referral test is still required.
