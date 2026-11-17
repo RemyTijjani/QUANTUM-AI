@@ -107,6 +107,7 @@ Deno.serve(async (req: Request) => {
         agentClaimResult,
         telegramClaimResult,
         creatorSubmissionResult,
+        xFollowSubmissionResult,
         activeRentalResult,
       ] = await Promise.all([
         admin.from("mission_tasks")
@@ -134,6 +135,12 @@ Deno.serve(async (req: Request) => {
         admin.from("creator_ops_submissions")
           .select("mission_id, status")
           .eq("player_id", player.id),
+        admin.from("x_follow_submissions")
+          .select("status")
+          .eq("player_id", player.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
         admin.from("player_agent_rentals")
           .select("id")
           .eq("player_id", player.id)
@@ -145,7 +152,7 @@ Deno.serve(async (req: Request) => {
 
       const queryError = missionResult.error || dailyClaimResult.error ||
         agentClaimResult.error || telegramClaimResult.error ||
-        creatorSubmissionResult.error || activeRentalResult.error;
+        creatorSubmissionResult.error || xFollowSubmissionResult.error || activeRentalResult.error;
       if (queryError) {
         console.error("Task status summary lookup failed:", queryError);
         return json({ error: "Task progress could not be loaded right now." }, 500);
@@ -172,6 +179,11 @@ Deno.serve(async (req: Request) => {
             : (activeRentalResult.data?.length ?? 0) > 0 ? "ready" : "locked";
         } else if (mission.kind === "social" && typeof mission.telegram_chat_id === "string" && mission.telegram_chat_id.trim()) {
           statuses[mission.id] = telegramClaims.has(mission.id) ? "claimed" : "ready";
+        } else if (mission.id === "follow-signal" && mission.kind === "social") {
+          const xStatus = xFollowSubmissionResult.data?.[0]?.status;
+          statuses[mission.id] = xStatus === "approved"
+            ? "claimed"
+            : xStatus === "pending" ? "pending" : "ready";
         } else if (mission.kind === "creator") {
           const creatorStatus = creatorStatuses.get(mission.id);
           statuses[mission.id] = creatorStatus === "approved"
