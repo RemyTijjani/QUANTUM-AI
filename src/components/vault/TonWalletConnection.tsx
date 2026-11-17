@@ -1,3 +1,4 @@
+import { formatGram } from '@/lib/format';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Clock3, LoaderCircle, ShieldCheck, Unplug, Wallet } from 'lucide-react';
 import { loadTonConnectUI } from '@/lib/ton-connect';
@@ -187,7 +188,7 @@ export default function TonWalletConnection() {
   const isMainnet = wallet?.account.chain === '-239';
   const isVerified = walletData?.wallet?.verification_status === 'verified' && (!wallet || (wallet.account.chain === '-239' && rawTonAddress(wallet.account.address) === walletData.wallet.wallet_address));
   const availableNano = walletData?.balance.availableNano ?? '0';
-  const availableTon = Number(nanoTonToTon(availableNano));
+  const availableTon = nanoTonToTon(availableNano);
   const hasEnough = (() => {
     try {
       return withdrawAmount.trim() !== '' && BigInt(tonToNanoTon(withdrawAmount)) > 0n &&
@@ -247,7 +248,7 @@ export default function TonWalletConnection() {
           <p className="label">Gram withdrawal</p>
           <button type="button" className="text-[9px] text-neon-500 underline" disabled={loadingData} onClick={() => void refreshWalletData()}>Refresh</button>
         </div>
-        <p className="mt-2 font-display text-2xl font-bold text-white">{loadingData ? '—' : availableTon.toLocaleString(undefined, { maximumFractionDigits: 9 })} <span className="text-xs font-normal text-neon-500">Gram available</span></p>
+        <p className="mt-2 font-display text-2xl font-bold text-white">{loadingData ? '—' : formatGram(availableTon)} <span className="text-xs font-normal text-neon-500">Gram available</span></p>
         <p className="mt-1 text-[9px] text-neon-700">Reserved for pending requests: {nanoTonToTon(walletData?.balance.reservedNano ?? '0')} Gram</p>
         {walletData?.wallet && !wallet && <p className="mt-1 text-[9px] text-neon-600">Verified payout wallet: {shortAddress(walletData.wallet.wallet_address)}</p>}
 
@@ -285,7 +286,7 @@ export default function TonWalletConnection() {
                     </p>
                   </div>
                   <p className={`shrink-0 font-display text-sm font-semibold ${incoming ? 'text-emerald-300' : 'text-amber-300'}`}>
-                    {incoming ? '+' : '−'}{nanoTonToTon(entry.amount_nano)} <span className="text-[10px]">Gram</span>
+                    {incoming ? '+' : '−'}{formatGram(nanoTonToTon(entry.amount_nano))} <span className="text-[10px]">Gram</span>
                   </p>
                 </article>
               );
@@ -300,7 +301,7 @@ export default function TonWalletConnection() {
           {walletData?.withdrawals.map((request) => (
             <div key={request.id} className="flex items-center justify-between gap-3 rounded-lg border border-neon/10 bg-black/20 p-3">
               <div>
-                <p className="text-xs text-white">{nanoTonToTon(request.amount_nano)} Gram</p>
+                <p className="text-xs text-white">{formatGram(nanoTonToTon(request.amount_nano))} Gram</p>
                 <p className="mt-1 text-[9px] text-neon-700">{new Date(request.created_at).toLocaleDateString()}</p>
               </div>
               <span className="rounded-full border border-neon/20 px-2 py-1 text-[9px] capitalize text-neon-300">{formatStatus(request.status)}</span>
