@@ -53,8 +53,9 @@ export default function AdminExternalTonFunding({ creds }: { creds: AdminCredent
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const parsedAmount = Number(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || Number(parsedAmount.toFixed(9)) !== parsedAmount) {
+    const exactAmount = amount.trim();
+    const parsedAmount = Number(exactAmount);
+    if (!/^(?:0|[1-9]\\d{0,10})(?:\\.\\d{1,9})?$/.test(exactAmount) || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       setError('Enter a positive Gram amount with up to 9 decimal places.');
       return;
     }
@@ -72,7 +73,7 @@ export default function AdminExternalTonFunding({ creds }: { creds: AdminCredent
     setSuccess('');
     try {
       const result = await confirmExternalTonFunding(creds, {
-        amount: parsedAmount,
+        amount: exactAmount,
         transactionReference: reference.trim(),
       });
       setSuccess(`Confirmed ${formatTon(result.amount)} Gram. Verified raffle reserve: ${formatTon(result.availableReserve)} Gram.`);
