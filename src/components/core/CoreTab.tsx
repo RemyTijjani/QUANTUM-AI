@@ -1,4 +1,4 @@
-import { FRAGMENT_IDS, FRAGMENT_NAMES } from '@/lib/game/config';
+import { AGENTS, CORE_BASE_RATE, FRAGMENT_IDS, FRAGMENT_NAMES, FRAGMENT_ZP_PER_SEC } from '@/lib/game/config';
 import {
   Store,
   ArrowUpRight,
@@ -24,7 +24,6 @@ interface CoreTabProps {
   onWatchAd: (id: FragmentId) => void;
   onFixFragment: (id: FragmentId) => Promise<boolean>;
   verifiedZpBalance: number | null;
-  verifiedZpLifetime: number | null;
   zapEarned: number | null;
   zapLoading: boolean;
   zapAchievements: ZapAchievements | null;
@@ -44,7 +43,6 @@ export default function CoreTab({
   onWatchAd,
   onFixFragment,
   verifiedZpBalance,
-  verifiedZpLifetime,
   zapEarned,
   zapLoading,
   zapAchievements,
@@ -61,7 +59,12 @@ export default function CoreTab({
   const rate = passiveRate(state, now);
   const miningLeft = state.coreMiningUntil - now;
   const fixed = fixedCount(state);
-  const zpProgress = verifiedZpLifetime === null ? 0 : Math.min(100, (verifiedZpLifetime % 1000) / 10);
+  const maxMiningRate = Math.max(
+    CORE_BASE_RATE + FRAGMENT_ZP_PER_SEC * FRAGMENT_IDS.length,
+    ...Object.values(AGENTS).map((agent) => agent.zpPerSec),
+    rate,
+  );
+  const miningRateProgress = maxMiningRate > 0 ? Math.max(0, Math.min(100, (rate / maxMiningRate) * 100)) : 0;
   const netZapProgress = zapAchievements?.netZap ?? zapEarned;
   const tier = tierInfo(netZapProgress ?? 0);
   const coreRank = zapAchievements?.coreRank;
@@ -136,16 +139,16 @@ export default function CoreTab({
           </div>
         </div>
         <div className="relative mt-3 min-w-0 rounded-xl border border-neon/15 bg-black/30 p-3">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="label">Earning progress</p><span className="text-[9px] text-neon-600">Next milestones</span></div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="label">Mining & ZAP progress</p><span className="text-[9px] text-neon-600">Live rate and next milestones</span></div>
           <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
             <div className="flex flex-col items-center text-center">
-              <div className="grid h-24 w-24 place-items-center rounded-full" style={{background: `conic-gradient(#7cf7c5 ${zpProgress}%, rgba(124,247,197,0.12) 0)`}}>
+              <div className="grid h-24 w-24 place-items-center rounded-full" style={{background: `conic-gradient(#7cf7c5 ${miningRateProgress}%, rgba(124,247,197,0.12) 0)`}}>
                 <div className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-[#07110f]">
-                  <div><p className="font-display text-lg font-bold tabular-nums text-neon-100">{zpProgress.toFixed(0)}%</p><p className="font-mono text-[8px] text-neon-600">ZP</p></div>
+                  <div><p className="font-display text-sm font-bold tabular-nums text-neon-100">{formatRate(rate)}</p><p className="font-mono text-[8px] text-neon-600">ZP/s</p></div>
                 </div>
               </div>
-              <p className="mt-2 text-[10px] font-semibold text-neon-200">Lifetime ZP earned</p>
-              <p className="mt-1 text-[8px] text-neon-700">{verifiedZpLifetime === null ? '—' : `${formatZp(verifiedZpLifetime % 1000)} / 1,000 · next ${formatZp((Math.floor(verifiedZpLifetime / 1000) + 1) * 1000)}`} ZP</p>
+              <p className="mt-2 text-[10px] font-semibold text-neon-200">Estimated mining rate</p>
+              <p className="mt-1 text-[8px] text-neon-700">{fixed} / {FRAGMENT_IDS.length} fragments online · max {formatRate(maxMiningRate)} ZP/s</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="grid h-24 w-24 place-items-center rounded-full" style={{background: `conic-gradient(#67ddff ${zapProgress}%, rgba(103,221,255,0.12) 0)`}}>
@@ -174,7 +177,7 @@ export default function CoreTab({
             </div>
             <p className="mt-2 text-[8px] leading-relaxed text-cyan-800">Every 500 net ZAP advances your Core Rank. Spending ZAP can lower your rank; earning or receiving ZAP can raise it.</p>
           </div>
-          <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">ZP progress uses verified lifetime earnings. Each ZAP ring level requires 100 net ZAP. Progress follows your server-verified net ZAP. Spending reduces unminted progress; minted badges remain yours.</p>
+          <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">The ZP ring shows your estimated live mining rate. Your verified ZP balance is shown separately. Each ZAP ring level requires 100 net ZAP; spending reduces unminted progress, while minted badges remain yours.</p>
         </div>
       </section>
 
@@ -218,7 +221,7 @@ export default function CoreTab({
           className="group flex items-center gap-3 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3 text-left transition hover:border-cyan-300/50"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-300/10 text-cyan-200"><Target size={17} /></span>
-          <span className="min-w-0"><span className="block font-mono text-[10px] font-bold uppercase text-cyan-200">Missions</span><span className="mt-1 block font-mono text-[8px] text-neon-600">Daily tasks & briefings</span></span>
+          <span className="min-w-0"><span className="block font-mono text-[10px] font-bold uppercase text-cyan-200">Missions</span><span className="mt-1 block font-mono text-[8px] text-neon-600">Daily tasks & rewards</span></span>
           <ArrowUpRight size={14} className="ml-auto shrink-0 text-cyan-400" />
         </button>
         <button
@@ -289,7 +292,7 @@ export default function CoreTab({
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
         Each Fragment has its own assigned advertising provider. Ad unlocking will activate after publisher approval and trusted server-side verification. Once unlocked, fix the Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
       </p>
-      <CharacterCard fixed={fixed} lifetimeZp={formatZp(state.lifetimeZp)} rate={formatRate(rate)} />
+      <CharacterCard fixed={fixed} rate={formatRate(rate)} />
 
 
 
