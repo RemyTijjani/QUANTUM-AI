@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-17  
 **Target environment:** Supabase Preview `lchkctclxzwwvfwosava` and GitHub Preview branch `security/trusted-gameplay-migration`  
-**Current code baseline at this audit pass:** `d1bc5c94f652de43762a9d4fe05f9c9b6cee5302`  
+**Current code baseline at this audit pass:** `a7f0badfd8d8a1c8b54a52a3cf2840467c948136`  
 **Production:** Out of scope. No merge to `main`, Production database change, or Production deployment is authorized by this audit.  
 **Scope exclusion:** Stage 9 / ZORD platform expansion and the separate Zord-Agents-bot project are not part of this repository audit.
 
@@ -100,7 +100,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 - Earlier failed CI runs were caused by one unused import in `ZapWalletPanel.tsx`; that error is fixed.
 - The dependency remediation workflow committed the refreshed lockfile (d867cc416ef56b6ee9f85d9e5068d851e01b213f). Its post-fix audit reported 0 vulnerabilities (0 low/moderate/high/critical).
 - Security advisor also reports leaked-password protection disabled. This is an Auth configuration item to review and enable safely.
-- The latest READY Vercel Preview observed is commit `67071773275a1413f58b1492a1a457e2a210b3fb` (deployment `dpl_AMsxhtuZB1fsKh2PrxpkeitQKzH9`). The active branch is 13 commits ahead at `d1bc5c94f652de43762a9d4fe05f9c9b6cee5302`. The branch includes exact Gram amount handling, the new free Alpha Miner accrual, and the Telegram magic-link login migration; these latest changes are not yet in that READY Preview. Do not test Preview login until the frontend and backend are on matching versions.
+- The latest READY Vercel Preview observed is commit `67071773275a1413f58b1492a1a457e2a210b3fb` (deployment `dpl_AMsxhtuZB1fsKh2PrxpkeitQKzH9`). The active branch is 16 commits ahead at `a7f0badfd8d8a1c8b54a52a3cf2840467c948136`. The branch includes exact Gram amount handling, the new free Alpha Miner accrual, and the Telegram magic-link login migration; these latest changes are not yet in that READY Preview. Do not test Preview login until the frontend and backend are on matching versions.
 - Production has not been changed.
 
 ## Repair order
@@ -187,6 +187,8 @@ Stage 1–8 remain **in progress**. This update does not authorize Production de
 - The backend verifies mainnet network ID `-239`, the expected TON Connect domain, proof timestamp, one-time challenge payload, StateInit-derived wallet address, public key, and signature before saving a wallet.
 - Challenge creation, challenge consumption, wallet save, and withdrawal request RPCs are executable only by `service_role`; direct execution is denied to `anon` and `authenticated`.
 - Gram withdrawal requests reserve the amount atomically, use idempotency keys, and require admin transitions through pending → approved → processing → paid. Rejection releases the reserved amount. Marking paid requires a transaction hash/reference.
+- Agent rental mainnet intent creation is now hard-disabled in Preview at the Edge Function boundary. Supabase Preview agent-rental-payments v4 is ACTIVE and its source matches the branch. The verify-payment action remains available only to reconcile already-created intents so an on-chain payment already sent is not silently lost. Both intent-creation and payment-confirmation RPCs are service_role-only.
+- Preview currently has two pending agent-rental payment intents: one is already past its payment window and one is near expiry; neither has a transaction hash recorded. They were not cancelled or marked paid during this audit. New payment intents are blocked. Reconcile these existing records before clearing them.
 - This is source/schema/permission verification, not a live wallet-signature or payout test. No TON wallet was connected, no withdrawal was requested, and no mainnet transfer was made during this audit.
 
 ## Stage 1–8 release roadmap and acceptance gates
@@ -219,3 +221,10 @@ The roadmap is sequential: do not mark a later stage complete because its UI exi
 - The version marker is stored in protected app_metadata (not user_metadata), so a client cannot skip password rotation by editing its own profile metadata.
 - The Supabase function is ACTIVE, verify_jwt=true, and its source matches the active branch. The frontend change has not yet reached the latest READY Vercel Preview, so the Preview login flow must not be tested until the matching frontend deployment is READY.
 - No production Auth user, password, or session was changed. Existing Preview users are rotated only when they next complete Telegram authentication through the new function.
+
+
+### Additional Stage 8 payment safety repair — 2026-11-17
+- The rental checkout UI was disabled in Preview, but the backend Edge Function still allowed authenticated users to create new mainnet Gram payment intents directly. This was a backend bypass of the UI lock.
+- Preview agent-rental-payments v4 now hard-blocks create_intent until explicit live-launch approval. verify_payment remains available only for already-created intents so a transfer already sent can still be reconciled. The underlying RPCs are service_role-only.
+- Two pending payment intents remain in Preview (one expired, one near its expiry at audit time), both without a transaction hash in the database. No new intent was created by this repair, no payment was verified, and no rental was activated. Do not cancel or mark these records paid until their on-chain state is reconciled.
+- Vercel's deployment API rejected the current Preview build with HTTP 402 (api-deployments-free-per-day; retry after 24 hours). The latest READY Preview remains commit 67071773275a1413f58b1492a1a457e2a210b3fb. The current branch is 16 commits ahead. The frontend auth migration is therefore not yet on the READY Preview; do not test Telegram login on the old Preview frontend against the new telegram-auth backend until Vercel quota is resolved and the matching build is READY.
