@@ -64,7 +64,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       setSavedMessageKind('error');
     }
     finally { setLoadingDrafts(false); }
-  }, [creds.username, creds.password]);
+  }, [creds]);
   useEffect(() => { void loadDrafts(); }, [loadDrafts]);
 
   const loadReviews = useCallback(async () => {
