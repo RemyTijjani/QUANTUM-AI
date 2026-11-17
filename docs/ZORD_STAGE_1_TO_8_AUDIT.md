@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-17  
 **Target environment:** Supabase Preview `lchkctclxzwwvfwosava` and GitHub Preview branch `security/trusted-gameplay-migration`  
-**Current branch baseline at this audit pass:** `84cc43c50998d6b34dac418d0fe242408c2d8874`  
+**Current branch baseline at this audit pass:** `1a489e3783a2045061557103824bfd50b24b2866`  
 **Production:** Out of scope. No merge to `main`, Production database change, or Production deployment is authorized by this audit.  
 **Scope exclusion:** Stage 9 / ZORD platform expansion and the separate Zord-Agents-bot project are not part of this repository audit.
 
@@ -123,7 +123,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 This section supersedes older point-in-time statements in this tracker where they conflict. It records only work verified against the active Preview project and branch.
 
 ### Stage 1 — current security posture
-- Fourteen Supabase Edge Functions are ACTIVE in Preview.
+- Fourteen Supabase Edge Functions are ACTIVE in Preview; all 14 deployed function sources were compared with the active branch and match (one file differs only by a trailing newline). The shared event-verification module used by event-participation also matches.
 - Critical deployed function sources were compared with branch source; admin-api was redeployed as version 95 after correcting two malformed UUID validators used by raffle credit actions. gameplay-actions v8, mission-actions v6, and mystery-box-actions v5 are active.
 - The nine functions with verify_jwt=false must be understood individually: authenticated functions perform their own bearer-token/admin verification; public-events is an intentional public GET-only read of published future events. Do not treat the setting alone as a vulnerability.
 - Public raffle RPC wrappers for winner selection and ZAP/TON credit are executable by service_role only. Direct EXECUTE has been revoked from PUBLIC/anon/authenticated on the internal raffle helpers.
