@@ -110,9 +110,9 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
           <MissionCard
             key={mission.id}
             mission={mission}
-            status={missionStatus(state, mission, now)}
+            status={statusForMission(mission)}
             notify={notify}
-            onRefreshVerifiedEconomy={onRefreshVerifiedEconomy}
+            onRefreshVerifiedEconomy={refreshAfterTaskAction}
           />
         ))}
       </section>
@@ -233,7 +233,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
         </div>
         {mission.actionUrl && <a href={mission.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-cyan-300 underline">Open mission <ExternalLink size={10} /></a>}
         {mission.id === 'follow-signal' ? (
-          <XFollowSubmissionCard notify={notify!} />
+          <XFollowSubmissionCard notify={notify!} onStatusChanged={onRefreshVerifiedEconomy} />
         ) : mission.id === 'daily-uplink' ? (
           <DailyUplinkClaim notify={notify!} onClaimed={onRefreshVerifiedEconomy!} />
         ) : mission.telegramChatId ? (
@@ -258,7 +258,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           <p className="mt-2 font-mono text-[9px] leading-relaxed text-amber-300">{unavailableReason}</p>
         )}
       </div>
-      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : pendingReview ? 'Pending review' : mission.telegramChatId || mission.id === 'agent-uptime' ? 'Verify' : 'Setup needed'}</span>
+      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : mission.telegramChatId ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : pendingReview ? 'Pending review' : mission.id === 'follow-signal' ? 'Submit' : mission.telegramChatId || mission.id === 'agent-uptime' ? 'Verify' : 'Setup needed'}</span>
     </article>
   );
 }
@@ -441,7 +441,7 @@ function LinkInput({
 }
 
 
-function XFollowSubmissionCard({ notify }: { notify: Notify }) {
+function XFollowSubmissionCard({ notify, onStatusChanged }: { notify: Notify; onStatusChanged?: () => Promise<void> | void }) {
   const [account, setAccount] = useState('');
   const [status, setStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
   const [submittedAccount, setSubmittedAccount] = useState<string | null>(null);
@@ -450,7 +450,9 @@ function XFollowSubmissionCard({ notify }: { notify: Notify }) {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const { data, error } = await supabase.from('x_follow_submissions').select('x_username, status').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) { setLoading(false); return; }
+      const { data, error } = await supabase.from('x_follow_submissions').select('x_username, status').eq('player_id', authData.user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (cancelled) return;
       if (error) notify('Could not load your X Follow submission status.', 'error');
       else if (data) { setStatus(data.status as 'pending' | 'approved' | 'rejected'); setSubmittedAccount(data.x_username); }
@@ -466,6 +468,7 @@ function XFollowSubmissionCard({ notify }: { notify: Notify }) {
       const { data, error } = await supabase.rpc('submit_x_follow_submission', { p_x_account: account.trim() });
       if (error || !data || data.success !== true) { notify(error?.message || data?.error || 'Could not submit your X account. Try again.', 'error'); return; }
       setStatus('pending'); setSubmittedAccount(String(data.xUsername || account.trim()).replace(/^@/, '')); setAccount('');
+      await onStatusChanged?.();
       notify('Your X account was submitted. An Admin will check the follow and review it.');
     } catch (error) { notify(error instanceof Error ? error.message : 'Could not submit your X account.', 'error'); }
     finally { setSubmitting(false); }
