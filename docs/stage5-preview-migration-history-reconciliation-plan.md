@@ -523,7 +523,7 @@ The earlier 48-file / zero-ledger snapshot above is historical and must not be u
 - Default privileges for future public-schema objects created by postgres now revoke client access to tables, sequences, and functions. The corresponding supabase_admin defaults remain broad because the current execution role cannot alter that role's defaults; this requires an authorized owner-level change.
 - The current security advisor reports 76 INFO notices for RLS-enabled tables without policies and one WARN for leaked-password protection disabled. Public no-policy tables were checked for direct anon/authenticated privileges; no exposed client table access was found in that check.
 - Fourteen Preview Edge Functions are ACTIVE. Critical function source/deployment checks and Preview CI checks are recorded in docs/ZORD_STAGE_1_TO_8_AUDIT.md.
-- Stage 5 remains unsigned-off until the 19 pending branch versions and 15 remote-only versions are fully reconciled and an isolated clean baseline is validated.
+- Stage 5 migration-history reconciliation is complete at 114/114. Stage 5 remains unsigned-off only until a final clean database dry-run and isolated baseline validation are completed.
 
 The earlier statements in this document that the migration ledger is absent, that no ACL changes have occurred, and that the branch contains only 48 migration files describe the 2026-11-14 snapshot only. They are not current-state assertions.
 
@@ -534,3 +534,7 @@ The Preview Edge Function telegram-auth is now v10. It uses a 10-minute signed-i
 
 ## Referral source-event migration — 2026-11-17
 Preview migration 20261117200445_generalize_referral_kickbacks_for_all_mining_sources.sql extends the private kickback ledger to reference Fragment, paid-agent, and free-Agent-1 accrual events. It does not create retroactive entries. The Preview currently has no referral graph/entries, so the migration is schema and function integration only; a controlled two-level referral test is still required.
+
+
+## Final migration-history reconciliation — 2026-11-17
+The branch's deployable migration directory now matches the Preview ledger exactly: 114 applied versions and 114 files, with no missing, extra, or duplicate version prefixes. Fifteen migration files were renamed to their already-applied remote version prefixes without changing their contents. Three superseded/draft-only migration files and one source-only ZAP preparation file were moved to docs/migration-notes. No SQL was replayed and no database data was changed by this Git-only reconciliation.
