@@ -126,6 +126,12 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
   };
 
   const claimableWholeZp = kickbacks?.claimableWholeZp ?? 0;
+  const sourceLabel = (source: string | null) => {
+    if (source === 'fragment_accrual' || source === 'legacy_fragment') return 'Fragment mining';
+    if (source === 'agent_rental') return 'Paid agent mining';
+    if (source === 'temporary_agent') return 'Free Alpha Miner';
+    return null;
+  };
 
   return (
     <div className="min-w-0 space-y-5 pb-3 sm:space-y-6 sm:pb-2">
@@ -230,6 +236,7 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
                   <p className="font-display text-xs font-bold text-neon-300">
                     {activity.eventType.replace(/_/g, ' ')}
                     {activity.referralLevel ? ` · Level ${activity.referralLevel}` : ''}
+                    {sourceLabel(activity.sourceEventType) ? ` · ${sourceLabel(activity.sourceEventType)}` : ''}
                   </p>
                   <p className="mt-1 font-mono text-[9px] text-neon-600">
                     {new Date(activity.createdAt).toLocaleString()}
