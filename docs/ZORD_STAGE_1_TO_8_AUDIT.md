@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-17  
 **Target environment:** Supabase Preview `lchkctclxzwwvfwosava` and GitHub Preview branch `security/trusted-gameplay-migration`  
-**Current branch baseline at this audit pass:** `1a489e3783a2045061557103824bfd50b24b2866`  
+**Current branch baseline at this audit pass:** `796b257ea73c9f9305294895c1f4b1684cf00c95`  
 **Production:** Out of scope. No merge to `main`, Production database change, or Production deployment is authorized by this audit.  
 **Scope exclusion:** Stage 9 / ZORD platform expansion and the separate Zord-Agents-bot project are not part of this repository audit.
 
@@ -56,7 +56,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 
 - Trusted gameplay, mission claims, fragment unlock/fix, daily streak claims, reward entitlements, and player-owned identity checks are present.
 - The Preview migration ledger currently contains 111 versions, while the branch contains 115 SQL migration files. A comparison found 19 branch migration versions absent from the applied ledger and 15 applied versions without a matching filename in the branch. These are historical migration mismatches; no missing migration was blindly replayed. This is migration-history drift, not permission to replay files.
-- The existing `docs/stage5-preview-migration-history-reconciliation-plan.md` is outdated: it describes an earlier snapshot with no migration ledger. Update it only after the full migration comparison is complete.
+- The Stage 5 reconciliation plan now includes a dated 2026-11-17 update and explicitly supersedes the earlier no-ledger snapshot.
 - No bulk migration replay, migration repair, baseline replacement, or schema reset has been performed during this audit.
 - Supabase advisors report missing foreign-key indexes and RLS init-plan opportunities. These need table-by-table review before adding indexes or changing policies.
 - Remaining: reconcile every migration against live schema and data effects; verify all service-role-only RPC grants; test replay, idempotency, and unauthorized calls; review leaked-password protection setting.
@@ -81,7 +81,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 - ZP-to-ZAP conversion and internal ZAP transfer backend paths exist.
 - Approved rules: 1,000 ZP = 1 ZAP; minimum internal transfer 100 ZAP; working agents generate ZP, not ZAP; ZAP withdrawal is removed from the roadmap; rank/achievement progression is based on net ZAP.
 - Raffle winner selection/credit functions exist in Preview; winner selection now supports both ZAP and TON/Gram, and TON prize amounts/reservations preserve nine decimal places. The Admin API UUID validators for raffle selection and credit were corrected; admin-api v95 is ACTIVE in Preview. The existing LUCKY BOY raffle is currently drawn and credited (one winner); this audit did not change that raffle or issue a prize.
-- The ZAP wallet endpoint was aligned with the database-confirmed transfer amount, rather than echoing the submitted amount.
+- The ZAP transfer Edge Function now passes the validated whole-number amount into the trusted database RPC; the RPC independently enforces the 100 ZAP minimum. The ledger remains the source of truth for balances and net-rank calculations.
 - Remaining: test conversion/transfer idempotency, sender/recipient ledger symmetry, insufficient balance, minimum transfer, self-transfer rejection, net-rank rollback on spend/send, and permanent minted-badge behavior.
 
 ### Stage 8 — Real Integrations and Payments
@@ -100,7 +100,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 - Earlier failed CI runs were caused by one unused import in `ZapWalletPanel.tsx`; that error is fixed.
 - The dependency remediation workflow committed the refreshed lockfile (d867cc416ef56b6ee9f85d9e5068d851e01b213f). Its post-fix audit reported 0 vulnerabilities (0 low/moderate/high/critical).
 - Security advisor also reports leaked-password protection disabled. This is an Auth configuration item to review and enable safely.
-- The latest READY Vercel Preview observed is commit a13faab6216462957326cd5dae881af62f9d18b5, behind the current branch. Newer UI/source changes are committed and passed CI but are not yet on the deployed Preview. Earlier deployment attempts hit Vercel's daily deployment limit; do not retry until it resets.
+- The latest READY Vercel Preview observed is commit `0391b7b882af292d66a44aab4c48894db17fede8` (deployment `dpl_2VsqMy6LG1b7Ax5dyaHgUwSiRzSv`). The active branch is seven commits ahead at `796b257ea73c9f9305294895c1f4b1684cf00c95`. The difference includes raffle Gram precision UI, the ZAP transfer Edge Function fix, and the database minimum-transfer migration. Frontend checks passed for the changed UI/source commits, but these latest changes are not yet in the READY Preview. Do not call them deployed.
 - Production has not been changed.
 
 ## Repair order
@@ -109,10 +109,10 @@ This is a living audit tracker. A feature is not marked complete merely because 
 2. Finish the Stage 5 security review and safe database advisor improvements.
 3. Complete missing Missions actions, beginning with a verifiable Share Uplink flow; keep unverified rewards locked.
 4. Audit every player/admin button against its backend action and visible success/failure state.
-5. Review and safely remediate the 14 npm advisories; rerun type-check, lint, build, and tests.
+5. Dependency remediation is complete: the latest npm audit reported 0 vulnerabilities. Continue running type-check, lint, build, and tests after each code change.
 6. Verify ZP/ZAP, streak, box, raffle, expedition, creator, wallet, and referral flows using safe Preview test accounts and rollback-safe tests.
 7. Finish ad-provider and TON Connect integration checks; keep real mainnet transfers disabled until separately approved.
-8. Deploy the latest branch to Vercel Preview after the daily limit clears, then perform the full Preview acceptance test.
+8. Deploy the latest branch to Vercel Preview when the remaining audit fixes are ready, then perform the full Preview acceptance test. Verify the deployment's commit SHA; do not assume a branch push is live.
 9. Only after the Preview acceptance checklist passes, prepare a separate Production release plan for approval.
 
 **Never treat this tracker as approval to change Production, initiate real payments, replay migrations, or delete player data.**
@@ -155,7 +155,7 @@ This section supersedes older point-in-time statements in this tracker where the
 
 ### CI and deployment
 - Dependency remediation workflow 44121436055 succeeded. It updated compatible packages, ran the force-enabled audit remediation, passed npm run typecheck, npm run lint, and npm run build, and reported 0 remaining npm vulnerabilities.
-- The latest READY Vercel Preview observed remains commit a13faab6216462957326cd5dae881af62f9d18b5; it does not include all later Mission UI changes or the latest lockfile. The current branch has newer tested source, but a fresh Vercel Preview deployment is still blocked by the earlier daily deployment cap.
+- The latest READY Vercel Preview observed is commit `0391b7b882af292d66a44aab4c48894db17fede8`; the active branch is seven commits ahead at `796b257ea73c9f9305294895c1f4b1684cf00c95`. The branch's raffle Gram precision UI, ZAP transfer Edge Function fix, and database minimum-transfer migration are not yet included in that Preview deployment.
 - Production, main, and the separate Zord-Agents-bot project remain untouched.
 
 ### Remaining blockers before Stage 1–8 sign-off
@@ -177,3 +177,27 @@ Stage 1–8 remain **in progress**. This update does not authorize Production de
 - The transfer RPC rejects non-whole amounts, invalid/self recipients through the recipient lookup path, and now rejects every amount below 100 ZAP at the database boundary as well as the Edge Function boundary.
 - The ZAP ledger is the rank source of truth: credit entries add and debit entries subtract. Core rank increments at each 500 net ZAP; the achievement level increments at each 100 net ZAP. Unminted achievements can relock when net ZAP falls; minted achievements remain unlocked.
 - No real ZAP transfer, conversion, Gram payout, or player balance change was performed during this audit. These paths still need safe test-account end-to-end acceptance tests.
+
+
+### Stage 8 focused review — TON Connect and Gram withdrawal
+- `public/tonconnect-manifest.json` is valid JSON and declares the canonical dApp URL `https://zord-autonomous-agent.vercel.app`.
+- The `ton-wallet` Edge Function is ACTIVE as version 4 in Supabase Preview, has `verify_jwt=true`, and its deployed source exactly matches the active branch.
+- The backend verifies mainnet network ID `-239`, the expected TON Connect domain, proof timestamp, one-time challenge payload, StateInit-derived wallet address, public key, and signature before saving a wallet.
+- Challenge creation, challenge consumption, wallet save, and withdrawal request RPCs are executable only by `service_role`; direct execution is denied to `anon` and `authenticated`.
+- Gram withdrawal requests reserve the amount atomically, use idempotency keys, and require admin transitions through pending → approved → processing → paid. Rejection releases the reserved amount. Marking paid requires a transaction hash/reference.
+- This is source/schema/permission verification, not a live wallet-signature or payout test. No TON wallet was connected, no withdrawal was requested, and no mainnet transfer was made during this audit.
+
+## Stage 1–8 release roadmap and acceptance gates
+
+| Stage | Work to finish | Acceptance gate before sign-off |
+|---|---|---|
+| 1 — System Audit | Complete feature inventory, security grants, RLS, function auth, scheduled-job review, and error-path matrix | Every exposed action has an identified owner, auth boundary, and safe test; no unexplained client-accessible privileged function |
+| 2 — ZP Economy | Verify rental accrual, fragment accrual, six-hour maturity, pending/verified balances, expiry and retry behavior | Two-player isolation, exact accrual boundary, duplicate-job idempotency, and no direct client balance writes |
+| 3 — Legacy Progression | Test cloud-save version conflicts, reconnect, recovery, and local-state tampering | Stale writes rejected; retries recover; local data cannot overwrite verified economy/progression |
+| 4 — Creator Ops | Test YouTube/TikTok identity, X review, admin queue, duplicate submission, approval/rejection and reward issue | Player-only records, admin-only review, atomic once-only reward, audit history and retry-safe state transitions |
+| 5 — Trusted Backend | Reconcile 19 branch-only and 15 remote-only migration versions; review remaining security advisor items and RPC grants | No blind replay; clean migration baseline; leaked-password protection enabled; no unintended grants; all critical RPCs tested as anon/authenticated/service_role |
+| 6 — Gameplay UI | Finish Share Uplink completion rule, Telegram membership check, streak/box/expedition/raffle buttons, status counters, responsive and empty/error states | Every visible button has a real backend action or is clearly disabled/hidden; counters match server state; reward paths are idempotent |
+| 7 — ZAP Economy | Test conversion, transfer, sender/recipient ledger, rank rollback, rings, badge permanence, ZAP and TON/Gram raffle prize credits | 1,000 ZP = 1 ZAP; 100 ZAP minimum; exact symmetric ledger; no duplicate credits; net-rank recalculates correctly; safe TON payout test |
+| 8 — Integrations & Payments | Finish ad provider adapters and verified callbacks, TON proof test, rental payment reconciliation, withdrawal and failure paths | No reward from ad click alone; callbacks signed/idempotent; wallet ownership proven; payment receipts reconcile; real payments remain off until separately approved |
+
+The roadmap is sequential: do not mark a later stage complete because its UI exists. A stage passes only after its acceptance gate is evidenced in Preview. Stage 1–8 remain **in progress**; Production is a separate release decision and is not authorized by this roadmap.
