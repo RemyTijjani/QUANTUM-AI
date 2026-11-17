@@ -166,7 +166,7 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
       alreadyClaimed?: boolean;
     };
     setLastClaim(result);
-    if (result.rewardType === 'zp') await onZpReward();
+    await onZpReward();
     await refresh();
     notify(result.alreadyClaimed
       ? 'Today’s Daily Streak reward was already claimed.'
