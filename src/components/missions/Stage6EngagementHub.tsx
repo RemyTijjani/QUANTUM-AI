@@ -129,8 +129,8 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState('');
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
       body: { action: 'get_daily_streak_state' },
     });
@@ -145,7 +145,14 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
   }, []);
 
   useEffect(() => {
+    const refreshQuietly = () => void refresh(true);
     void refresh();
+    const interval = window.setInterval(refreshQuietly, 60000);
+    window.addEventListener('focus', refreshQuietly);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshQuietly);
+    };
   }, [refresh]);
 
   const claim = async () => {
