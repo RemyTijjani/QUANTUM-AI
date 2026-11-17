@@ -177,7 +177,7 @@ Deno.serve(async (req: Request) => {
       const { data: transfer, error: transferError } = await admin.rpc("transfer_player_zap", {
         p_sender_id: player.id,
         p_recipient_identifier: recipientIdentifier,
-        p_amount: amountZap,
+        p_amount: transfer.amount,
         p_idempotency_key: idempotencyKey,
       });
       if (transferError || !transfer?.success) {
