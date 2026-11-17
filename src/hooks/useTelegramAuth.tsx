@@ -59,8 +59,28 @@ async function authenticateWithBackend(
     );
   }
 
-  if (typeof data.tokenHash !== 'string' || !data.tokenHash || !data.referralCode) {
-    throw new Error('Backend returned incomplete player information.');
+  const hasTokenHash =
+    typeof data.tokenHash === 'string' && data.tokenHash.length > 0;
+  const hasReferralCode =
+    typeof data.referralCode === 'string' && data.referralCode.trim().length > 0;
+
+  if (!hasTokenHash || !hasReferralCode) {
+    // Log only response shape/presence, never tokens, referral codes or Telegram data.
+    console.error('Telegram auth response is incomplete:', {
+      responseKeys: Object.keys(data),
+      hasTokenHash,
+      hasReferralCode,
+      hasTelegramId: data.telegramId !== undefined && data.telegramId !== null,
+    });
+
+    const missingFields = [
+      !hasTokenHash ? 'session token' : null,
+      !hasReferralCode ? 'referral code' : null,
+    ].filter(Boolean).join(' and ');
+
+    throw new Error(
+      `Telegram authentication response is missing the ${missingFields}. Please retry.`,
+    );
   }
 
   const { data: sessionData, error: signInError } =
