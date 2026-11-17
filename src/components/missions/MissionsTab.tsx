@@ -282,10 +282,10 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           <button
             type="button"
             onClick={() => void claimAgentUptime()}
-            disabled={claiming || claimed || legacyClaimed}
+            disabled={claiming || claimed || legacyClaimed || status !== 'ready'}
             className="mt-2 rounded border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-neon-300 disabled:opacity-50"
           >
-            {claiming ? 'Verifying 12-hour uptime...' : claimed || legacyClaimed ? 'Already claimed today' : 'Verify uptime & claim 10 ZAP'}
+            {claiming ? 'Verifying 12-hour uptime...' : claimed || legacyClaimed ? 'Already claimed today' : status !== 'ready' ? 'Keep paid agent active for 12 hours' : 'Verify uptime & claim 10 ZAP'}
           </button>
         ) : (
           <p className="mt-2 font-mono text-[9px] leading-relaxed text-amber-300">{unavailableReason}</p>
