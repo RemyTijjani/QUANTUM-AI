@@ -34,7 +34,7 @@ import {
   reviewXFollowSubmission,
   bulkApproveSubmissions,
   saveTask,
-  deleteTask,
+  archiveTask,
   saveVaultReserves,
 } from '@/lib/admin/adminApi';
 
@@ -233,7 +233,7 @@ function AdminConsole({
     await refresh();
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleArchiveTask = async (taskId: string) => {
     const title =
       data.tasks.find((task) => task.id === taskId)?.title ?? taskId;
 
@@ -241,9 +241,9 @@ function AdminConsole({
     setActionError(null);
 
     try {
-      await deleteTask(creds, taskId);
+      await archiveTask(creds, taskId);
 
-      addLog(`[TASK] Deleted task: ${title}`);
+      addLog(`[TASK] Archived task: ${title}`);
 
       await refresh();
     } catch (err) {
@@ -723,7 +723,7 @@ function AdminConsole({
           tasks={data.tasks}
           busyTaskId={busyTaskId}
           onSave={handleSaveTask}
-          onDelete={handleDeleteTask}
+          onArchive={handleArchiveTask}
         />
       )}
 
