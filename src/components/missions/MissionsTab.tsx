@@ -135,7 +135,6 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
           <CreatorOpsCard
             key={mission.id}
             mission={mission}
-            state={state}
             notify={notify}
             onStatusChanged={refreshTaskSummary}
           />
@@ -265,12 +264,10 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
 
 function CreatorOpsCard({
   mission,
-  state,
   notify,
   onStatusChanged,
 }: {
   mission: MissionSpec;
-  state: GameState;
   notify: Notify;
   onStatusChanged: () => Promise<void>;
 }) {
@@ -283,11 +280,20 @@ function CreatorOpsCard({
     let cancelled = false;
 
     const fetchSubmission = async () => {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) {
+        if (!cancelled) {
+          notify('Sign in again to check your Creator Ops submission.', 'error');
+          setLoading(false);
+        }
+        return;
+      }
+
       const { data, error } = await supabase
         .from('creator_ops_submissions')
         .select('*')
+        .eq('player_id', authData.user.id)
         .eq('mission_id', mission.id)
-        .eq('player_referral_code', state.referralCode)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -307,7 +313,7 @@ function CreatorOpsCard({
     return () => {
       cancelled = true;
     };
-  }, [mission.id, state.referralCode, notify]);
+  }, [mission.id, notify]);
 
   const status = submission?.status;
 
