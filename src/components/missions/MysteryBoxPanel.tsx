@@ -121,6 +121,16 @@ export default function MysteryBoxPanel({
   }, [loadInventory]);
 
   useEffect(() => {
+    const refresh = () => void loadInventory(true);
+    const interval = window.setInterval(refresh, 60000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [loadInventory]);
+
+  useEffect(() => {
     const interval = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
