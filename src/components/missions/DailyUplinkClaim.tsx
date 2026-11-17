@@ -65,7 +65,7 @@ export default function DailyUplinkClaim({
   };
 
   return (
-    <div className="mt-3">
+    <div className="min-w-0 mt-3">
       {claimed ? (
         <div className="flex items-center gap-2 rounded-lg border border-sky-400/30 bg-sky-400/5 px-3 py-2 font-mono text-[10px] text-sky-200">
           <Check size={13} />
@@ -79,7 +79,7 @@ export default function DailyUplinkClaim({
           type="button"
           onClick={() => void claim()}
           disabled={loading}
-          className="btn-primary inline-flex items-center justify-center gap-2 px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-primary inline-flex min-h-11 w-full items-center justify-center gap-2 px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
           {loading && <Loader2 size={13} className="animate-spin" />}
           {loading ? 'Verifying claim...' : 'Claim Daily Uplink'}
