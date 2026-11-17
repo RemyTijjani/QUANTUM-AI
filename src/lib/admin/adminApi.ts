@@ -811,7 +811,7 @@ export async function listExternalTonFunding(
 }
 export async function confirmExternalTonFunding(
   creds: AdminCredentials,
-  input: { amount: number; transactionReference: string },
+  input: { amount: string; transactionReference: string },
 ): Promise<{ fundingId: string; amount: number | string; transactionReference: string; destinationWallet: string; confirmedBy: string; confirmedAt: string; availableReserve: number | string }> {
   const body = await callAdminApi(creds, {
     action: 'confirm_external_ton_funding',
@@ -823,7 +823,7 @@ export async function confirmExternalTonFunding(
   }
   const result = body as Record<string, unknown>;
   if (result.success !== true || typeof result.fundingId !== 'string' ||
-      typeof result.availableReserve !== 'number' || typeof result.confirmedAt !== 'string' ||
+      !(typeof result.availableReserve === 'number' || typeof result.availableReserve === 'string') || typeof result.confirmedAt !== 'string' ||
       typeof result.destinationWallet !== 'string') {
     throw new AdminApiError('The external TON funding confirmation could not be verified.');
   }
