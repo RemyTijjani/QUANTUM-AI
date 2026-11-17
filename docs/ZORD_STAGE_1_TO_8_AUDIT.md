@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-17  
 **Target environment:** Supabase Preview `lchkctclxzwwvfwosava` and GitHub Preview branch `security/trusted-gameplay-migration`  
-**Current code baseline at this audit pass:** `d2c834bb15cac07c74f0d0c396a2473f5105b990`  
+**Current code baseline at this audit pass:** `109d95b3a0b82ac8a261dec85bcf2418f713e224`  
 **Production:** Out of scope. No merge to `main`, Production database change, or Production deployment is authorized by this audit.  
 **Scope exclusion:** Stage 9 / ZORD platform expansion and the separate Zord-Agents-bot project are not part of this repository audit.
 
@@ -100,7 +100,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 - Earlier failed CI runs were caused by one unused import in `ZapWalletPanel.tsx`; that error is fixed.
 - The dependency remediation workflow committed the refreshed lockfile (d867cc416ef56b6ee9f85d9e5068d851e01b213f). Its post-fix audit reported 0 vulnerabilities (0 low/moderate/high/critical).
 - Security advisor also reports leaked-password protection disabled. This is an Auth configuration item to review and enable safely.
-- The latest READY Vercel Preview observed is commit `67071773275a1413f58b1492a1a457e2a210b3fb` (deployment `dpl_AMsxhtuZB1fsKh2PrxpkeitQKzH9`). The active branch is 21 commits ahead at `d2c834bb15cac07c74f0d0c396a2473f5105b990`. The branch includes exact Gram amount handling, the new free Alpha Miner accrual, and the Telegram magic-link login migration; these latest changes are not yet in that READY Preview. Do not test Preview login until the frontend and backend are on matching versions.
+- The latest READY Vercel Preview observed is commit `67071773275a1413f58b1492a1a457e2a210b3fb` (deployment `dpl_AMsxhtuZB1fsKh2PrxpkeitQKzH9`). The active branch is ahead of the latest READY Preview; the exact commit distance is recorded in the deployment section below. The branch includes exact Gram amount handling, the new free Alpha Miner accrual, and the Telegram magic-link login migration; these latest changes are not yet in that READY Preview. Do not test Preview login until the frontend and backend are on matching versions.
 - Production has not been changed.
 
 ## Repair order
@@ -161,7 +161,7 @@ This section supersedes older point-in-time statements in this tracker where the
 - Production, main, and the separate Zord-Agents-bot project remain untouched.
 
 ### Remaining blockers before Stage 1–8 sign-off
-1. Reconcile all 19 pending branch migration versions and 15 remote-only versions without replaying historical SQL blindly.
+1. Run the final Supabase migration dry-run/list check after the filename reconciliation; the current Preview ledger and branch now match 114/114 exactly.
 2. Enable leaked-password protection in Supabase Auth settings.
 3. Resolve supabase_admin default-privilege hardening through an authorized owner-level change, without modifying managed-schema defaults.
 4. Complete safe end-to-end tests for TON raffle selection/credit, ZAP transfer symmetry/idempotency, daily streak duplicate/concurrent claims, Mystery Box activation, expedition rewards, Creator Ops review isolation, and the new multi-source referral kickback claim flow.
@@ -237,3 +237,14 @@ The roadmap is sequential: do not mark a later stage complete because its UI exi
 - The old Fragment referral recorder now delegates to the generic source recorder. Allocation, player history, and claim ledger entries preserve the source-event type and ID.
 - The new recorder has no EXECUTE grants for PUBLIC, anon, authenticated, or service_role; it is invoked only by trusted SECURITY DEFINER functions. The new private tables/columns remain inaccessible to client roles.
 - Preview had zero referral relationships, zero kickback entries, and zero kickback ledger rows at migration time. A no-referrer dry call returned without creating rows. No existing mining accruals were backdated and no player balances changed.
+
+
+### Stage 5 migration history reconciliation completed — 2026-11-17
+- Preview migration ledger: 114 versions.
+- Branch deployable migration files: 114.
+- Missing local versions: 0.
+- Remote-only versions: 0.
+- Duplicate version prefixes: 0.
+- Fifteen timestamp prefixes were aligned to the exact already-applied remote versions. Their SQL content was preserved byte-for-byte; no migration was re-executed.
+- Three superseded or draft-only migrations were moved to docs/migration-notes so Supabase CLI will not treat them as pending deployable migrations. The earlier ZAP source-only preparation file was also archived after its safe parts were applied through a new tracked migration.
+- The migration-status workflow is expected to verify the clean 114/114 state. A final clean database dry-run remains a sign-off check, but the prior 19/15 drift is resolved.
