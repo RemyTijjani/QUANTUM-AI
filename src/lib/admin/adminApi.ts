@@ -385,12 +385,12 @@ export async function saveTask(
   });
 }
 
-export async function deleteTask(
+export async function archiveTask(
   creds: AdminCredentials,
   taskId: string,
 ): Promise<void> {
   await callAdminApi(creds, {
-    action: 'delete_task',
+    action: 'archive_task',
     taskId,
   });
 }
