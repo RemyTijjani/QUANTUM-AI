@@ -125,7 +125,7 @@ export default function TemporaryRewardPanel() {
       {boost.map(renderReward)}
       {agent.map(renderReward)}
       <p className="font-mono text-[9px] leading-relaxed text-amber-300">
-        Activation and expiry are controlled by the server. Free Alpha Miner is the 24-hour Agent 1 reward, not a paid rental. An active reward changes the in-game mining estimate while its server timer runs. It does not credit verified ZP or change your wallet balance.
+        Activation and expiry are controlled by the server. Free Alpha Miner is the 24-hour Agent 1 reward, not a paid rental. While active, it earns 0.1 verified ZP per second, credited through the server-side economy ledger. It does not require a Gram payment.
       </p>
       <div className="flex items-center gap-1 font-mono text-[8px] text-neon-700"><Clock3 size={11} /> Timers begin only when you activate a reward.</div>
     </section>
