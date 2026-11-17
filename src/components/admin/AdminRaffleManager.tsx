@@ -14,7 +14,7 @@ import {
 } from '@/lib/admin/adminApi';
 import type { AdminCredentials, AdminRaffleRecord } from '@/lib/admin/adminApi';
 
-const money = (value: number | string, currency: string) => `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency === 'TON' ? 'Gram' : currency}`;
+const money = (value: number | string, currency: string) => `${Number(value).toLocaleString(undefined, { maximumFractionDigits: currency === 'TON' ? 9 : 8 })} ${currency === 'TON' ? 'Gram' : currency}`;
 const errorText = (error: unknown) => error instanceof AdminApiError ? error.message : 'Something went wrong. Please try again.';
 const countdownText = (target: string, now: number) => {
   const total = Math.max(0, Math.floor((new Date(target).getTime() - now) / 1000));
@@ -282,7 +282,7 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
             {(['zap','ton'] as const).map((type) => <button key={type} type="button" onClick={() => setRewardType(type)} className={`rounded-xl border px-3 py-3 text-center transition ${rewardType === type ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-100' : 'border-white/10 bg-[#101a14] text-slate-400'}`}><Gift size={16} className="mx-auto mb-1"/><span className="text-[10px] font-semibold uppercase">{type === 'ton' ? 'Gram' : 'ZAP'}</span></button>)}
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block space-y-1"><span className="text-[10px] text-slate-300">{`Total prize pool (${currency})`}</span><input type="number" inputMode="decimal" min="0.00000001" step="any" value={prizeAmount} onChange={(e) => setPrizeAmount(e.target.value)} required className="w-full rounded-xl border border-white/10 bg-[#0b120e] px-3 py-3 text-sm text-white outline-none focus:border-emerald-400/40"/></label>
+            <label className="block space-y-1"><span className="text-[10px] text-slate-300">{`Total prize pool (${currency})`}</span><input type="number" inputMode="decimal" min={rewardType === 'ton' ? '0.000000001' : '0.00000001'} step="any" value={prizeAmount} onChange={(e) => setPrizeAmount(e.target.value)} required className="w-full rounded-xl border border-white/10 bg-[#0b120e] px-3 py-3 text-sm text-white outline-none focus:border-emerald-400/40"/></label>
             {rewardType === 'zap' && <label className="block space-y-1"><span className="text-[10px] text-slate-300">Where the ZAP prize comes from</span><select value={fundingSource} onChange={(e) => setFundingSource(e.target.value as 'treasury' | 'external')} className="admin-field text-xs"><option value="treasury">ZORD treasury (available funds)</option><option value="external">External deposit (Admin verified)</option></select></label>}
           </div>
           {rewardType === 'ton' && <p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-[10px] leading-relaxed text-amber-200">Gram prizes are funded externally. The deposit must be verified, and the player withdrawal process must be ready before this raffle can be published.</p>}
@@ -336,7 +336,7 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
             {(selectedWinnerIds[raffle.id] ?? []).map((playerId, index) => {
               const entry = (raffle.entries ?? []).find((item) => item.player_id === playerId);
               const label = entry?.players?.username ? '@' + entry.players.username : entry?.players?.first_name || playerId.slice(0, 8);
-              return <label key={playerId} className="flex items-center gap-2 text-[10px] text-slate-300"><span className="min-w-0 flex-1 truncate">{index + 1}. {label}</span><input type="number" min="0.00000001" step="any" placeholder="Equal" value={customWinnerShares[raffle.id]?.[playerId] ?? ''} onChange={(event) => setCustomWinnerShares((current) => ({ ...current, [raffle.id]: { ...(current[raffle.id] ?? {}), [playerId]: event.target.value } }))} className="w-28 rounded-lg border border-white/10 bg-[#0b120e] px-2 py-2 text-right text-[10px] text-white"/></label>;
+              return <label key={playerId} className="flex items-center gap-2 text-[10px] text-slate-300"><span className="min-w-0 flex-1 truncate">{index + 1}. {label}</span><input type="number" min={raffle.prize_currency === 'TON' ? '0.000000001' : '0.00000001'} step="any" placeholder="Equal" value={customWinnerShares[raffle.id]?.[playerId] ?? ''} onChange={(event) => setCustomWinnerShares((current) => ({ ...current, [raffle.id]: { ...(current[raffle.id] ?? {}), [playerId]: event.target.value } }))} className="w-28 rounded-lg border border-white/10 bg-[#0b120e] px-2 py-2 text-right text-[10px] text-white"/></label>;
             })}
           </div>}
           <button type="button" onClick={() => void selectWinners(raffle)} disabled={selectionId !== null || (raffle.winner_method === 'admin' && (selectedWinnerIds[raffle.id] ?? []).length !== raffle.winner_count)} className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-[10px] font-semibold text-emerald-100 disabled:opacity-40">{selectionId === raffle.id ? 'Selecting…' : raffle.winner_method === 'random' ? 'Run random draw' : `Confirm ${raffle.winner_count} selected winner(s)`}</button>
