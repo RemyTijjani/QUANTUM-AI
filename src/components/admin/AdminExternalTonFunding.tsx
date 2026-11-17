@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { ArrowDownToLine, RefreshCw, Loader2, Copy, Check } from 'lucide-react';
+import { formatGram } from '@/lib/format';
 import {
   AdminApiError,
   confirmExternalTonFunding,
@@ -8,7 +9,7 @@ import {
 import type { AdminCredentials, AdminExternalTonFundingRecord, AdminExternalTonFundingSummary } from '@/lib/admin/adminApi';
 
 function formatTon(value: number | string) {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 9 }).format(Number(value));
+  return formatGram(value);
 }
 function formatDate(value: string) {
   const date = new Date(value);
