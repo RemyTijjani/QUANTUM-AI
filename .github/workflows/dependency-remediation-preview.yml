@@ -28,8 +28,8 @@ jobs:
       - name: Install current lockfile
         run: npm ci
 
-      - name: Generate safe lockfile-only audit fixes
-        run: npm audit fix --package-lock-only --ignore-scripts --no-fund || true
+      - name: Generate semver-compatible audit fixes
+        run: npm audit fix --ignore-scripts --no-fund || true
 
       - name: Verify proposed dependency update
         run: |
