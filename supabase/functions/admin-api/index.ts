@@ -377,6 +377,7 @@ interface AdminRequestBody {
     | "fetch_dashboard"
     | "save_task"
     | "delete_task"
+    | "archive_task"
     | "save_vault_reserves"
     | "save_event"
     | "delete_event"
@@ -1963,25 +1964,39 @@ Deno.serve(async (req: Request) => {
       return json({ success: true });
     }
 
-    // DELETE TASK
-    if (body.action === "delete_task") {
-      if (!body.taskId) {
-        return json({ error: "taskId required" }, 400);
+    // Archive tasks instead of deleting them so claims and creator evidence remain auditable.
+    // Keep delete_task as a backwards-compatible alias, but never cascade-delete mission history.
+    if (body.action === "archive_task" || body.action === "delete_task") {
+      const taskId = typeof body.taskId === "string" ? body.taskId.trim() : "";
+      if (!taskId || taskId.length > 120) {
+        return json({ error: "A valid taskId is required." }, 400);
+      }
+
+      const { data: task, error: lookupError } = await db
+        .from("mission_tasks")
+        .select("id, status")
+        .eq("id", taskId)
+        .maybeSingle();
+
+      if (lookupError || !task) {
+        return json({ error: "Mission task not found." }, 404);
+      }
+
+      if (task.status === "archived") {
+        return json({ success: true, archived: true, alreadyArchived: true });
       }
 
       const { error } = await db
         .from("mission_tasks")
-        .delete()
-        .eq("id", body.taskId);
+        .update({ status: "archived", updated_at: new Date().toISOString() })
+        .eq("id", taskId);
 
       if (error) {
-        return json(
-          { error: "Failed to delete task" },
-          500
-        );
+        console.error("Mission task archive failed:", error);
+        return json({ error: "Failed to archive task." }, 500);
       }
 
-      return json({ success: true });
+      return json({ success: true, archived: true, alreadyArchived: false });
     }
 
     // Reserve the complete prize pool before any raffle can be published.
