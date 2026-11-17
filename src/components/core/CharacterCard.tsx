@@ -2,15 +2,14 @@ import { Bot } from 'lucide-react';
 
 interface CharacterCardProps {
   fixed: number;
-  lifetimeZp: string;
   rate: string;
 }
 
-export default function CharacterCard({ fixed, lifetimeZp, rate }: CharacterCardProps) {
+export default function CharacterCard({ fixed, rate }: CharacterCardProps) {
   const stats = [
-    { label: 'Fragments', value: `${fixed}/4` },
-    { label: 'Game lifetime ZP', value: lifetimeZp },
-    { label: 'Displayed rate estimate', value: `${rate} ZP/s` },
+    { label: 'Fragments online', value: `${fixed}/4` },
+    { label: 'Mining rate', value: `${rate} ZP/s` },
+    { label: 'Reward maturity', value: '6 hours' },
   ];
 
   return (
