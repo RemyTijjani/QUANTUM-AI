@@ -44,3 +44,16 @@ export const formatClock = (ms: number) => {
 };
 
 export const truncateAddress = (address: string) => `${address.slice(0, 4)}...${address.slice(-4)}`;
+
+ 
+export const formatGram = (value: number | string, maxFractionDigits = 9) => {
+  const raw = typeof value === 'number'
+    ? (Number.isFinite(value) ? value.toFixed(maxFractionDigits) : '0')
+    : value.trim();
+  const match = raw.match(/^(-?)(\\d+)(?:\\.(\\d+))?$/);
+  if (!match) return '0';
+  const [, sign, wholeRaw, fractionRaw = ''] = match;
+  const whole = BigInt(wholeRaw).toLocaleString('en-US');
+  const fraction = fractionRaw.slice(0, maxFractionDigits).replace(/0+$/, '');
+  return `${sign}${whole}${fraction ? `.${fraction}` : ''}`;
+};
