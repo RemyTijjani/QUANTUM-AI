@@ -271,7 +271,7 @@ export default function TonWalletConnection() {
 
       {(walletData?.transactions.length ?? 0) > 0 && (
         <section className="space-y-2">
-          <p className="label">TON transaction history</p>
+          <p className="label">Gram transaction history</p>
           <div className="rounded-lg border border-neon/10 bg-black/20 px-3">
             {walletData?.transactions.slice(0, 5).map((entry) => {
               const incoming = entry.direction === 'credit';
