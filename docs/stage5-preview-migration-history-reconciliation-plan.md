@@ -525,3 +525,7 @@ The earlier 48-file / zero-ledger snapshot above is historical and must not be u
 - Stage 5 remains unsigned-off until the 19 pending branch versions and 15 remote-only versions are fully reconciled and an isolated clean baseline is validated.
 
 The earlier statements in this document that the migration ledger is absent, that no ACL changes have occurred, and that the branch contains only 48 migration files describe the 2026-11-14 snapshot only. They are not current-state assertions.
+
+
+## Telegram authentication hardening note — 2026-11-17
+The Preview Edge Function telegram-auth is now v10. It uses a 10-minute signed-initData freshness window, rejects payloads over 8 KB, migrates legacy deterministic-password accounts to random undisclosed passwords once, and returns a one-time Supabase magic-link token hash. The matching frontend verifies the token with verifyOtp. This is a Preview-only auth change; an end-to-end login test remains pending until the matching Vercel Preview frontend is READY.
