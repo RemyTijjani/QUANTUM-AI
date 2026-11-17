@@ -291,10 +291,8 @@ Deno.serve(async (req: Request) => {
         email,
         password: randomPassword,
         email_confirm: true,
-        user_metadata: {
-          telegram_id: telegramId,
-          telegram_auth_version: 2,
-        },
+        user_metadata: { telegram_id: telegramId },
+        app_metadata: { telegram_auth_version: 2 },
       });
 
       if (authError || !authResult.user) {
@@ -382,13 +380,16 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Could not retrieve the Auth identity" }, 500);
     }
 
-    const currentMetadata = authUserResult.user.user_metadata ?? {};
-    if (currentMetadata.telegram_auth_version !== 2) {
+    const currentAppMetadata = authUserResult.user.app_metadata ?? {};
+    if (currentAppMetadata.telegram_auth_version !== 2) {
       const { error: rotateError } = await admin.auth.admin.updateUserById(authUserId, {
         password: crypto.randomUUID() + crypto.randomUUID(),
         user_metadata: {
-          ...currentMetadata,
+          ...(authUserResult.user.user_metadata ?? {}),
           telegram_id: telegramId,
+        },
+        app_metadata: {
+          ...currentAppMetadata,
           telegram_auth_version: 2,
         },
       });
