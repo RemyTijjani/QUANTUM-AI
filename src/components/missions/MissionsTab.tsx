@@ -25,8 +25,10 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
   const now = Date.now();
   const [taskSummary, setTaskSummary] = useState<{ available: number; ready: number; claimed: number; statuses: Record<string, 'claimed' | 'ready' | 'locked' | 'pending'> } | null>(null);
   const refreshTaskSummary = async () => {
-    const { data, error } = await supabase.rpc('get_player_mission_task_statuses');
-    if (error || !data || typeof data !== 'object') return;
+    const { data, error } = await supabase.functions.invoke('mission-actions', {
+      body: { action: 'get_task_statuses' },
+    });
+    if (error || !data || data.success !== true || typeof data !== 'object') return;
     const result = data as { available?: unknown; ready?: unknown; claimed?: unknown; statuses?: unknown };
     if (typeof result.available !== 'number' || typeof result.ready !== 'number' || typeof result.claimed !== 'number' || !result.statuses || typeof result.statuses !== 'object') return;
     setTaskSummary({ available: result.available, ready: result.ready, claimed: result.claimed, statuses: result.statuses as Record<string, 'claimed' | 'ready' | 'locked' | 'pending'> });
