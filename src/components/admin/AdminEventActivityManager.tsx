@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent } from 'react';
+import { useCallback, useEffect, useState, FormEvent } from 'react';
 import { Plus, Edit2, Trash2, Loader2, Save, X, ListChecks } from 'lucide-react';
 import { AdminApiError } from '@/lib/admin/adminApi';
 import type { AdminEventActivity, AdminEventActivityInput, AdminEventActivityType, AdminTask } from '@/lib/admin/adminApi';
@@ -29,15 +29,15 @@ export default function AdminEventActivityManager({ eventId, missions, onList, o
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     setError('');
     try { setActivities(await onList(eventId)); }
     catch (err) { setError(err instanceof Error ? err.message : 'Could not load event activities.'); }
     finally { setLoading(false); }
-  };
+  }, [eventId, onList]);
 
-  useEffect(() => { void refresh(); }, [eventId]);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   const edit = (activity?: AdminEventActivity) => {
     if (!activity) {
