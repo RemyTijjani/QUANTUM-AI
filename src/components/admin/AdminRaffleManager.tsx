@@ -13,9 +13,9 @@ import {
   creditAdminTonRaffleWinner,
 } from '@/lib/admin/adminApi';
 import type { AdminCredentials, AdminRaffleRecord } from '@/lib/admin/adminApi';
-import { formatGram, formatZp } from '@/lib/format';
+import { formatGram } from '@/lib/format';
 
-const money = (value: number | string, currency: string) => `${currency === 'TON' ? formatGram(value) : formatZp(value)} ${currency === 'TON' ? 'Gram' : currency}`;
+const money = (value: number | string, currency: string) => `${formatGram(value, currency === 'TON' ? 9 : 0)} ${currency === 'TON' ? 'Gram' : currency}`;
 const errorText = (error: unknown) => error instanceof AdminApiError ? error.message : 'Something went wrong. Please try again.';
 const countdownText = (target: string, now: number) => {
   const total = Math.max(0, Math.floor((new Date(target).getTime() - now) / 1000));
