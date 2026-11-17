@@ -102,6 +102,7 @@ Deno.serve(async (req: Request) => {
           .in("reward_currency", ["ZP", "ZAP"])
           .eq("unlock_cost_zp", 0)
           .gt("reward", 0)
+          .neq("id", "ad-quota")
           .order("created_at", { ascending: true }),
         admin.from("daily_uplink_claims")
           .select("claim_date")
