@@ -59,14 +59,14 @@ async function authenticateWithBackend(
     );
   }
 
-  if (!data.email || !data.password || !data.referralCode) {
+  if (typeof data.tokenHash !== 'string' || !data.tokenHash || !data.referralCode) {
     throw new Error('Backend returned incomplete player information.');
   }
 
   const { data: sessionData, error: signInError } =
-    await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
+    await supabase.auth.verifyOtp({
+      token_hash: data.tokenHash,
+      type: 'magiclink',
     });
 
   if (signInError || !sessionData.session) {
