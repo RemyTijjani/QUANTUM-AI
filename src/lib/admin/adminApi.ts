@@ -743,7 +743,7 @@ export interface AdminExternalZapFundingRecord {
   confirmed_at: string;
 }
 export interface AdminExternalZapFundingSummary {
-  availableReserve: number | string;
+  availableReserve: number;
   updatedAt: string | null;
   funding: AdminExternalZapFundingRecord[];
 }
@@ -755,7 +755,7 @@ export async function listExternalZapFunding(
     throw new AdminApiError('Could not load external ZAP funding records.');
   }
   const result = body as Partial<AdminExternalZapFundingSummary>;
-  if (!(typeof result.availableReserve === 'number' || typeof result.availableReserve === 'string') || !Array.isArray(result.funding)) {
+  if (typeof result.availableReserve !== 'number' || !Array.isArray(result.funding)) {
     throw new AdminApiError('The external ZAP funding response could not be verified.');
   }
   return result as AdminExternalZapFundingSummary;
