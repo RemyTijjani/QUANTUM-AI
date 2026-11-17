@@ -424,19 +424,19 @@ interface AdminRequestBody {
   search?: string;
   playerId?: string;
   zapAmount?: number;
-  tonAmount?: number;
+  tonAmount?: number | string;
   monthlyKickbackBudgetZp?: number;
   transactionReference?: string;
   winnerId?: string;
   playerIds?: string[];
-  prizeShares?: number[];
+  prizeShares?: string[];
   raffle?: {
     id?: string;
     title?: string;
     description?: string;
     rewardType?: string;
     rewardCode?: string | null;
-    prizePoolAmount?: number;
+    prizePoolAmount?: number | string;
     fundingSource?: string;
     minBetZap?: number;
     entryMode?: string;
