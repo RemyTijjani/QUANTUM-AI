@@ -1288,7 +1288,7 @@ Deno.serve(async (req: Request) => {
 
     if (body.action === "prepare_expedition_rewards") {
       const expeditionId = typeof body.expeditionId === "string" ? body.expeditionId : "";
-      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!validUuid.test(expeditionId)) return json({ error: "A valid Expedition ID is required" }, 400);
       const { data, error } = await db.rpc("prepare_expedition_reward_issuances", { p_expedition_id: expeditionId });
       if (error) {
@@ -2140,7 +2140,7 @@ Deno.serve(async (req: Request) => {
 
     if (body.action === "credit_ton_raffle_winner") {
       const winnerId = typeof body.winnerId === "string" ? body.winnerId : "";
-      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!validUuid.test(winnerId)) return json({ error: "A valid raffle winner is required." }, 400);
       const { data, error } = await db.rpc("admin_credit_ton_raffle_prize", {
         p_winner_id: winnerId,
