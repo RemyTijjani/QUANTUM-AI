@@ -284,13 +284,15 @@ function CreatorOpsCard({
 
   useEffect(() => {
     let cancelled = false;
+    let hasLoaded = false;
 
     const fetchSubmission = async () => {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || !authData.user) {
         if (!cancelled) {
-          notify('Sign in again to check your Creator Ops submission.', 'error');
+          if (!hasLoaded) notify('Sign in again to check your Creator Ops submission.', 'error');
           setLoading(false);
+          hasLoaded = true;
         }
         return;
       }
@@ -306,18 +308,23 @@ function CreatorOpsCard({
 
       if (!cancelled) {
         if (error) {
-          notify('Could not check your submission status.', 'error');
+          if (!hasLoaded) notify('Could not check your submission status.', 'error');
         } else {
           setSubmission(data as CreatorOpsSubmission | null);
         }
         setLoading(false);
+        hasLoaded = true;
       }
     };
 
-    fetchSubmission();
+    void fetchSubmission();
+    const interval = window.setInterval(() => void fetchSubmission(), 30000);
+    window.addEventListener('focus', fetchSubmission);
 
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', fetchSubmission);
     };
   }, [mission.id, notify]);
 
@@ -461,17 +468,35 @@ function XFollowSubmissionCard({ notify, onStatusChanged }: { notify: Notify; on
   const [submitting, setSubmitting] = useState(false);
   useEffect(() => {
     let cancelled = false;
+    let hasLoaded = false;
     const load = async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData.user) { setLoading(false); return; }
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (authError || !authData.user) {
+        if (!hasLoaded) notify('Sign in again to check your X Follow submission.', 'error');
+        setLoading(false);
+        hasLoaded = true;
+        return;
+      }
       const { data, error } = await supabase.from('x_follow_submissions').select('x_username, status').eq('player_id', authData.user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (cancelled) return;
-      if (error) notify('Could not load your X Follow submission status.', 'error');
-      else if (data) { setStatus(data.status as 'pending' | 'approved' | 'rejected'); setSubmittedAccount(data.x_username); }
+      if (error) {
+        if (!hasLoaded) notify('Could not load your X Follow submission status.', 'error');
+      } else if (data) {
+        setStatus(data.status as 'pending' | 'approved' | 'rejected');
+        setSubmittedAccount(data.x_username);
+      }
       setLoading(false);
+      hasLoaded = true;
     };
     void load();
-    return () => { cancelled = true; };
+    const interval = window.setInterval(() => void load(), 30000);
+    window.addEventListener('focus', load);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', load);
+    };
   }, [notify]);
   const submit = async () => {
     if (!account.trim() || submitting) return;
