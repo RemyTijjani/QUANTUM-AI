@@ -410,6 +410,7 @@ interface AdminRequestBody {
     | "close_raffle"
     | "select_raffle_winners"
     | "credit_raffle_winner"
+    | "credit_ton_raffle_winner"
     | "list_ton_withdrawals"
     | "review_ton_withdrawal"
     | "get_referral_kickback_budget"
@@ -2132,6 +2133,21 @@ Deno.serve(async (req: Request) => {
       });
       if (error || !data || data.success !== true) {
         const message = error?.message ?? data?.error ?? "Could not credit this ZAP prize.";
+        return json({ error: message }, /already|not found|state/i.test(message) ? 409 : 400);
+      }
+      return json(data);
+    }
+
+    if (body.action === "credit_ton_raffle_winner") {
+      const winnerId = typeof body.winnerId === "string" ? body.winnerId : "";
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+      if (!validUuid.test(winnerId)) return json({ error: "A valid raffle winner is required." }, 400);
+      const { data, error } = await db.rpc("admin_credit_ton_raffle_prize", {
+        p_winner_id: winnerId,
+        p_admin: ADMIN_USERNAME,
+      });
+      if (error || !data || data.success !== true || data.winnerId !== winnerId || data.deliveryStatus !== "withdrawable") {
+        const message = error?.message ?? data?.error ?? "Could not credit this Gram prize.";
         return json({ error: message }, /already|not found|state/i.test(message) ? 409 : 400);
       }
       return json(data);
