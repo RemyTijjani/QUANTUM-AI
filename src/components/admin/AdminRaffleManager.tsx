@@ -8,6 +8,8 @@ import {
   reserveAdminRafflePrize,
   publishAdminRaffle,
   closeAdminRaffle,
+  selectAdminRaffleWinners,
+  creditAdminRaffleWinner,
 } from '@/lib/admin/adminApi';
 import type { AdminCredentials, AdminRaffleRecord } from '@/lib/admin/adminApi';
 
@@ -39,6 +41,9 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
   const [notice, setNotice] = useState('');
   const [clockNow, setClockNow] = useState(Date.now());
   const [closingId, setClosingId] = useState<string | null>(null);
+  const [selectionId, setSelectionId] = useState<string | null>(null);
+  const [creditingWinnerId, setCreditingWinnerId] = useState<string | null>(null);
+  const [selectedWinnerIds, setSelectedWinnerIds] = useState<Record<string, string[]>>({});
   const [raffleSearch, setRaffleSearch] = useState('');
   const [raffleStatusFilter, setRaffleStatusFilter] = useState('all');
   const visibleRaffles = raffles.filter((raffle) => {
@@ -148,6 +153,36 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
     } finally {
       setClosingId(null);
     }
+  };
+
+  const selectWinners = async (raffle: AdminRaffleRecord) => {
+    const selected = selectedWinnerIds[raffle.id] ?? [];
+    if (raffle.winner_method === 'admin' && selected.length !== raffle.winner_count) {
+      setError(`Select exactly ${raffle.winner_count} eligible entrant(s).`);
+      return;
+    }
+    if (!window.confirm(raffle.winner_method === 'random'
+      ? `Run the random draw for "${raffle.title}" now? Winners cannot be changed after selection.`
+      : `Confirm these ${selected.length} winner(s) for "${raffle.title}"? Winners cannot be changed after selection.`)) return;
+    setError(''); setNotice(''); setSelectionId(raffle.id);
+    try {
+      await selectAdminRaffleWinners(creds, raffle.id, raffle.winner_method === 'admin' ? selected : undefined);
+      setNotice(`Winners selected for "${raffle.title}". Review each prize below and credit the ZAP rewards.`);
+      setSelectedWinnerIds((current) => ({ ...current, [raffle.id]: [] }));
+      await refresh();
+    } catch (selectionError) { setError(errorText(selectionError)); }
+    finally { setSelectionId(null); }
+  };
+
+  const creditWinner = async (winnerId: string, raffleTitle: string) => {
+    if (!window.confirm(`Credit this winner's ZAP prize for "${raffleTitle}" now? This will add the prize to their ZAP wallet.`)) return;
+    setError(''); setNotice(''); setCreditingWinnerId(winnerId);
+    try {
+      const result = await creditAdminRaffleWinner(creds, winnerId);
+      setNotice(result.alreadyCredited ? 'This prize was already credited.' : 'ZAP prize credited successfully.');
+      await refresh();
+    } catch (creditError) { setError(errorText(creditError)); }
+    finally { setCreditingWinnerId(null); }
   };
 
   const saveDraft = async (event: FormEvent) => {
@@ -263,7 +298,35 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
             <label className="block"><span className="mb-1 block text-[10px] text-slate-400">Filter by status</span><select value={raffleStatusFilter} onChange={(event) => setRaffleStatusFilter(event.target.value)} className="admin-field"><option value="all">All statuses ({raffles.length})</option><option value="draft">Draft</option><option value="published">Published</option></select></label>
           </div>
         )}
-        {loading ? <div role="status" className="py-8 text-center text-xs text-slate-400">Loading your raffle drafts…</div> : raffles.length === 0 ? <div className="rounded-xl border border-white/10 bg-[#101a14] py-9 text-center"><CircleDollarSign size={25} className="mx-auto text-slate-400"/><p className="mt-2 text-xs text-emerald-300">No raffles created yet</p><p className="mt-1 text-[10px] text-slate-400">Create your first draft to get started.</p></div> : visibleRaffles.length === 0 ? <div className="rounded-xl border border-dashed border-white/15 py-9 text-center"><p className="text-xs font-semibold text-slate-200">No matching raffles</p><p className="mt-1 text-[10px] text-slate-400">Try another title or change the status filter.</p><button type="button" onClick={() => { setRaffleSearch(''); setRaffleStatusFilter('all'); }} className="mt-3 text-xs text-emerald-300">Clear search and filters</button></div> : visibleRaffles.map((raffle) => <article key={raffle.id} className="rounded-xl border border-white/10 bg-[#101a14] p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h4 className="text-sm font-semibold text-slate-100">{raffle.title}</h4><p className="mt-1 text-[10px] text-slate-400">{money(raffle.prize_pool_amount, raffle.prize_currency)} · {raffle.winner_count} winner(s)</p></div><span className={`rounded-full border px-2.5 py-1 text-[9px] uppercase ${raffle.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : 'border-amber-400/25 bg-amber-400/5 text-amber-200'}`}>{raffle.status === 'closed' || (raffle.ends_at && clockNow >= new Date(raffle.ends_at).getTime()) ? 'Awaiting Result' : raffle.status === 'published' ? 'Scheduled / Live' : raffle.status}</span></div>{raffle.status === 'published' && <p className="mt-2 text-[10px] text-cyan-200">{raffle.starts_at && clockNow < new Date(raffle.starts_at).getTime() ? `Starts in ${countdownText(raffle.starts_at, clockNow)}` : raffle.ends_at && clockNow < new Date(raffle.ends_at).getTime() ? `Closes in ${countdownText(raffle.ends_at, clockNow)}` : raffle.ends_at ? 'Awaiting Result' : 'Open · no scheduled closing time'}</p>}<div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-slate-400"><span>Minimum: {money(raffle.min_bet_zap, 'ZAP')}</span><span>{raffle.entry_mode === 'proportional' ? 'Proportional tickets' : 'One bet, one ticket'}</span></div>{raffle.status === 'draft' && <div className="mt-3 flex flex-wrap gap-2">{reservedIds[raffle.id] ? <span role="status" className="rounded-lg border border-emerald-400/25 bg-emerald-400/5 px-3 py-2 text-[10px] font-semibold text-emerald-200">Prize reserved</span> : <button type="button" onClick={() => void reservePrize(raffle)} disabled={reservingId !== null || publishingId !== null} className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[10px] font-semibold text-emerald-100 hover:bg-cyan-300/20 disabled:opacity-40">{reservingId === raffle.id ? 'Checking reserve…' : 'Lock prize funds'}</button>}<button type="button" onClick={() => void publishRaffle(raffle)} disabled={publishingId !== null || reservingId !== null} className="rounded-lg border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-40">{publishingId === raffle.id ? 'Publishing…' : 'Publish raffle'}</button><button type="button" onClick={() => editDraft(raffle)} disabled={!!reservedIds[raffle.id] || publishingId !== null} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-40">Edit draft</button></div>}{raffle.status === 'published' && (!raffle.starts_at || clockNow >= new Date(raffle.starts_at).getTime()) && (!raffle.ends_at || clockNow < new Date(raffle.ends_at).getTime()) && <button type="button" onClick={() => void closeRaffle(raffle)} disabled={closingId !== null} className="mt-3 rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-[10px] font-semibold text-amber-100 disabled:opacity-40">{closingId === raffle.id ? 'Closing…' : 'Close raffle early'}</button>}</article>)}
+        {loading ? <div role="status" className="py-8 text-center text-xs text-slate-400">Loading your raffle drafts…</div> : raffles.length === 0 ? <div className="rounded-xl border border-white/10 bg-[#101a14] py-9 text-center"><CircleDollarSign size={25} className="mx-auto text-slate-400"/><p className="mt-2 text-xs text-emerald-300">No raffles created yet</p><p className="mt-1 text-[10px] text-slate-400">Create your first draft to get started.</p></div> : visibleRaffles.length === 0 ? <div className="rounded-xl border border-dashed border-white/15 py-9 text-center"><p className="text-xs font-semibold text-slate-200">No matching raffles</p><p className="mt-1 text-[10px] text-slate-400">Try another title or change the status filter.</p><button type="button" onClick={() => { setRaffleSearch(''); setRaffleStatusFilter('all'); }} className="mt-3 text-xs text-emerald-300">Clear search and filters</button></div> : visibleRaffles.map((raffle) => <article key={raffle.id} className="rounded-xl border border-white/10 bg-[#101a14] p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h4 className="text-sm font-semibold text-slate-100">{raffle.title}</h4><p className="mt-1 text-[10px] text-slate-400">{money(raffle.prize_pool_amount, raffle.prize_currency)} · {raffle.winner_count} winner(s)</p></div><span className={`rounded-full border px-2.5 py-1 text-[9px] uppercase ${raffle.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : 'border-amber-400/25 bg-amber-400/5 text-amber-200'}`}>{raffle.status === 'closed' || (raffle.ends_at && clockNow >= new Date(raffle.ends_at).getTime()) ? 'Awaiting Result' : raffle.status === 'published' ? 'Scheduled / Live' : raffle.status}</span></div>{raffle.status === 'published' && <p className="mt-2 text-[10px] text-cyan-200">{raffle.starts_at && clockNow < new Date(raffle.starts_at).getTime() ? `Starts in ${countdownText(raffle.starts_at, clockNow)}` : raffle.ends_at && clockNow < new Date(raffle.ends_at).getTime() ? `Closes in ${countdownText(raffle.ends_at, clockNow)}` : raffle.ends_at ? 'Awaiting Result' : 'Open · no scheduled closing time'}</p>}<div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-slate-400"><span>Minimum: {money(raffle.min_bet_zap, 'ZAP')}</span><span>{raffle.entry_mode === 'proportional' ? 'Proportional tickets' : 'One bet, one ticket'}</span></div>{raffle.status === 'draft' && <div className="mt-3 flex flex-wrap gap-2">{reservedIds[raffle.id] ? <span role="status" className="rounded-lg border border-emerald-400/25 bg-emerald-400/5 px-3 py-2 text-[10px] font-semibold text-emerald-200">Prize reserved</span> : <button type="button" onClick={() => void reservePrize(raffle)} disabled={reservingId !== null || publishingId !== null} className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[10px] font-semibold text-emerald-100 hover:bg-cyan-300/20 disabled:opacity-40">{reservingId === raffle.id ? 'Checking reserve…' : 'Lock prize funds'}</button>}<button type="button" onClick={() => void publishRaffle(raffle)} disabled={publishingId !== null || reservingId !== null} className="rounded-lg border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-40">{publishingId === raffle.id ? 'Publishing…' : 'Publish raffle'}</button><button type="button" onClick={() => editDraft(raffle)} disabled={!!reservedIds[raffle.id] || publishingId !== null} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-40">Edit draft</button></div>}{raffle.status === 'published' && (!raffle.starts_at || clockNow >= new Date(raffle.starts_at).getTime()) && (!raffle.ends_at || clockNow < new Date(raffle.ends_at).getTime()) && <button type="button" onClick={() => void closeRaffle(raffle)} disabled={closingId !== null} className="mt-3 rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-[10px] font-semibold text-amber-100 disabled:opacity-40">{closingId === raffle.id ? 'Closing…' : 'Close raffle early'}</button>}
+        {raffle.status === 'closed' && (raffle.winners?.length ?? 0) === 0 && <div className="mt-4 space-y-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
+          <div><p className="text-xs font-semibold text-amber-100">Awaiting winner selection</p><p className="mt-1 text-[10px] text-slate-300">{raffle.entries?.length ?? 0} entries · select {raffle.winner_count} winner(s) using {raffle.winner_method === 'admin' ? 'Admin selection' : 'a weighted random draw'}.</p></div>
+          {raffle.winner_method === 'admin' && <div className="max-h-56 space-y-2 overflow-y-auto">
+            {(raffle.entries ?? []).map((entry) => {
+              const selected = selectedWinnerIds[raffle.id] ?? [];
+              const isChecked = selected.includes(entry.player_id);
+              const label = entry.players?.username ? `@${entry.players.username}` : entry.players?.first_name || entry.player_id.slice(0, 8);
+              return <label key={entry.id} className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-black/20 p-2 text-[10px] text-slate-200">
+                <input type="checkbox" checked={isChecked} disabled={!isChecked && selected.length >= raffle.winner_count} onChange={(event) => setSelectedWinnerIds((current) => ({ ...current, [raffle.id]: event.target.checked ? [...selected, entry.player_id] : selected.filter((id) => id !== entry.player_id) }))} className="accent-emerald-400"/>
+                <span className="min-w-0 flex-1 truncate">{label}</span><span className="text-slate-500">{entry.ticket_count} ticket(s)</span>
+              </label>;
+            })}
+          </div>}
+          <button type="button" onClick={() => void selectWinners(raffle)} disabled={selectionId !== null || (raffle.winner_method === 'admin' && (selectedWinnerIds[raffle.id] ?? []).length !== raffle.winner_count)} className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-[10px] font-semibold text-emerald-100 disabled:opacity-40">{selectionId === raffle.id ? 'Selecting…' : raffle.winner_method === 'random' ? 'Run random draw' : `Confirm ${raffle.winner_count} selected winner(s)`}</button>
+        </div>}
+        {(raffle.winners?.length ?? 0) > 0 && <div className="mt-4 space-y-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">
+          <p className="text-xs font-semibold text-emerald-100">Selected winners</p>
+          {(raffle.winners ?? []).map((winner) => {
+            const label = winner.players?.username ? `@${winner.players.username}` : winner.players?.first_name || winner.player_id.slice(0, 8);
+            return <div key={winner.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 p-2">
+              <div className="min-w-0"><p className="truncate text-[10px] font-semibold text-white">{label}</p><p className="mt-0.5 text-[10px] text-slate-400">{money(winner.prize_amount, winner.prize_currency)} · {winner.delivery_status}</p></div>
+              {winner.prize_currency === 'ZAP' && winner.delivery_status === 'pending' && <button type="button" onClick={() => void creditWinner(winner.id, raffle.title)} disabled={creditingWinnerId !== null} className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[10px] font-semibold text-emerald-100 disabled:opacity-40">{creditingWinnerId === winner.id ? 'Crediting…' : 'Credit ZAP prize'}</button>}
+              {winner.delivery_status === 'credited' && <span className="text-[10px] font-semibold text-emerald-300">Credited</span>}
+              {winner.prize_currency === 'TON' && winner.delivery_status === 'pending' && <span className="text-[9px] text-amber-200">Gram payout pending</span>}
+            </div>;
+          })}
+        </div>}
+      </article>)}
       </div>
       <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3"><p className="text-[10px] font-semibold text-amber-200">Publishing is protected</p><p className="mt-1 text-[10px] leading-relaxed text-amber-100/70">A raffle must have its full prize pool reserved and verified before it can go live. Gram prizes also require the funding wallet and player withdrawal process to be ready. Drawing winners and delivering prizes are separate Admin-controlled steps.</p></div>
     </section>
