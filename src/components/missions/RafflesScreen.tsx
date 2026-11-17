@@ -23,7 +23,8 @@ type RaffleHistory = { id: string; title: string; status: string; prize_pool_amo
 type WalletResponse = { balance?: number | string };
 const number = (value: number | string | null | undefined) => Number(value ?? 0);
 const fmt = (value: number | string, currency: 'TON' | 'ZAP' | 'AGENT' = 'ZAP') => number(value).toLocaleString(undefined, { maximumFractionDigits: currency === 'TON' ? 9 : 8 });
-const rewardLabel = (raffle: Raffle) => `${fmt(raffle.prize_pool_amount, raffle.prize_currency)} ${raffle.prize_currency}`;
+const currencyLabel = (currency: 'TON' | 'ZAP' | 'AGENT') => currency === 'TON' ? 'Gram' : currency;
+const rewardLabel = (raffle: Raffle) => `${fmt(raffle.prize_pool_amount, raffle.prize_currency)} ${currencyLabel(raffle.prize_currency)}`;
 const countdownText = (target: string, now: number) => {
   const total = Math.max(0, Math.floor((new Date(target).getTime() - now) / 1000));
   const days = Math.floor(total / 86400);
@@ -257,7 +258,7 @@ export default function RafflesScreen() {
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neon/10 pt-2">
                     <span className={`text-[10px] font-semibold ${prize ? 'text-emerald-300' : 'text-neon-400'}`}>{outcome}</span>
-                    {prize && <span className="text-[10px] font-semibold text-emerald-200">{fmt(prize.prize_amount, prize.prize_currency)} {prize.prize_currency}{prize.reward_code ? ` · ${prize.reward_code === 'alpha' ? 'Alpha Miner' : 'Overclocked Core'}` : ''}</span>}
+                    {prize && <span className="text-[10px] font-semibold text-emerald-200">{fmt(prize.prize_amount, prize.prize_currency)} {currencyLabel(prize.prize_currency)}{prize.reward_code ? ` · ${prize.reward_code === 'alpha' ? 'Alpha Miner' : 'Overclocked Core'}` : ''}</span>}
                   </div>
                   {delivery && <p className="text-[10px] text-neon-500">{delivery}</p>}
                 </article>
