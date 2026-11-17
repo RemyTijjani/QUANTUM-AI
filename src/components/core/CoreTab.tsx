@@ -98,11 +98,11 @@ export default function CoreTab({
   };
 
   return (
-    <div className="space-y-5 pb-3">
-      <section className="panel relative overflow-hidden border border-neon/35 bg-gradient-to-br from-neon/10 via-black/50 to-cyan-500/5 p-4">
+    <div className="min-w-0 space-y-5 pb-3">
+      <section className="panel relative min-w-0 overflow-hidden border border-neon/35 bg-gradient-to-br from-neon/10 via-black/50 to-cyan-500/5 p-3 min-[380px]:p-4">
         <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full border border-neon/10" />
-        <div className="relative flex items-start justify-between gap-3">
-          <div>
+        <div className="relative flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
             <p className="label">Command dashboard</p>
             <h1 className="mt-1 font-display text-lg font-bold uppercase tracking-[0.18em] text-neon-300">Genesis Core</h1>
             <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-neon-600">Your ZORD operations at a glance</p>
@@ -111,33 +111,33 @@ export default function CoreTab({
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Linked
           </span>
         </div>
-        <div className="relative mt-4 grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
-          <div className="rounded-xl border border-neon/25 bg-black/40 p-3">
+        <div className="relative mt-4 grid grid-cols-2 gap-2 min-[380px]:gap-3">
+          <div className="min-w-0 rounded-xl border border-neon/25 bg-black/40 p-3">
             <div className="flex items-center gap-2 text-neon-300"><Coins size={14}/><p className="label">Verified ZP</p></div>
             <p className="mt-2 font-display text-2xl font-bold tabular-nums text-neon-100">{verifiedZpBalance === null ? '—' : formatZp(verifiedZpBalance)}</p>
             <p className="mt-1 text-[9px] text-neon-600">Available gameplay points</p>
             <p className="mt-2 text-[9px] text-amber-300">Pending: {formatZp(pendingFragmentZp)} ZP</p>
             <p className="mt-1 text-[8px] text-neon-700">{nextFragmentReleaseAt ? `Next release in ${formatRemaining(new Date(nextFragmentReleaseAt).getTime() - now)}` : 'No pending Fragment rewards'}</p>
           </div>
-          <div className="rounded-xl border border-cyan-300/25 bg-cyan-950/30 p-3">
+          <div className="min-w-0 rounded-xl border border-cyan-300/25 bg-cyan-950/30 p-3">
             <div className="flex items-center gap-2 text-cyan-200"><Award size={14}/><p className="label">ZAP score</p></div>
             <p className="mt-2 font-display text-2xl font-bold tabular-nums text-cyan-100">{zapLoading ? '…' : zapEarned === null ? '—' : formatZp(zapEarned)}</p>
             <p className="mt-1 text-[9px] text-cyan-600">Net ZAP activity (earned − spent)</p>
             <p className="mt-2 text-[9px] text-cyan-700">Rank & achievement score</p>
           </div>
-          <div className="rounded-xl border border-cyan-400/20 bg-black/40 p-3">
+          <div className="min-w-0 rounded-xl border border-cyan-400/20 bg-black/40 p-3">
             <p className="label">Core rank</p>
             <p className="mt-1 break-words font-display text-xl text-cyan-200">{tier.rank}</p>
             <p className="mt-1 text-[9px] text-cyan-700">Rank {rankNumber} · {formatZp(netZapProgress ?? 0)} net ZAP</p>
           </div>
-          <div className="rounded-xl border border-neon/20 bg-black/40 p-3">
+          <div className="min-w-0 rounded-xl border border-neon/20 bg-black/40 p-3">
             <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{fixed}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
             <p className="mt-1 text-[9px] text-neon-700">Displayed rate estimate: {formatRate(rate)}</p>
           </div>
         </div>
-        <div className="relative mt-3 rounded-xl border border-neon/15 bg-black/30 p-3">
-          <div className="mb-3 flex items-center justify-between"><p className="label">Earning progress</p><span className="text-[9px] text-neon-600">Next milestones</span></div>
-          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+        <div className="relative mt-3 min-w-0 rounded-xl border border-neon/15 bg-black/30 p-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="label">Earning progress</p><span className="text-[9px] text-neon-600">Next milestones</span></div>
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
             <div className="flex flex-col items-center text-center">
               <div className="grid h-24 w-24 place-items-center rounded-full" style={{background: `conic-gradient(#7cf7c5 ${zpProgress}%, rgba(124,247,197,0.12) 0)`}}>
                 <div className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-[#07110f]">
@@ -178,9 +178,9 @@ export default function CoreTab({
         </div>
       </section>
 
-      <section className="panel space-y-3 border border-cyan-400/20 bg-cyan-950/15 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div><p className="label">ZAP achievement collection</p><h2 className="mt-1 font-display text-sm font-bold uppercase tracking-wider text-cyan-100">Ring milestones</h2></div>
+      <section className="panel min-w-0 space-y-3 border border-cyan-400/20 bg-cyan-950/15 p-3 min-[380px]:p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0"><p className="label">ZAP achievement collection</p><h2 className="mt-1 font-display text-sm font-bold uppercase tracking-wider text-cyan-100">Ring milestones</h2></div>
           <Award size={18} className="text-cyan-300" />
         </div>
         <div className="rounded-lg border border-cyan-400/15 bg-black/30 p-3">
@@ -196,7 +196,7 @@ export default function CoreTab({
         ) : zapAchievements && zapAchievements.achievements.length > 0 ? (
           <div className="space-y-2">
             {[...zapAchievements.achievements].sort((a, b) => b.level - a.level).slice(0, 6).map((achievement) => (
-              <div key={achievement.level} className="flex items-center gap-3 rounded-lg border border-cyan-400/10 bg-black/25 p-2.5">
+              <div key={achievement.level} className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-cyan-400/10 bg-black/25 p-2.5">
                 <div className={"grid h-9 w-9 shrink-0 place-items-center rounded-full border " + (achievement.isMinted ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'border-emerald-300/40 bg-emerald-300/10 text-emerald-200' : 'border-slate-500/30 bg-slate-500/10 text-slate-400')}>
                   <Award size={16} />
                 </div>
@@ -211,7 +211,7 @@ export default function CoreTab({
         <p className="text-center text-[8px] text-cyan-800">Minting is optional. Once verified on TON, a minted badge stays yours even if your net ZAP later drops. Minting is not available yet.</p>
       </section>
 
-      <section className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2">
+      <section className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
         <button
           type="button"
           onClick={onOpenMissions}
@@ -256,16 +256,16 @@ export default function CoreTab({
         </div>
       </section>
 
-      <section className="panel space-y-3 border border-amber-400/25 bg-amber-400/5 p-4">
+      <section className="panel min-w-0 space-y-3 border border-amber-400/25 bg-amber-400/5 p-3 min-[380px]:p-4">
         <div className="flex items-center gap-2"><Gift size={16} className="text-amber-300" /><p className="label">Community prize draws</p></div>
         <div><h2 className="title mt-1">Live ZORD Raffles</h2><p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-500">Explore active raffles, review prize details and manage your entries in one place.</p></div>
-        <button type="button" onClick={onOpenRaffles} className="btn-ghost w-full"><Gift size={13} /> Open Raffles <ArrowUpRight size={13} /></button>
+        <button type="button" onClick={onOpenRaffles} className="btn-ghost min-h-11 w-full"><Gift size={13} /> Open Raffles <ArrowUpRight size={13} /></button>
       </section>
 
       <button
         type="button"
         onClick={onOpenExpeditions}
-        className="group relative flex w-full items-center justify-between overflow-hidden rounded-xl border border-cyan-400/35 bg-gradient-to-r from-cyan-500/10 via-neon/5 to-transparent p-3 text-left shadow-[0_0_22px_rgba(34,211,238,0.07)] transition hover:border-cyan-300/60 hover:bg-cyan-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+        className="group relative flex min-h-12 w-full min-w-0 items-center justify-between overflow-hidden rounded-xl border border-cyan-400/35 bg-gradient-to-r from-cyan-500/10 via-neon/5 to-transparent p-3 text-left shadow-[0_0_22px_rgba(34,211,238,0.07)] transition hover:border-cyan-300/60 hover:bg-cyan-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
         aria-label="Open Expeditions"
       >
         <span className="pointer-events-none absolute -right-5 -top-8 h-24 w-24 rounded-full border border-cyan-300/10" />
