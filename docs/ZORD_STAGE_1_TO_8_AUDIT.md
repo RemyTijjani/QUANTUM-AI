@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-17  
 **Target environment:** Supabase Preview `lchkctclxzwwvfwosava` and GitHub Preview branch `security/trusted-gameplay-migration`  
-**Current branch baseline at this audit pass:** `5e386a67c88dae36d380ba7b7e00e59c39272da0`  
+**Current branch baseline at this audit pass:** `84cc43c50998d6b34dac418d0fe242408c2d8874`  
 **Production:** Out of scope. No merge to `main`, Production database change, or Production deployment is authorized by this audit.  
 **Scope exclusion:** Stage 9 / ZORD platform expansion and the separate Zord-Agents-bot project are not part of this repository audit.
 
@@ -55,7 +55,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 ### Stage 5 — Trusted Gameplay Backend Migration
 
 - Trusted gameplay, mission claims, fragment unlock/fix, daily streak claims, reward entitlements, and player-owned identity checks are present.
-- The Preview migration ledger currently contains 110 versions, while the branch contains 114 SQL migration files. A comparison found 19 branch migration versions absent from the applied ledger and 15 applied versions without a matching filename in the branch. These are historical migration mismatches; no missing migration was blindly replayed. This is migration-history drift, not permission to replay files.
+- The Preview migration ledger currently contains 111 versions, while the branch contains 115 SQL migration files. A comparison found 19 branch migration versions absent from the applied ledger and 15 applied versions without a matching filename in the branch. These are historical migration mismatches; no missing migration was blindly replayed. This is migration-history drift, not permission to replay files.
 - The existing `docs/stage5-preview-migration-history-reconciliation-plan.md` is outdated: it describes an earlier snapshot with no migration ledger. Update it only after the full migration comparison is complete.
 - No bulk migration replay, migration repair, baseline replacement, or schema reset has been performed during this audit.
 - Supabase advisors report missing foreign-key indexes and RLS init-plan opportunities. These need table-by-table review before adding indexes or changing policies.
@@ -96,7 +96,7 @@ This is a living audit tracker. A feature is not marked complete merely because 
 
 ## CI, deployments, and security snapshot
 
-- Preview frontend checks on the latest feature-source commits completed successfully. Dependency remediation workflow 44121436055 updated compatible packages, ran npm audit fix --force, then passed type-check, lint, and build.
+- Preview frontend checks on the raffle precision UI commits and the ZAP transfer fix completed successfully (runs 44125435371, 44125445424, and 44125754082). Dependency remediation workflow 44121436055 updated compatible packages, ran npm audit fix --force, then passed type-check, lint, and build.
 - Earlier failed CI runs were caused by one unused import in `ZapWalletPanel.tsx`; that error is fixed.
 - The dependency remediation workflow committed the refreshed lockfile (d867cc416ef56b6ee9f85d9e5068d851e01b213f). Its post-fix audit reported 0 vulnerabilities (0 low/moderate/high/critical).
 - Security advisor also reports leaked-password protection disabled. This is an Auth configuration item to review and enable safely.
@@ -132,7 +132,7 @@ This section supersedes older point-in-time statements in this tracker where the
 - Broad default privileges for objects created by postgres in public were restricted for future tables, sequences, and functions; existing grants were not changed. The equivalent defaults for supabase_admin remain broad because the current SQL execution role cannot alter that role's default privileges. This is a residual hardening item, not evidence that current public objects are exposed.
 
 ### Stage 5 — migration and backend repair
-- Preview migration ledger is present and currently records 110 versions. The branch contains 114 migration files: 19 branch versions are not recorded remotely and 15 remote versions have no matching filename in the branch. Do not replay or repair these histories without the migration-by-migration reconciliation and data-effect review.
+- Preview migration ledger is present and currently records 111 versions. The branch contains 115 migration files: 19 branch versions are not recorded remotely and 15 remote versions have no matching filename in the branch. Do not replay or repair these histories without the migration-by-migration reconciliation and data-effect review.
 - Applied and tracked Preview hardening migrations:
   - 20261117160203_harden_internal_raffle_helper_execute_grants.sql
   - 20261117160739_restrict_postgres_public_default_client_privileges.sql
@@ -170,3 +170,10 @@ This section supersedes older point-in-time statements in this tracker where the
 9. Keep real mainnet payment initiation disabled until all wallet proof, funding, reconciliation, and failure-path tests pass.
 
 Stage 1–8 remain **in progress**. This update does not authorize Production deployment, migration replay/repair, real payments, or any changes to player balances beyond the specifically listed schema/function hardening.
+
+
+### Additional Stage 7 verification — 2026-11-17
+- The ZAP wallet API has no withdrawal action; the player flow is conversion and internal transfer only.
+- The transfer RPC rejects non-whole amounts, invalid/self recipients through the recipient lookup path, and now rejects every amount below 100 ZAP at the database boundary as well as the Edge Function boundary.
+- The ZAP ledger is the rank source of truth: credit entries add and debit entries subtract. Core rank increments at each 500 net ZAP; the achievement level increments at each 100 net ZAP. Unminted achievements can relock when net ZAP falls; minted achievements remain unlocked.
+- No real ZAP transfer, conversion, Gram payout, or player balance change was performed during this audit. These paths still need safe test-account end-to-end acceptance tests.
