@@ -12,6 +12,7 @@ const BOT_TOKEN = Deno.env.get("BOT_TOKEN") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const MAX_INIT_DATA_AGE_SECONDS = 600;
 
 interface TelegramUser {
   id: number;
@@ -115,7 +116,7 @@ async function validateInitData(
     if (
       !Number.isFinite(authDate) ||
       authDate <= 0 ||
-      nowSeconds - authDate > 86400 ||
+      nowSeconds - authDate > MAX_INIT_DATA_AGE_SECONDS ||
       authDate > nowSeconds + 60
     ) {
       console.error("Telegram authentication data expired");
@@ -162,29 +163,6 @@ function makeReferralCode(): string {
   );
 }
 
-async function derivePassword(
-  telegramId: number,
-): Promise<string> {
-  const encoder = new TextEncoder();
-
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(BOT_TOKEN),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    encoder.encode(String(telegramId)),
-  );
-
-  return Array.from(new Uint8Array(signature))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 function emailForTelegram(telegramId: number): string {
   return `tg${telegramId}@zord.local`;
@@ -271,9 +249,8 @@ Deno.serve(async (req: Request) => {
     const firstName = tgUser.first_name ?? null;
 
     const email = emailForTelegram(telegramId);
-    const password = await derivePassword(telegramId);
 
-    // Find an existing player.
+    // Find an existing player. The Auth user ID is the player ID.
     const {
       data: existing,
       error: lookupError,
@@ -285,48 +262,44 @@ Deno.serve(async (req: Request) => {
 
     if (lookupError) {
       console.error("Player lookup failed:", lookupError);
-
-      return jsonResponse(
-        { error: "Could not retrieve player" },
-        500,
-      );
+      return jsonResponse({ error: "Could not retrieve player" }, 500);
     }
 
     let referralCode: string;
+    let authUserId: string;
 
     if (existing) {
       referralCode = existing.referral_code;
+      authUserId = existing.id;
 
       const { error: updateError } = await admin
         .from("players")
-        .update({
-          username,
-          first_name: firstName,
-        })
+        .update({ username, first_name: firstName })
         .eq("id", existing.id);
 
       if (updateError) {
         console.error("Player update failed:", updateError);
       }
     } else {
-      // Create Supabase Auth user.
+      // Create a random, undisclosed password. Telegram sign-in uses a
+      // one-time Supabase magic-link token, never a reusable derived password.
+      const randomPassword = crypto.randomUUID() + crypto.randomUUID();
       const {
         data: authResult,
         error: authError,
       } = await admin.auth.admin.createUser({
         email,
-        password,
+        password: randomPassword,
         email_confirm: true,
         user_metadata: {
           telegram_id: telegramId,
+          telegram_auth_version: 2,
         },
       });
 
-      let authUserId: string;
-
       if (authError || !authResult.user) {
-        // Recover an Auth user if previous registration
-        // stopped before the player record was created.
+        // Recover an Auth user if a prior registration stopped before the
+        // player record was created. The legacy password is rotated below.
         const {
           data: existingAuth,
           error: authLookupError,
@@ -337,24 +310,13 @@ Deno.serve(async (req: Request) => {
 
         if (authLookupError) {
           console.error("Auth lookup failed:", authLookupError);
-
-          return jsonResponse(
-            { error: "Could not create or retrieve auth user" },
-            500,
-          );
+          return jsonResponse({ error: "Could not create or retrieve auth user" }, 500);
         }
 
-        const recoveredUser = existingAuth.users.find(
-          (user) => user.email === email,
-        );
-
+        const recoveredUser = existingAuth.users.find((user) => user.email === email);
         if (!recoveredUser) {
           console.error("Auth user creation failed:", authError);
-
-          return jsonResponse(
-            { error: "Failed to create auth user" },
-            500,
-          );
+          return jsonResponse({ error: "Failed to create auth user" }, 500);
         }
 
         authUserId = recoveredUser.id;
@@ -362,13 +324,12 @@ Deno.serve(async (req: Request) => {
         authUserId = authResult.user.id;
       }
 
-      // Generate unique referral code.
+      // Generate a unique referral code.
       let code = "";
       let uniqueCodeFound = false;
 
       for (let attempt = 0; attempt < 10; attempt++) {
         const candidate = makeReferralCode();
-
         const {
           data: conflict,
           error: conflictError,
@@ -379,15 +340,8 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (conflictError) {
-          console.error(
-            "Referral code lookup failed:",
-            conflictError,
-          );
-
-          return jsonResponse(
-            { error: "Could not generate referral code" },
-            500,
-          );
+          console.error("Referral code lookup failed:", conflictError);
+          return jsonResponse({ error: "Could not generate referral code" }, 500);
         }
 
         if (!conflict) {
@@ -398,15 +352,10 @@ Deno.serve(async (req: Request) => {
       }
 
       if (!uniqueCodeFound) {
-        return jsonResponse(
-          { error: "Could not generate unique referral code" },
-          500,
-        );
+        return jsonResponse({ error: "Could not generate unique referral code" }, 500);
       }
 
       referralCode = code;
-
-      // Create player record.
       const { error: playerError } = await admin
         .from("players")
         .insert({
@@ -419,12 +368,48 @@ Deno.serve(async (req: Request) => {
 
       if (playerError) {
         console.error("Player creation failed:", playerError);
-
-        return jsonResponse(
-          { error: "Failed to create player record" },
-          500,
-        );
+        return jsonResponse({ error: "Failed to create player record" }, 500);
       }
+    }
+
+    // Migrate legacy deterministic-password accounts once. After migration,
+    // the Auth password is random and never returned to the browser.
+    const { data: authUserResult, error: authUserError } =
+      await admin.auth.admin.getUserById(authUserId);
+
+    if (authUserError || !authUserResult.user) {
+      console.error("Auth user lookup failed:", authUserError);
+      return jsonResponse({ error: "Could not retrieve the Auth identity" }, 500);
+    }
+
+    const currentMetadata = authUserResult.user.user_metadata ?? {};
+    if (currentMetadata.telegram_auth_version !== 2) {
+      const { error: rotateError } = await admin.auth.admin.updateUserById(authUserId, {
+        password: crypto.randomUUID() + crypto.randomUUID(),
+        user_metadata: {
+          ...currentMetadata,
+          telegram_id: telegramId,
+          telegram_auth_version: 2,
+        },
+      });
+
+      if (rotateError) {
+        console.error("Legacy Telegram Auth password rotation failed:", rotateError);
+        return jsonResponse({ error: "Could not secure the Auth identity. Please retry." }, 500);
+      }
+    }
+
+    // Supabase generates a one-time token hash; it does not send an email.
+    const { data: magicLink, error: magicLinkError } =
+      await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+      });
+
+    const tokenHash = magicLink?.properties?.hashed_token;
+    if (magicLinkError || typeof tokenHash !== "string" || !tokenHash) {
+      console.error("Telegram magic-link generation failed:", magicLinkError);
+      return jsonResponse({ error: "Could not establish a secure Telegram session. Please retry." }, 500);
     }
 
     // Register referrals using ONLY the signed Telegram start_param.
@@ -484,11 +469,9 @@ Deno.serve(async (req: Request) => {
       console.log("Referral skipped: invalid signed start parameter");
     }
 
-    // Return authentication credentials to frontend.
-    // Response shape is unchanged.
+    // Return only a one-time Auth token; never expose a reusable password.
     return jsonResponse({
-      email,
-      password,
+      tokenHash,
       telegramId,
       username,
       firstName,
