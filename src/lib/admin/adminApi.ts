@@ -827,7 +827,7 @@ export async function confirmExternalTonFunding(
       typeof result.destinationWallet !== 'string') {
     throw new AdminApiError('The external TON funding confirmation could not be verified.');
   }
-  return result as { fundingId: string; amount: number | string; transactionReference: string; destinationWallet: string; confirmedBy: string; confirmedAt: string; availableReserve: number };
+  return result as { fundingId: string; amount: number | string; transactionReference: string; destinationWallet: string; confirmedBy: string; confirmedAt: string; availableReserve: number | string };
 }
 
 
