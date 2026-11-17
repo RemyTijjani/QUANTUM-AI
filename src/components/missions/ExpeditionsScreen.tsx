@@ -306,8 +306,8 @@ export default function ExpeditionsScreen() {
 
   return (
     <section className="space-y-3">
-      <div className="panel space-y-3 border border-neon/25 bg-gradient-to-br from-neon/10 via-black/50 to-cyan-500/5 p-4">
-        <div className="flex items-center justify-between gap-3">
+      <div className="panel min-w-0 space-y-3 border border-neon/25 bg-gradient-to-br from-neon/10 via-black/50 to-cyan-500/5 p-3 sm:p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-neon/30 bg-neon/10 text-neon-300"><Compass size={18} /></span>
             <div><p className="label">Special operations</p><h2 className="title mt-1">Expeditions</h2></div>
@@ -326,9 +326,9 @@ export default function ExpeditionsScreen() {
 
       {selectedExpeditionId && <button type="button" onClick={() => { setSelectedExpeditionId(null); setActivePage('overview'); setActiveObjectiveIndex({}); }} className="inline-flex items-center gap-2 rounded-lg border border-neon/20 px-3 py-2 font-mono text-[10px] text-neon-300 hover:bg-neon/10">← Back to Expeditions</button>}
 
-      {!selectedExpeditionId && <div className="flex gap-1 overflow-x-auto rounded-xl border border-neon/15 bg-black/30 p-1">
+      {!selectedExpeditionId && <div className="flex min-w-0 gap-1 overflow-x-auto rounded-xl border border-neon/15 bg-black/30 p-1">
         {(['all', 'available', 'joined', 'locked'] as Filter[]).map((value) => (
-          <button key={value} type="button" onClick={() => setFilter(value)} className={`flex-1 rounded-lg px-2 py-2 font-mono text-[8px] uppercase tracking-wide transition ${filter === value ? 'bg-neon/15 text-neon-200' : 'text-neon-600 hover:text-neon-400'}`}>
+          <button key={value} type="button" onClick={() => setFilter(value)} className={`min-h-11 min-w-[76px] flex-1 rounded-lg px-2 py-2 font-mono text-[8px] uppercase tracking-wide transition ${filter === value ? 'bg-neon/15 text-neon-200' : 'text-neon-600 hover:text-neon-400'}`}>
             {value} <span className="opacity-60">{counts[value]}</span>
           </button>
         ))}
@@ -358,9 +358,9 @@ export default function ExpeditionsScreen() {
             const objectivePosition = objectiveIndex;
             const rosterLocked = item.status === 'active' || (!!item.starts_at && new Date(item.starts_at).getTime() <= Date.now());
             return (
-              <article key={item.id} className="panel space-y-3 overflow-hidden p-4">
+              <article key={item.id} className="panel min-w-0 space-y-3 overflow-hidden p-3 sm:p-4">
                 {item.cover_image_url && <img src={item.cover_image_url} alt="" className="h-32 w-full rounded-lg object-cover" loading="lazy" />}
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="rounded-full border border-neon/20 px-2 py-1 font-mono text-[8px] uppercase text-neon-500">{item.category}</span>
@@ -368,7 +368,7 @@ export default function ExpeditionsScreen() {
                     </div>
                     <h3 className="mt-2 break-words font-display text-sm font-bold uppercase tracking-wide text-neon-200">{item.title}</h3>
                   </div>
-                  <div className="shrink-0 text-right"><p className="font-display text-sm text-cyan-200">{rewardLabel(item.reward)}</p><p className="mt-1 font-mono text-[8px] text-neon-700">{item.reward?.recipientScope === 'each_eligible_team_member' ? 'Per eligible team member' : 'Per eligible participant'}</p></div>
+                  <div className="min-w-0 shrink-0 text-left sm:text-right"><p className="break-words font-display text-sm text-cyan-200">{rewardLabel(item.reward)}</p><p className="mt-1 font-mono text-[8px] text-neon-700">{item.reward?.recipientScope === 'each_eligible_team_member' ? 'Per eligible team member' : 'Per eligible participant'}</p></div>
                 </div>
                 {item.description && <p className="font-mono text-[10px] leading-relaxed text-neon-500">{item.description}</p>}
                 <div className="space-y-2 rounded-lg border border-neon/15 bg-black/30 p-3">
@@ -410,7 +410,7 @@ export default function ExpeditionsScreen() {
                   <button type="button" onClick={() => { setSelectedExpeditionId(item.id); setActivePage('overview'); setActiveObjectiveIndex((current) => ({ ...current, [item.id]: 0 })); }} className="btn-primary w-full py-3 text-[10px]">View Expedition details →</button>
                 ) : (
                   <div className="space-y-3">
-                    <div className="flex gap-1 overflow-x-auto pb-1" aria-label="Expedition steps">
+                    <div className="flex min-w-0 gap-1 overflow-x-auto pb-1" aria-label="Expedition steps">
                       {([
                         { id: 'overview', label: 'Overview' },
                         { id: 'registration', label: 'Register' },
@@ -428,7 +428,7 @@ export default function ExpeditionsScreen() {
                             if (step.id === 'team' && !hasTeam) return;
                             setActivePage(step.id);
                           }} disabled={(step.id === 'registration' && (joined || !item.isUnlocked || item.status !== 'registration_open')) || (step.id === 'tasks' && (!joined || item.status !== 'active')) || (step.id === 'team' && !hasTeam) || (step.id === 'results' && item.status !== 'completed')}
-                            className={`min-w-[76px] flex-1 rounded-lg border px-2 py-2 font-mono text-[9px] transition ${active ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-200' : complete ? 'border-emerald-400/20 text-emerald-300' : 'border-neon/10 text-neon-700'} disabled:cursor-not-allowed disabled:opacity-60`}>
+                            className={`min-h-11 min-w-[88px] flex-1 rounded-lg border px-2 py-2 font-mono text-[9px] transition ${active ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-200' : complete ? 'border-emerald-400/20 text-emerald-300' : 'border-neon/10 text-neon-700'} disabled:cursor-not-allowed disabled:opacity-60`}>
                             <span className="block">{index + 1}. {step.label}</span>
                           </button>
                         );
