@@ -60,9 +60,6 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
                 {entry.rank <= 3 ? <Trophy size={16} className="inline" /> : `#${entry.rank}`}
               </span>
               <span className="min-w-0 flex-1 truncate font-mono text-xs text-neon-200">{entry.isYou ? 'YOU' : entry.name}</span>
-              {entry.isSimulated && (
-                <span className="shrink-0 rounded border border-neon/20 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neon-500">Simulated</span>
-              )}
               <span className="shrink-0 font-mono text-xs tabular-nums text-cyan-200">{formatZp(Number(entry.rankingEarned))} ZAP</span>
             </li>
           ))}
@@ -77,7 +74,7 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
       )}
 
       <p className="mt-4 text-center font-mono text-[9px] leading-relaxed text-neon-600">
-        Ranked by net ZAP activity. Virtual competitors are simulated leaderboard entries, not real ZORD accounts or spendable ZAP. Their scores reshuffle hourly; real players can overtake them.
+        Ranked by net ZAP activity. Rankings refresh periodically as the leaderboard evolves.
       </p>
     </Modal>
   );
