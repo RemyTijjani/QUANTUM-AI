@@ -1,4 +1,4 @@
-import { formatGram, formatZp } from '@/lib/format';
+import { formatGram } from '@/lib/format';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { BadgeCheck, Clock3, Gift, Info, RefreshCw, Ticket, Trophy, Wallet } from 'lucide-react';
@@ -23,7 +23,7 @@ type Entry = { id: string; raffle_id: string; stake_zap: number | string; ticket
 type RaffleHistory = { id: string; title: string; status: string; prize_pool_amount: number | string; prize_currency: 'TON' | 'ZAP' | 'AGENT'; closed_at: string | null; drawn_at: string | null; myPrize: null | { id: string; prize_amount: number | string; prize_currency: 'TON' | 'ZAP' | 'AGENT'; reward_code: string | null; selection_method: 'random' | 'admin'; selected_at: string; delivery_status: 'pending' | 'credited' | 'withdrawable' | 'delivered' | 'failed' } };
 type WalletResponse = { balance?: number | string };
 const number = (value: number | string | null | undefined) => Number(value ?? 0);
-const fmt = (value: number | string, currency: 'TON' | 'ZAP' | 'AGENT' = 'ZAP') => currency === 'TON' ? formatGram(value) : formatZp(value);
+const fmt = (value: number | string, currency: 'TON' | 'ZAP' | 'AGENT' = 'ZAP') => formatGram(value, currency === 'ZAP' ? 0 : 9);
 const currencyLabel = (currency: 'TON' | 'ZAP' | 'AGENT') => currency === 'TON' ? 'Gram' : currency;
 const rewardLabel = (raffle: Raffle) => `${fmt(raffle.prize_pool_amount, raffle.prize_currency)} ${currencyLabel(raffle.prize_currency)}`;
 const countdownText = (target: string, now: number) => {
