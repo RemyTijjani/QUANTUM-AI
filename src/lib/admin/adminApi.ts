@@ -879,7 +879,7 @@ export interface AdminRaffleDraftInput {
   description: string;
   rewardType: 'ton' | 'zap';
   rewardCode: null;
-  prizePoolAmount: number;
+  prizePoolAmount: string;
   fundingSource: 'treasury' | 'external';
   minBetZap: number;
   entryMode: 'one_bet_one_entry' | 'proportional';
@@ -934,7 +934,7 @@ export async function selectAdminRaffleWinners(
   creds: AdminCredentials,
   raffleId: string,
   playerIds?: string[],
-  prizeShares?: number[],
+  prizeShares?: string[],
 ): Promise<AdminRaffleSelectionResult> {
   const body = await callAdminApi(creds, {
     action: 'select_raffle_winners',
