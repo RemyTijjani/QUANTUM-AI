@@ -831,6 +831,26 @@ export async function confirmExternalTonFunding(
 }
 
 
+export interface AdminRaffleEntryRecord {
+  id: string;
+  raffle_id: string;
+  player_id: string;
+  stake_zap: number | string;
+  ticket_count: number;
+  created_at: string;
+  players?: { username: string | null; first_name: string | null; telegram_id: number | string | null } | null;
+}
+export interface AdminRaffleWinnerRecord {
+  id: string;
+  raffle_id: string;
+  player_id: string;
+  prize_amount: number | string;
+  prize_currency: 'TON' | 'ZAP';
+  selection_method: 'random' | 'admin';
+  selected_at: string;
+  delivery_status: 'pending' | 'credited' | 'withdrawable' | 'delivered' | 'failed';
+  players?: { username: string | null; first_name: string | null; telegram_id: number | string | null } | null;
+}
 export interface AdminRaffleRecord {
   id: string;
   title: string;
@@ -849,6 +869,8 @@ export interface AdminRaffleRecord {
   ends_at: string | null;
   closed_at?: string | null;
   created_at: string;
+  entries?: AdminRaffleEntryRecord[];
+  winners?: AdminRaffleWinnerRecord[];
 }
 
 export interface AdminRaffleDraftInput {
@@ -905,6 +927,39 @@ export async function publishAdminRaffle(
     throw new AdminApiError('The server did not confirm that the raffle was published. Refresh the list before retrying.');
   }
   return result as AdminRafflePublishResult;
+}
+
+export interface AdminRaffleSelectionResult { success: true; raffleId: string; winnerCount: number; status: 'drawn' }
+export async function selectAdminRaffleWinners(
+  creds: AdminCredentials,
+  raffleId: string,
+  playerIds?: string[],
+  prizeShares?: number[],
+): Promise<AdminRaffleSelectionResult> {
+  const body = await callAdminApi(creds, {
+    action: 'select_raffle_winners',
+    raffle: { id: raffleId },
+    ...(playerIds ? { playerIds } : {}),
+    ...(prizeShares ? { prizeShares } : {}),
+  });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The winner selection response could not be verified.');
+  const result = body as Partial<AdminRaffleSelectionResult>;
+  if (result.success !== true || result.raffleId !== raffleId || result.status !== 'drawn' || !Number.isInteger(result.winnerCount)) {
+    throw new AdminApiError('Winner selection could not be verified. Refresh the raffle before retrying.');
+  }
+  return result as AdminRaffleSelectionResult;
+}
+export async function creditAdminRaffleWinner(
+  creds: AdminCredentials,
+  winnerId: string,
+): Promise<{ success: true; alreadyCredited: boolean; winnerId: string; deliveryStatus?: string }> {
+  const body = await callAdminApi(creds, { action: 'credit_raffle_winner', winnerId });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The prize credit response could not be verified.');
+  const result = body as { success?: unknown; alreadyCredited?: unknown; winnerId?: unknown; deliveryStatus?: unknown };
+  if (result.success !== true || result.winnerId !== winnerId || typeof result.alreadyCredited !== 'boolean') {
+    throw new AdminApiError('The ZAP prize credit could not be verified. Refresh the raffle before retrying.');
+  }
+  return result as { success: true; alreadyCredited: boolean; winnerId: string; deliveryStatus?: string };
 }
 
 export interface AdminRaffleCloseResult {
