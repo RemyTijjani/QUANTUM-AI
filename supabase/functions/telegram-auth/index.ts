@@ -270,8 +270,54 @@ Deno.serve(async (req: Request) => {
     let authUserId: string;
 
     if (existing) {
-      referralCode = existing.referral_code;
       authUserId = existing.id;
+      referralCode = typeof existing.referral_code === "string"
+        ? existing.referral_code.trim().toUpperCase()
+        : "";
+
+      // Repair legacy player rows that predate mandatory referral codes.
+      // A successful auth response must always contain a usable referral code.
+      if (!/^ZORD-[A-Z0-9]{6}$/.test(referralCode)) {
+        let repairedCode = "";
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const candidate = makeReferralCode();
+          const { data: conflict, error: conflictError } = await admin
+            .from("players")
+            .select("id")
+            .eq("referral_code", candidate)
+            .maybeSingle();
+
+          if (conflictError) {
+            console.error("Referral repair lookup failed:", {
+              code: conflictError.code,
+            });
+            return jsonResponse({ error: "Could not repair player referral information" }, 500);
+          }
+
+          if (!conflict) {
+            repairedCode = candidate;
+            break;
+          }
+        }
+
+        if (!repairedCode) {
+          return jsonResponse({ error: "Could not generate a player referral code" }, 500);
+        }
+
+        const { error: referralUpdateError } = await admin
+          .from("players")
+          .update({ referral_code: repairedCode })
+          .eq("id", existing.id);
+
+        if (referralUpdateError) {
+          console.error("Referral repair failed:", {
+            code: referralUpdateError.code,
+          });
+          return jsonResponse({ error: "Could not save player referral information" }, 500);
+        }
+
+        referralCode = repairedCode;
+      }
 
       const { error: updateError } = await admin
         .from("players")
@@ -279,7 +325,7 @@ Deno.serve(async (req: Request) => {
         .eq("id", existing.id);
 
       if (updateError) {
-        console.error("Player update failed:", updateError);
+        console.error("Player update failed:", { code: updateError.code });
       }
     } else {
       // Create a random, undisclosed password. Telegram sign-in uses a
