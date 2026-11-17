@@ -2106,7 +2106,7 @@ Deno.serve(async (req: Request) => {
       if (!validUuid.test(raffleId)) return json({ error: "A valid raffle ID is required." }, 400);
       const playerIds = Array.isArray(body.playerIds) && body.playerIds.every((id) => typeof id === "string" && validUuid.test(id))
         ? body.playerIds : null;
-      const prizeShares = Array.isArray(body.prizeShares) && body.prizeShares.every((share) => typeof share === "number" && Number.isFinite(share))
+      const prizeShares = Array.isArray(body.prizeShares) && body.prizeShares.every((share) => typeof share === "string" && /^(?:0|[1-9]\d{0,10})(?:\.\d{1,9})?$/.test(share))
         ? body.prizeShares : null;
       if (body.playerIds !== undefined && playerIds === null) return json({ error: "The selected player list is invalid." }, 400);
       if (body.prizeShares !== undefined && prizeShares === null) return json({ error: "The custom prize shares are invalid." }, 400);
@@ -2160,7 +2160,12 @@ Deno.serve(async (req: Request) => {
       const description = typeof raffle.description === "string" ? raffle.description.trim() : "";
       const rewardType = raffle.rewardType;
       const rewardCode = raffle.rewardCode ?? null;
-      const amount = Number(raffle.prizePoolAmount);
+      const amount = typeof raffle.prizePoolAmount === "string"
+        ? raffle.prizePoolAmount.trim()
+        : typeof raffle.prizePoolAmount === "number" && Number.isFinite(raffle.prizePoolAmount)
+          ? String(raffle.prizePoolAmount)
+          : "";
+      const amountValue = Number(amount);
       const minBet = Number(raffle.minBetZap);
       const winnerCount = Number(raffle.winnerCount);
       const entryMode = raffle.entryMode;
@@ -2171,7 +2176,7 @@ Deno.serve(async (req: Request) => {
 
       if (title.length < 3 || title.length > 120 || description.length > 2000) return json({ error: "Enter a title between 3 and 120 characters and a description under 2,000 characters." }, 400);
       if (!["ton", "zap"].includes(String(rewardType))) return json({ error: "Only TON and ZAP prizes are supported." }, 400);
-      if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(minBet) || minBet <= 0) return json({ error: "Prize pool and minimum bet must be positive amounts." }, 400);
+      if (!/^(?:0|[1-9]\d{0,10})(?:\.\d{1,9})?$/.test(amount) || !Number.isFinite(amountValue) || amountValue <= 0 || !Number.isFinite(minBet) || minBet <= 0) return json({ error: "Prize pool must be positive with at most 9 decimal places; the minimum bet must also be positive." }, 400);
       if (!Number.isInteger(winnerCount) || winnerCount < 1 || winnerCount > 100) return json({ error: "Winner count must be between 1 and 100." }, 400);
       if (!["one_bet_one_entry", "proportional"].includes(String(entryMode))) return json({ error: "Choose a valid entry method." }, 400);
       if (!["random", "admin"].includes(String(winnerMethod))) return json({ error: "Choose a valid winner selection method." }, 400);
