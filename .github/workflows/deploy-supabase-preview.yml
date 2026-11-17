@@ -28,4 +28,8 @@ jobs:
             echo "Missing SUPABASE_ACCESS_TOKEN or SUPABASE_PREVIEW_PROJECT_REF GitHub Actions secret."
             exit 1
           fi
+          if [ "$PREVIEW_PROJECT_REF" != "lchkctclxzwwvfwosava" ]; then
+            echo "Refusing deployment: this workflow is Preview-only and must target lchkctclxzwwvfwosava."
+            exit 1
+          fi
           supabase functions deploy public-events --project-ref "$PREVIEW_PROJECT_REF"
