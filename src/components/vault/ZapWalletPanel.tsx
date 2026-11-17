@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowDownUp, ArrowLeftRight, CheckCircle2, Coins, Copy, RefreshCw, Send, Wallet, Zap } from 'lucide-react';
+import { ArrowLeftRight, CheckCircle2, Coins, Copy, RefreshCw, Send, Wallet, Zap } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { buildReferralLink } from '@/lib/referral';
 import { formatZp } from '@/lib/format';
