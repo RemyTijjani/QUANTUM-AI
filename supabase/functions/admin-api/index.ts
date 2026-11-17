@@ -407,6 +407,8 @@ interface AdminRequestBody {
     | "save_raffle_draft"
     | "reserve_raffle_prize"
     | "close_raffle"
+    | "select_raffle_winners"
+    | "credit_raffle_winner"
     | "list_ton_withdrawals"
     | "review_ton_withdrawal"
     | "get_referral_kickback_budget"
@@ -423,6 +425,9 @@ interface AdminRequestBody {
   tonAmount?: number;
   monthlyKickbackBudgetZp?: number;
   transactionReference?: string;
+  winnerId?: string;
+  playerIds?: string[];
+  prizeShares?: number[];
   raffle?: {
     id?: string;
     title?: string;
@@ -2045,7 +2050,65 @@ Deno.serve(async (req: Request) => {
         console.error("Admin raffle list failed:", error);
         return json({ error: "Could not load raffles." }, 500);
       }
-      return json({ success: true, raffles: raffles ?? [] });
+      const raffleIds = (raffles ?? []).map((raffle) => raffle.id);
+      const [entryResult, winnerResult] = raffleIds.length ? await Promise.all([
+        db.from("raffle_entries")
+          .select("id,raffle_id,player_id,stake_zap,ticket_count,created_at,players(username,first_name,telegram_id)")
+          .in("raffle_id", raffleIds)
+          .order("created_at", { ascending: true }),
+        db.from("raffle_winners")
+          .select("id,raffle_id,player_id,prize_amount,prize_currency,selection_method,selected_at,delivery_status,players(username,first_name,telegram_id)")
+          .in("raffle_id", raffleIds)
+          .order("selected_at", { ascending: true }),
+      ]) : [{ data: [], error: null }, { data: [], error: null }];
+      if (entryResult.error || winnerResult.error) {
+        console.error("Raffle entrants or winners lookup failed:", entryResult.error ?? winnerResult.error);
+        return json({ error: "Could not load raffle entrants and winner records." }, 500);
+      }
+      const enriched = (raffles ?? []).map((raffle) => ({
+        ...raffle,
+        entries: (entryResult.data ?? []).filter((entry) => entry.raffle_id === raffle.id),
+        winners: (winnerResult.data ?? []).filter((winner) => winner.raffle_id === raffle.id),
+      }));
+      return json({ success: true, raffles: enriched });
+    }
+
+    if (body.action === "select_raffle_winners") {
+      const raffleId = typeof body.raffle?.id === "string" ? body.raffle.id : "";
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!validUuid.test(raffleId)) return json({ error: "A valid raffle ID is required." }, 400);
+      const playerIds = Array.isArray(body.playerIds) && body.playerIds.every((id) => typeof id === "string" && validUuid.test(id))
+        ? body.playerIds : null;
+      const prizeShares = Array.isArray(body.prizeShares) && body.prizeShares.every((share) => typeof share === "number" && Number.isFinite(share))
+        ? body.prizeShares : null;
+      if (body.playerIds !== undefined && playerIds === null) return json({ error: "The selected player list is invalid." }, 400);
+      if (body.prizeShares !== undefined && prizeShares === null) return json({ error: "The custom prize shares are invalid." }, 400);
+      const { data, error } = await db.rpc("admin_select_raffle_winners", {
+        p_raffle_id: raffleId,
+        p_admin: ADMIN_USERNAME,
+        p_player_ids: playerIds,
+        p_prize_shares: prizeShares,
+      });
+      if (error || !data || data.success !== true) {
+        const message = error?.message ?? data?.error ?? "Could not select raffle winners.";
+        return json({ error: message }, /already|closed|eligible|winner|share/i.test(message) ? 409 : 400);
+      }
+      return json(data);
+    }
+
+    if (body.action === "credit_raffle_winner") {
+      const winnerId = typeof body.winnerId === "string" ? body.winnerId : "";
+      const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!validUuid.test(winnerId)) return json({ error: "A valid raffle winner is required." }, 400);
+      const { data, error } = await db.rpc("admin_credit_zap_raffle_prize", {
+        p_winner_id: winnerId,
+        p_admin: ADMIN_USERNAME,
+      });
+      if (error || !data || data.success !== true) {
+        const message = error?.message ?? data?.error ?? "Could not credit this ZAP prize.";
+        return json({ error: message }, /already|not found|state/i.test(message) ? 409 : 400);
+      }
+      return json(data);
     }
 
     if (body.action === "save_raffle_draft") {
