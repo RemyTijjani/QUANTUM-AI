@@ -1,6 +1,6 @@
 # Stage 5 Preview Migration-History Reconciliation Plan
 
-**Status:** Preparation only — not approved for database execution  
+**Status:** Historical preparation snapshot from 2026-11-14. The current Preview state is superseded by the 2026-11-17 update at the end of this document.  
 **Target:** Supabase Preview only  
 **Branch:** `security/trusted-gameplay-migration`  
 **Reference snapshot commit:** `c48250c06875588d758a49c345f7d1565c4c0861`  
@@ -501,3 +501,26 @@ Stage 5 is **not signed off**. The Preview inventory and security checks are sub
 A further product/configuration question remains whether the `telegram-bot` entry in `supabase/config.toml` is intentionally reserved or stale; it has no local function source folder and is not deployed in Preview.
 
 All checks in run `43573581263` were read-only. No database write, ACL change, migration application/repair, Edge Function deployment, or Production operation occurred.
+
+
+## Superseding Preview update — 2026-11-17
+
+The earlier 48-file / zero-ledger snapshot above is historical and must not be used as the current migration baseline.
+
+- The Preview migration ledger now exists and records 111 applied versions.
+- The active branch currently contains 115 SQL migration files. The latest comparison found 19 branch migration versions absent from the remote ledger and 15 remote applied versions without a matching filename in the branch.
+- These 34 mismatches are not permission to replay, repair, delete, rename, or baseline migrations. Reconcile each version against the live schema, function definitions, data effects, and the exact historical SQL before proposing any migration-history operation.
+- New Preview migrations applied and tracked after the earlier snapshot:
+  - 20261117160203_harden_internal_raffle_helper_execute_grants.sql
+  - 20261117160739_restrict_postgres_public_default_client_privileges.sql
+  - 20261117161031_correct_daily_streak_zap_reward_range.sql
+  - 20261117161446_support_gram_raffle_winner_selection.sql
+  - 20261117161650_support_gram_raffle_reservation_precision.sql
+  - 20261117162619_enforce_minimum_zap_transfer_in_database.sql
+- Direct EXECUTE on internal raffle SECURITY DEFINER helpers has been revoked from PUBLIC, anon, and authenticated. Public raffle winner-selection and credit wrappers remain service_role-only.
+- Default privileges for future public-schema objects created by postgres now revoke client access to tables, sequences, and functions. The corresponding supabase_admin defaults remain broad because the current execution role cannot alter that role's defaults; this requires an authorized owner-level change.
+- The current security advisor reports 76 INFO notices for RLS-enabled tables without policies and one WARN for leaked-password protection disabled. Public no-policy tables were checked for direct anon/authenticated privileges; no exposed client table access was found in that check.
+- Fourteen Preview Edge Functions are ACTIVE. Critical function source/deployment checks and Preview CI checks are recorded in docs/ZORD_STAGE_1_TO_8_AUDIT.md.
+- Stage 5 remains unsigned-off until the 19 pending branch versions and 15 remote-only versions are fully reconciled and an isolated clean baseline is validated.
+
+The earlier statements in this document that the migration ledger is absent, that no ACL changes have occurred, and that the branch contains only 48 migration files describe the 2026-11-14 snapshot only. They are not current-state assertions.
