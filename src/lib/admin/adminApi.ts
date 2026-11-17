@@ -962,6 +962,19 @@ export async function creditAdminRaffleWinner(
   return result as { success: true; alreadyCredited: boolean; winnerId: string; deliveryStatus?: string };
 }
 
+export async function creditAdminTonRaffleWinner(
+  creds: AdminCredentials,
+  winnerId: string,
+): Promise<{ success: true; alreadyCredited: boolean; winnerId: string; deliveryStatus: 'withdrawable' }> {
+  const body = await callAdminApi(creds, { action: 'credit_ton_raffle_winner', winnerId });
+  if (!body || typeof body !== 'object') throw new AdminApiError('The Gram prize credit response could not be verified.');
+  const result = body as { success?: unknown; alreadyCredited?: unknown; winnerId?: unknown; deliveryStatus?: unknown };
+  if (result.success !== true || result.winnerId !== winnerId || typeof result.alreadyCredited !== 'boolean' || result.deliveryStatus !== 'withdrawable') {
+    throw new AdminApiError('The Gram prize credit could not be verified. Refresh the raffle before retrying.');
+  }
+  return result as { success: true; alreadyCredited: boolean; winnerId: string; deliveryStatus: 'withdrawable' };
+}
+
 export interface AdminRaffleCloseResult {
   success: true;
   status: 'closed';
