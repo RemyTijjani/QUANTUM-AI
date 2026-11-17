@@ -743,7 +743,7 @@ export interface AdminExternalZapFundingRecord {
   confirmed_at: string;
 }
 export interface AdminExternalZapFundingSummary {
-  availableReserve: number;
+  availableReserve: number | string;
   updatedAt: string | null;
   funding: AdminExternalZapFundingRecord[];
 }
@@ -755,14 +755,14 @@ export async function listExternalZapFunding(
     throw new AdminApiError('Could not load external ZAP funding records.');
   }
   const result = body as Partial<AdminExternalZapFundingSummary>;
-  if (typeof result.availableReserve !== 'number' || !Array.isArray(result.funding)) {
+  if (!(typeof result.availableReserve === 'number' || typeof result.availableReserve === 'string') || !Array.isArray(result.funding)) {
     throw new AdminApiError('The external ZAP funding response could not be verified.');
   }
   return result as AdminExternalZapFundingSummary;
 }
 export async function confirmExternalZapFunding(
   creds: AdminCredentials,
-  input: { amount: number; transactionReference: string },
+  input: { amount: string; transactionReference: string },
 ): Promise<{ fundingId: string; amount: number; transactionReference: string; confirmedBy: string; confirmedAt: string; availableReserve: number }> {
   const body = await callAdminApi(creds, {
     action: 'confirm_external_zap_funding',
@@ -774,7 +774,7 @@ export async function confirmExternalZapFunding(
   }
   const result = body as Record<string, unknown>;
   if (result.success !== true || typeof result.fundingId !== 'string' ||
-      typeof result.availableReserve !== 'number' || typeof result.confirmedAt !== 'string') {
+      !(typeof result.availableReserve === 'number' || typeof result.availableReserve === 'string') || typeof result.confirmedAt !== 'string') {
     throw new AdminApiError('The external ZAP funding confirmation could not be verified.');
   }
   return result as { fundingId: string; amount: number; transactionReference: string; confirmedBy: string; confirmedAt: string; availableReserve: number };
@@ -812,7 +812,7 @@ export async function listExternalTonFunding(
 export async function confirmExternalTonFunding(
   creds: AdminCredentials,
   input: { amount: number; transactionReference: string },
-): Promise<{ fundingId: string; amount: number; transactionReference: string; destinationWallet: string; confirmedBy: string; confirmedAt: string; availableReserve: number }> {
+): Promise<{ fundingId: string; amount: number | string; transactionReference: string; destinationWallet: string; confirmedBy: string; confirmedAt: string; availableReserve: number | string }> {
   const body = await callAdminApi(creds, {
     action: 'confirm_external_ton_funding',
     tonAmount: input.amount,
@@ -827,7 +827,7 @@ export async function confirmExternalTonFunding(
       typeof result.destinationWallet !== 'string') {
     throw new AdminApiError('The external TON funding confirmation could not be verified.');
   }
-  return result as { fundingId: string; amount: number; transactionReference: string; destinationWallet: string; confirmedBy: string; confirmedAt: string; availableReserve: number };
+  return result as { fundingId: string; amount: number | string; transactionReference: string; destinationWallet: string; confirmedBy: string; confirmedAt: string; availableReserve: number };
 }
 
 
