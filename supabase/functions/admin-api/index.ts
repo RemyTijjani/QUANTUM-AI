@@ -2272,12 +2272,16 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body.action === "confirm_external_ton_funding") {
-      const amount = body.tonAmount;
+      const amount = typeof body.tonAmount === "string"
+        ? body.tonAmount.trim()
+        : typeof body.tonAmount === "number" && Number.isFinite(body.tonAmount)
+          ? String(body.tonAmount)
+          : "";
+      const amountValue = Number(amount);
       const reference = typeof body.transactionReference === "string"
         ? body.transactionReference.trim()
         : "";
-      if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0 ||
-          Number(amount.toFixed(9)) !== amount) {
+      if (!/^(?:0|[1-9]\\d{0,10})(?:\\.\\d{1,9})?$/.test(amount) || !Number.isFinite(amountValue) || amountValue <= 0) {
         return json({ error: "Enter a positive TON amount with up to 9 decimal places" }, 400);
       }
       if (reference.length < 32 || reference.length > 200) {
