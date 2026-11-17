@@ -76,7 +76,7 @@ function FeatureHeader({
   icon: typeof Target;
 }) {
   return (
-    <div className="panel space-y-3 border border-neon/25 bg-gradient-to-br from-neon/10 via-black/50 to-cyan-500/5 p-4">
+    <div className="min-w-0 panel space-y-3 border border-neon/25 bg-gradient-to-br from-neon/10 via-black/50 to-cyan-500/5 p-4">
       <div className="flex items-center gap-2">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-neon/30 bg-neon/10 text-neon-300">
           <Icon size={18} />
@@ -86,7 +86,7 @@ function FeatureHeader({
           <h2 className="title mt-1">{title}</h2>
         </div>
       </div>
-      <p className="font-mono text-[10px] leading-relaxed text-neon-500">{description}</p>
+      <p className="font-mono text-[9px] sm:text-[10px] leading-relaxed text-neon-500">{description}</p>
     </div>
   );
 }
