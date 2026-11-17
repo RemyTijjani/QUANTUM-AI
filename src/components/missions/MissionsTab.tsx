@@ -9,6 +9,7 @@ import type { Notify } from '@/hooks/useToast';
 import { supabase } from '@/lib/supabase';
 import type { CreatorOpsSubmission } from '@/lib/supabase';
 import DailyUplinkClaim from '@/components/missions/DailyUplinkClaim';
+import { buildReferralLink } from '@/lib/referral';
 import Stage6EngagementHub from '@/components/missions/Stage6EngagementHub';
 import type { EngagementView } from '@/components/missions/Stage6EngagementHub';
 
@@ -103,6 +104,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             status={statusForMission(mission)}
             notify={notify}
             onRefreshVerifiedEconomy={refreshAfterTaskAction}
+          referralCode={state.referralCode}
           />
         ))}
       </section>
@@ -119,6 +121,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             status={statusForMission(mission)}
             notify={notify}
             onRefreshVerifiedEconomy={refreshAfterTaskAction}
+          referralCode={state.referralCode}
           />
         ))}
       </section>
@@ -157,9 +160,10 @@ interface MissionCardProps {
   progressLabel?: string;
   notify?: Notify;
   onRefreshVerifiedEconomy?: () => Promise<void>;
+  referralCode?: string;
 }
 
-function MissionCard({ mission, status, progressLabel, notify, onRefreshVerifiedEconomy }: MissionCardProps) {
+function MissionCard({ mission, status, progressLabel, notify, onRefreshVerifiedEconomy, referralCode }: MissionCardProps) {
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState(false);
   const claimTelegramMission = async () => {
@@ -210,6 +214,18 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
       setClaiming(false);
     }
   };
+  const copyReferralLink = async () => {
+    if (!notify || !referralCode) {
+      notify?.('Your referral link is not ready yet. Reopen the app and try again.', 'error');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(buildReferralLink(referralCode));
+      notify('Referral link copied. Share it with a new operative.');
+    } catch {
+      notify('Could not copy the referral link. Please try again.', 'error');
+    }
+  };
   const Icon = mission.kind === 'daily' ? CalendarCheck : Megaphone;
   const legacyClaimed = status === 'claimed';
   const pendingReview = status === 'pending';
@@ -241,6 +257,18 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           <XFollowSubmissionCard notify={notify!} onStatusChanged={onRefreshVerifiedEconomy} />
         ) : mission.id === 'daily-uplink' ? (
           <DailyUplinkClaim notify={notify!} onClaimed={onRefreshVerifiedEconomy!} />
+        ) : mission.id === 'share-uplink' ? (
+          <div className="mt-2 space-y-2">
+            <button
+              type="button"
+              onClick={() => void copyReferralLink()}
+              disabled={!referralCode}
+              className="min-h-11 rounded border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-neon-300 disabled:opacity-50"
+            >
+              Copy referral link
+            </button>
+            <p className="font-mono text-[9px] leading-relaxed text-amber-300">Share your link with a new player. The 300 ZP reward is not claimable until referral completion verification is enabled.</p>
+          </div>
         ) : mission.telegramChatId ? (
           <button
             type="button"
@@ -263,7 +291,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           <p className="mt-2 font-mono text-[9px] leading-relaxed text-amber-300">{unavailableReason}</p>
         )}
       </div>
-      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : pendingReview ? 'border-amber-300/20 bg-amber-300/5 text-amber-200' : mission.id === 'daily-uplink' || mission.id === 'follow-signal' || mission.telegramChatId || (mission.id === 'agent-uptime' && status === 'ready') ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : pendingReview ? 'Pending review' : mission.id === 'daily-uplink' ? 'Claim' : mission.id === 'follow-signal' ? 'Submit' : mission.id === 'agent-uptime' ? status === 'ready' ? 'Verify' : 'Locked' : mission.telegramChatId ? 'Verify' : 'Setup needed'}</span>
+      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : pendingReview ? 'border-amber-300/20 bg-amber-300/5 text-amber-200' : mission.id === 'daily-uplink' || mission.id === 'follow-signal' || mission.id === 'share-uplink' || mission.telegramChatId || (mission.id === 'agent-uptime' && status === 'ready') ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : pendingReview ? 'Pending review' : mission.id === 'daily-uplink' ? 'Claim' : mission.id === 'follow-signal' ? 'Submit' : mission.id === 'agent-uptime' ? status === 'ready' ? 'Verify' : 'Locked' : mission.id === 'share-uplink' ? 'Invite' : mission.telegramChatId ? 'Verify' : 'Setup needed'}</span>
     </article>
   );
 }
