@@ -283,7 +283,6 @@ function GameApp({
             notify={notify}
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
             verifiedZpBalance={verifiedZpBalance}
-            verifiedZpLifetime={verifiedZpLifetime}
             zapEarned={zapEarned}
             zapLoading={zapLoading}
             zapAchievements={zapAchievements}
