@@ -180,7 +180,7 @@ Deno.serve(async (req: Request) => {
         } else if (mission.kind === "social" && typeof mission.telegram_chat_id === "string" && mission.telegram_chat_id.trim()) {
           statuses[mission.id] = telegramClaims.has(mission.id) ? "claimed" : "ready";
         } else if (mission.id === "follow-signal" && mission.kind === "social") {
-          const xStatus = xFollowSubmissionResult.data?.[0]?.status;
+          const xStatus = xFollowSubmissionResult.data?.status;
           statuses[mission.id] = xStatus === "approved"
             ? "claimed"
             : xStatus === "pending" ? "pending" : "ready";
