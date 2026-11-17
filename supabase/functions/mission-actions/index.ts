@@ -82,6 +82,103 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid request." }, 400);
     }
 
+    if (body.action === "get_task_statuses") {
+      const utcDate = new Date().toISOString().slice(0, 10);
+      const nowIso = new Date().toISOString();
+      const twelveHoursAgoIso = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+
+      const [
+        missionResult,
+        dailyClaimResult,
+        agentClaimResult,
+        telegramClaimResult,
+        creatorSubmissionResult,
+        activeRentalResult,
+      ] = await Promise.all([
+        admin.from("mission_tasks")
+          .select("id, kind, telegram_chat_id")
+          .eq("status", "published")
+          .in("kind", ["daily", "social", "creator"])
+          .in("reward_currency", ["ZP", "ZAP"])
+          .eq("unlock_cost_zp", 0)
+          .gt("reward", 0)
+          .order("created_at", { ascending: true }),
+        admin.from("daily_uplink_claims")
+          .select("claim_date")
+          .eq("player_id", player.id)
+          .eq("claim_date", utcDate)
+          .maybeSingle(),
+        admin.from("agent_uptime_mission_claims")
+          .select("claim_date")
+          .eq("player_id", player.id)
+          .eq("claim_date", utcDate)
+          .maybeSingle(),
+        admin.from("telegram_mission_claims")
+          .select("mission_id")
+          .eq("player_id", player.id),
+        admin.from("creator_ops_submissions")
+          .select("mission_id, status")
+          .eq("player_id", player.id),
+        admin.from("player_agent_rentals")
+          .select("id")
+          .eq("player_id", player.id)
+          .eq("status", "active")
+          .lte("starts_at", twelveHoursAgoIso)
+          .gt("expires_at", nowIso)
+          .limit(1),
+      ]);
+
+      const queryError = missionResult.error || dailyClaimResult.error ||
+        agentClaimResult.error || telegramClaimResult.error ||
+        creatorSubmissionResult.error || activeRentalResult.error;
+      if (queryError) {
+        console.error("Task status summary lookup failed:", queryError);
+        return json({ error: "Task progress could not be loaded right now." }, 500);
+      }
+
+      const telegramClaims = new Set((telegramClaimResult.data ?? []).map((row) => row.mission_id));
+      const creatorStatuses = new Map<string, string>();
+      for (const row of creatorSubmissionResult.data ?? []) {
+        const previous = creatorStatuses.get(row.mission_id);
+        if (row.status === "approved" || (row.status === "pending" && previous !== "approved")) {
+          creatorStatuses.set(row.mission_id, row.status);
+        } else if (!previous) {
+          creatorStatuses.set(row.mission_id, row.status);
+        }
+      }
+
+      const statuses: Record<string, "claimed" | "ready" | "locked" | "pending"> = {};
+      for (const mission of missionResult.data ?? []) {
+        if (mission.kind === "daily" && mission.id === "daily-uplink") {
+          statuses[mission.id] = dailyClaimResult.data ? "claimed" : "ready";
+        } else if (mission.kind === "daily" && mission.id === "agent-uptime") {
+          statuses[mission.id] = agentClaimResult.data
+            ? "claimed"
+            : (activeRentalResult.data?.length ?? 0) > 0 ? "ready" : "locked";
+        } else if (mission.kind === "social" && typeof mission.telegram_chat_id === "string" && mission.telegram_chat_id.trim()) {
+          statuses[mission.id] = telegramClaims.has(mission.id) ? "claimed" : "ready";
+        } else if (mission.kind === "creator") {
+          const creatorStatus = creatorStatuses.get(mission.id);
+          statuses[mission.id] = creatorStatus === "approved"
+            ? "claimed"
+            : creatorStatus === "pending" ? "pending" : "ready";
+        } else {
+          statuses[mission.id] = "locked";
+        }
+      }
+
+      const values = Object.values(statuses);
+      const claimed = values.filter((status) => status === "claimed").length;
+      const ready = values.filter((status) => status === "ready").length;
+      return json({
+        success: true,
+        available: Math.max(0, values.length - claimed),
+        ready,
+        claimed,
+        statuses,
+      });
+    }
+
     const missionId = typeof body.missionId === "string" ? body.missionId.trim() : "";
     if (!missionId || missionId.length > 120) return json({ error: "Choose a valid mission." }, 400);
 
