@@ -2,7 +2,7 @@ export const pad = (value: number) => String(value).padStart(2, '0');
 
 export const formatZp = (value: number | string) => {
   if (typeof value === 'string') {
-    return /^\d+$/.test(value) ? BigInt(value).toLocaleString('en-US') : '0';
+    return /^\d+(?:\.0+)?$/.test(value) ? BigInt(value.split('.')[0]).toLocaleString('en-US') : '0';
   }
   return Math.floor(value).toLocaleString('en-US');
 };
@@ -50,7 +50,7 @@ export const formatGram = (value: number | string, maxFractionDigits = 9) => {
   const raw = typeof value === 'number'
     ? (Number.isFinite(value) ? value.toFixed(maxFractionDigits) : '0')
     : value.trim();
-  const match = raw.match(/^(-?)(\\d+)(?:\\.(\\d+))?$/);
+  const match = raw.match(/^(-?)(\d+)(?:\.(\d+))?$/);
   if (!match) return '0';
   const [, sign, wholeRaw, fractionRaw = ''] = match;
   const whole = BigInt(wholeRaw).toLocaleString('en-US');
