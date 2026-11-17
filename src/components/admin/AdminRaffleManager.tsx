@@ -10,6 +10,7 @@ import {
   closeAdminRaffle,
   selectAdminRaffleWinners,
   creditAdminRaffleWinner,
+  creditAdminTonRaffleWinner,
 } from '@/lib/admin/adminApi';
 import type { AdminCredentials, AdminRaffleRecord } from '@/lib/admin/adminApi';
 
@@ -176,7 +177,7 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
     setError(''); setNotice(''); setSelectionId(raffle.id);
     try {
       await selectAdminRaffleWinners(creds, raffle.id, raffle.winner_method === 'admin' ? selected : undefined, prizeShares);
-      setNotice(`Winners selected for "${raffle.title}". Review each prize below and credit the ZAP rewards.`);
+      setNotice(`Winners selected for "${raffle.title}". Review each prize below and credit the ZAP or Gram rewards.`);
       setSelectedWinnerIds((current) => ({ ...current, [raffle.id]: [] }));
       setCustomWinnerShares((current) => ({ ...current, [raffle.id]: {} }));
       await refresh();
@@ -184,12 +185,20 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
     finally { setSelectionId(null); }
   };
 
-  const creditWinner = async (winnerId: string, raffleTitle: string) => {
-    if (!window.confirm(`Credit this winner's ZAP prize for "${raffleTitle}" now? This will add the prize to their ZAP wallet.`)) return;
+  const creditWinner = async (winnerId: string, raffleTitle: string, currency: 'TON' | 'ZAP') => {
+    const isGram = currency === 'TON';
+    const confirmation = isGram
+      ? `Credit this winner's Gram prize for "${raffleTitle}" now? It will become withdrawable in their Gram balance.`
+      : `Credit this winner's ZAP prize for "${raffleTitle}" now? It will be added to their ZAP wallet.`;
+    if (!window.confirm(confirmation)) return;
     setError(''); setNotice(''); setCreditingWinnerId(winnerId);
     try {
-      const result = await creditAdminRaffleWinner(creds, winnerId);
-      setNotice(result.alreadyCredited ? 'This prize was already credited.' : 'ZAP prize credited successfully.');
+      const result = isGram
+        ? await creditAdminTonRaffleWinner(creds, winnerId)
+        : await creditAdminRaffleWinner(creds, winnerId);
+      setNotice(result.alreadyCredited
+        ? 'This prize was already credited.'
+        : isGram ? 'Gram prize credited to the winner’s withdrawable balance.' : 'ZAP prize credited successfully.');
       await refresh();
     } catch (creditError) { setError(errorText(creditError)); }
     finally { setCreditingWinnerId(null); }
@@ -338,9 +347,11 @@ export default function AdminRaffleManager({ creds }: { creds: AdminCredentials 
             const label = winner.players?.username ? `@${winner.players.username}` : winner.players?.first_name || winner.player_id.slice(0, 8);
             return <div key={winner.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 p-2">
               <div className="min-w-0"><p className="truncate text-[10px] font-semibold text-white">{label}</p><p className="mt-0.5 text-[10px] text-slate-400">{money(winner.prize_amount, winner.prize_currency)} · {winner.delivery_status}</p></div>
-              {winner.prize_currency === 'ZAP' && winner.delivery_status === 'pending' && <button type="button" onClick={() => void creditWinner(winner.id, raffle.title)} disabled={creditingWinnerId !== null} className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[10px] font-semibold text-emerald-100 disabled:opacity-40">{creditingWinnerId === winner.id ? 'Crediting…' : 'Credit ZAP prize'}</button>}
+              {winner.delivery_status === 'pending' && <button type="button" onClick={() => void creditWinner(winner.id, raffle.title, winner.prize_currency)} disabled={creditingWinnerId !== null} className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[10px] font-semibold text-emerald-100 disabled:opacity-40">{creditingWinnerId === winner.id ? 'Crediting…' : winner.prize_currency === 'TON' ? 'Credit Gram prize' : 'Credit ZAP prize'}</button>}
               {winner.delivery_status === 'credited' && <span className="text-[10px] font-semibold text-emerald-300">Credited</span>}
-              {winner.prize_currency === 'TON' && winner.delivery_status === 'pending' && <span className="text-[9px] text-amber-200">Gram payout pending</span>}
+              {winner.delivery_status === 'withdrawable' && <span className="text-[10px] font-semibold text-emerald-300">Credited · Withdrawable</span>}
+              {winner.delivery_status === 'delivered' && <span className="text-[10px] font-semibold text-emerald-300">Delivered</span>}
+              {winner.delivery_status === 'failed' && <span className="text-[10px] font-semibold text-red-300">Delivery failed</span>}
             </div>;
           })}
         </div>}
