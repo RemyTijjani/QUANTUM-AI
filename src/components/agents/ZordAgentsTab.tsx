@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import {
   Activity,
   Bot,
+  Cpu,
   LoaderCircle,
+  Shield,
   ShieldCheck,
   Sparkles,
-  Users,
   Wallet,
+  Zap,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { AGENTS, AGENT_IDS } from '@/lib/game/config';
@@ -285,7 +287,7 @@ function AgentRentalCheckout() {
   const isMainnetWallet = walletNetwork === '-239';
 
   return (
-    <section className="panel space-y-5 overflow-hidden rounded-2xl border border-neon/25 bg-gradient-to-b from-neon/[0.06] to-black/30 p-4 sm:p-5">
+    <section className="panel min-w-0 space-y-5 overflow-hidden rounded-2xl border border-neon/25 bg-gradient-to-b from-neon/[0.06] to-black/30 p-3 min-[380px]:p-4 sm:p-5">
       <div className="space-y-2">
         <p className="label">Native coin · TON mainnet</p>
         <h2 className="title">Rent a mining agent</h2>
@@ -296,8 +298,8 @@ function AgentRentalCheckout() {
       </div>
 
       <div className="rounded-xl border border-neon/20 bg-black/35 p-4">
-        <div className="flex items-center gap-2">
-          <Wallet size={15} className="text-cyan-300" />
+        <div className="flex min-w-0 items-center gap-2">
+          <Wallet size={15} className="shrink-0 text-cyan-300" />
           <p className="label">TON wallet</p>
         </div>
         <div className="mt-2 flex flex-col gap-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
@@ -312,7 +314,7 @@ function AgentRentalCheckout() {
           </div>
           <button
             type="button"
-            className="btn-ghost min-h-10 w-full shrink-0 min-[380px]:w-auto"
+            className="btn-ghost min-h-11 w-full shrink-0 min-[380px]:w-auto"
             onClick={() => void connectWallet()}
           >
             {walletAddress ? 'Change wallet' : walletError ? 'Retry connector' : walletReady ? 'Connect wallet' : 'Load wallet connector'}
@@ -328,21 +330,21 @@ function AgentRentalCheckout() {
 
       <div className="grid gap-3 sm:grid-cols-2">
         {RENTAL_OPTIONS.map((option) => (
-          <article key={option.id} className="flex h-full flex-col rounded-xl border border-neon/20 bg-black/35 p-4 transition-colors hover:border-neon/35">
-            <div className="flex items-start justify-between gap-3">
+          <article key={option.id} className="flex h-full min-w-0 flex-col rounded-xl border border-neon/20 bg-black/35 p-3 min-[380px]:p-4 transition-colors hover:border-neon/35">
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="font-display text-sm font-bold leading-snug text-neon-200">{option.title}</h3>
                 <p className="mt-2 text-[11px] leading-relaxed text-neon-500">{option.description}</p>
               </div>
               <span className="shrink-0 rounded-lg border border-cyan-300/20 bg-cyan-300/5 px-2.5 py-1.5 font-display text-sm font-bold text-cyan-200">{option.price}</span>
             </div>
-            <div className="mt-4 flex items-center justify-between gap-2 border-t border-neon/10 pt-3 font-mono text-[10px] text-neon-400">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-neon/10 pt-3 font-mono text-[10px] text-neon-400">
               <span>{option.rate}</span>
               <span>30 days</span>
             </div>
             <button
               type="button"
-              className="btn-primary mt-auto w-full rounded-lg py-3"
+              className="btn-primary mt-auto min-h-11 w-full rounded-lg py-3"
               disabled={!rentalBackendActionsEnabled || busy !== null || (intent !== null && Date.parse(intent.expiresAt) > Date.now())}
               onClick={() => void createIntent(option.id)}
             >
@@ -354,8 +356,8 @@ function AgentRentalCheckout() {
       </div>
 
       <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.035] p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
             <p className="label">Verified rental mining</p>
             <p className="mt-1 font-display text-sm font-bold text-cyan-200">Trusted ZP accrual</p>
           </div>
@@ -375,14 +377,14 @@ function AgentRentalCheckout() {
         ) : (
           <div className="mt-3 space-y-2">
             {activeRentals.map((rental) => (
-              <div key={rental.agentType + rental.startsAt} className="flex flex-col gap-3 rounded-lg border border-neon/15 bg-black/25 p-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
+              <div key={rental.agentType + rental.startsAt} className="flex min-w-0 flex-col gap-3 rounded-lg border border-neon/15 bg-black/25 p-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
                 <div className="min-w-0">
                   <p className="font-display text-xs font-bold text-neon-200">
                     {rental.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}
                   </p>
                   <p className="mt-1 font-mono text-[10px] text-cyan-200">{rental.ratePerSecond} ZP / second</p>
                 </div>
-                <div className="shrink-0 text-right">
+                <div className="min-w-0 break-words text-left min-[380px]:shrink-0 min-[380px]:text-right">
                   <p className="font-mono text-[9px] uppercase text-green-300">Active</p>
                   <p className="mt-1 font-mono text-[9px] text-neon-500">Until {new Date(rental.expiresAt).toLocaleString()}</p>
                 </div>
@@ -419,7 +421,7 @@ function AgentRentalCheckout() {
           </p>
           <button
             type="button"
-            className="btn-cyan w-full"
+            className="btn-cyan min-h-11 w-full"
             disabled={!paymentsEnabled || !walletAddress || !isMainnetWallet || busy !== null || sendAttempted}
             onClick={() => void sendPayment()}
           >
@@ -438,7 +440,7 @@ function AgentRentalCheckout() {
           )}
           <button
             type="button"
-            className="btn-ghost w-full"
+            className="btn-ghost min-h-11 w-full"
             disabled={!rentalBackendActionsEnabled || busy !== null}
             onClick={() => void verifyIntent()}
           >
@@ -471,20 +473,20 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
   const miningRate = running.reduce((sum, id) => sum + AGENTS[id].zpPerSec, 0);
   const tiers = [
     { name: 'Sentinel', tier: 'Tier 1', icon: ShieldCheck, summary: 'AI moderation and community protection.', features: ['Threat and spam monitoring', 'Community safety workflows', 'Configurable moderation rules'] },
-    { name: 'Poly-Shield', tier: 'Tier 2', icon: Users, summary: 'Expanded multi-layer protection for Telegram communities.', features: ['All Sentinel capabilities', 'Advanced community defense', 'Expanded moderation controls'] },
+    { name: 'Poly-Shield', tier: 'Tier 2', icon: Shield, summary: 'Expanded multi-layer protection for Telegram communities.', features: ['All Sentinel capabilities', 'Advanced community defense', 'Expanded moderation controls'] },
     { name: 'Omini Glitch', tier: 'Tier 3', icon: Sparkles, summary: 'Full community intelligence and creative operations.', features: ['All Sentinel and Poly-Shield capabilities', 'AI content creation for Telegram groups and channels', 'Meme creation for community engagement'] },
   ];
 
   return (
-    <div className="space-y-6 pb-5">
-      <header className="panel relative overflow-hidden rounded-2xl border border-neon/30 bg-gradient-to-br from-neon/[0.10] via-black/30 to-cyan-400/[0.04] p-5">
+    <div className="min-w-0 space-y-6 pb-5">
+      <header className="panel relative min-w-0 overflow-hidden rounded-2xl border border-neon/30 bg-gradient-to-br from-neon/[0.10] via-black/30 to-cyan-400/[0.04] p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-neon-400"><Bot size={18} /><span className="label">ZORD autonomous services</span></div>
           <span className="rounded-full border border-green-400/25 bg-green-400/[0.06] px-2.5 py-1 font-mono text-[9px] uppercase tracking-wider text-green-300">Agent hub</span>
         </div>
         <h1 className="mt-3 font-display text-2xl font-bold tracking-wide text-neon-100">ZORD Agents</h1>
         <p className="mt-2 max-w-xl text-xs leading-relaxed text-neon-400">Explore mining agents and community protection services in one place. Compare what each service offers before choosing your next step.</p>
-        <div className="mt-4 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
+        <div className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-neon/15 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase tracking-wider text-neon-600">Your active miners</p><p className="mt-1 font-display text-lg font-semibold text-neon-200">{running.length}</p></div>
           <div className="rounded-xl border border-neon/15 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase tracking-wider text-neon-600">Current displayed rate</p><p className="mt-1 font-display text-lg font-semibold text-neon-200">{formatRate(miningRate)} <span className="text-[10px]">ZP/s</span></p></div>
         </div>
@@ -496,12 +498,12 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
 
       <section className="panel space-y-4 rounded-2xl border border-neon/20 bg-gradient-to-b from-neon/[0.04] to-black/20 p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
-          <div><p className="label">Mining operations</p><h2 className="title mt-1">ZP agent activity</h2></div>
-          <Activity size={18} className="text-neon-400" />
+          <div className="min-w-0"><p className="label">Mining operations</p><h2 className="title mt-1">ZP agent activity</h2></div>
+          <Cpu size={18} className="shrink-0 text-neon-400" />
         </div>
-        <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 min-[380px]:gap-3">
           <div className="rounded-xl border border-neon/20 bg-black/35 p-3"><p className="label">Active miners</p><p className="mt-1 font-display text-xl text-neon-300">{running.length}</p></div>
-          <div className="border border-neon/20 bg-black/40 p-3"><p className="label">Displayed rate</p><p className="mt-1 font-display text-xl text-neon-300">{formatRate(miningRate)} <span className="text-[10px]">ZP/s</span></p></div>
+          <div className="rounded-xl border border-neon/20 bg-black/40 p-3"><p className="label">Displayed rate</p><p className="mt-1 font-display text-xl text-neon-300">{formatRate(miningRate)} <span className="text-[10px]">ZP/s</span></p></div>
         </div>
         <div className="space-y-2">
           {AGENT_IDS.map((id: AgentId) => {
@@ -518,12 +520,12 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
       </section>
 
       <section className="space-y-4">
-        <div className="space-y-2"><p className="label">Community protection</p><h2 className="title">Choose a service tier</h2><p className="text-xs leading-relaxed text-neon-500">Compare the protection levels below. Telegram bot provisioning is not available yet.</p></div>
-        {tiers.map(({ name, tier, icon: Icon, summary, features }) => <article key={name} className="panel space-y-4 rounded-2xl border border-neon/20 bg-gradient-to-br from-black/35 to-neon/[0.035] p-4 sm:p-5 transition-colors hover:border-neon/35">
-          <div className="flex items-center justify-between"><span className="rounded-md border border-cyan-300/20 bg-cyan-300/5 px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-cyan-200">{tier}</span><span className="flex h-9 w-9 items-center justify-center rounded-xl border border-neon/20 bg-neon/5"><Icon size={18} className="text-neon-300" /></span></div>
+        <div className="min-w-0 space-y-2"><p className="label">Community protection</p><h2 className="title">Choose a service tier</h2><p className="text-xs leading-relaxed text-neon-500">Compare the protection levels below. Telegram bot provisioning is not available yet.</p></div>
+        {tiers.map(({ name, tier, icon: Icon, summary, features }) => <article key={name} className="panel min-w-0 space-y-4 rounded-2xl border border-neon/20 bg-gradient-to-br from-black/35 to-neon/[0.035] p-3 min-[380px]:p-4 sm:p-5 transition-colors hover:border-neon/35">
+          <div className="flex items-center justify-between gap-3"><span className="rounded-md border border-cyan-300/20 bg-cyan-300/5 px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-cyan-200">{tier}</span><span className="flex h-9 w-9 items-center justify-center rounded-xl border border-neon/20 bg-neon/5"><Icon size={18} className="text-neon-300" /></span></div>
           <div><h3 className="font-display text-base font-bold uppercase tracking-wider text-neon-200">{name}</h3><p className="mt-1 text-[11px] leading-relaxed text-neon-500">{summary}</p></div>
           <ul className="space-y-2">{features.map(feature => <li key={feature} className="flex items-start gap-2 text-[11px] leading-relaxed text-neon-400"><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-neon-400" />{feature}</li>)}</ul>
-          <div className="flex items-center gap-2 rounded-lg border border-amber-300/15 bg-amber-300/[0.04] px-3 py-2"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" /><span className="font-mono text-[9px] leading-relaxed text-amber-200">Coming soon · Telegram bot provisioning is not active yet</span></div>
+          <div className="flex min-w-0 items-start gap-2 rounded-lg border border-amber-300/15 bg-amber-300/[0.04] px-3 py-2"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" /><span className="min-w-0 font-mono text-[9px] leading-relaxed text-amber-200">Coming soon · Telegram bot provisioning is not active yet</span></div>
         </article>)}
       </section>
     </div>
