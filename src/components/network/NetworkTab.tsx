@@ -128,8 +128,8 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
   const claimableWholeZp = kickbacks?.claimableWholeZp ?? 0;
 
   return (
-    <div className="space-y-6 pb-2">
-      <section className="panel space-y-4 p-5">
+    <div className="min-w-0 space-y-5 pb-3 sm:space-y-6 sm:pb-2">
+      <section className="panel min-w-0 space-y-4 p-4 sm:p-5">
         <div>
           <p className="label">Referral uplink</p>
           <h2 className="title mt-1">Recruit operatives</h2>
@@ -143,19 +143,19 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
           value={link}
           aria-label="Referral link"
           onFocus={(event) => event.currentTarget.select()}
-          className="w-full select-text rounded-lg border border-neon/30 bg-black/50 px-3 py-2.5 font-mono text-[11px] text-neon-300 outline-none focus:border-neon/70"
+          className="w-full min-w-0 select-text break-all rounded-lg border border-neon/30 bg-black/50 px-3 py-3 font-mono text-[10px] leading-relaxed text-neon-300 outline-none focus:border-neon/70 sm:text-[11px]"
         />
 
-        <div className="grid grid-cols-2 gap-3">
-          <button type="button" onClick={copyLink} className="btn-ghost">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+          <button type="button" onClick={copyLink} className="btn-ghost min-h-11 justify-center gap-2">
             <Copy size={14} /> Copy
           </button>
-          <button type="button" onClick={shareLink} className="btn-cyan">
+          <button type="button" onClick={shareLink} className="btn-cyan min-h-11 justify-center gap-2">
             <Share2 size={14} /> Share
           </button>
         </div>
 
-        <div className="rounded-lg border border-neon/20 bg-black/20 p-4 space-y-3">
+        <div className="min-w-0 space-y-3 rounded-lg border border-neon/20 bg-black/20 p-3 sm:p-4">
           <div className="flex items-center gap-2">
             <Gift size={15} className="text-neon-300" />
             <p className="label">Referral kickbacks</p>
@@ -169,15 +169,15 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
             </p>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-neon/15 bg-black/30 p-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <div className="min-w-0 rounded-lg border border-neon/15 bg-black/30 p-2.5 sm:p-3">
                   <div className="flex items-center gap-1.5 text-neon-500">
                     <Clock3 size={12} />
                     <span className="font-mono text-[9px] uppercase tracking-wider">Pending</span>
                   </div>
                   <p className="mt-1 font-display text-lg font-bold text-neon-300">{formatZp(kickbacks.pendingZp)} <span className="text-[10px]">ZP</span></p>
                 </div>
-                <div className="rounded-lg border border-neon/25 bg-neon/5 p-3">
+                <div className="min-w-0 rounded-lg border border-neon/25 bg-neon/5 p-2.5 sm:p-3">
                   <div className="flex items-center gap-1.5 text-neon-400">
                     <Coins size={12} />
                     <span className="font-mono text-[9px] uppercase tracking-wider">Claimable</span>
@@ -198,7 +198,7 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
                 type="button"
                 onClick={handleClaim}
                 disabled={claiming || claimableWholeZp < 1}
-                className="btn-cyan flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-45"
+                className="btn-cyan flex min-h-11 w-full items-center justify-center gap-2 px-3 text-center disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {claiming ? (
                   <>Claiming referral ZP...</>
@@ -225,7 +225,7 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
           </div>
           <div className="panel divide-y divide-neon/10">
             {kickbacks.recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <div key={activity.id} className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-4">
                 <div className="min-w-0">
                   <p className="font-display text-xs font-bold text-neon-300">
                     {activity.eventType.replace(/_/g, ' ')}
@@ -236,7 +236,7 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
                     {activity.status ? ` · ${activity.status}` : ''}
                   </p>
                 </div>
-                <span className="shrink-0 font-mono text-xs text-neon-300">{formatZp(activity.amount)} ZP</span>
+                <span className="shrink-0 font-mono text-xs tabular-nums text-neon-300">{formatZp(activity.amount)} ZP</span>
               </div>
             ))}
           </div>
@@ -261,7 +261,7 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
           </div>
         </div>
 
-        <div className="panel overflow-hidden">
+        <div className="panel min-w-0 overflow-hidden">
           {loadingReferrals ? (
             <p className="px-5 py-8 text-center font-mono text-xs text-neon-500">Loading confirmed referral records...</p>
           ) : referralError ? (
@@ -271,7 +271,7 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
           ) : (
             <ul className="divide-y divide-neon/10">
               {referrals.map((referral) => (
-                <li key={referral.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <li key={referral.id} className="flex min-w-0 items-center justify-between gap-3 px-3 py-3 sm:px-4">
                   <div className="min-w-0">
                     <p className="truncate font-display text-xs font-bold tracking-wide text-neon-300">{referral.recruit_name || 'ZORD operative'}</p>
                     <p className="font-mono text-[10px] uppercase tracking-wider text-neon-600">Joined {new Date(referral.created_at).toLocaleDateString()}</p>
