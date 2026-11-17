@@ -205,9 +205,7 @@ export default function MysteryBoxPanel({
     setLastReward(result);
     notify(result.alreadyOpened ? 'This box was already opened; its recorded reward is shown.' : 'Mystery Box opened successfully.');
     await loadInventory(true);
-    if (result.rewardType === 'zp' && typeof result.zpAmount === 'number') {
-      await onZpReward();
-    }
+    await onZpReward();
   };
 
   return (
