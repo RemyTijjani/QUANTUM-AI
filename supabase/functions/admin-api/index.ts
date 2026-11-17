@@ -2065,9 +2065,20 @@ Deno.serve(async (req: Request) => {
         console.error("Raffle entrants or winners lookup failed:", entryResult.error ?? winnerResult.error);
         return json({ error: "Could not load raffle entrants and winner records." }, 500);
       }
+      const groupedEntries = new Map<string, Record<string, unknown>>();
+      for (const entry of entryResult.data ?? []) {
+        const key = entry.raffle_id + ":" + entry.player_id;
+        const existing = groupedEntries.get(key);
+        if (existing) {
+          existing.ticket_count = Number(existing.ticket_count ?? 0) + Number(entry.ticket_count ?? 0);
+          existing.stake_zap = Number(existing.stake_zap ?? 0) + Number(entry.stake_zap ?? 0);
+        } else {
+          groupedEntries.set(key, { ...entry });
+        }
+      }
       const enriched = (raffles ?? []).map((raffle) => ({
         ...raffle,
-        entries: (entryResult.data ?? []).filter((entry) => entry.raffle_id === raffle.id),
+        entries: [...groupedEntries.values()].filter((entry) => entry.raffle_id === raffle.id),
         winners: (winnerResult.data ?? []).filter((winner) => winner.raffle_id === raffle.id),
       }));
       return json({ success: true, raffles: enriched });
