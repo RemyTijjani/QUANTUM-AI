@@ -762,7 +762,7 @@ export async function listExternalZapFunding(
 }
 export async function confirmExternalZapFunding(
   creds: AdminCredentials,
-  input: { amount: string; transactionReference: string },
+  input: { amount: number; transactionReference: string },
 ): Promise<{ fundingId: string; amount: number; transactionReference: string; confirmedBy: string; confirmedAt: string; availableReserve: number }> {
   const body = await callAdminApi(creds, {
     action: 'confirm_external_zap_funding',
