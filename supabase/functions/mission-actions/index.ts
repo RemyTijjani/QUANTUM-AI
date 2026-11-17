@@ -82,6 +82,20 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid request." }, 400);
     }
 
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data: player, error: playerError } = await admin
+      .from("players")
+      .select("id, telegram_id")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+
+    if (playerError || !player) {
+      return json({ error: "Your verified player profile could not be found." }, 403);
+    }
+
     if (body.action === "get_task_statuses") {
       const utcDate = new Date().toISOString().slice(0, 10);
       const nowIso = new Date().toISOString();
@@ -182,20 +196,6 @@ Deno.serve(async (req: Request) => {
 
     const missionId = typeof body.missionId === "string" ? body.missionId.trim() : "";
     if (!missionId || missionId.length > 120) return json({ error: "Choose a valid mission." }, 400);
-
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    const { data: player, error: playerError } = await admin
-      .from("players")
-      .select("id, telegram_id")
-      .eq("id", authData.user.id)
-      .maybeSingle();
-
-    if (playerError || !player) {
-      return json({ error: "Your verified player profile could not be found." }, 403);
-    }
 
     const { data: mission, error: missionError } = await admin
       .from("mission_tasks")
