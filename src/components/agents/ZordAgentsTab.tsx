@@ -59,7 +59,7 @@ const RENTAL_OPTIONS: {
   },
 ];
 
-function AgentRentalCheckout() {
+function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEconomy: () => Promise<void> | void }) {
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [busy, setBusy] = useState<'alpha_miner' | 'overclocked_core' | 'send' | 'verify' | null>(null);
   const [notice, setNotice] = useState('');
@@ -206,6 +206,7 @@ function AgentRentalCheckout() {
         setActiveUntil(typeof data.expiresAt === 'string' ? data.expiresAt : null);
         setNotice(data.alreadyPaid ? 'This rental payment was already confirmed.' : 'Payment confirmed and rental recorded.');
         setNoticeKind('success');
+        await onRefreshVerifiedEconomy();
       } else {
         throw new Error(data?.error || 'The payment has not been confirmed.');
       }
@@ -459,7 +460,7 @@ function AgentRentalCheckout() {
   );
 }
 
-export default function ZordAgentsTab() {
+export default function ZordAgentsTab({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEconomy: () => Promise<void> | void }) {
   const tiers = [
     { name: 'Sentinel', tier: 'Tier 1', icon: ShieldCheck, summary: 'AI moderation and community protection.', features: ['Threat and spam monitoring', 'Community safety workflows', 'Configurable moderation rules'] },
     { name: 'Poly-Shield', tier: 'Tier 2', icon: Shield, summary: 'Expanded multi-layer protection for Telegram communities.', features: ['All Sentinel capabilities', 'Advanced community defense', 'Expanded moderation controls'] },
@@ -479,7 +480,7 @@ export default function ZordAgentsTab() {
 
       <TemporaryRewardPanel />
 
-      <AgentRentalCheckout />
+      <AgentRentalCheckout onRefreshVerifiedEconomy={onRefreshVerifiedEconomy} />
 
 
 
