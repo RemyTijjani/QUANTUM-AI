@@ -55,6 +55,12 @@ export default function CoreTab({
 }: CoreTabProps) {
   const now = Date.now();
   const miningLeft = state.coreMiningUntil - now;
+  const nextFragmentCooldown = Math.min(
+    ...FRAGMENT_IDS
+      .filter((id) => state.fragments[id] === 'fixed' && state.fragmentCooldowns[id] > now)
+      .map((id) => state.fragmentCooldowns[id] - now),
+    Number.POSITIVE_INFINITY,
+  );
   const fixed = fixedCount(state);
   const activeFragmentCount = FRAGMENT_IDS.filter((id) =>
     state.fragments[id] === 'fixed' && state.fragmentMiningUntil[id] > now
@@ -272,7 +278,11 @@ export default function CoreTab({
         onFragmentPress={(id) => handleFragment(id, state.fragments[id])}
       />
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
-        {miningLeft > 0 ? `Core timer: ${formatRemaining(miningLeft)} left` : 'No active fragment mining session. Fix an unlocked fragment to start server-recorded mining.'}
+        {activeFragmentCount > 0
+          ? `Mining active · ${formatRemaining(miningLeft)} remaining`
+          : Number.isFinite(nextFragmentCooldown)
+            ? `Next Fragment available in ${formatRemaining(nextFragmentCooldown)}`
+            : 'Verify an ad to unlock a Fragment and start mining.'}
       </p>
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
         Each Fragment has its own assigned advertising provider. Ad unlocking will activate after publisher approval and trusted server-side verification. Once unlocked, fix the Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
