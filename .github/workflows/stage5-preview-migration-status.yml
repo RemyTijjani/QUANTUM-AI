@@ -78,7 +78,7 @@ jobs:
           supabase functions list --remote="$PREVIEW_PROJECT_REF" > /tmp/preview-functions.txt
           cat /tmp/preview-functions.txt
           missing_functions=0
-          for name in telegram-auth admin-api public-events event-participation gameplay-actions mission-actions referral-kickbacks player-economy agent-rental-payments mystery-box-actions ton-wallet zap-wallet; do
+          for name in telegram-auth admin-api public-events event-participation gameplay-actions mission-actions referral-kickbacks economy-settlement player-economy agent-rental-payments mystery-box-actions ton-wallet zap-wallet; do
             if grep -Fq "$name" /tmp/preview-functions.txt; then
               echo "$name: deployed"
             else
