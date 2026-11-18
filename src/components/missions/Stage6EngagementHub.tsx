@@ -183,7 +183,8 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
       });
 
       if (requestError || !data?.success) {
-        notify(data?.error || requestError?.message || 'Daily Streak claim failed. Please try again.', 'error');
+        await refresh(true);
+        notify(data?.error || requestError?.message || 'Daily Streak claim failed. Check your streak status before retrying.', 'error');
         return;
       }
 
@@ -203,7 +204,8 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
         ? 'Today’s Daily Streak reward was already claimed.'
         : `Day ${result.streakDay} claimed: ${streakRewardLabel(result)}`);
     } catch (requestError) {
-      notify(requestError instanceof Error ? requestError.message : 'Daily Streak claim failed. Please try again.', 'error');
+      await refresh(true);
+      notify(requestError instanceof Error ? requestError.message : 'Daily Streak claim failed. Check your streak status before retrying.', 'error');
     } finally {
       setClaiming(false);
     }
