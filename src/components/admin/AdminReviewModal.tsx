@@ -295,7 +295,7 @@ function AdminConsole({
     { tab: 'tasks', title: 'Manage missions', description: 'Create, update and organize player tasks.', icon: ListTodo, detail: `${data.tasks.length} configured tasks` },
     { tab: 'players', title: 'Manage players', description: 'Find player profiles and inspect account activity.', icon: Users },
     { tab: 'referrals', title: 'Manage referrals', description: 'Set the monthly kickback budget, review allocations and manage referral accounts.', icon: Users },
-    { tab: 'expeditions', title: 'Manage Expeditions', description: 'Publish events, review objectives and issue eligible rewards.', icon: Compass },
+    { tab: 'expeditions', title: 'Manage Expeditions', description: 'Publish expeditions, review objectives and issue eligible rewards.', icon: Compass },
     { tab: 'raffles', title: 'Manage Raffles', description: 'Configure raffles and review their prize setup.', icon: Ticket },
     { tab: 'ton-withdrawals', title: 'Review GRAM withdrawals', description: 'Review, process and record player withdrawal requests.', icon: ArrowDownToLine },
     { tab: 'raffle-funding', title: 'Manage funding', description: 'Review external prize funding records.', icon: Wallet },
