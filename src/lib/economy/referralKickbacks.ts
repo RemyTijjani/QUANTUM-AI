@@ -28,13 +28,14 @@ export interface ReferralKickbackClaimResult {
   zpBalance?: number;
 }
 
-const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/player-economy`;
+const playerEconomyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/player-economy`;
+const referralKickbacksUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/referral-kickbacks`;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-async function authenticatedRequest(method: 'GET' | 'POST', body?: object): Promise<unknown> {
+async function authenticatedRequest(functionUrl: string, method: 'GET' | 'POST', body?: object): Promise<unknown> {
   const { data, error } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (error || !token) throw new Error('Your session has expired. Reopen the Mini App and try again.');
@@ -66,7 +67,7 @@ async function authenticatedRequest(method: 'GET' | 'POST', body?: object): Prom
 }
 
 export async function fetchReferralKickbacks(): Promise<ReferralKickbackSummary> {
-  const result = await authenticatedRequest('GET');
+  const result = await authenticatedRequest(playerEconomyUrl, 'GET');
   if (!isRecord(result) || !isRecord(result.referralKickbacks)) {
     throw new Error('The referral rewards service returned an invalid response.');
   }
@@ -117,7 +118,7 @@ export async function fetchReferralKickbacks(): Promise<ReferralKickbackSummary>
 }
 
 export async function claimReferralKickbacks(): Promise<ReferralKickbackClaimResult> {
-  const result = await authenticatedRequest('POST', {
+  const result = await authenticatedRequest(referralKickbacksUrl, 'POST', {
     action: 'claim_referral_kickbacks',
     idempotencyKey: crypto.randomUUID(),
   });
