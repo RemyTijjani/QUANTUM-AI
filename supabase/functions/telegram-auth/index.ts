@@ -257,7 +257,7 @@ Deno.serve(async (req: Request) => {
       error: lookupError,
     } = await admin
       .from("players")
-      .select("id, referral_code")
+      .select("id, referral_code, entity_number")
       .eq("telegram_id", telegramId)
       .maybeSingle();
 
@@ -268,9 +268,11 @@ Deno.serve(async (req: Request) => {
 
     let referralCode: string;
     let authUserId: string;
+    let entityNumber: number | null = null;
 
     if (existing) {
       authUserId = existing.id;
+      entityNumber = typeof existing.entity_number === "number" ? existing.entity_number : null;
       referralCode = typeof existing.referral_code === "string"
         ? existing.referral_code.trim().toUpperCase()
         : "";
@@ -401,7 +403,7 @@ Deno.serve(async (req: Request) => {
       }
 
       referralCode = code;
-      const { error: playerError } = await admin
+      const { data: createdPlayer, error: playerError } = await admin
         .from("players")
         .insert({
           id: authUserId,
@@ -409,12 +411,15 @@ Deno.serve(async (req: Request) => {
           username,
           first_name: firstName,
           referral_code: referralCode,
-        });
+        })
+        .select("entity_number")
+        .single();
 
       if (playerError) {
         console.error("Player creation failed:", playerError);
         return jsonResponse({ error: "Failed to create player record" }, 500);
       }
+      entityNumber = typeof createdPlayer?.entity_number === "number" ? createdPlayer.entity_number : null;
     }
 
     // Migrate legacy deterministic-password accounts once. After migration,
@@ -524,6 +529,7 @@ Deno.serve(async (req: Request) => {
       username,
       firstName,
       referralCode,
+      entityNumber,
     });
   } catch (error) {
     console.error("telegram-auth failed:", error);
