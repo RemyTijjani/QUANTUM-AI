@@ -1,6 +1,5 @@
 import { AGENTS, FRAGMENT_IDS, FRAGMENT_NAMES, FRAGMENT_ZP_PER_SEC } from '@/lib/game/config';
 import {
-  Store,
   Flame,
   Gift,
   Compass,
@@ -275,16 +274,6 @@ export default function CoreTab({
 
 
 
-      <section className="panel space-y-3 p-4">
-        <div className="flex items-center gap-2"><Store size={16} className="text-neon-400" /><p className="label">Service marketplace</p></div>
-        <div><h2 className="title mt-1">Genesis service marketplace</h2><p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-500">Explore the ZORD community services planned for rental below the Genesis Fragment core.</p></div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="border border-neon/20 bg-black/40 p-3"><p className="font-display text-xs font-bold text-neon-300">Sentinel</p><p className="mt-1 font-mono text-[9px] text-neon-600">Tier 1 · AI community protection</p></div>
-          <div className="border border-neon/20 bg-black/40 p-3"><p className="font-display text-xs font-bold text-neon-300">Poly-Shield</p><p className="mt-1 font-mono text-[9px] text-neon-600">Tier 2 · Advanced community defense</p></div>
-          <div className="border border-neon/20 bg-black/40 p-3 sm:col-span-2"><p className="font-display text-xs font-bold text-neon-300">Omini Glitch</p><p className="mt-1 font-mono text-[9px] text-neon-600">Tier 3 · Protection plus AI content and meme creation</p></div>
-        </div>
-        <p className="font-mono text-[9px] uppercase tracking-wider text-amber-300">Agent rental checkout and server-side payment verification are enabled in Preview. Real GRAM wallet transfers and Telegram bot provisioning remain locked.</p>
-      </section>
     </div>
   );
 }
