@@ -177,37 +177,55 @@ export default function CoreTab({
         </div>
       </section>
 
-      <section className="panel min-w-0 space-y-3 border border-cyan-400/20 bg-cyan-950/15 p-3 min-[380px]:p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="min-w-0"><p className="label">ZAP achievement collection</p><h2 className="mt-1 font-display text-sm font-bold uppercase tracking-wider text-cyan-100">Ring milestones</h2></div>
-          <Award size={18} className="text-cyan-300" />
-        </div>
-        <div className="rounded-lg border border-cyan-400/15 bg-black/30 p-3">
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-cyan-200">Next badge · Level {zapAchievements ? zapAchievements.currentLevel + 1 : 1}</span>
-            <span className="font-mono tabular-nums text-cyan-100">{zapAchievements ? formatZp(zapAchievements.nextLevelAt) : '100'} ZAP</span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-cyan-950"><div className="h-full rounded-full bg-cyan-300 transition-all" style={{ width: String(zapProgress) + '%' }} /></div>
-          <p className="mt-2 text-[9px] text-cyan-700">Earn 100 net ZAP per level. Every ZAP credit adds progress; spending ZAP reduces unminted progress.</p>
-        </div>
-        {zapAchievementsLoading ? (
-          <p className="py-2 text-center text-[10px] text-cyan-600">Loading your achievements…</p>
-        ) : zapAchievements && zapAchievements.achievements.length > 0 ? (
-          <div className="space-y-2">
-            {[...zapAchievements.achievements].sort((a, b) => b.level - a.level).slice(0, 6).map((achievement) => (
-              <div key={achievement.level} className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-cyan-400/10 bg-black/25 p-2.5">
-                <div className={"grid h-9 w-9 shrink-0 place-items-center rounded-full border " + (achievement.isMinted ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'border-emerald-300/40 bg-emerald-300/10 text-emerald-200' : 'border-slate-500/30 bg-slate-500/10 text-slate-400')}>
-                  <Award size={16} />
-                </div>
-                <div className="min-w-0 flex-1"><p className="text-[10px] font-semibold text-cyan-100">Level {achievement.level} badge</p><p className="text-[9px] text-cyan-700">{formatZp(achievement.requiredNetZap)} net ZAP required</p></div>
-                <span className={"shrink-0 rounded-full px-2 py-1 text-[8px] uppercase tracking-wide " + (achievement.isMinted ? 'bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'bg-emerald-300/10 text-emerald-200' : 'bg-slate-500/10 text-slate-400')}>{achievement.isMinted ? 'Minted' : achievement.isUnlocked ? 'Unlocked' : 'Locked'}</span>
+      <section className="panel min-w-0 border border-cyan-400/20 bg-cyan-950/15 p-3 min-[380px]:p-4">
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+            <span className="min-w-0">
+              <span className="block label">ZAP achievement collection</span>
+              <span className="mt-1 block font-display text-sm font-bold uppercase tracking-wider text-cyan-100">Ring milestones</span>
+            </span>
+            <span className="flex items-center gap-2 text-cyan-300">
+              <Award size={18} />
+              <span className="font-mono text-[10px]">{zapAchievements?.achievements.length ?? 0}</span>
+              <span className="text-xs transition-transform group-open:rotate-180">⌄</span>
+            </span>
+          </summary>
+          <div className="mt-3 space-y-3">
+            <div className="rounded-lg border border-cyan-400/15 bg-black/30 p-3">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-cyan-200">Next badge · Level {zapAchievements ? zapAchievements.currentLevel + 1 : 1}</span>
+                <span className="font-mono tabular-nums text-cyan-100">{zapAchievements ? formatZp(zapAchievements.nextLevelAt) : '100'} ZAP</span>
               </div>
-            ))}
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-cyan-950"><div className="h-full rounded-full bg-cyan-300 transition-all" style={{ width: String(zapProgress) + '%' }} /></div>
+            </div>
+            {zapAchievementsLoading ? (
+              <p className="py-2 text-center text-[10px] text-cyan-600">Loading achievements…</p>
+            ) : zapAchievements && zapAchievements.achievements.length > 0 ? (
+              <div className="space-y-2">
+                {[...zapAchievements.achievements].sort((a, b) => b.level - a.level).slice(0, 6).map((achievement) => (
+                  <details key={achievement.level} className="group rounded-lg border border-cyan-400/10 bg-black/25">
+                    <summary className="flex cursor-pointer list-none items-center gap-3 p-2.5 [&::-webkit-details-marker]:hidden">
+                      <span className={"grid h-8 w-8 shrink-0 place-items-center rounded-full border " + (achievement.isMinted ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'border-emerald-300/40 bg-emerald-300/10 text-emerald-200' : 'border-slate-500/30 bg-slate-500/10 text-slate-400')}>
+                        <Award size={15} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[10px] font-semibold text-cyan-100">Level {achievement.level} badge</span>
+                        <span className="block text-[9px] text-cyan-700">{achievement.isMinted ? 'Minted' : achievement.isUnlocked ? 'Unlocked' : 'Locked'}</span>
+                      </span>
+                      <span className="text-xs text-cyan-400 transition-transform group-open:rotate-180">⌄</span>
+                    </summary>
+                    <div className="border-t border-cyan-400/10 px-3 py-2.5">
+                      <p className="text-[9px] text-cyan-700">{formatZp(achievement.requiredNetZap)} net ZAP required</p>
+                      <span className={"mt-2 inline-flex rounded-full px-2 py-1 text-[8px] uppercase tracking-wide " + (achievement.isMinted ? 'bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'bg-emerald-300/10 text-emerald-200' : 'bg-slate-500/10 text-slate-400')}>{achievement.isMinted ? 'Minted' : achievement.isUnlocked ? 'Unlocked' : 'Locked'}</span>
+                    </div>
+                  </details>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-lg border border-dashed border-cyan-400/15 px-3 py-4 text-center text-[10px] leading-relaxed text-cyan-700">First badge unlocks at 100 net ZAP.</p>
+            )}
           </div>
-        ) : (
-          <p className="rounded-lg border border-dashed border-cyan-400/15 px-3 py-4 text-center text-[10px] leading-relaxed text-cyan-700">Your first badge unlocks at 100 net ZAP. Keep earning to open your collection.</p>
-        )}
-        <p className="text-center text-[8px] text-cyan-800">Minting is optional. Once verified on TON, a minted badge stays yours even if your net ZAP later drops. Minting is not available yet.</p>
+        </details>
       </section>
 
       <section className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
