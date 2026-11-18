@@ -1,11 +1,9 @@
 import { AGENTS, CORE_BASE_RATE, FRAGMENT_IDS, FRAGMENT_NAMES, FRAGMENT_ZP_PER_SEC } from '@/lib/game/config';
 import {
   Store,
-  ArrowUpRight,
   Flame,
   Gift,
   Compass,
-  Target,
 } from 'lucide-react';
 import type { FragmentId } from '@/lib/game/config';
 import { fixedCount, fragmentCooldownRemaining, passiveRate, tierInfo } from '@/lib/game/state';
@@ -139,7 +137,7 @@ export default function CoreTab({
         </div>
       </section>
 
-      <section className="panel relative min-w-0 overflow-hidden border border-neon/35 bg-gradient-to-br from-neon/10 via-black/50 to-cyan-500/5 p-3 min-[380px]:p-4">
+      <section className="panel relative min-w-0 overflow-hidden border border-neon/35 bg-gradient-to-br from-neon/10 via-black/50 to-cyan-500/5 p-2.5">
         <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full border border-neon/10" />
         <div className="relative flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -151,21 +149,21 @@ export default function CoreTab({
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Linked
           </span>
         </div>
-        <div className="relative mt-4 grid grid-cols-2 gap-2 min-[380px]:gap-3">
-          <div className="min-w-0 rounded-xl border border-neon/25 bg-black/40 p-3">
+        <div className="relative mt-3 grid grid-cols-2 gap-2">
+          <div className="min-w-0 rounded-xl border border-neon/25 bg-black/40 p-2.5">
             <div className="flex items-center gap-2 text-neon-300"><Coins size={14}/><p className="label">Verified ZP</p></div>
             <p className="mt-2 font-display text-2xl font-bold tabular-nums text-neon-100">{verifiedZpBalance === null ? '—' : formatZp(verifiedZpBalance)}</p>
             <p className="mt-1 text-[9px] text-neon-600">Available gameplay points</p>
             <p className="mt-2 text-[9px] text-amber-300">Pending: {formatZp(pendingFragmentZp)} ZP</p>
             <p className="mt-1 text-[8px] text-neon-700">{nextFragmentReleaseAt ? `Next release in ${formatRemaining(new Date(nextFragmentReleaseAt).getTime() - now)}` : 'No pending Fragment rewards'}</p>
           </div>
-          <div className="min-w-0 rounded-xl border border-cyan-300/25 bg-cyan-950/30 p-3">
+          <div className="min-w-0 rounded-xl border border-cyan-300/25 bg-cyan-950/30 p-2.5">
             <div className="flex items-center gap-2 text-cyan-200"><Award size={14}/><p className="label">ZAP score</p></div>
             <p className="mt-2 font-display text-2xl font-bold tabular-nums text-cyan-100">{zapLoading ? '…' : zapEarned === null ? '—' : formatZp(zapEarned)}</p>
             <p className="mt-1 text-[9px] text-cyan-600">Net ZAP activity (earned − spent)</p>
             <p className="mt-2 text-[9px] text-cyan-700">Rank & achievement score</p>
           </div>
-          <div className="min-w-0 rounded-xl border border-cyan-400/20 bg-black/40 p-3">
+          <div className="min-w-0 rounded-xl border border-cyan-400/20 bg-black/40 p-2.5">
             <p className="label">Core rank</p>
             <p className="mt-1 break-words font-display text-xl text-cyan-200">{tier.rank}</p>
             <p className="mt-1 text-[9px] text-cyan-700">Rank {rankNumber} · {formatZp(netZapProgress ?? 0)} net ZAP</p>
@@ -174,6 +172,27 @@ export default function CoreTab({
             <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{fixed}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
             <p className="mt-1 text-[9px] text-neon-700">Displayed rate estimate: {formatRate(rate)}</p>
           </div>
+        </div>
+      </section>
+
+      <section className="panel min-w-0 border border-cyan-400/20 bg-cyan-950/15 p-2.5" aria-label="Daily activities">
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={onOpenStreaks} className="flex min-h-[4.25rem] min-w-0 items-center gap-2 rounded-lg border border-orange-400/25 bg-orange-400/5 p-2 text-left transition hover:border-orange-300/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300">
+            <Flame size={17} className="shrink-0 text-orange-300" />
+            <span className="min-w-0"><span className="block truncate font-mono text-[9px] font-bold uppercase text-orange-200">Daily Streak</span><span className="mt-0.5 block truncate font-mono text-[8px] text-neon-600">Claim reward</span></span>
+          </button>
+          <button type="button" onClick={onOpenMysteryBoxes} className="flex min-h-[4.25rem] min-w-0 items-center gap-2 rounded-lg border border-violet-400/25 bg-violet-400/5 p-2 text-left transition hover:border-violet-300/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+            <Gift size={17} className="shrink-0 text-violet-300" />
+            <span className="min-w-0"><span className="block truncate font-mono text-[9px] font-bold uppercase text-violet-200">Mystery Box</span><span className="mt-0.5 block truncate font-mono text-[8px] text-neon-600">Open rewards</span></span>
+          </button>
+          <button type="button" onClick={onOpenExpeditions} className="flex min-h-[4.25rem] min-w-0 items-center gap-2 rounded-lg border border-cyan-400/25 bg-cyan-400/5 p-2 text-left transition hover:border-cyan-300/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+            <Compass size={17} className="shrink-0 text-cyan-200" />
+            <span className="min-w-0"><span className="block truncate font-mono text-[9px] font-bold uppercase text-cyan-200">Expedition</span><span className="mt-0.5 block truncate font-mono text-[8px] text-neon-600">Solo & team</span></span>
+          </button>
+          <button type="button" onClick={onOpenRaffles} className="flex min-h-[4.25rem] min-w-0 items-center gap-2 rounded-lg border border-amber-400/25 bg-amber-400/5 p-2 text-left transition hover:border-amber-300/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
+            <Gift size={17} className="shrink-0 text-amber-300" />
+            <span className="min-w-0"><span className="block truncate font-mono text-[9px] font-bold uppercase text-amber-200">Raffle</span><span className="mt-0.5 block truncate font-mono text-[8px] text-neon-600">Prize draws</span></span>
+          </button>
         </div>
       </section>
 
@@ -226,57 +245,6 @@ export default function CoreTab({
             )}
           </div>
         </details>
-      </section>
-
-      <section className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={onOpenMissions}
-          className="group flex items-center gap-3 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3 text-left transition hover:border-cyan-300/50"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-300/10 text-cyan-200"><Target size={17} /></span>
-          <span className="min-w-0"><span className="block font-mono text-[10px] font-bold uppercase text-cyan-200">Missions</span><span className="mt-1 block font-mono text-[8px] text-neon-600">Daily tasks & rewards</span></span>
-          <ArrowUpRight size={14} className="ml-auto shrink-0 text-cyan-400" />
-        </button>
-        <button
-          type="button"
-          onClick={onOpenExpeditions}
-          className="group flex items-center gap-3 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3 text-left transition hover:border-cyan-300/50"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-300/10 text-cyan-200"><Compass size={17} /></span>
-          <span className="min-w-0"><span className="block font-mono text-[10px] font-bold uppercase text-cyan-200">Expeditions</span><span className="mt-1 block font-mono text-[8px] text-neon-600">Missions & team challenges</span></span>
-          <ArrowUpRight size={14} className="ml-auto shrink-0 text-cyan-400" />
-        </button>
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <div><p className="label">Retention systems</p><h2 className="title mt-1">Daily engagement</h2></div>
-          <Flame size={18} className="text-orange-300" />
-        </div>
-        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
-          <button type="button" onClick={onOpenStreaks} className="panel space-y-3 border border-orange-400/25 bg-orange-400/5 p-3 text-left transition hover:border-orange-300/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300">
-            <div className="flex items-center justify-between"><Flame size={18} className="text-orange-300" /><span className="border border-emerald-400/25 px-1.5 py-0.5 font-mono text-[8px] uppercase text-emerald-300">Open streak</span></div>
-            <div><h3 className="font-display text-xs font-bold uppercase text-orange-200">Daily Streaks</h3><p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-600">View your trusted streak count, claim today's reward and track milestones.</p></div>
-            <div className="border-t border-orange-400/15 pt-2"><p className="font-mono text-[8px] uppercase text-orange-300">Daily claim · UTC reset</p><p className="mt-1 font-mono text-[8px] text-neon-700">Open your server-verified streak status.</p></div>
-          </button>
-          <button
-            type="button"
-            onClick={onOpenMysteryBoxes}
-            aria-label="Open Mystery Boxes"
-            className="panel group space-y-3 border border-violet-400/25 bg-violet-400/5 p-3 text-left transition hover:border-violet-300/55 hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
-          >
-            <div className="flex items-center justify-between"><Gift size={18} className="text-violet-300 transition-transform group-hover:scale-110" /><span className="border border-emerald-400/25 px-1.5 py-0.5 font-mono text-[8px] uppercase text-emerald-300">Open boxes</span></div>
-            <div><h3 className="font-display text-xs font-bold uppercase text-violet-200">Mystery Boxes</h3><p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-600">Open earned boxes, claim daily rewards and view your reward history.</p></div>
-            <div className="border-t border-violet-400/15 pt-2"><p className="font-mono text-[8px] uppercase text-violet-300">Standard · Premium</p><p className="mt-1 font-mono text-[8px] text-neon-700">Tap to enter your reward inventory.</p></div>
-          </button>
-        </div>
-      </section>
-
-      <section className="panel min-w-0 space-y-3 border border-amber-400/25 bg-amber-400/5 p-3 min-[380px]:p-4">
-        <div className="flex items-center gap-2"><Gift size={16} className="text-amber-300" /><p className="label">Community prize draws</p></div>
-        <div><h2 className="title mt-1">Live ZORD Raffles</h2><p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-500">Explore active raffles, review prize details and manage your entries in one place.</p></div>
-        <button type="button" onClick={onOpenRaffles} className="btn-ghost min-h-11 w-full"><Gift size={13} /> Open Raffles <ArrowUpRight size={13} /></button>
       </section>
 
       <button
