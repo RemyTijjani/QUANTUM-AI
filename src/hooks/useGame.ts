@@ -157,6 +157,17 @@ export function useGame(
     return () => { cancelled = true; };
   }, [playerId, isLoading]);
 
+  // Refresh trusted Fragment timers after admin pause/resume and server-side changes.
+  useEffect(() => {
+    if (isLoading) return;
+    const interval = window.setInterval(() => {
+      void applyTrustedFragments().catch((error) => {
+        console.error('Trusted Fragment refresh failed:', error);
+      });
+    }, 60_000);
+    return () => window.clearInterval(interval);
+  }, [playerId, isLoading, applyTrustedFragments]);
+
   // Temporary mining rewards are also server-sourced and fail closed.
   useEffect(() => {
     if (isLoading) return;
