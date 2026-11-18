@@ -163,6 +163,7 @@ export default function ExpeditionsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [activePage, setActivePage] = useState<'overview' | 'registration' | 'tasks' | 'team' | 'results'>('overview');
   const [activeObjectiveIndex, setActiveObjectiveIndex] = useState<Record<string, number>>({});
   const [selectedExpeditionId, setSelectedExpeditionId] = useState<string | null>(null);
@@ -209,10 +210,12 @@ export default function ExpeditionsScreen() {
 
   const perform = async (id: string, action: () => Promise<void>) => {
     setBusyId(id);
+    setSuccessMessage('');
     try {
       await action();
       await load(true);
     } catch (requestError) {
+      setSuccessMessage('');
       setError(requestError instanceof Error ? requestError.message : 'The action could not be completed.');
     } finally {
       setBusyId(null);
@@ -254,6 +257,7 @@ export default function ExpeditionsScreen() {
       evidence: { text: evidenceText },
     });
     setEvidenceDrafts((current) => ({ ...current, [key]: '' }));
+    setSuccessMessage('Your evidence is waiting for the operations team to review it.');
   });
 
   const leaveTeam = (item: Expedition) => {
@@ -335,6 +339,7 @@ export default function ExpeditionsScreen() {
       </div>}
 
       {error && <div role="alert" className="rounded-lg border border-amber-400/25 bg-amber-400/5 p-3 font-mono text-[10px] text-amber-200">{error}</div>}
+      {successMessage && <div role="status" aria-live="polite" className="rounded-lg border border-emerald-400/25 bg-emerald-400/5 p-3 font-mono text-[10px] leading-relaxed text-emerald-200">{successMessage}</div>}
 
       {loading ? (
         <div className="panel flex items-center justify-center gap-2 p-8 font-mono text-[10px] text-neon-500"><RefreshCw size={14} className="animate-spin" /> Loading live Expeditions…</div>
