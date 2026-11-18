@@ -39,19 +39,26 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
     let cancelled = false;
     const loadReferrals = async () => {
       setLoadingReferrals(true);
-      const { data, error } = await supabase
-        .from('referral_sub_nodes')
-        .select('id, recruit_code, recruit_name, created_at')
-        .order('created_at', { ascending: false });
-      if (cancelled) return;
-      if (error) {
+      try {
+        const { data, error } = await supabase
+          .from('referral_sub_nodes')
+          .select('id, recruit_code, recruit_name, created_at')
+          .order('created_at', { ascending: false });
+        if (cancelled) return;
+        if (error) {
+          setReferralError(true);
+          setReferrals([]);
+        } else {
+          setReferralError(false);
+          setReferrals((data ?? []) as VerifiedReferral[]);
+        }
+      } catch {
+        if (cancelled) return;
         setReferralError(true);
         setReferrals([]);
-      } else {
-        setReferralError(false);
-        setReferrals((data ?? []) as VerifiedReferral[]);
+      } finally {
+        if (!cancelled) setLoadingReferrals(false);
       }
-      setLoadingReferrals(false);
     };
     void loadReferrals();
     return () => { cancelled = true; };
