@@ -109,35 +109,19 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body.action === "begin_fragment_unlock") {
-      if (typeof body.fragmentId !== "string" || !FRAGMENTS.includes(body.fragmentId as typeof FRAGMENTS[number])) {
-        return json({ error: "Choose a valid fragment." }, 400);
-      }
-      const { data, error } = await admin.rpc("begin_fragment_unlock", {
-        p_player_id: player.id,
-        p_fragment_id: body.fragmentId,
-      });
-      if (error) {
-        console.error("Begin fragment unlock failed:", error);
-        return json({ error: "Could not start the fragment unlock." }, 500);
-      }
-      return json(data);
+      return json({
+        success: false,
+        reason: "ad_verification_not_configured",
+        error: "Fragment unlocks are paused until a configured ad provider verifies a completed view.",
+      }, 503);
     }
 
     if (body.action === "complete_fragment_unlock") {
-      if (typeof body.sessionId !== "string" ||
-          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.sessionId)) {
-        return json({ error: "A valid unlock session is required." }, 400);
-      }
-      const { data, error } = await admin.rpc("complete_fragment_unlock", {
-        p_player_id: player.id,
-        p_session_id: body.sessionId,
-      });
-      if (error) {
-        console.error("Complete fragment unlock failed:", error);
-        return json({ error: "Could not complete the fragment unlock." }, 500);
-      }
-      const status = data?.reason === "wait_required" ? 409 : data?.success === false ? 409 : 200;
-      return json(data, status);
+      return json({
+        success: false,
+        reason: "ad_verification_not_configured",
+        error: "Fragment unlocks are paused until a configured ad provider verifies a completed view.",
+      }, 503);
     }
 
     if (body.action === "fix_fragment") {
