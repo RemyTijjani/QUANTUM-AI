@@ -226,6 +226,30 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
       notify('Could not copy the referral link. Please try again.', 'error');
     }
   };
+  const claimReferralMission = async () => {
+    if (!notify || claiming || claimed || legacyClaimed || status !== 'ready') return;
+    setClaiming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mission-actions', {
+        body: { missionId: mission.id },
+      });
+      if (error || !data || data.success !== true) {
+        notify(data?.error || error?.message || 'Your referral could not be verified. Try again.', 'error');
+        return;
+      }
+      setClaimed(true);
+      notify(data.alreadyClaimed ? 'Your Share Your Uplink reward was already claimed.' : `Verified referral. +${formatZp(Number(data.rewardZp) || mission.reward)} ZP credited.`);
+      try {
+        await onRefreshVerifiedEconomy?.();
+      } catch {
+        notify('The reward was recorded, but your balance could not refresh. Reopen the Vault or refresh later.', 'error');
+      }
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Your referral could not be verified.', 'error');
+    } finally {
+      setClaiming(false);
+    }
+  };
   const Icon = mission.kind === 'daily' ? CalendarCheck : Megaphone;
   const legacyClaimed = status === 'claimed';
   const pendingReview = status === 'pending';
@@ -267,7 +291,15 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
             >
               Copy referral link
             </button>
-            <p className="font-mono text-[9px] leading-relaxed text-amber-300">Share your link with a new player. The 300 ZP reward is not claimable until referral completion verification is enabled.</p>
+            <button
+              type="button"
+              onClick={() => void claimReferralMission()}
+              disabled={claiming || claimed || legacyClaimed || status !== 'ready'}
+              className="min-h-11 rounded border border-cyan-300/40 bg-cyan-300/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-cyan-200 disabled:opacity-50"
+            >
+              {claiming ? 'Verifying referral...' : claimed || legacyClaimed ? 'Reward claimed' : status === 'ready' ? `Verify referral & claim +${formatZp(mission.reward)} ZP` : 'Refer a new operative to unlock'}
+            </button>
+            <p className="font-mono text-[9px] leading-relaxed text-neon-500">One-time 300 ZP reward after a new player completes Telegram sign-in through your referral link.</p>
           </div>
         ) : mission.telegramChatId ? (
           <button
@@ -291,7 +323,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
           <p className="mt-2 font-mono text-[9px] leading-relaxed text-amber-300">{unavailableReason}</p>
         )}
       </div>
-      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : pendingReview ? 'border-amber-300/20 bg-amber-300/5 text-amber-200' : mission.id === 'daily-uplink' || mission.id === 'follow-signal' || mission.id === 'share-uplink' || mission.telegramChatId || (mission.id === 'agent-uptime' && status === 'ready') ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : pendingReview ? 'Pending review' : mission.id === 'daily-uplink' ? 'Claim' : mission.id === 'follow-signal' ? 'Submit' : mission.id === 'agent-uptime' ? status === 'ready' ? 'Verify' : 'Locked' : mission.id === 'share-uplink' ? 'Invite' : mission.telegramChatId ? 'Verify' : 'Setup needed'}</span>
+      <span className={`ml-auto shrink-0 rounded-md border px-2 py-1 font-mono text-[8px] uppercase tracking-wide ${claimed || legacyClaimed ? 'border-cyan-300/25 bg-cyan-300/5 text-cyan-200' : pendingReview ? 'border-amber-300/20 bg-amber-300/5 text-amber-200' : mission.id === 'daily-uplink' || mission.id === 'follow-signal' || (mission.id === 'share-uplink' && status === 'ready') || mission.telegramChatId || (mission.id === 'agent-uptime' && status === 'ready') ? 'border-neon/20 bg-neon/5 text-neon-400' : 'border-amber-300/20 bg-amber-300/5 text-amber-200'}`}>{claimed || legacyClaimed ? 'Completed' : pendingReview ? 'Pending review' : mission.id === 'daily-uplink' ? 'Claim' : mission.id === 'follow-signal' ? 'Submit' : mission.id === 'agent-uptime' ? status === 'ready' ? 'Verify' : 'Locked' : mission.id === 'share-uplink' ? status === 'ready' ? 'Claim' : 'Invite' : mission.telegramChatId ? 'Verify' : 'Setup needed'}</span>
     </article>
   );
 }
