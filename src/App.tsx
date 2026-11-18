@@ -299,6 +299,7 @@ function GameApp({
       {adFragment && (
         <AdModal
           fragmentId={adFragment}
+          isReactivation={state.fragments[adFragment] === 'fixed'}
           onClose={() => setAdFragment(null)}
         />
       )}
