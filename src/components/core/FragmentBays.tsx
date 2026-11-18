@@ -34,7 +34,7 @@ export default function FragmentBays({ fragments, cooldowns, miningUntil, now, o
             id={id}
             status={fragments[id]}
             cooldownRemaining={Math.max(0, cooldowns[id] - now)}
-            miningActive={miningUntil[id] > now}
+            miningRemaining={Math.max(0, miningUntil[id] - now)}
             onPress={() => onFragmentPress(id)}
           />
         ))}
@@ -47,21 +47,24 @@ function FragmentBay({
   id,
   status,
   cooldownRemaining,
-  miningActive,
+  miningRemaining,
   onPress,
 }: {
   id: FragmentId;
   status: FragmentStatus;
   cooldownRemaining: number;
-  miningActive: boolean;
+  miningRemaining: number;
   onPress: () => void;
 }) {
   const cooldownActive = cooldownRemaining > 0;
-  const label = cooldownActive
-    ? `Cooldown · ${formatCooldown(cooldownRemaining)}`
-    : status === 'fixed'
-      ? miningActive ? 'Mining active' : 'Ad verification required'
-      : STATUS_LABEL[status];
+  const miningActive = status === 'fixed' && miningRemaining > 0;
+  const label = miningActive
+    ? `Mining · ${formatCooldown(miningRemaining)}`
+    : cooldownActive
+      ? `Cooldown · ${formatCooldown(cooldownRemaining)}`
+      : status === 'fixed'
+        ? 'Ad verification required'
+        : STATUS_LABEL[status];
 
   return (
     <button
