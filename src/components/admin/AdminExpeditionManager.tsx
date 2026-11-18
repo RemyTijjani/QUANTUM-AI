@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Compass, Plus, ChevronLeft, ChevronRight, Save, Users, BookOpen, Gamepad2, Globe, Trophy, CalendarDays, Layers, ShieldCheck, Clock3, Copy, CalendarClock } from 'lucide-react';
-import { listAdminExpeditions, publishAdminExpedition, rescheduleAdminExpedition, issueAdminExpeditionRewards, saveExpeditionDraft, listAdminExpeditionObjectiveReviews, reviewAdminExpeditionObjective, type AdminCredentials, type AdminEvent, type AdminExpeditionDraftInput, type AdminExpeditionRecord, type AdminExpeditionObjectiveReview } from '@/lib/admin/adminApi';
+import { listAdminExpeditions, publishAdminExpedition, rescheduleAdminExpedition, issueAdminExpeditionRewards, saveExpeditionDraft, listAdminExpeditionObjectiveReviews, reviewAdminExpeditionObjective, type AdminCredentials, type AdminExpeditionDraftInput, type AdminExpeditionRecord, type AdminExpeditionObjectiveReview } from '@/lib/admin/adminApi';
 
 type ObjectiveKind = 'briefing' | 'quiz' | 'game' | 'community' | 'external' | 'milestone';
 type Objective = { id: number; kind: ObjectiveKind; title: string; scope: 'individual' | 'team' | 'both' };
@@ -20,7 +20,7 @@ const kinds: { value: ObjectiveKind; label: string; icon: typeof BookOpen }[] = 
   { value: 'external', label: 'External ecosystem', icon: Globe }, { value: 'milestone', label: 'Milestone', icon: Trophy },
 ];
 
-export default function AdminExpeditionManager({ events, creds }: { events: AdminEvent[]; creds: AdminCredentials }) {
+export default function AdminExpeditionManager({ creds }: { creds: AdminCredentials }) {
   const [step, setStep] = useState(0);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
@@ -54,7 +54,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewReasons, setReviewReasons] = useState<Record<string, string>>({});
   const [reviewMessage, setReviewMessage] = useState('');
-  const counts = useMemo(() => ({ gameEvents: events.length, live: drafts.filter(e => e.status === 'registration_open' || e.status === 'active').length, drafts: drafts.filter(e => e.status === 'draft').length, pendingReviews: reviewQueue.individualSubmissions.length + reviewQueue.teamSubmissions.length }), [events, drafts, reviewQueue]);
+  const counts = useMemo(() => ({ expeditions: drafts.length, live: drafts.filter(e => e.status === 'registration_open' || e.status === 'active').length, drafts: drafts.filter(e => e.status === 'draft').length, pendingReviews: reviewQueue.individualSubmissions.length + reviewQueue.teamSubmissions.length }), [events, drafts, reviewQueue]);
 
   const loadDrafts = useCallback(async () => {
     setLoadingDrafts(true);
@@ -308,7 +308,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     ['Drafts', counts.drafts, Layers],
     ['Live / registration', counts.live, Clock3],
     ['Pending reviews', counts.pendingReviews, ShieldCheck],
-    ['Expeditions', counts.gameEvents, CalendarDays],
+    ['Expeditions', counts.expeditions, CalendarDays],
   ] as const;
 
   return <section className="space-y-4">
