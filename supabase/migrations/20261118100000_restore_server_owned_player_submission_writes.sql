@@ -25,6 +25,7 @@ DROP POLICY IF EXISTS "creator_ops_submissions_insert_own"
 DROP POLICY IF EXISTS insert_own_submissions
   ON public.creator_ops_submissions;
 
+DROP POLICY IF EXISTS creator_ops_submissions_select_own ON public.creator_ops_submissions;
 CREATE POLICY creator_ops_submissions_select_own
   ON public.creator_ops_submissions
   FOR SELECT TO authenticated
@@ -44,6 +45,7 @@ DROP POLICY IF EXISTS x_follow_submissions_insert_own
 DROP POLICY IF EXISTS "x_follow_submissions_insert_own"
   ON public.x_follow_submissions;
 
+DROP POLICY IF EXISTS x_follow_submissions_select_own ON public.x_follow_submissions;
 CREATE POLICY x_follow_submissions_select_own
   ON public.x_follow_submissions
   FOR SELECT TO authenticated
