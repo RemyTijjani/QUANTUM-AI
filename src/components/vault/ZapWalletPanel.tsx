@@ -396,38 +396,33 @@ export default function ZapWalletPanel({
         )}
       </div>
 
-      <div className="panel space-y-3 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="title">ZAP activity</h2>
-            <p className="mt-1 text-[10px] text-neon-700">Your latest wallet transactions</p>
-          </div>
-          <span className="rounded-full border border-neon/15 px-2 py-1 text-[9px] text-neon-600">Latest 5</span>
-        </div>
-        {!wallet || wallet.transactions.length === 0 ? (
-          <div className="rounded-lg border border-neon/10 bg-black/20 px-3 py-6 text-center">
-            <HistoryIcon />
-            <p className="mt-2 text-xs text-neon-500">No ZAP activity yet</p>
-            <p className="mt-1 text-[10px] text-neon-700">Your wallet transactions will show here.</p>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {wallet.transactions.slice(0, 5).map((entry) => (
-              <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-neon/10 py-3 last:border-0">
-                <div className="min-w-0">
-                  <p className="truncate text-xs capitalize text-neon-200">{entry.description || entry.source.replace(/_/g, ' ')}</p>
-                  <p className="mt-1 text-[9px] text-neon-700">
-                    {entry.createdAt && Number.isFinite(Date.parse(entry.createdAt)) ? new Date(entry.createdAt).toLocaleString() : 'Date unavailable'}
+      <details className="rounded-lg border border-neon/15 bg-black/20">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3">
+          <span className="text-xs font-semibold text-neon-200">ZAP transaction history</span>
+          <span className="text-[9px] text-neon-600">{wallet?.transactions.length ?? 0} transactions · latest 5</span>
+        </summary>
+        <div className="border-t border-neon/10 px-3">
+          {!wallet || wallet.transactions.length === 0 ? (
+            <p className="py-4 text-center text-[10px] text-neon-600">No ZAP transactions yet.</p>
+          ) : (
+            <div className="space-y-1">
+              {wallet.transactions.slice(0, 5).map((entry) => (
+                <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-neon/10 py-3 last:border-0">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs capitalize text-neon-200">{entry.description || entry.source.replace(/_/g, ' ')}</p>
+                    <p className="mt-1 text-[9px] text-neon-700">
+                      {entry.createdAt && Number.isFinite(Date.parse(entry.createdAt)) ? new Date(entry.createdAt).toLocaleString() : 'Date unavailable'}
+                    </p>
+                  </div>
+                  <p className={`shrink-0 font-display text-sm font-semibold ${entry.entryType === 'debit' ? 'text-amber-300' : 'text-emerald-300'}`}>
+                    {entry.entryType === 'debit' ? '−' : '+'}{formatZp(entry.amount)} <span className="text-[10px]">ZAP</span>
                   </p>
                 </div>
-                <p className={`shrink-0 font-display text-sm font-semibold ${entry.entryType === 'debit' ? 'text-amber-300' : 'text-emerald-300'}`}>
-                  {entry.entryType === 'debit' ? '−' : '+'}{formatZp(entry.amount)} <span className="text-[10px]">ZAP</span>
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </details>
     </section>
   );
 }
