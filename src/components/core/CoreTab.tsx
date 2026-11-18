@@ -282,7 +282,9 @@ export default function CoreTab({
           ? `Mining active · ${formatRemaining(miningLeft)} remaining`
           : Number.isFinite(nextFragmentCooldown)
             ? `Next Fragment available in ${formatRemaining(nextFragmentCooldown)}`
-            : 'Verify an ad to unlock a Fragment and start mining.'}
+            : fixed > 0
+              ? 'Verify an ad to unlock or reactivate a Fragment and resume mining.'
+              : 'Verify an ad to unlock a Fragment and start mining.'}
       </p>
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
         Each Fragment has its own assigned advertising provider. Ad unlocking will activate after publisher approval and trusted server-side verification. Once unlocked, fix the Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
