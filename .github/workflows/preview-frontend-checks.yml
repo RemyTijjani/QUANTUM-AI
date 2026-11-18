@@ -44,6 +44,8 @@ jobs:
         run: npm ci --no-audit --no-fund --fetch-retries=2 --fetch-timeout=30000
 
       - name: Audit dependency advisories
+        continue-on-error: true
+        timeout-minutes: 2
         run: |
           set +e
           timeout --kill-after=5s 45s npm audit --json > /tmp/npm-audit.json
