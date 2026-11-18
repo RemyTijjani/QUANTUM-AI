@@ -1,6 +1,11 @@
 name: Deploy Agent Rental Payments to Supabase Preview
 
 on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - 'supabase/functions/agent-rental-payments/**'
   workflow_dispatch:
 
 permissions:
