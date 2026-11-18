@@ -84,7 +84,7 @@ export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
     if (!item || typeof item !== 'object') {
       throw new VerifiedEconomyError('The verified economy service returned invalid rental data.');
     }
-    const rental = item as Record<string, unknown>;
+    const rental = item as unknown as Record<string, unknown>;
     if (
       (rental.agentType !== 'alpha_miner' && rental.agentType !== 'overclocked_core') ||
       typeof rental.startsAt !== 'string' ||
