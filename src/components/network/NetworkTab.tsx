@@ -9,6 +9,8 @@ import { formatZp } from '@/lib/format';
 import type { GameState } from '@/lib/game/state';
 import type { Notify } from '@/hooks/useToast';
 import MilestonesList from '@/components/network/MilestonesList';
+import { claimReferralMilestone, fetchReferralMilestones } from '@/lib/economy/referralMilestones';
+import type { ReferralMilestoneSummary } from '@/lib/economy/referralMilestones';
 
 interface NetworkTabProps {
   state: GameState;
@@ -34,6 +36,10 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
   const [loadingKickbacks, setLoadingKickbacks] = useState(true);
   const [kickbackError, setKickbackError] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [milestoneSummary, setMilestoneSummary] = useState<ReferralMilestoneSummary | null>(null);
+  const [milestoneLoading, setMilestoneLoading] = useState(true);
+  const [milestoneError, setMilestoneError] = useState(false);
+  const [claimingMilestone, setClaimingMilestone] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +89,45 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
     void loadKickbacks();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadMilestones = async () => {
+      setMilestoneLoading(true);
+      try {
+        const summary = await fetchReferralMilestones();
+        if (cancelled) return;
+        setMilestoneSummary(summary);
+        setMilestoneError(false);
+      } catch {
+        if (cancelled) return;
+        setMilestoneError(true);
+      } finally {
+        if (!cancelled) setMilestoneLoading(false);
+      }
+    };
+    void loadMilestones();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleClaimMilestone = async (threshold: number) => {
+    if (claimingMilestone !== null) return;
+    setClaimingMilestone(threshold);
+    try {
+      const summary = await claimReferralMilestone(threshold);
+      setMilestoneSummary(summary);
+      notify(`Referral milestone claimed: ${threshold} referrals reward credited in ZAP.`, 'success');
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not claim this referral milestone.', 'error');
+      try {
+        setMilestoneSummary(await fetchReferralMilestones());
+      } catch {
+        setMilestoneError(true);
+      }
+    } finally {
+      setClaimingMilestone(null);
+    }
+  };
 
   const copyLink = async () => {
     try {
@@ -277,7 +322,18 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
           <p className="label">Network milestones</p>
           <h2 className="title mt-1">Milestone progress</h2>
         </div>
-        <MilestonesList subNodeCount={referrals.length} />
+        {milestoneLoading ? (
+          <p className="panel px-4 py-5 font-mono text-xs text-neon-500">Loading verified milestone progress...</p>
+        ) : milestoneError || !milestoneSummary ? (
+          <p className="panel px-4 py-5 font-mono text-xs text-amber-300">Could not load verified referral milestones. Reopen this section and try again.</p>
+        ) : (
+          <MilestonesList
+            referralCount={milestoneSummary.referralCount}
+            milestones={milestoneSummary.milestones}
+            claimingThreshold={claimingMilestone}
+            onClaim={handleClaimMilestone}
+          />
+        )}
       </section>
 
       <section className="space-y-3">
