@@ -112,8 +112,9 @@ export default function RafflesScreen() {
         body: { action: 'enter', raffleId: selected.id, stakeZap: stakeValue, idempotencyKey: request.idempotencyKey },
       });
       if (requestError || !data?.success) {
-        setError(data?.error || requestError?.message || 'Your entry could not be confirmed. Retry the same entry to safely check its result.');
+        const message = data?.error || requestError?.message || 'Your entry could not be confirmed. Retry the same entry to safely check its result.';
         await refresh(true);
+        setError(message);
         return;
       }
       pendingEntryRequest.current = null;
@@ -122,8 +123,9 @@ export default function RafflesScreen() {
       setStake('');
       await refresh(true);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Your entry could not be confirmed. Retry the same entry to safely check its result.');
+      const message = requestError instanceof Error ? requestError.message : 'Your entry could not be confirmed. Retry the same entry to safely check its result.';
       await refresh(true);
+      setError(message);
     } finally {
       setSubmitting(false);
     }
