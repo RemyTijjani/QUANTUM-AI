@@ -422,7 +422,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
           </button>
           {!paymentsEnabled && (
             <p className="font-mono text-[9px] leading-relaxed text-amber-300">
-              Your checkout and server-side verification are active in Preview. This final wallet-send step is still locked, so this page cannot move real GRAM yet.
+              Checkout creation and payment verification are locked in Preview. Wallet connection can be tested, but no rental can be activated or funds moved.
             </p>
           )}
           {sendAttempted && !transactionSubmitted && (
