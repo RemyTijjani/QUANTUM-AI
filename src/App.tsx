@@ -129,7 +129,6 @@ function GameApp({
 }) {
   const {
     state,
-    actions,
     isLoading,
     loadError,
     syncError,
@@ -254,23 +253,13 @@ function GameApp({
     setAdFragment(fragmentId);
   };
 
-  const resetSystem = () => {
-    actions.reset(state.referralCode);
 
-    setOverlay(null);
-
-    notify(
-      'Local game progress reset. Server-verified balances and records were not changed.',
-      'info',
-    );
-  };
 
   return (
     <div className="relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden bg-obsidian">
       <div className="crt-overlay" aria-hidden />
 
       <Header
-        zp={state.zp}
         verifiedZpBalance={verifiedZpBalance}
         onOpenProfile={() => setOverlay('profile')}
         onOpenLeaderboard={() => setOverlay('leaderboard')}
@@ -355,11 +344,11 @@ function GameApp({
 
       {overlay === 'profile' && (
         <ProfileModal
-          state={state}
           identity={identity}
           verifiedZpBalance={verifiedZpBalance}
           verifiedZpLifetime={verifiedZpLifetime}
-          onReset={resetSystem}
+          zapEarned={zapEarned}
+          zapAchievements={zapAchievements}
           onClose={() => setOverlay(null)}
         />
       )}
