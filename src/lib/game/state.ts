@@ -389,7 +389,7 @@ export function gameReducer(
         },
         fragmentCooldowns: {
           ...s.fragmentCooldowns,
-          [action.id]: now + FRAGMENT_COOLDOWN_MS,
+          [action.id]: now + CORE_SESSION_MS + FRAGMENT_COOLDOWN_MS,
         },
         coreMiningUntil: now + CORE_SESSION_MS,
       };
