@@ -5,15 +5,16 @@ import type { FragmentId } from '@/lib/game/config';
 
 interface AdModalProps {
   fragmentId: FragmentId;
+  isReactivation?: boolean;
   onClose: () => void;
 }
 
-export default function AdModal({ fragmentId, onClose }: AdModalProps) {
+export default function AdModal({ fragmentId, isReactivation = false, onClose }: AdModalProps) {
   return (
     <Modal title="Fragment ad placement" onClose={onClose}>
       <div className="space-y-4">
         <div>
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-neon-600">Fragment unlock</p>
+          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-neon-600">{isReactivation ? 'Fragment reactivation' : 'Fragment unlock'}</p>
           <h3 className="mt-1 font-display text-sm font-bold uppercase tracking-wider text-white">{FRAGMENT_NAMES[fragmentId]}</h3>
         </div>
 
@@ -41,7 +42,7 @@ export default function AdModal({ fragmentId, onClose }: AdModalProps) {
         <div className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-200">Publisher review preview</p>
           <p className="mt-1 font-mono text-[9px] leading-relaxed text-amber-100/70">
-            Ads are not active yet. This preview does not start an unlock session, count an ad view, or issue a reward. The Fragment stays locked until an advertisement is connected and a completed view is verified by ZORD.
+            {isReactivation ? 'The previous mining window has ended. This preview does not start a new unlock session, count an ad view, or issue a reward. Reactivation will be available after an advertisement is connected and a completed view is verified by ZORD.' : 'Ads are not active yet. This preview does not start an unlock session, count an ad view, or issue a reward. The Fragment stays locked until an advertisement is connected and a completed view is verified by ZORD.'}
           </p>
         </div>
 
