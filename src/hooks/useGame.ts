@@ -191,7 +191,7 @@ export function useGame(
       window.clearInterval(interval);
       window.removeEventListener('focus', syncTemporaryRewards);
     };
-  }, [playerId, isLoading, loadAttempt]);
+  }, [playerId, isLoading]);
 
   // A lightweight local tick refreshes cooldown labels; it does not award
   // verified ZP or write the legacy snapshot to the database.
