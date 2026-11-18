@@ -55,13 +55,16 @@ export default function CoreTab({
 }: CoreTabProps) {
   const now = Date.now();
   const fixed = fixedCount(state);
+  const activeFragmentCount = FRAGMENT_IDS.filter((id) =>
+    state.fragments[id] === 'fixed' && state.fragmentMiningUntil[id] > now
+  ).length;
   const paidRentalRate = activeAgentRentals
     .filter((rental) => Date.parse(rental.startsAt) <= now && Date.parse(rental.expiresAt) > now)
     .reduce((sum, rental) => sum + rental.ratePerSecond, 0);
   const temporaryAgentRate = state.temporaryAgentUntil > now ? AGENTS.alpha.zpPerSec : 0;
-  const fragmentRate = paidRentalRate > 0 || state.coreMiningUntil <= now
+  const fragmentRate = paidRentalRate > 0
     ? 0
-    : fixed * FRAGMENT_ZP_PER_SEC * (state.fragmentMiningBoostUntil > now ? state.fragmentMiningBoostMultiplier : 1);
+    : activeFragmentCount * FRAGMENT_ZP_PER_SEC * (state.fragmentMiningBoostUntil > now ? state.fragmentMiningBoostMultiplier : 1);
   const rate = verifiedZpBalance === null ? 0 : paidRentalRate + temporaryAgentRate + fragmentRate;
   const miningRateLabel = verifiedZpBalance === null ? '—' : formatRate(rate);
   const maxMiningRate = Math.max(
