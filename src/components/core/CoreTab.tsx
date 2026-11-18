@@ -59,21 +59,11 @@ export default function CoreTab({
   const rate = passiveRate(state, now);
   const miningLeft = state.coreMiningUntil - now;
   const fixed = fixedCount(state);
-  const maxMiningRate = Math.max(
-    CORE_BASE_RATE + FRAGMENT_ZP_PER_SEC * FRAGMENT_IDS.length,
-    ...Object.values(AGENTS).map((agent) => agent.zpPerSec),
-    rate,
-  );
-  const miningRateProgress = maxMiningRate > 0 ? Math.max(0, Math.min(100, (rate / maxMiningRate) * 100)) : 0;
   const netZapProgress = zapAchievements?.netZap ?? zapEarned;
   const tier = tierInfo(netZapProgress ?? 0);
   const coreRank = zapAchievements?.coreRank;
   const rankNumber = coreRank?.rankNumber ?? tier.tier;
   const rankProgress = Math.max(0, Math.min(100, coreRank?.progressPercent ?? tier.progress * 100));
-  const rankNextThreshold = coreRank?.nextThreshold ?? rankNumber * 500;
-  const rankCurrentThreshold = coreRank?.currentThreshold ?? Math.max(0, (rankNumber - 1) * 500);
-  const rankRemaining = Math.max(0, rankNextThreshold - (netZapProgress ?? 0));
-  const rankZapProgress = Math.max(0, (netZapProgress ?? 0) - rankCurrentThreshold);
   const zapProgress = netZapProgress === null || netZapProgress === undefined
     ? 0
     : Math.max(0, Math.min(100, ((netZapProgress % 100) + 100) % 100));
@@ -102,6 +92,47 @@ export default function CoreTab({
 
   return (
     <div className="min-w-0 space-y-5 pb-3">
+      <section className="panel min-w-0 border border-cyan-300/20 bg-black/35 p-3" aria-label="Mining and progression">
+        <div className="grid grid-cols-2 items-center gap-3">
+          <div className="flex justify-center">
+            <div
+              className="grid h-[4.25rem] w-[4.25rem] place-items-center rounded-full"
+              style={{ background: `conic-gradient(#67ddff ${zapProgress}%, rgba(103,221,255,0.12) 0)` }}
+              role="img"
+              aria-label={`ZAP progress ${zapProgress.toFixed(0)} percent`}
+            >
+              <div className="grid h-[3.55rem] w-[3.55rem] place-items-center rounded-full bg-[#07111a]">
+                <span className="font-display text-base font-bold tabular-nums text-cyan-100">
+                  {zapLoading || netZapProgress === null || netZapProgress === undefined ? '—' : formatZp(zapProgress)}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <div
+              className="grid h-[4.25rem] w-[4.25rem] place-items-center rounded-full"
+              style={{ background: `conic-gradient(#7cf7c5 ${Math.max(0, Math.min(100, rate > 0 ? 100 : 0))}%, rgba(124,247,197,0.12) 0)` }}
+              role="img"
+              aria-label={`ZP mining rate ${formatRate(rate)} per second`}
+            >
+              <div className="grid h-[3.55rem] w-[3.55rem] place-items-center rounded-full bg-[#07110f]">
+                <span className="font-display text-sm font-bold tabular-nums text-neon-100">{formatRate(rate)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          className="mt-3 h-1.5 overflow-hidden rounded-full bg-cyan-950/90"
+          role="progressbar"
+          aria-label="Core rank progression"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(rankProgress)}
+        >
+          <div className="h-full rounded-full bg-cyan-300 transition-all duration-500" style={{ width: String(rankProgress) + '%' }} />
+        </div>
+      </section>
+
       <section className="panel relative min-w-0 overflow-hidden border border-neon/35 bg-gradient-to-br from-neon/10 via-black/50 to-cyan-500/5 p-3 min-[380px]:p-4">
         <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full border border-neon/10" />
         <div className="relative flex flex-wrap items-start justify-between gap-3">
@@ -137,47 +168,6 @@ export default function CoreTab({
             <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{fixed}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
             <p className="mt-1 text-[9px] text-neon-700">Displayed rate estimate: {formatRate(rate)}</p>
           </div>
-        </div>
-        <div className="relative mt-3 min-w-0 rounded-xl border border-neon/15 bg-black/30 p-3">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="label">Mining & ZAP progress</p><span className="text-[9px] text-neon-600">Live rate and next milestones</span></div>
-          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
-            <div className="flex flex-col items-center text-center">
-              <div className="grid h-24 w-24 place-items-center rounded-full" style={{background: `conic-gradient(#7cf7c5 ${miningRateProgress}%, rgba(124,247,197,0.12) 0)`}}>
-                <div className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-[#07110f]">
-                  <div><p className="font-display text-sm font-bold tabular-nums text-neon-100">{formatRate(rate)}</p><p className="font-mono text-[8px] text-neon-600">ZP/s</p></div>
-                </div>
-              </div>
-              <p className="mt-2 text-[10px] font-semibold text-neon-200">Estimated mining rate</p>
-              <p className="mt-1 text-[8px] text-neon-700">{fixed} / {FRAGMENT_IDS.length} fragments online · max {formatRate(maxMiningRate)} ZP/s</p>
-            </div>
-            <div className="flex flex-col items-center text-center">
-              <div className="grid h-24 w-24 place-items-center rounded-full" style={{background: `conic-gradient(#67ddff ${zapProgress}%, rgba(103,221,255,0.12) 0)`}}>
-                <div className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-[#07111a]">
-                  <div><p className="font-display text-lg font-bold tabular-nums text-cyan-100">{zapLoading ? '…' : zapProgress.toFixed(0) + '%'}</p><p className="font-mono text-[8px] text-cyan-600">ZAP</p></div>
-                </div>
-              </div>
-              <p className="mt-2 text-[10px] font-semibold text-cyan-200">Net ZAP progress</p>
-              <p className="mt-1 text-[8px] text-cyan-700">{zapLoading || netZapProgress === null || netZapProgress === undefined ? '—' : `${formatZp(zapProgress)} / 100 ZAP`}</p>
-            </div>
-          </div>
-          <div className="mt-4 rounded-lg border border-cyan-300/15 bg-cyan-950/20 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="label">Core rank progression</p>
-                <p className="mt-1 text-xs font-semibold text-cyan-100">{tier.rank} · Rank {rankNumber}</p>
-              </div>
-              <p className="font-mono text-[10px] tabular-nums text-cyan-200">{rankProgress.toFixed(1)}%</p>
-            </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-cyan-950" role="progressbar" aria-label="Core rank progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(rankProgress)}>
-              <div className="h-full rounded-full bg-cyan-300 transition-all duration-500" style={{ width: String(rankProgress) + '%' }} />
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[9px] text-cyan-700">
-              <span>{formatZp(rankZapProgress)} / 500 net ZAP in this rank</span>
-              <span>{rankRemaining === 0 ? 'Rank threshold reached' : `${formatZp(rankRemaining)} ZAP to next rank`}</span>
-            </div>
-            <p className="mt-2 text-[8px] leading-relaxed text-cyan-800">Every 500 net ZAP advances your Core Rank. Spending ZAP can lower your rank; earning or receiving ZAP can raise it.</p>
-          </div>
-          <p className="mt-3 text-center text-[8px] leading-relaxed text-neon-700">The ZP ring shows your estimated live mining rate. Your verified ZP balance is shown separately. Each ZAP ring level requires 100 net ZAP; spending reduces unminted progress, while minted badges remain yours.</p>
         </div>
       </section>
 
