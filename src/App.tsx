@@ -130,6 +130,7 @@ function GameApp({
   const {
     state,
     isLoading,
+    clockNow,
     trustedGameplay,
   } = useGame(referralCode, playerId);
 
@@ -237,6 +238,7 @@ function GameApp({
         {tab === 'core' && (
           <CoreTab
             state={state}
+            now={clockNow}
             notify={notify}
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
             verifiedZpBalance={verifiedZpBalance}
