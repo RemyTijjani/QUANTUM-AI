@@ -439,7 +439,6 @@ export function useGame(
 
   const applyTrustedFragments = async () => {
     const fragments = await fetchTrustedFragments();
-    if (fragments.length === 0) return;
     setState((previous) => {
       // Once trusted gameplay exists, treat its rows as the source of truth.
       // Fragments without a server row must remain locked, not inherit stale
@@ -483,7 +482,7 @@ export function useGame(
     if (isLoading || loadError) return;
     let cancelled = false;
     void fetchTrustedFragments().then((fragments) => {
-      if (cancelled || fragments.length === 0) return;
+      if (cancelled) return;
       setState((previous) => {
         // Trusted rows supersede legacy client-saved fragment statuses.
         const next: GameState = {
@@ -503,7 +502,17 @@ export function useGame(
         }
         return next;
       });
-    }).catch((error) => console.error('Trusted fragment state load failed:', error));
+    }).catch((error) => {
+      console.error('Trusted fragment state load failed:', error);
+      if (!cancelled) {
+        setState((previous) => ({
+          ...previous,
+          fragments: Object.fromEntries(FRAGMENT_IDS.map((id) => [id, 'locked'])) as GameState['fragments'],
+          fragmentCooldowns: Object.fromEntries(FRAGMENT_IDS.map((id) => [id, 0])) as GameState['fragmentCooldowns'],
+          coreMiningUntil: 0,
+        }));
+      }
+    });
     return () => { cancelled = true; };
   }, [playerId, isLoading, loadError]);
 
