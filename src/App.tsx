@@ -145,6 +145,8 @@ function GameApp({
   const [nextFragmentReleaseAt, setNextFragmentReleaseAt] = useState<string | null>(null);
   const [verifiedTransactions, setVerifiedTransactions] = useState<VerifiedLedgerEntry[]>([]);
   const [activeAgentRentals, setActiveAgentRentals] = useState<VerifiedAgentRental[]>([]);
+  const [fragmentMiningEnabled, setFragmentMiningEnabled] = useState(false);
+  const [fragmentMiningRateMultiplier, setFragmentMiningRateMultiplier] = useState(1);
 
   const refreshVerifiedBalance = useCallback(async () => {
     try {
@@ -155,6 +157,8 @@ function GameApp({
       setNextFragmentReleaseAt(economy.nextFragmentReleaseAt);
       setVerifiedTransactions(economy.transactions);
       setActiveAgentRentals(economy.activeAgentRentals);
+      setFragmentMiningEnabled(economy.fragmentMiningEnabled);
+      setFragmentMiningRateMultiplier(economy.fragmentMiningRateMultiplier);
       try {
         const zapWallet = await fetchZapWallet();
         setZapEarned(zapWallet.rankingEarned);
@@ -176,6 +180,8 @@ function GameApp({
       setNextFragmentReleaseAt(null);
       setVerifiedTransactions([]);
       setActiveAgentRentals([]);
+      setFragmentMiningEnabled(false);
+      setFragmentMiningRateMultiplier(1);
       setZapEarned(null);
       setZapAchievements(null);
       setZapLoading(false);
@@ -239,6 +245,8 @@ function GameApp({
           <CoreTab
             state={state}
             now={clockNow}
+            fragmentMiningEnabled={fragmentMiningEnabled}
+            fragmentMiningRateMultiplier={fragmentMiningRateMultiplier}
             notify={notify}
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
             verifiedZpBalance={verifiedZpBalance}
