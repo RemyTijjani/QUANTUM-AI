@@ -62,7 +62,7 @@ jobs:
             echo "::error::Player economy endpoint contains a write operation."
             exit 1
           fi
-          if grep -Eiq 'admin\\.rpc\\("(accrue_agent_rental_zp|accrue_fragment_mining_pending_zp|release_fragment_mining_accruals|release_matured_fragment_zp|claim_player_referral_kickbacks)' "$file"; then
+          if grep -Eiq 'admin\.rpc\("(accrue_agent_rental_zp|accrue_fragment_mining_pending_zp|release_fragment_mining_accruals|release_matured_fragment_zp|claim_player_referral_kickbacks)' "$file"; then
             echo "::error::Player economy GET endpoint contains a state-changing settlement RPC."
             exit 1
           fi
