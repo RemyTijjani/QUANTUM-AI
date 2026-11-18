@@ -145,7 +145,7 @@ function GameApp({
   const [nextFragmentReleaseAt, setNextFragmentReleaseAt] = useState<string | null>(null);
   const [verifiedTransactions, setVerifiedTransactions] = useState<VerifiedLedgerEntry[]>([]);
   const [activeAgentRentals, setActiveAgentRentals] = useState<VerifiedAgentRental[]>([]);
-  const [fragmentMiningEnabled, setFragmentMiningEnabled] = useState(false);
+  const [fragmentMiningEnabled, setFragmentMiningEnabled] = useState(true);
   const [fragmentMiningRateMultiplier, setFragmentMiningRateMultiplier] = useState(1);
 
   const refreshVerifiedBalance = useCallback(async () => {
