@@ -22,10 +22,7 @@ export default function Header({ zp, verifiedZpBalance, onOpenProfile, onOpenLea
         </button>
         <div className="min-w-0">
           <h1 className="title glow-text leading-none">ZORD</h1>
-          <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-neon-500">
-            <span className="h-1.5 w-1.5 shrink-0 animate-soft-pulse rounded-full bg-neon shadow-glow" />
-            <span className="truncate">AUTONOMOUS AGENT // GAME STATE PREVIEW</span>
-          </p>
+          <p className="mt-1 text-[9px] font-mono uppercase tracking-wider text-neon-600">Autonomous Intellect. Total Group Dominion.</p>
         </div>
       </div>
 
