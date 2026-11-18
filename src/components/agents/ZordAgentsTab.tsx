@@ -79,10 +79,9 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
   // Do not replace this with an environment flag; enabling payments requires
   // separate explicit approval and a reviewed release process.
   const paymentsEnabled = false;
-  // Preview backend checkout creation and read-only-until-confirmed payment
-  // verification are enabled. Confirmed on-chain payments activate rentals.
-  // Real wallet transfers remain locked until separately approved.
-  const rentalBackendActionsEnabled = true;
+  // Preview keeps rental checkout and payment verification disabled.
+  // Enable only after explicit launch approval and a reviewed payment release.
+  const rentalBackendActionsEnabled = false;
 
   useEffect(() => {
     let mounted = true;
@@ -317,7 +316,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
 
       <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.04] p-3">
         <p className="font-mono text-[10px] leading-relaxed text-amber-200">
-          Preview checkout mode: you can create a payment request and ask the server to verify a TON mainnet payment. Confirmed payments activate the rental. The page will not initiate a real GRAM transfer until that separate safety lock is approved.
+          Preview safety mode: wallet connection can be tested, but rental payment requests, payment verification and rental activation are disabled. No GRAM funds can be sent from this screen until a separate launch approval and reviewed release.
         </p>
       </div>
 
