@@ -9,6 +9,7 @@ on:
       - ".github/workflows/stage5-preview-gameplay-no-direct-zp.yml"
       - "supabase/functions/gameplay-actions/index.ts"
       - "supabase/functions/player-economy/index.ts"
+      - "supabase/functions/economy-settlement/index.ts"
   workflow_dispatch:
 
 permissions:
@@ -110,3 +111,19 @@ jobs:
           fi
           rm -f "$response_file"
           echo "PASS: Preview authorization gateway rejected the unauthenticated POST; 405 is expected for this GET-only endpoint and the source check confirms it is read-only."
+      - name: Reject unauthenticated economy settlement requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request POST "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/economy-settlement" --header "Content-Type: application/json" --data '{"action":"settle"}')"
+          echo "HTTP status: $status"
+          if [ "$status" != "401" ]; then
+            cat "$response_file"
+            rm -f "$response_file"
+            echo "::error::Expected HTTP 401 for unauthenticated economy settlement; received $status"
+            exit 1
+          fi
+          rm -f "$response_file"
+          echo "PASS: unauthenticated economy settlement was rejected.";
+
