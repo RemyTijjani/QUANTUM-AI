@@ -451,12 +451,18 @@ export function useGame(
         fragmentCooldowns: Object.fromEntries(
           FRAGMENT_IDS.map((id) => [id, 0]),
         ) as GameState['fragmentCooldowns'],
+        fragmentMiningUntil: Object.fromEntries(
+          FRAGMENT_IDS.map((id) => [id, 0]),
+        ) as GameState['fragmentMiningUntil'],
         coreMiningUntil: 0,
       };
       for (const fragment of fragments) {
         next.fragments[fragment.fragment_id] = fragment.status;
-        next.fragmentCooldowns[fragment.fragment_id] = fragment.cooldown_until ? new Date(fragment.cooldown_until).getTime() : 0;
-        if (fragment.core_mining_until) next.coreMiningUntil = Math.max(next.coreMiningUntil, new Date(fragment.core_mining_until).getTime());
+        next.fragmentCooldowns[fragment.fragment_id] = fragment.cooldown_until ? Date.parse(fragment.cooldown_until) : 0;
+        next.fragmentMiningUntil[fragment.fragment_id] = fragment.core_mining_until ? Date.parse(fragment.core_mining_until) : 0;
+        if (next.fragmentMiningUntil[fragment.fragment_id] > 0) {
+          next.coreMiningUntil = Math.max(next.coreMiningUntil, next.fragmentMiningUntil[fragment.fragment_id]);
+        }
       }
       return next;
     });
@@ -509,6 +515,7 @@ export function useGame(
           ...previous,
           fragments: Object.fromEntries(FRAGMENT_IDS.map((id) => [id, 'locked'])) as GameState['fragments'],
           fragmentCooldowns: Object.fromEntries(FRAGMENT_IDS.map((id) => [id, 0])) as GameState['fragmentCooldowns'],
+          fragmentMiningUntil: Object.fromEntries(FRAGMENT_IDS.map((id) => [id, 0])) as GameState['fragmentMiningUntil'],
           coreMiningUntil: 0,
         }));
       }
