@@ -21,6 +21,7 @@ export function useGame(
 ): {
   state: GameState;
   isLoading: boolean;
+  clockNow: number;
   trustedGameplay: {
     beginUnlock: (id: FragmentId) => Promise<{ sessionId: string | null; alreadyUnlocked: boolean }>;
     completeUnlock: (sessionId: string) => Promise<void>;
@@ -31,6 +32,7 @@ export function useGame(
     loadState(Date.now(), referralCode, playerId),
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   // Legacy game state stays on this device. Verified balances, Fragment
   // progress, rewards, and rentals are loaded from their dedicated services.
   // The client no longer reads or writes player_game_states in Supabase.
@@ -193,15 +195,9 @@ export function useGame(
     };
   }, [playerId, isLoading]);
 
-  // A lightweight local tick refreshes cooldown labels; it does not award
-  // verified ZP or write the legacy snapshot to the database.
+  // Refresh countdowns without running the legacy client-side ZP accrual reducer.
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setState((previous) => gameReducer(previous, {
-        type: 'tick',
-        now: Date.now(),
-      }));
-    }, 1000);
+    const interval = window.setInterval(() => setClockNow(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -217,6 +213,7 @@ export function useGame(
   return {
     state,
     isLoading,
+    clockNow,
     trustedGameplay,
   };
 }
