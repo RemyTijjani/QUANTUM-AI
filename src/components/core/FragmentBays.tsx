@@ -70,7 +70,7 @@ function FragmentBay({
 }) {
   const cooldownActive = cooldownRemaining > 0;
   const miningActive = status === 'fixed' && miningRemaining > 0;
-  const label = miningActive && !miningEnabled
+  const label = status === 'fixed' && !miningEnabled
     ? 'Global mining paused'
     : miningActive && miningPausedByRental
       ? `Agent active · ${formatCooldown(miningRemaining)}`
