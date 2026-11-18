@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   Bot,
-  Cpu,
   LoaderCircle,
   Shield,
   ShieldCheck,
@@ -9,12 +8,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { AGENTS, AGENT_IDS } from '@/lib/game/config';
-import type { AgentId } from '@/lib/game/config';
-import { activeAgents } from '@/lib/game/state';
-import type { GameState } from '@/lib/game/state';
 import TemporaryRewardPanel from './TemporaryRewardPanel';
-import { formatRate, formatRemaining } from '@/lib/format';
 import {
   encodeTonCommentPayload,
   getTonConnectUI,
@@ -465,10 +459,7 @@ function AgentRentalCheckout() {
   );
 }
 
-export default function ZordAgentsTab({ state }: { state: GameState }) {
-  const now = Date.now();
-  const running = activeAgents(state, now);
-  const miningRate = running.reduce((sum, id) => sum + AGENTS[id].zpPerSec, 0);
+export default function ZordAgentsTab() {
   const tiers = [
     { name: 'Sentinel', tier: 'Tier 1', icon: ShieldCheck, summary: 'AI moderation and community protection.', features: ['Threat and spam monitoring', 'Community safety workflows', 'Configurable moderation rules'] },
     { name: 'Poly-Shield', tier: 'Tier 2', icon: Shield, summary: 'Expanded multi-layer protection for Telegram communities.', features: ['All Sentinel capabilities', 'Advanced community defense', 'Expanded moderation controls'] },
@@ -484,38 +475,13 @@ export default function ZordAgentsTab({ state }: { state: GameState }) {
         </div>
         <h1 className="mt-3 font-display text-2xl font-bold tracking-wide text-neon-100">ZORD Agents</h1>
         <p className="mt-2 max-w-xl text-xs leading-relaxed text-neon-400">Explore mining agents and community protection services in one place. Compare what each service offers before choosing your next step.</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-xl border border-neon/15 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase tracking-wider text-neon-600">Your active miners</p><p className="mt-1 font-display text-lg font-semibold text-neon-200">{running.length}</p></div>
-          <div className="rounded-xl border border-neon/15 bg-black/25 p-3"><p className="font-mono text-[9px] uppercase tracking-wider text-neon-600">Current displayed rate</p><p className="mt-1 font-display text-lg font-semibold text-neon-200">{formatRate(miningRate)} <span className="text-[10px]">ZP/s</span></p></div>
-        </div>
       </header>
 
       <TemporaryRewardPanel />
 
       <AgentRentalCheckout />
 
-      <section className="panel space-y-4 rounded-2xl border border-neon/20 bg-gradient-to-b from-neon/[0.04] to-black/20 p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0"><p className="label">Mining operations</p><h2 className="title mt-1">ZP agent activity</h2></div>
-          <Cpu size={18} className="shrink-0 text-neon-400" />
-        </div>
-        <div className="grid grid-cols-2 gap-2 min-[380px]:gap-3">
-          <div className="rounded-xl border border-neon/20 bg-black/35 p-3"><p className="label">Active miners</p><p className="mt-1 font-display text-xl text-neon-300">{running.length}</p></div>
-          <div className="rounded-xl border border-neon/20 bg-black/40 p-3"><p className="label">Displayed rate</p><p className="mt-1 font-display text-xl text-neon-300">{formatRate(miningRate)} <span className="text-[10px]">ZP/s</span></p></div>
-        </div>
-        <div className="space-y-2">
-          {AGENT_IDS.map((id: AgentId) => {
-            const agent = AGENTS[id];
-            const endsAt = Math.max(state.agents[id], id === 'alpha' ? state.temporaryAgentUntil : 0);
-            const isActive = endsAt > now;
-            return <article key={id} className="flex flex-col gap-3 rounded-xl border border-neon/15 bg-black/30 p-3.5 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
-              <div className="min-w-0"><p className="font-display text-xs font-bold text-neon-300">{agent.name}</p><p className="mt-1 font-mono text-[10px] leading-relaxed text-neon-600">{agent.summary}</p><p className="mt-2 font-mono text-[10px] text-cyan-300">{formatRate(agent.zpPerSec)} ZP/sec while active</p></div>
-              <span className={'shrink-0 border px-2 py-1 font-mono text-[9px] uppercase ' + (isActive ? 'border-green-500/40 text-green-300' : 'border-neon/20 text-neon-600')}>{isActive ? formatRemaining(endsAt - now) : 'Inactive'}</span>
-            </article>;
-          })}
-        </div>
-        <p className="font-mono text-[9px] leading-relaxed text-amber-300">The activity figures above are legacy game-state estimates, not a withdrawable balance. Paid GRAM rentals are shown separately in the verified rental panel and credited through the trusted ZP ledger.</p>
-      </section>
+
 
       <section className="space-y-4">
         <div className="min-w-0 space-y-2"><p className="label">Community protection</p><h2 className="title">Choose a service tier</h2><p className="text-xs leading-relaxed text-neon-500">Compare the protection levels below. Telegram bot provisioning is not available yet.</p></div>
