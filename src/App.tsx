@@ -305,7 +305,7 @@ function GameApp({
           />
         )}
 
-        {tab === 'agents' && <ZordAgentsTab />}
+        {tab === 'agents' && <ZordAgentsTab onRefreshVerifiedEconomy={refreshVerifiedBalance} />}
 
         {tab === 'network' && (
           <NetworkTab
