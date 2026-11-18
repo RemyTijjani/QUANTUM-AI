@@ -46,6 +46,8 @@ export interface GameState {
   lifetimeZp: number;
   fragments: Record<FragmentId, FragmentStatus>;
   fragmentCooldowns: Record<FragmentId, number>;
+  /** Per-fragment mining expiry; hydrated only from trusted gameplay. */
+  fragmentMiningUntil: Record<FragmentId, number>;
   agents: Record<AgentId, number>;
   kickbackPending: number;
   subNodes: SubNode[];
@@ -100,6 +102,12 @@ export function createInitialState(
       right: 'locked',
     },
     fragmentCooldowns: {
+      top: 0,
+      bottom: 0,
+      left: 0,
+      right: 0,
+    },
+    fragmentMiningUntil: {
       top: 0,
       bottom: 0,
       left: 0,
