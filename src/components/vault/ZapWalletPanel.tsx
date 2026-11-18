@@ -426,7 +426,3 @@ export default function ZapWalletPanel({
     </section>
   );
 }
-
-function HistoryIcon() {
-  return <Coins size={20} className="mx-auto text-neon-700" />;
-}
