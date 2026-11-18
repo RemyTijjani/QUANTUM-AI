@@ -44,6 +44,25 @@ Deno.serve(async (req: Request) => {
       .from("players").select("id").eq("id", authData.user.id).maybeSingle();
     if (playerError || !player) return json({ error: "Player profile was not found." }, 403);
 
+    const { data: activeRentalRows, error: activeRentalError } = await admin
+      .from("player_agent_rentals")
+      .select("agent_type, starts_at, expires_at")
+      .eq("player_id", player.id)
+      .eq("status", "active")
+      .gt("expires_at", new Date().toISOString())
+      .order("expires_at", { ascending: true });
+    if (activeRentalError) {
+      console.error("Active agent rental lookup failed:", activeRentalError);
+      return json({ error: "Could not load your active mining rentals." }, 500);
+    }
+
+    const activeAgentRentals = (activeRentalRows ?? []).map((rental) => ({
+      agentType: rental.agent_type,
+      startsAt: rental.starts_at,
+      expiresAt: rental.expires_at,
+      ratePerSecond: rental.agent_type === "alpha_miner" ? 0.1 : 0.3,
+    }));
+
     const [pendingAccrualResult, pendingLegacyResult] = await Promise.all([
       admin.from("fragment_mining_accruals")
         .select("amount, release_at")
