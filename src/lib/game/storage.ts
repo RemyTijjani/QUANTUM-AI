@@ -45,6 +45,7 @@ export function restoreGameState(
     // the trusted gameplay service, never from a client-controlled cloud save.
     fragments: { ...fresh.fragments },
     fragmentCooldowns: { ...fresh.fragmentCooldowns },
+    fragmentMiningUntil: { ...fresh.fragmentMiningUntil },
     agents: { ...fresh.agents },
     coreMiningUntil: 0,
 
@@ -111,11 +112,13 @@ export function saveState(
       temporaryAgentUntil: _temporaryAgentUntil,
       fragmentMiningBoostUntil: _fragmentMiningBoostUntil,
       fragmentMiningBoostMultiplier: _fragmentMiningBoostMultiplier,
+      fragmentMiningUntil: _fragmentMiningUntil,
       ...persistedState
     } = state;
     void _temporaryAgentUntil;
     void _fragmentMiningBoostUntil;
     void _fragmentMiningBoostMultiplier;
+    void _fragmentMiningUntil;
     window.localStorage.setItem(
       getStorageKey(playerId),
       JSON.stringify(persistedState),
@@ -126,10 +129,11 @@ export function saveState(
 }
 
 /** Remove server-owned reward timers before writing the client game snapshot. */
-export function persistableGameState(state: GameState): Omit<GameState, 'temporaryAgentUntil' | 'fragmentMiningBoostUntil' | 'fragmentMiningBoostMultiplier'> {
-  const { temporaryAgentUntil: _agent, fragmentMiningBoostUntil: _boost, fragmentMiningBoostMultiplier: _multiplier, ...persisted } = state;
+export function persistableGameState(state: GameState): Omit<GameState, 'temporaryAgentUntil' | 'fragmentMiningBoostUntil' | 'fragmentMiningBoostMultiplier' | 'fragmentMiningUntil'> {
+  const { temporaryAgentUntil: _agent, fragmentMiningBoostUntil: _boost, fragmentMiningBoostMultiplier: _multiplier, fragmentMiningUntil: _miningUntil, ...persisted } = state;
   void _agent;
   void _boost;
   void _multiplier;
+  void _miningUntil;
   return persisted;
 }
