@@ -19,6 +19,8 @@ import type { VerifiedAgentRental } from '@/lib/economy/verifiedEconomy';
 interface CoreTabProps {
   state: GameState;
   now: number;
+  fragmentMiningEnabled: boolean;
+  fragmentMiningRateMultiplier: number;
   notify: Notify;
   onWatchAd: (id: FragmentId) => void;
   onFixFragment: (id: FragmentId) => Promise<boolean>;
@@ -39,6 +41,8 @@ interface CoreTabProps {
 export default function CoreTab({
   state,
   now,
+  fragmentMiningEnabled,
+  fragmentMiningRateMultiplier,
   notify,
   onWatchAd,
   onFixFragment,
@@ -70,15 +74,16 @@ export default function CoreTab({
     .filter((rental) => Date.parse(rental.startsAt) <= now && Date.parse(rental.expiresAt) > now)
     .reduce((sum, rental) => sum + rental.ratePerSecond, 0);
   const temporaryAgentRate = state.temporaryAgentUntil > now ? AGENTS.alpha.zpPerSec : 0;
-  const fragmentRate = paidRentalRate > 0
+  const temporaryFragmentBoost = state.fragmentMiningBoostUntil > now ? state.fragmentMiningBoostMultiplier : 1;
+  const effectiveFragmentRateMultiplier = fragmentMiningRateMultiplier * temporaryFragmentBoost;
+  const fragmentRate = !fragmentMiningEnabled || paidRentalRate > 0
     ? 0
-    : activeFragmentCount * FRAGMENT_ZP_PER_SEC *
-      (state.fragmentMiningBoostUntil > now ? state.fragmentMiningBoostMultiplier : 1);
+    : activeFragmentCount * FRAGMENT_ZP_PER_SEC * effectiveFragmentRateMultiplier;
   const rate = verifiedZpBalance === null ? 0 : paidRentalRate + temporaryAgentRate + fragmentRate;
   const miningRateLabel = verifiedZpBalance === null ? '—' : formatRate(rate);
   const maxMiningRate = Math.max(
-    FRAGMENT_ZP_PER_SEC * FRAGMENT_IDS.length * 2,
-    AGENTS.alpha.zpPerSec + AGENTS.overclock.zpPerSec,
+    FRAGMENT_ZP_PER_SEC * FRAGMENT_IDS.length * fragmentMiningRateMultiplier * 2,
+    AGENTS.alpha.zpPerSec + AGENTS.overclock.zpPerSec + AGENTS.alpha.zpPerSec,
     rate,
   );
   const miningRateProgress = verifiedZpBalance !== null && maxMiningRate > 0
@@ -277,17 +282,24 @@ export default function CoreTab({
         fragments={state.fragments}
         cooldowns={state.fragmentCooldowns}
         miningUntil={state.fragmentMiningUntil}
+        miningEnabled={fragmentMiningEnabled}
+        miningPausedByRental={paidRentalRate > 0}
+        rateMultiplier={effectiveFragmentRateMultiplier}
         now={now}
         onFragmentPress={(id) => handleFragment(id, state.fragments[id])}
       />
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
-        {activeFragmentCount > 0
-          ? `Mining active · ${formatRemaining(miningLeft)} remaining`
-          : Number.isFinite(nextFragmentCooldown)
-            ? `Next Fragment available in ${formatRemaining(nextFragmentCooldown)}`
-            : fixed > 0
-              ? 'Verify an ad to unlock or reactivate a Fragment and resume mining.'
-              : 'Verify an ad to unlock a Fragment and start mining.'}
+        {!fragmentMiningEnabled
+          ? 'Global Fragment mining is paused by Admin.'
+          : paidRentalRate > 0 && activeFragmentCount > 0
+            ? 'Fragment rewards are suppressed while a paid agent is active.'
+            : activeFragmentCount > 0
+              ? `Mining active · ${formatRemaining(miningLeft)} remaining`
+              : Number.isFinite(nextFragmentCooldown)
+                ? `Next Fragment available in ${formatRemaining(nextFragmentCooldown)}`
+                : fixed > 0
+                  ? 'Verify an ad to unlock or reactivate a Fragment and resume mining.'
+                  : 'Verify an ad to unlock a Fragment and start mining.'}
       </p>
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
         Each Fragment has its own assigned advertising provider. Ad unlocking will activate after publisher approval and trusted server-side verification. Once unlocked, fix the Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
