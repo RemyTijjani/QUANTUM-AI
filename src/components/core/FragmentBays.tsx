@@ -60,7 +60,7 @@ function FragmentBay({
   const label = cooldownActive
     ? `Cooldown · ${formatCooldown(cooldownRemaining)}`
     : status === 'fixed'
-      ? miningActive ? 'Mining active' : 'Ready to re-fix'
+      ? miningActive ? 'Mining active' : 'Ad verification required'
       : STATUS_LABEL[status];
 
   return (
