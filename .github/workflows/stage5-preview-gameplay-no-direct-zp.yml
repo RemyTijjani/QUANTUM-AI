@@ -1,4 +1,5 @@
 name: Stage 5 Preview Security - No Direct Gameplay ZP Awards
+# Verify balance reads and trusted settlement writes remain separate endpoints.
 # Preview-only security regression checks. No valid player credentials, balances, or Production resources are used.
 
 on:
