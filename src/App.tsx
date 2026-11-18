@@ -293,7 +293,6 @@ function GameApp({
             pendingFragmentZp={pendingFragmentZp}
             nextFragmentReleaseAt={nextFragmentReleaseAt}
             onOpenExpeditions={() => { setMissionsInitialView('expeditions'); setTab('missions'); }}
-            onOpenMissions={() => { setMissionsInitialView('missions'); setTab('missions'); }}
             onOpenStreaks={() => { setMissionsInitialView('streaks'); setTab('missions'); }}
             onOpenMysteryBoxes={() => { setMissionsInitialView('mystery'); setTab('missions'); }}
             onOpenRaffles={() => { setMissionsInitialView('raffles'); setTab('missions'); }}
