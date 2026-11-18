@@ -382,6 +382,7 @@ interface AdminRequestBody {
     | "save_event"
     | "delete_event"
     | "save_expedition_draft"
+    | "delete_expedition_draft"
     | "list_expedition_objective_reviews"
     | "review_expedition_objective"
     | "prepare_expedition_rewards"
@@ -1386,6 +1387,31 @@ Deno.serve(async (req: Request) => {
       return json({ success: true, expeditions: (rows ?? []).map((row) => ({
         ...row, objectives: objectivesById.get(row.id) ?? [], reward: rewardById.get(row.id) ?? null,
       })) });
+    }
+
+    if (body.action === "delete_expedition_draft") {
+      const id = body.expeditionId;
+      if (typeof id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+        return json({ error: "A valid Expedition ID is required" }, 400);
+      }
+      const { data, error } = await db.rpc("admin_delete_expedition_draft", {
+        p_expedition_id: id,
+      });
+      if (error) {
+        console.error("Expedition draft deletion failed:", error);
+        return json({ error: "Could not delete this Expedition draft" }, 500);
+      }
+      const result = data as { success?: boolean; reason?: string; deletedId?: string; title?: string } | null;
+      if (!result?.success) {
+        const messages: Record<string, string> = {
+          expedition_not_found: "Expedition not found.",
+          only_drafts_can_be_deleted: "Only unpublished drafts can be deleted. Published Expeditions must be cancelled or archived.",
+          expedition_has_player_activity: "This draft has player activity or reward records and cannot be deleted.",
+        };
+        const reason = result?.reason ?? "delete_failed";
+        return json({ error: messages[reason] ?? "The Expedition draft could not be deleted.", reason }, reason === "expedition_not_found" ? 404 : 409);
+      }
+      return json(result);
     }
 
     if (body.action === "publish_expedition") {
