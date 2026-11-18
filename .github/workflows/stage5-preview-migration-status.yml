@@ -1,4 +1,5 @@
 name: Stage 5 Preview Migration Status (Read Only)
+# Recheck the complete Preview function inventory after adding economy-settlement.
 # Re-run the read-only Preview ledger audit after migration inventory reconciliation.
 
 on:
