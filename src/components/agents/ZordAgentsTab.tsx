@@ -377,6 +377,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
 
       {notice && <p role="status" className={'font-mono text-[9px] leading-relaxed ' + (noticeKind === 'error' ? 'text-red-300' : noticeKind === 'success' ? 'text-green-300' : 'text-amber-300')}>{notice}</p>}
     </section>
+  );
 }
 
 export default function ZordAgentsTab({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEconomy: () => Promise<void> | void }) {
