@@ -739,7 +739,7 @@ function AdminConsole({
       {activeTab === 'ton-withdrawals' && <AdminTonWithdrawals creds={creds} />}
 
       {activeTab === 'expeditions' && (
-        <AdminExpeditionManager events={data.events} creds={creds} />
+        <AdminExpeditionManager creds={creds} />
       )}
 
 
