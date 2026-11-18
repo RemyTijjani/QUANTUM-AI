@@ -239,7 +239,7 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
           {claiming ? 'Claiming securely…' : claimedToday ? 'Daily reward claimed' : `Claim Day ${nextDay} reward`}
         </button>
         {lastClaim && (
-          <div className="rounded-lg border border-neon/25 bg-neon/5 p-3">
+          <div role="status" aria-live="polite" className="mystery-reward-reveal rounded-lg border border-neon/25 bg-neon/5 p-3">
             <p className="label">Latest reward — Day {lastClaim.streakDay}</p>
             <p className="mt-1 font-display text-sm text-neon-200">{streakRewardLabel(lastClaim)}</p>
             <p className="mt-1 font-mono text-[8px] text-neon-600">Reward selected and recorded by the trusted server.</p>
