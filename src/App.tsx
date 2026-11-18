@@ -130,9 +130,6 @@ function GameApp({
   const {
     state,
     isLoading,
-    loadError,
-    syncError,
-    retryLoad,
     trustedGameplay,
   } = useGame(referralCode, playerId);
 
@@ -207,42 +204,12 @@ function GameApp({
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [adFragment, setAdFragment] = useState<FragmentId | null>(null);
 
-  // Wait until the cloud save has loaded.
+  // Wait until the local snapshot is ready before rendering the player UI.
   if (isLoading) {
     return (
       <div className="relative mx-auto flex h-dvh max-w-md items-center justify-center bg-obsidian">
         <div className="crt-overlay" aria-hidden />
-        <NeonSpinner label="Loading cloud game save" />
-      </div>
-    );
-  }
-
-  // Show an error instead of starting a fresh game
-  // when the cloud save cannot be loaded.
-  if (loadError) {
-    return (
-      <div className="relative mx-auto flex h-dvh max-w-md flex-col items-center justify-center gap-5 bg-obsidian px-6 text-center">
-        <div className="crt-overlay" aria-hidden />
-
-        <AlertTriangle
-          size={32}
-          className="text-red-400"
-        />
-
-        <p className="font-mono text-xs text-red-300">
-          Unable to load your cloud game save.
-        </p>
-
-        <p className="break-all font-mono text-[10px] text-neon-500">
-          {loadError}
-        </p>
-
-        <button
-          onClick={retryLoad}
-          className="rounded-lg border border-neon/40 bg-neon/10 px-6 py-3 font-mono text-xs uppercase text-neon-300"
-        >
-          Retry
-        </button>
+        <NeonSpinner label="Loading player state" />
       </div>
     );
   }
@@ -264,12 +231,6 @@ function GameApp({
         onOpenProfile={() => setOverlay('profile')}
         onOpenLeaderboard={() => setOverlay('leaderboard')}
       />
-
-      {syncError && (
-        <div className="mx-4 mt-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-2 font-mono text-[10px] text-yellow-300">
-          {syncError}
-        </div>
-      )}
 
       <main className="no-scrollbar relative flex-1 overflow-y-auto px-4 pt-4">
         <PlayerAnnouncements />
