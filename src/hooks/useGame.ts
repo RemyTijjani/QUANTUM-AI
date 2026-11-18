@@ -21,9 +21,6 @@ export function useGame(
 ): {
   state: GameState;
   isLoading: boolean;
-  loadError: string | null;
-  syncError: string | null;
-  retryLoad: () => void;
   trustedGameplay: {
     beginUnlock: (id: FragmentId) => Promise<{ sessionId: string | null; alreadyUnlocked: boolean }>;
     completeUnlock: (sessionId: string) => Promise<void>;
@@ -34,10 +31,6 @@ export function useGame(
     loadState(Date.now(), referralCode, playerId),
   );
   const [isLoading, setIsLoading] = useState(true);
-  const [loadAttempt, setLoadAttempt] = useState(0);
-
-  const retryLoad = () => setLoadAttempt((attempt) => attempt + 1);
-
   // Legacy game state stays on this device. Verified balances, Fragment
   // progress, rewards, and rentals are loaded from their dedicated services.
   // The client no longer reads or writes player_game_states in Supabase.
@@ -45,7 +38,7 @@ export function useGame(
     setIsLoading(true);
     setState(loadState(Date.now(), referralCode, playerId));
     setIsLoading(false);
-  }, [playerId, referralCode, loadAttempt]);
+  }, [playerId, referralCode]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -160,7 +153,7 @@ export function useGame(
     });
 
     return () => { cancelled = true; };
-  }, [playerId, isLoading, loadAttempt]);
+  }, [playerId, isLoading]);
 
   // Temporary mining rewards are also server-sourced and fail closed.
   useEffect(() => {
@@ -224,9 +217,6 @@ export function useGame(
   return {
     state,
     isLoading,
-    loadError: null,
-    syncError: null,
-    retryLoad,
     trustedGameplay,
   };
 }
