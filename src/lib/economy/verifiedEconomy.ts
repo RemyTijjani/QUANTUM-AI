@@ -28,6 +28,7 @@ export interface VerifiedEconomy {
 export class VerifiedEconomyError extends Error {}
 
 const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/player-economy`;
+const settlementUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/economy-settlement`;
 
 export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
   const { data: sessionData, error: sessionError } =
@@ -35,6 +36,32 @@ export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
   const token = sessionData.session?.access_token;
   if (sessionError || !token) {
     throw new VerifiedEconomyError('Your session has expired. Reopen the Mini App and try again.');
+  }
+
+  let settlementResponse: Response;
+  try {
+    settlementResponse = await fetch(settlementUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action: 'settle' }),
+      cache: 'no-store',
+    });
+  } catch {
+    throw new VerifiedEconomyError('Could not reach the trusted economy settlement service.');
+  }
+
+  const settlementBody: unknown = await settlementResponse.json().catch(() => null);
+  if (!settlementResponse.ok || !settlementBody || typeof settlementBody !== 'object' ||
+      (settlementBody as { success?: unknown }).success !== true) {
+    const message = settlementBody && typeof settlementBody === 'object' &&
+      typeof (settlementBody as { error?: unknown }).error === 'string'
+      ? (settlementBody as { error: string }).error
+      : `Economy settlement failed (${settlementResponse.status}).`;
+    throw new VerifiedEconomyError(message);
   }
 
   let response: Response;
