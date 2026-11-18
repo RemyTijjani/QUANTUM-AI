@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/useToast';
 import { AuthProvider, useAuth } from '@/hooks/useTelegramAuth';
 import { useMissions } from '@/hooks/useMissions';
 import { fetchVerifiedEconomy } from '@/lib/economy/verifiedEconomy';
+import type { VerifiedAgentRental } from '@/lib/economy/verifiedEconomy';
 import { fetchZapAchievements, fetchZapWallet } from '@/lib/economy/zapWallet';
 import type { ZapAchievements } from '@/lib/economy/zapWallet';
 import type { VerifiedLedgerEntry } from '@/lib/economy/verifiedEconomy';
@@ -146,6 +147,7 @@ function GameApp({
   const [pendingFragmentZp, setPendingFragmentZp] = useState(0);
   const [nextFragmentReleaseAt, setNextFragmentReleaseAt] = useState<string | null>(null);
   const [verifiedTransactions, setVerifiedTransactions] = useState<VerifiedLedgerEntry[]>([]);
+  const [activeAgentRentals, setActiveAgentRentals] = useState<VerifiedAgentRental[]>([]);
 
   const refreshVerifiedBalance = useCallback(async () => {
     try {
@@ -155,6 +157,7 @@ function GameApp({
       setPendingFragmentZp(economy.pendingFragmentZp);
       setNextFragmentReleaseAt(economy.nextFragmentReleaseAt);
       setVerifiedTransactions(economy.transactions);
+      setActiveAgentRentals(economy.activeAgentRentals);
       try {
         const zapWallet = await fetchZapWallet();
         setZapEarned(zapWallet.rankingEarned);
@@ -175,6 +178,7 @@ function GameApp({
       setPendingFragmentZp(0);
       setNextFragmentReleaseAt(null);
       setVerifiedTransactions([]);
+      setActiveAgentRentals([]);
       setZapEarned(null);
       setZapAchievements(null);
       setZapLoading(false);
@@ -286,6 +290,7 @@ function GameApp({
             notify={notify}
             onWatchAd={(id) => { void startFragmentUnlock(id); }}
             verifiedZpBalance={verifiedZpBalance}
+            activeAgentRentals={activeAgentRentals}
             zapEarned={zapEarned}
             zapLoading={zapLoading}
             zapAchievements={zapAchievements}
@@ -311,7 +316,7 @@ function GameApp({
           />
         )}
 
-        {tab === 'agents' && <ZordAgentsTab state={state} />}
+        {tab === 'agents' && <ZordAgentsTab />}
 
         {tab === 'network' && (
           <NetworkTab
