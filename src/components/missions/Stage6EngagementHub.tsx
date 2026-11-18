@@ -248,7 +248,7 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
       </div>
       <div className="panel space-y-2 p-4">
         <p className="label">Days 8–30 reward pool</p>
-        <p className="font-mono text-[9px] leading-relaxed text-neon-500">35%: 1–10 ZAP · 34%: 2× Fragment Mining boost · 30%: Mystery Box (80% Standard / 20% Premium) · 1%: Free Agent 1 for 24 hours after activation.</p>
+        <p className="font-mono text-[9px] leading-relaxed text-neon-500">35%: 10–20 ZAP · 34%: 2× Fragment Mining boost · 30%: Mystery Box (80% Standard / 20% Premium) · 1%: Free Agent 1 for 24 hours after activation.</p>
         <p className="font-mono text-[8px] leading-relaxed text-neon-700">Boost and Agent 1 rewards are server-controlled activation entitlements. The boost doubles Fragment Mining for six hours; Free Agent 1 earns verified ZP at 0.1 ZP per second for up to 24 hours.</p>
       </div>
     </section>
