@@ -27,8 +27,8 @@ export default function ProfileModal({
   onClose,
 }: ProfileModalProps) {
   const netZap = zapAchievements?.netZap ?? zapEarned;
-  const tier = tierInfo(netZap ?? 0);
-  const rankNumber = zapAchievements?.coreRank?.rankNumber ?? tier.tier;
+  const tier = netZap === null ? null : tierInfo(netZap);
+  const rankNumber = zapAchievements?.coreRank?.rankNumber ?? tier?.tier ?? null;
   const displayName = identity?.firstName
     ? identity.username
       ? `${identity.firstName} · @${identity.username}`
@@ -47,10 +47,10 @@ export default function ProfileModal({
             </div>
             <div className="min-w-0 flex-1">
               <span className="rounded-full border border-neon/30 bg-neon/10 px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-neon-300">
-                Core rank {String(rankNumber).padStart(2, '0')}
+                Core rank {rankNumber === null ? '—' : String(rankNumber).padStart(2, '0')}
               </span>
               <h3 className="mt-2 break-words font-display text-lg font-bold leading-tight text-white">{displayName}</h3>
-              <p className="mt-1 break-words font-mono text-xs text-neon-300">{tier.rank}</p>
+              <p className="mt-1 break-words font-mono text-xs text-neon-300">{tier?.rank ?? 'Rank unavailable'}</p>
             </div>
           </div>
         </section>
@@ -67,7 +67,7 @@ export default function ProfileModal({
             <BalanceCard label="Available ZP" value={verifiedZpBalance === null ? 'Unavailable' : formatZp(verifiedZpBalance)} detail="Verified balance" />
             <BalanceCard label="Lifetime ZP" value={verifiedZpLifetime === null ? 'Unavailable' : formatZp(verifiedZpLifetime)} detail="Server-recorded" />
             <BalanceCard label="Net ZAP" value={netZap === null ? 'Unavailable' : formatZp(netZap)} detail="Earned minus spent" />
-            <BalanceCard label="Core rank" value={`#${rankNumber}`} detail={tier.rank} />
+            <BalanceCard label="Core rank" value={rankNumber === null ? 'Unavailable' : `#${rankNumber}`} detail={tier?.rank ?? 'Server data unavailable'} />
           </div>
         </section>
 
