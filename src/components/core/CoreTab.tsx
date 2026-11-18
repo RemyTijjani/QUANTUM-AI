@@ -32,6 +32,7 @@ interface CoreTabProps {
   zapAchievementsLoading: boolean;
   pendingFragmentZp: number;
   nextFragmentReleaseAt: string | null;
+  entityNumber: number | null;
   onOpenExpeditions: () => void;
   onOpenStreaks: () => void;
   onOpenMysteryBoxes: () => void;
@@ -54,6 +55,7 @@ export default function CoreTab({
   zapAchievementsLoading,
   pendingFragmentZp,
   nextFragmentReleaseAt,
+  entityNumber,
   onOpenExpeditions,
   onOpenStreaks,
   onOpenMysteryBoxes,
@@ -306,7 +308,7 @@ export default function CoreTab({
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
         Each Fragment has its own assigned advertising provider. Ad unlocking will activate after publisher approval and trusted server-side verification. Once unlocked, fix the Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
       </p>
-      <CharacterCard fixed={fixed} rate={miningRateLabel} />
+      <CharacterCard fixed={fixed} rate={miningRateLabel} entityNumber={entityNumber} />
 
 
 
