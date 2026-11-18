@@ -7,12 +7,20 @@ export interface VerifiedLedgerEntry {
   createdAt: string | null;
 }
 
+export interface VerifiedAgentRental {
+  agentType: 'alpha_miner' | 'overclocked_core';
+  startsAt: string;
+  expiresAt: string;
+  ratePerSecond: number;
+}
+
 export interface VerifiedEconomy {
   verifiedZpBalance: number;
   verifiedLifetimeZp: number;
   pendingKickback: number;
   pendingFragmentZp: number;
   nextFragmentReleaseAt: string | null;
+  activeAgentRentals: VerifiedAgentRental[];
   updatedAt: string | null;
   transactions: VerifiedLedgerEntry[];
 }
@@ -69,6 +77,34 @@ export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
     throw new VerifiedEconomyError('The verified economy service returned invalid balance data.');
   }
 
+  if (!Array.isArray(value.activeAgentRentals)) {
+    throw new VerifiedEconomyError('The verified economy service returned invalid rental data.');
+  }
+  const activeAgentRentals: VerifiedAgentRental[] = value.activeAgentRentals.map((item) => {
+    if (!item || typeof item !== 'object') {
+      throw new VerifiedEconomyError('The verified economy service returned invalid rental data.');
+    }
+    const rental = item as Record<string, unknown>;
+    if (
+      (rental.agentType !== 'alpha_miner' && rental.agentType !== 'overclocked_core') ||
+      typeof rental.startsAt !== 'string' ||
+      !Number.isFinite(Date.parse(rental.startsAt)) ||
+      typeof rental.expiresAt !== 'string' ||
+      !Number.isFinite(Date.parse(rental.expiresAt)) ||
+      typeof rental.ratePerSecond !== 'number' ||
+      !Number.isFinite(rental.ratePerSecond) ||
+      rental.ratePerSecond <= 0
+    ) {
+      throw new VerifiedEconomyError('The verified economy service returned invalid rental data.');
+    }
+    return {
+      agentType: rental.agentType,
+      startsAt: rental.startsAt,
+      expiresAt: rental.expiresAt,
+      ratePerSecond: rental.ratePerSecond,
+    };
+  });
+
   const rawTransactions = Array.isArray(value.transactions) ? value.transactions : [];
   const transactions: VerifiedLedgerEntry[] = rawTransactions.map((entry) => {
     if (!entry || typeof entry !== 'object') {
@@ -96,6 +132,7 @@ export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
     pendingKickback: value.pendingKickback,
     pendingFragmentZp: value.pendingFragmentZp,
     nextFragmentReleaseAt: value.nextFragmentReleaseAt,
+    activeAgentRentals,
     updatedAt: value.updatedAt ?? null,
     transactions,
   };
