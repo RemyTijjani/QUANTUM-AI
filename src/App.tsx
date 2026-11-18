@@ -92,6 +92,7 @@ function AppShell() {
       key={playerId}
       playerId={playerId}
       referralCode={referralCode}
+      entityNumber={auth.player.entityNumber}
       missions={missions}
     />
   );
@@ -121,10 +122,12 @@ function resolveIdentity(
 function GameApp({
   playerId,
   referralCode,
+  entityNumber,
   missions,
 }: {
   playerId: string;
   referralCode: string | null;
+  entityNumber: number | null;
   missions: MissionSpec[];
 }) {
   const {
@@ -257,6 +260,7 @@ function GameApp({
             zapAchievementsLoading={zapAchievementsLoading}
             pendingFragmentZp={pendingFragmentZp}
             nextFragmentReleaseAt={nextFragmentReleaseAt}
+            entityNumber={entityNumber}
             onOpenExpeditions={() => { setMissionsInitialView('expeditions'); setTab('missions'); }}
             onOpenStreaks={() => { setMissionsInitialView('streaks'); setTab('missions'); }}
             onOpenMysteryBoxes={() => { setMissionsInitialView('mystery'); setTab('missions'); }}
