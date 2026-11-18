@@ -59,6 +59,12 @@ export default function CoreTab({
   const rate = passiveRate(state, now);
   const miningLeft = state.coreMiningUntil - now;
   const fixed = fixedCount(state);
+  const maxMiningRate = Math.max(
+    CORE_BASE_RATE + FRAGMENT_ZP_PER_SEC * FRAGMENT_IDS.length,
+    ...Object.values(AGENTS).map((agent) => agent.zpPerSec),
+    rate,
+  );
+  const miningRateProgress = maxMiningRate > 0 ? Math.max(0, Math.min(100, (rate / maxMiningRate) * 100)) : 0;
   const netZapProgress = zapAchievements?.netZap ?? zapEarned;
   const tier = tierInfo(netZapProgress ?? 0);
   const coreRank = zapAchievements?.coreRank;
@@ -111,7 +117,7 @@ export default function CoreTab({
           <div className="flex justify-center">
             <div
               className="grid h-[4.25rem] w-[4.25rem] place-items-center rounded-full"
-              style={{ background: `conic-gradient(#7cf7c5 ${Math.max(0, Math.min(100, rate > 0 ? 100 : 0))}%, rgba(124,247,197,0.12) 0)` }}
+              style={{ background: `conic-gradient(#7cf7c5 ${miningRateProgress}%, rgba(124,247,197,0.12) 0)` }}
               role="img"
               aria-label={`ZP mining rate ${formatRate(rate)} per second`}
             >
