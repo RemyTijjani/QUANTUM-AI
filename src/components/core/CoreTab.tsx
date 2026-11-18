@@ -54,6 +54,7 @@ export default function CoreTab({
   onOpenRaffles,
 }: CoreTabProps) {
   const now = Date.now();
+  const miningLeft = state.coreMiningUntil - now;
   const fixed = fixedCount(state);
   const activeFragmentCount = FRAGMENT_IDS.filter((id) =>
     state.fragments[id] === 'fixed' && state.fragmentMiningUntil[id] > now
