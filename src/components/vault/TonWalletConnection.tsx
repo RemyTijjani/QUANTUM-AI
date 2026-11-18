@@ -116,10 +116,26 @@ export default function TonWalletConnection() {
           if (!mounted || currentAddressRef.current !== verifiedAddress) return;
           setNotice('Wallet ownership verified securely.');
           await refreshWalletData();
-        }).catch((cause) => {
-          if (mounted && currentAddressRef.current === verifiedAddress) {
-            setError(cause instanceof Error ? cause.message : 'Wallet ownership could not be verified.');
+        }).catch(async (cause) => {
+          if (!mounted || currentAddressRef.current !== verifiedAddress) return;
+          // If the server saved the proof but the response was lost, confirm
+          // the persisted wallet state before showing a verification failure.
+          try {
+            const refreshed = await fetchTonWallet();
+            if (!mounted || currentAddressRef.current !== verifiedAddress) return;
+            setWalletData(refreshed);
+            if (
+              refreshed.wallet?.verification_status === 'verified' &&
+              refreshed.wallet.wallet_address === verifiedAddress
+            ) {
+              setNotice('Wallet ownership verified securely.');
+              setError('');
+              return;
+            }
+          } catch {
+            // Keep the original verification error if the recovery read fails.
           }
+          setError(cause instanceof Error ? cause.message : 'Wallet ownership could not be verified.');
         }).finally(() => {
           if (mounted && currentAddressRef.current === verifiedAddress) setBusy(false);
         });
