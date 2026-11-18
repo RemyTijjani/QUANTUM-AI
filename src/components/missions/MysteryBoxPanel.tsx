@@ -145,21 +145,25 @@ export default function MysteryBoxPanel({
     setDailyClaimBusy(true);
     setOpeningId('daily-claim');
     setRepeatMessage(null);
-    const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
-      body: { action: 'claim_daily_mystery_box' },
-    });
-    if (error || !data?.success) {
+    try {
+      const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
+        body: { action: 'claim_daily_mystery_box' },
+      });
+      if (error || !data?.success) {
+        setRepeatMessage(data?.message || error?.message || 'Your free Mystery Box could not be claimed. Please try again.');
+        await loadInventory(true);
+        return;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 850));
+      notify(data.alreadyClaimed ? 'Your free daily Mystery Box is already claimed.' : 'Your free daily Mystery Box has been added to your inventory.');
+      await loadInventory(true);
+    } catch (requestError) {
+      setRepeatMessage(requestError instanceof Error ? requestError.message : 'Your free Mystery Box could not be claimed. Please try again.');
+      await loadInventory(true);
+    } finally {
       setDailyClaimBusy(false);
       setOpeningId(null);
-      setRepeatMessage(data?.message || error?.message || 'Your free Mystery Box could not be claimed. Please try again.');
-      await loadInventory(true);
-      return;
     }
-    await new Promise((resolve) => window.setTimeout(resolve, 850));
-    setDailyClaimBusy(false);
-    setOpeningId(null);
-    notify(data.alreadyClaimed ? 'Your free daily Mystery Box is already claimed.' : 'Your free daily Mystery Box has been added to your inventory.');
-    await loadInventory(true);
   };
 
   const openRepeatBox = async () => {
@@ -168,54 +172,71 @@ export default function MysteryBoxPanel({
     setOpeningId('repeat');
     setRepeatMessage(null);
     setLastReward(null);
-    const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
-      body: {
-        action: 'open_repeat_mystery_box',
-        method: 'zp',
-        requestId: crypto.randomUUID(),
-      },
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
+        body: {
+          action: 'open_repeat_mystery_box',
+          method: 'zp',
+          requestId: crypto.randomUUID(),
+        },
+      });
 
-    if (error || !data?.success) {
+      if (error || !data?.success) {
+        setRepeatMessage(data?.message || error?.message || 'The repeat box could not be opened. Refreshing your status…');
+        await loadInventory(true);
+        return;
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, 1600));
+      setLastReward(data as OpenResult);
+      notify('Repeat Mystery Box opened. 500 ZP was charged and the reward was recorded.');
+      await loadInventory(true);
+      try {
+        await onZpReward();
+      } catch {
+        notify('The reward was recorded, but your ZP balance could not refresh. Reopen the Vault or refresh later.', 'error');
+      }
+    } catch (requestError) {
+      setRepeatMessage(requestError instanceof Error ? requestError.message : 'The repeat box could not be opened. Refreshing your status…');
+      await loadInventory(true);
+    } finally {
       setRepeatBusy(false);
       setOpeningId(null);
-      setRepeatMessage(data?.message || error?.message || 'The repeat box could not be opened. Refreshing your status…');
-      await loadInventory(true);
-      return;
     }
-
-    await new Promise((resolve) => window.setTimeout(resolve, 1600));
-    setRepeatBusy(false);
-    setOpeningId(null);
-    setLastReward(data as OpenResult);
-    notify('Repeat Mystery Box opened. 500 ZP was charged and the reward was recorded.');
-    await loadInventory(true);
-    await onZpReward();
   };
 
   const openBox = async (box: MysteryBox) => {
     if (openingId) return;
     setOpeningId(box.entitlementId);
     setLastReward(null);
-    const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
-      body: { action: 'open_mystery_box', entitlementId: box.entitlementId },
-    });
-    if (error || !data?.success) {
-      setOpeningId(null);
-      notify(error?.message || 'The box could not be opened. Checking your inventory status…', 'error');
-      // A response can be lost after the server has committed the opening.
-      // Refresh so the UI does not leave a consumed box looking available.
-      await loadInventory(true);
-      return;
-    }
+    try {
+      const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
+        body: { action: 'open_mystery_box', entitlementId: box.entitlementId },
+      });
+      if (error || !data?.success) {
+        notify(error?.message || 'The box could not be opened. Checking your inventory status…', 'error');
+        // A response can be lost after the server has committed the opening.
+        // Refresh so the UI does not leave a consumed box looking available.
+        await loadInventory(true);
+        return;
+      }
 
-    await new Promise((resolve) => window.setTimeout(resolve, 1600));
-    setOpeningId(null);
-    const result = data as OpenResult;
-    setLastReward(result);
-    notify(result.alreadyOpened ? 'This box was already opened; its recorded reward is shown.' : 'Mystery Box opened successfully.');
-    await loadInventory(true);
-    await onZpReward();
+      await new Promise((resolve) => window.setTimeout(resolve, 1600));
+      const result = data as OpenResult;
+      setLastReward(result);
+      notify(result.alreadyOpened ? 'This box was already opened; its recorded reward is shown.' : 'Mystery Box opened successfully.');
+      await loadInventory(true);
+      try {
+        await onZpReward();
+      } catch {
+        notify('The reward was recorded, but your ZP balance could not refresh. Reopen the Vault or refresh later.', 'error');
+      }
+    } catch (requestError) {
+      notify(requestError instanceof Error ? requestError.message : 'The box could not be opened. Checking your inventory status…', 'error');
+      await loadInventory(true);
+    } finally {
+      setOpeningId(null);
+    }
   };
 
   return (
