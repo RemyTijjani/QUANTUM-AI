@@ -41,20 +41,12 @@ export function restoreGameState(
     referralCode:
       referralCode ?? parsed.referralCode ?? fresh.referralCode,
 
-    fragments: {
-      ...fresh.fragments,
-      ...(parsed.fragments ?? {}),
-    },
-
-    fragmentCooldowns: {
-      ...fresh.fragmentCooldowns,
-      ...(parsed.fragmentCooldowns ?? {}),
-    },
-
-    agents: {
-      ...fresh.agents,
-      ...(parsed.agents ?? {}),
-    },
+    // Fragment state, cooldowns, and mining sessions are restored only from
+    // the trusted gameplay service, never from a client-controlled cloud save.
+    fragments: { ...fresh.fragments },
+    fragmentCooldowns: { ...fresh.fragmentCooldowns },
+    agents: { ...fresh.agents },
+    coreMiningUntil: 0,
 
     adsWatched: {
       ...fresh.adsWatched,
