@@ -61,7 +61,7 @@ export const AGENTS: Record<AgentId, AgentSpec> = {
     zpPerSec: 0.3,
     priceTon: 4.5,
     durationDays: 30,
-    kickbackMultiplier: 3,
+    kickbackMultiplier: 2,
   },
 };
 
