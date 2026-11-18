@@ -44,6 +44,22 @@ Deno.serve(async (req: Request) => {
       .from("players").select("id").eq("id", authData.user.id).maybeSingle();
     if (playerError || !player) return json({ error: "Player profile was not found." }, 403);
 
+    const { data: miningSettings, error: miningSettingsError } = await admin
+      .from("global_gameplay_settings")
+      .select("fragment_mining_enabled, fragment_mining_rate_multiplier")
+      .eq("id", "global")
+      .maybeSingle();
+    if (miningSettingsError) {
+      console.error("Global Fragment mining settings lookup failed:", miningSettingsError);
+      return json({ error: "Could not load global mining settings." }, 500);
+    }
+    const fragmentMiningEnabled = miningSettings?.fragment_mining_enabled ?? true;
+    const fragmentMiningRateMultiplier = Number(miningSettings?.fragment_mining_rate_multiplier ?? 1);
+    if (!Number.isFinite(fragmentMiningRateMultiplier) || fragmentMiningRateMultiplier <= 0) {
+      console.error("Global Fragment mining multiplier is invalid.");
+      return json({ error: "Global mining settings are invalid." }, 500);
+    }
+
     const { data: activeRentalRows, error: activeRentalError } = await admin
       .from("player_agent_rentals")
       .select("agent_type, starts_at, expires_at")
@@ -139,6 +155,8 @@ Deno.serve(async (req: Request) => {
       pendingFragmentZp,
       nextFragmentReleaseAt,
       activeAgentRentals,
+      fragmentMiningEnabled,
+      fragmentMiningRateMultiplier,
       updatedAt: economy?.updated_at ?? null,
       transactions,
       source: "server_player_economy",
