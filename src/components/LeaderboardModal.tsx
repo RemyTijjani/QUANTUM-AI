@@ -59,14 +59,14 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
               <span className={`w-7 shrink-0 font-display text-sm font-bold tabular-nums ${RANK_TONE[entry.rank - 1] ?? 'text-neon-600'}`}>
                 {entry.rank <= 3 ? <Trophy size={16} className="inline" /> : `#${entry.rank}`}
               </span>
-              <span className="min-w-0 flex-1 truncate font-mono text-xs text-neon-200">{entry.isYou ? 'YOU' : entry.name}</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-xs text-neon-200">{entry.name}</span>
               <span className="shrink-0 font-mono text-xs tabular-nums text-cyan-200">{formatZp(Number(entry.rankingEarned))} ZAP</span>
             </li>
           ))}
           {!meIsListed && leaderboard?.me && (
             <li className="flex items-center gap-3 rounded-lg border border-cyan-300/60 bg-cyan-300/10 px-3 py-3">
               <span className="w-7 font-display text-sm font-bold text-cyan-200">#{leaderboard.me.rank}</span>
-              <span className="min-w-0 flex-1 font-mono text-xs text-cyan-100">YOU</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-xs text-cyan-100">{leaderboard.me.name}</span>
               <span className="font-mono text-xs tabular-nums text-cyan-200">{formatZp(Number(leaderboard.me.rankingEarned))} ZAP</span>
             </li>
           )}
