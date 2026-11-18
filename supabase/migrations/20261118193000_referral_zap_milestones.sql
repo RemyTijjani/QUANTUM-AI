@@ -73,7 +73,7 @@ begin
     raise exception 'Player account is required';
   end if;
 
-  select id into p_player_id
+  perform 1
   from public.players
   where id = p_player_id
   for update;
