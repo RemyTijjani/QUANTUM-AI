@@ -1,5 +1,5 @@
 import { formatGram } from '@/lib/format';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { BadgeCheck, Clock3, Gift, Info, RefreshCw, Ticket, Trophy, Wallet } from 'lucide-react';
 
@@ -48,27 +48,33 @@ export default function RafflesScreen() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [clockNow, setClockNow] = useState(Date.now());
+  const pendingEntryRequest = useRef<{ raffleId: string; stakeZap: string; idempotencyKey: string } | null>(null);
 
   const refresh = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true); else setLoading(true);
     setError('');
-    const [raffleResult, walletResult] = await Promise.all([
-      supabase.functions.invoke('raffle-actions', { method: 'GET' }),
-      supabase.functions.invoke('zap-wallet', { method: 'GET' }),
-    ]);
-    if (raffleResult.error || !raffleResult.data?.success) {
-      setError(raffleResult.data?.error || raffleResult.error?.message || 'We could not load raffles. Please try again.');
-    } else {
-      setRaffles(Array.isArray(raffleResult.data.raffles) ? raffleResult.data.raffles : []);
-      setEntries(Array.isArray(raffleResult.data.myEntries) ? raffleResult.data.myEntries : []);
-      setRaffleHistory(Array.isArray(raffleResult.data.myRaffleHistory) ? raffleResult.data.myRaffleHistory : []);
+    try {
+      const [raffleResult, walletResult] = await Promise.all([
+        supabase.functions.invoke('raffle-actions', { method: 'GET' }),
+        supabase.functions.invoke('zap-wallet', { method: 'GET' }),
+      ]);
+      if (raffleResult.error || !raffleResult.data?.success) {
+        setError(raffleResult.data?.error || raffleResult.error?.message || 'We could not load raffles. Please try again.');
+      } else {
+        setRaffles(Array.isArray(raffleResult.data.raffles) ? raffleResult.data.raffles : []);
+        setEntries(Array.isArray(raffleResult.data.myEntries) ? raffleResult.data.myEntries : []);
+        setRaffleHistory(Array.isArray(raffleResult.data.myRaffleHistory) ? raffleResult.data.myRaffleHistory : []);
+      }
+      if (!walletResult.error && walletResult.data?.wallet) {
+        const wallet = walletResult.data.wallet as WalletResponse;
+        setBalance(number(wallet.balance));
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'We could not load raffles. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    if (!walletResult.error && walletResult.data?.wallet) {
-      const wallet = walletResult.data.wallet as WalletResponse;
-      setBalance(number(wallet.balance));
-    }
-    setLoading(false);
-    setRefreshing(false);
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -92,21 +98,35 @@ export default function RafflesScreen() {
 
   const enter = async () => {
     if (!selected || submitting || !Number.isFinite(Number(stake)) || Number(stake) < number(selected.min_bet_zap)) return;
+    const stakeValue = stake.trim();
+    const pending = pendingEntryRequest.current;
+    const request = pending && pending.raffleId === selected.id && pending.stakeZap === stakeValue
+      ? pending
+      : { raffleId: selected.id, stakeZap: stakeValue, idempotencyKey: crypto.randomUUID() };
+    pendingEntryRequest.current = request;
     setSubmitting(true);
     setError('');
     setSuccess('');
-    const { data, error: requestError } = await supabase.functions.invoke('raffle-actions', {
-      body: { action: 'enter', raffleId: selected.id, stakeZap: stake, idempotencyKey: crypto.randomUUID() },
-    });
-    setSubmitting(false);
-    if (requestError || !data?.success) {
-      setError(data?.error || requestError?.message || 'Your entry could not be completed. No entry was confirmed.');
-      return;
+    try {
+      const { data, error: requestError } = await supabase.functions.invoke('raffle-actions', {
+        body: { action: 'enter', raffleId: selected.id, stakeZap: stakeValue, idempotencyKey: request.idempotencyKey },
+      });
+      if (requestError || !data?.success) {
+        setError(data?.error || requestError?.message || 'Your entry could not be confirmed. Retry the same entry to safely check its result.');
+        await refresh(true);
+        return;
+      }
+      pendingEntryRequest.current = null;
+      setSuccess(`Entry confirmed! You received ${data.entry.ticketCount} ticket(s).`);
+      setSelected(null);
+      setStake('');
+      await refresh(true);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Your entry could not be confirmed. Retry the same entry to safely check its result.');
+      await refresh(true);
+    } finally {
+      setSubmitting(false);
     }
-    setSuccess(`Entry confirmed! You received ${data.entry.ticketCount} ticket(s).`);
-    setSelected(null);
-    setStake('');
-    await refresh(true);
   };
 
   const openRaffle = (raffle: Raffle) => {
