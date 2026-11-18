@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   Bot,
+  Cpu,
   LoaderCircle,
+  Pickaxe,
   Shield,
   ShieldCheck,
   Sparkles,
@@ -305,9 +307,16 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
       <div className="grid grid-cols-2 gap-2">
         {RENTAL_OPTIONS.map((option) => (
           <article key={option.id} className="flex min-w-0 flex-col gap-2 rounded-lg border border-neon/20 bg-black/35 p-2.5 transition-colors hover:border-neon/35">
-            <div className="min-w-0">
-              <h3 className="font-display text-xs font-bold leading-tight text-neon-200">{option.id === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</h3>
-              <p className="mt-1 font-mono text-[9px] text-cyan-200">{option.rate}</p>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${option.id === 'alpha_miner' ? 'border-cyan-300/25 bg-cyan-300/[0.07]' : 'border-violet-300/25 bg-violet-300/[0.07]'}`}>
+                {option.id === 'alpha_miner'
+                  ? <Pickaxe size={19} strokeWidth={1.8} className="text-cyan-300" />
+                  : <Cpu size={19} strokeWidth={1.8} className="text-violet-300" />}
+              </span>
+              <div className="min-w-0">
+                <h3 className="font-display text-xs font-bold leading-tight text-neon-200">{option.id === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</h3>
+                <p className="mt-1 font-mono text-[9px] text-cyan-200">{option.rate}</p>
+              </div>
             </div>
             <div className="flex items-baseline justify-between gap-1 border-t border-neon/10 pt-2">
               <span className="font-display text-sm font-bold text-neon-100">{option.price}</span>
@@ -341,9 +350,14 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
           <div className="mt-2 space-y-1.5">
             {activeRentals.map((rental) => (
               <div key={rental.agentType + rental.startsAt} className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-black/25 px-2 py-1.5">
-                <div className="min-w-0">
-                  <p className="font-display text-[10px] font-bold text-neon-200">{rental.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</p>
-                  <p className="font-mono text-[8px] text-cyan-200">{rental.ratePerSecond} ZP/s</p>
+                <div className="flex min-w-0 items-center gap-2">
+                  {rental.agentType === 'alpha_miner'
+                    ? <Pickaxe size={15} className="shrink-0 text-cyan-300" />
+                    : <Cpu size={15} className="shrink-0 text-violet-300" />}
+                  <div className="min-w-0">
+                    <p className="font-display text-[10px] font-bold text-neon-200">{rental.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</p>
+                    <p className="font-mono text-[8px] text-cyan-200">{rental.ratePerSecond} ZP/s</p>
+                  </div>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="font-mono text-[8px] uppercase text-green-300">Active</p>
