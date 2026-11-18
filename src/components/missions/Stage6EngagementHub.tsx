@@ -156,28 +156,38 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
   }, [refresh]);
 
   const claim = async () => {
+    if (claiming || loading || claimedToday || error) return;
     setClaiming(true);
-    const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
-      body: { action: 'claim_daily_streak' },
-    });
-    setClaiming(false);
+    try {
+      const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
+        body: { action: 'claim_daily_streak' },
+      });
 
-    if (requestError || !data?.success) {
-      notify(data?.error || 'Daily Streak claim failed. Please try again.', 'error');
-      return;
+      if (requestError || !data?.success) {
+        notify(data?.error || requestError?.message || 'Daily Streak claim failed. Please try again.', 'error');
+        return;
+      }
+
+      const result = data as DailyStreakClaim & {
+        currentStreakDay?: number;
+        bestStreakDay?: number;
+        alreadyClaimed?: boolean;
+      };
+      setLastClaim(result);
+      try {
+        await onZpReward();
+      } catch {
+        notify('Your Daily Streak reward was recorded, but your balance could not refresh. Reopen the Vault or refresh later.', 'error');
+      }
+      await refresh();
+      notify(result.alreadyClaimed
+        ? 'Today’s Daily Streak reward was already claimed.'
+        : `Day ${result.streakDay} claimed: ${streakRewardLabel(result)}`);
+    } catch (requestError) {
+      notify(requestError instanceof Error ? requestError.message : 'Daily Streak claim failed. Please try again.', 'error');
+    } finally {
+      setClaiming(false);
     }
-
-    const result = data as DailyStreakClaim & {
-      currentStreakDay?: number;
-      bestStreakDay?: number;
-      alreadyClaimed?: boolean;
-    };
-    setLastClaim(result);
-    await onZpReward();
-    await refresh();
-    notify(result.alreadyClaimed
-      ? 'Today’s Daily Streak reward was already claimed.'
-      : `Day ${result.streakDay} claimed: ${streakRewardLabel(result)}`);
   };
 
   const currentDay = status?.currentStreakDay ?? 0;
