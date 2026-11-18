@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { gameReducer } from '@/lib/game/state';
 import type { GameState } from '@/lib/game/state';
@@ -45,7 +45,7 @@ export function useGame(
     saveState(state, playerId);
   }, [state, playerId, isLoading]);
 
-  const applyTrustedFragments = async () => {
+  const applyTrustedFragments = useCallback(async () => {
     const fragments = await fetchTrustedFragments();
     setState((previous) => {
       const next: GameState = {
@@ -77,7 +77,7 @@ export function useGame(
       }
       return next;
     });
-  };
+  }, []);
 
   const trustedGameplay = useMemo(() => ({
     beginUnlock: async (id: FragmentId) => {
@@ -93,7 +93,7 @@ export function useGame(
       await fixTrustedFragment(id);
       await applyTrustedFragments();
     },
-  }), []);
+  }), [applyTrustedFragments]);
 
   // Trusted Fragment rows replace every legacy client-saved Fragment value.
   // An empty result or failed request must never leave stale local progress active.
