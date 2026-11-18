@@ -185,6 +185,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body.action === "verify_payment") {
+      if (!MAINNET_RENTAL_INTENTS_ENABLED) {
+        return json({ error: "Mainnet agent rental payment verification is disabled until ZORD launch approval." }, 403);
+      }
       if (typeof body.intentId !== "string" ||
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.intentId)) {
         return json({ error: "A valid payment request is required." }, 400);
