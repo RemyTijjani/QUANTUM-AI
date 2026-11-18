@@ -120,19 +120,27 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
         return;
       }
       await refreshKickbacks();
+      let balanceRefreshFailed = false;
       try {
         await onRefreshVerifiedEconomy?.();
       } catch {
-        notify('Your referral kickback was claimed, but the ZP balance could not refresh. Reopen the Vault or refresh later.', 'error');
+        balanceRefreshFailed = true;
       }
-      notify(`${formatZp(result.claimedZp ?? 0)} ZP referral kickback claimed successfully`);
+      notify(balanceRefreshFailed
+        ? `${formatZp(result.claimedZp ?? 0)} ZP claimed. Your balance could not refresh; reopen the Vault or refresh later.`
+        : `${formatZp(result.claimedZp ?? 0)} ZP referral kickback claimed successfully`,
+        balanceRefreshFailed ? 'error' : 'success');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not claim referral kickbacks.', 'error');
       try {
         await refreshKickbacks();
-        await onRefreshVerifiedEconomy?.();
       } catch {
         setKickbackError(true);
+      }
+      try {
+        await onRefreshVerifiedEconomy?.();
+      } catch {
+        // The referral summary remains authoritative; a later balance refresh can recover.
       }
     } finally {
       setClaiming(false);
