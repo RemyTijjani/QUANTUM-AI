@@ -5,6 +5,7 @@ export interface AuthPlayer {
   username: string | null;
   firstName: string | null;
   referralCode: string | null;
+  entityNumber: number | null;
 }
 
 export type AuthState =
@@ -32,5 +33,6 @@ export function extractPlayer(data: unknown): AuthPlayer {
     username: (d.username as string | null) ?? null,
     firstName: (d.firstName as string | null) ?? null,
     referralCode: d.referralCode as string,
+    entityNumber: typeof d.entityNumber === 'number' && Number.isInteger(d.entityNumber) ? d.entityNumber : null,
   };
 }
