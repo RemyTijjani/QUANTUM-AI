@@ -613,6 +613,17 @@ export async function listAdminExpeditions(creds: AdminCredentials): Promise<Adm
   }
   return (body as { expeditions: AdminExpeditionRecord[] }).expeditions;
 }
+export async function deleteAdminExpeditionDraft(creds: AdminCredentials, id: string): Promise<void> {
+  const body = await callAdminApi(creds, { action: 'delete_expedition_draft', expeditionId: id });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('The Expedition deletion response could not be verified.');
+  }
+  const result = body as { success?: unknown; deletedId?: unknown };
+  if (result.success !== true || result.deletedId !== id) {
+    throw new AdminApiError('The draft could not be deleted. Refresh the Expeditions list before retrying.');
+  }
+}
+
 export async function publishAdminExpedition(creds: AdminCredentials, id: string): Promise<{ status: 'scheduled' | 'registration_open' }> {
   const body = await callAdminApi(creds, { action: 'publish_expedition', expeditionId: id });
   if (!body || typeof body !== 'object') throw new AdminApiError('The publish response could not be verified.');
