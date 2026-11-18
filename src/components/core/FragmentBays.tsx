@@ -15,11 +15,12 @@ const BAY_STYLE: Record<FragmentStatus, string> = {
 interface FragmentBaysProps {
   fragments: Record<FragmentId, FragmentStatus>;
   cooldowns: Record<FragmentId, number>;
+  miningUntil: Record<FragmentId, number>;
   now: number;
   onFragmentPress: (id: FragmentId) => void;
 }
 
-export default function FragmentBays({ fragments, cooldowns, now, onFragmentPress }: FragmentBaysProps) {
+export default function FragmentBays({ fragments, cooldowns, miningUntil, now, onFragmentPress }: FragmentBaysProps) {
   return (
     <section className="space-y-3">
       <div className="px-1">
@@ -33,6 +34,7 @@ export default function FragmentBays({ fragments, cooldowns, now, onFragmentPres
             id={id}
             status={fragments[id]}
             cooldownRemaining={Math.max(0, cooldowns[id] - now)}
+            miningActive={miningUntil[id] > now}
             onPress={() => onFragmentPress(id)}
           />
         ))}
@@ -45,15 +47,21 @@ function FragmentBay({
   id,
   status,
   cooldownRemaining,
+  miningActive,
   onPress,
 }: {
   id: FragmentId;
   status: FragmentStatus;
   cooldownRemaining: number;
+  miningActive: boolean;
   onPress: () => void;
 }) {
   const cooldownActive = cooldownRemaining > 0;
-  const label = cooldownActive ? formatCooldown(cooldownRemaining) : STATUS_LABEL[status];
+  const label = cooldownActive
+    ? `Cooldown · ${formatCooldown(cooldownRemaining)}`
+    : status === 'fixed'
+      ? miningActive ? 'Mining active' : 'Ready to re-fix'
+      : STATUS_LABEL[status];
 
   return (
     <button
@@ -71,9 +79,9 @@ function FragmentBay({
         {FRAGMENT_NAMES[id]}
       </span>
       <span className="font-mono text-[10px] uppercase tracking-wider opacity-90">{label}</span>
-      {status === 'fixed' && (
+      {status === 'fixed' && miningActive && (
         <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-yellow-500/90">
-          +{FRAGMENT_ZP_PER_SEC.toFixed(2)} ZP/sec estimate
+          +{FRAGMENT_ZP_PER_SEC.toFixed(2)} ZP/sec
         </span>
       )}
     </button>
