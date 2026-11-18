@@ -54,6 +54,8 @@ export default function TonWalletConnection() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const withdrawalAttempt = useRef<{ amountNano: string; idempotencyKey: string } | null>(null);
+  const proofAttemptRef = useRef<string | null>(null);
+  const currentAddressRef = useRef<string | null>(null);
 
   const refreshWalletData = useCallback(async () => {
     setLoadingData(true);
@@ -75,7 +77,9 @@ export default function TonWalletConnection() {
     const handleWallet = (nextWallet: TonConnectWallet | null) => {
       if (!mounted) return;
       setWallet(nextWallet);
+      currentAddressRef.current = nextWallet ? rawTonAddress(nextWallet.account.address) : null;
       if (!nextWallet) {
+        proofAttemptRef.current = null;
         void refreshWalletData();
         return;
       }
@@ -86,6 +90,18 @@ export default function TonWalletConnection() {
           setError('This wallet did not provide the information needed to verify ownership. Disconnect and try again.');
           return;
         }
+        // TON Connect can report the same connected wallet through both its
+        // initial state and its status callback. A proof challenge is one-use,
+        // so never submit the same proof twice.
+        const proofKey = [
+          nextWallet.account.address,
+          tonProof.proof.timestamp,
+          tonProof.proof.signature,
+          tonProof.proof.domain.value,
+        ].join(':');
+        if (proofAttemptRef.current === proofKey) return;
+        proofAttemptRef.current = proofKey;
+        const verifiedAddress = rawTonAddress(nextWallet.account.address);
         setBusy(true);
         setError('');
         void verifyTonWalletProof({
@@ -97,13 +113,15 @@ export default function TonWalletConnection() {
             state_init: nextWallet.account.walletStateInit,
           },
         }).then(async () => {
-          if (!mounted) return;
+          if (!mounted || currentAddressRef.current !== verifiedAddress) return;
           setNotice('Wallet ownership verified securely.');
           await refreshWalletData();
         }).catch((cause) => {
-          if (mounted) setError(cause instanceof Error ? cause.message : 'Wallet ownership could not be verified.');
+          if (mounted && currentAddressRef.current === verifiedAddress) {
+            setError(cause instanceof Error ? cause.message : 'Wallet ownership could not be verified.');
+          }
         }).finally(() => {
-          if (mounted) setBusy(false);
+          if (mounted && currentAddressRef.current === verifiedAddress) setBusy(false);
         });
       } else if (tonProof && 'error' in tonProof) {
         setError(tonProof.error.message || 'This wallet does not support the TON proof verification required by ZORD. Try Tonkeeper or another supported wallet.');
