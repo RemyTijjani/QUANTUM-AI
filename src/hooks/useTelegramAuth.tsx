@@ -101,6 +101,7 @@ async function authenticateWithBackend(
     username: data.username ?? null,
     firstName: data.firstName ?? null,
     referralCode: data.referralCode,
+    entityNumber: typeof data.entityNumber === 'number' && Number.isInteger(data.entityNumber) ? data.entityNumber : null,
   };
 
   try {
