@@ -30,7 +30,7 @@ function downloadCsv(filename: string, rows: Array<Record<string, unknown>>) {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export default function AdminOperations({ creds }: { creds: AdminCredentials }) {
