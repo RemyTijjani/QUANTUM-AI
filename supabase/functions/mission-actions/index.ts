@@ -109,6 +109,8 @@ Deno.serve(async (req: Request) => {
         creatorSubmissionResult,
         xFollowSubmissionResult,
         activeRentalResult,
+        shareUplinkClaimResult,
+        verifiedReferralResult,
       ] = await Promise.all([
         admin.from("mission_tasks")
           .select("id, kind, telegram_chat_id")
@@ -148,11 +150,21 @@ Deno.serve(async (req: Request) => {
           .lte("starts_at", twelveHoursAgoIso)
           .gt("expires_at", nowIso)
           .limit(1),
+        admin.from("share_uplink_mission_claims")
+          .select("player_id")
+          .eq("player_id", player.id)
+          .maybeSingle(),
+        admin.from("referral_sub_nodes")
+          .select("id")
+          .eq("referrer_id", player.id)
+          .not("recruit_id", "is", null)
+          .limit(1),
       ]);
 
       const queryError = missionResult.error || dailyClaimResult.error ||
         agentClaimResult.error || telegramClaimResult.error ||
-        creatorSubmissionResult.error || xFollowSubmissionResult.error || activeRentalResult.error;
+        creatorSubmissionResult.error || xFollowSubmissionResult.error || activeRentalResult.error ||
+        shareUplinkClaimResult.error || verifiedReferralResult.error;
       if (queryError) {
         console.error("Task status summary lookup failed:", queryError);
         return json({ error: "Task progress could not be loaded right now." }, 500);
@@ -177,6 +189,10 @@ Deno.serve(async (req: Request) => {
           statuses[mission.id] = agentClaimResult.data
             ? "claimed"
             : (activeRentalResult.data?.length ?? 0) > 0 ? "ready" : "locked";
+        } else if (mission.id === "share-uplink" && mission.kind === "social") {
+          statuses[mission.id] = shareUplinkClaimResult.data
+            ? "claimed"
+            : (verifiedReferralResult.data?.length ?? 0) > 0 ? "ready" : "locked";
         } else if (mission.kind === "social" && typeof mission.telegram_chat_id === "string" && mission.telegram_chat_id.trim()) {
           statuses[mission.id] = telegramClaims.has(mission.id) ? "claimed" : "ready";
         } else if (mission.id === "follow-signal" && mission.kind === "social") {
@@ -216,6 +232,33 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (missionError || !mission) return json({ error: "Mission not found." }, 404);
+
+    if (missionId === "share-uplink") {
+      if (
+        mission.kind !== "social" ||
+        mission.status !== "published" ||
+        mission.reward_currency !== "ZP" ||
+        Number(mission.reward) !== 300 ||
+        Number(mission.unlock_cost_zp) !== 0
+      ) {
+        return json({ error: "Share Your Uplink is not configured for its verified referral reward." }, 409);
+      }
+
+      const { data, error } = await admin.rpc("claim_share_uplink_mission", {
+        p_player_id: player.id,
+      });
+
+      if (error) {
+        const message = error.message ?? "";
+        if (message.includes("Complete one verified referral")) {
+          return json({ error: "Invite a new player and wait until their Telegram account is successfully registered before claiming." }, 403);
+        }
+        console.error("Verified Share Your Uplink claim failed:", error);
+        return json({ error: "The referral mission reward could not be credited. Please try again." }, 409);
+      }
+
+      return json(data);
+    }
 
     if (missionId === "agent-uptime") {
       if (
