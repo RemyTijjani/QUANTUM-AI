@@ -270,45 +270,47 @@ export default function TonWalletConnection() {
         )}
       </section>
 
-      {(walletData?.transactions.length ?? 0) > 0 && (
-        <section className="space-y-2">
-          <p className="label">Gram transaction history</p>
-          <div className="rounded-lg border border-neon/10 bg-black/20 px-3">
-            {walletData?.transactions.slice(0, 5).map((entry) => {
-              const incoming = entry.direction === 'credit';
-              const title = entry.entry_type.replace(/_/g, ' ');
-              return (
-                <article key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-neon/10 py-3 last:border-0">
-                  <div className="min-w-0 flex-1">
-                    <p className="break-words text-xs capitalize text-neon-200">{title}</p>
-                    <p className="mt-1 text-[9px] text-neon-700">
-                      {entry.created_at && Number.isFinite(Date.parse(entry.created_at)) ? new Date(entry.created_at).toLocaleString() : 'Date unavailable'}
-                    </p>
-                  </div>
-                  <p className={`shrink-0 font-display text-sm font-semibold ${incoming ? 'text-emerald-300' : 'text-amber-300'}`}>
-                    {incoming ? '+' : '−'}{formatGram(nanoTonToTon(entry.amount_nano))} <span className="text-[10px]">Gram</span>
+      <details className="rounded-lg border border-neon/15 bg-black/20">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3">
+          <span className="text-xs font-semibold text-neon-200">Gram transaction history</span>
+          <span className="text-[9px] text-neon-600">{walletData?.transactions.length ?? 0} transactions · {walletData?.withdrawals.length ?? 0} withdrawals</span>
+        </summary>
+        <div className="border-t border-neon/10 px-3">
+          {(walletData?.transactions.length ?? 0) === 0 ? (
+            <p className="py-4 text-center text-[10px] text-neon-600">No Gram transactions yet.</p>
+          ) : walletData?.transactions.slice(0, 5).map((entry) => {
+            const incoming = entry.direction === 'credit';
+            const title = entry.entry_type.replace(/_/g, ' ');
+            return (
+              <article key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-neon/10 py-3 last:border-0">
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-xs capitalize text-neon-200">{title}</p>
+                  <p className="mt-1 text-[9px] text-neon-700">
+                    {entry.created_at && Number.isFinite(Date.parse(entry.created_at)) ? new Date(entry.created_at).toLocaleString() : 'Date unavailable'}
                   </p>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {(walletData?.withdrawals.length ?? 0) > 0 && (
-        <section className="space-y-2">
-          <p className="label">Withdrawal history</p>
-          {walletData?.withdrawals.map((request) => (
-            <div key={request.id} className="flex items-center justify-between gap-3 rounded-lg border border-neon/10 bg-black/20 p-3">
-              <div>
-                <p className="text-xs text-white">{formatGram(nanoTonToTon(request.amount_nano))} Gram</p>
-                <p className="mt-1 text-[9px] text-neon-700">{new Date(request.created_at).toLocaleDateString()}</p>
-              </div>
-              <span className="rounded-full border border-neon/20 px-2 py-1 text-[9px] capitalize text-neon-300">{formatStatus(request.status)}</span>
+                </div>
+                <p className={`shrink-0 font-display text-sm font-semibold ${incoming ? 'text-emerald-300' : 'text-amber-300'}`}>
+                  {incoming ? '+' : '−'}{formatGram(nanoTonToTon(entry.amount_nano))} <span className="text-[10px]">Gram</span>
+                </p>
+              </article>
+            );
+          })}
+          {(walletData?.withdrawals.length ?? 0) > 0 && (
+            <div className="space-y-2 py-3">
+              <p className="text-[10px] font-semibold text-neon-400">Withdrawal requests</p>
+              {walletData?.withdrawals.map((request) => (
+                <div key={request.id} className="flex items-center justify-between gap-3 border-b border-neon/10 py-2 last:border-0">
+                  <div>
+                    <p className="text-xs text-white">{formatGram(nanoTonToTon(request.amount_nano))} Gram</p>
+                    <p className="mt-1 text-[9px] text-neon-700">{new Date(request.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <span className="rounded-full border border-neon/20 px-2 py-1 text-[9px] capitalize text-neon-300">{formatStatus(request.status)}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </section>
-      )}
+          )}
+        </div>
+      </details>
 
       {notice && <p role="status" className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-3 text-[10px] leading-relaxed text-emerald-300">{notice}</p>}
       {error && <p role="alert" className="rounded-lg border border-red-400/20 bg-red-400/5 p-3 text-[10px] leading-relaxed text-red-300">{error}</p>}
