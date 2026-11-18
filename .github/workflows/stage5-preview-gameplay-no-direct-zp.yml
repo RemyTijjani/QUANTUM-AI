@@ -1,5 +1,5 @@
 name: Stage 5 Preview Security - No Direct Gameplay ZP Awards
-# Verify balance reads and trusted settlement writes remain separate endpoints.
+# Verify trusted gameplay writes stay server-side and economy reads remain read-only.
 # Preview-only security regression checks. No valid player credentials, balances, or Production resources are used.
 
 on:
@@ -10,7 +10,6 @@ on:
       - ".github/workflows/stage5-preview-gameplay-no-direct-zp.yml"
       - "supabase/functions/gameplay-actions/index.ts"
       - "supabase/functions/player-economy/index.ts"
-      - "supabase/functions/economy-settlement/index.ts"
   workflow_dispatch:
 
 permissions:
@@ -69,11 +68,11 @@ jobs:
             exit 1
           fi
           echo "PASS: player-economy is GET-only, has no direct balance writes, and performs no settlement RPCs."
-          settlement_file="supabase/functions/economy-settlement/index.ts"
-          grep -Fq 'if (req.method !== "POST")' "$settlement_file"
-          grep -Fq 'auth.getUser' "$settlement_file"
-          grep -Fq 'admin.rpc(' "$settlement_file"
-          echo "PASS: economy-settlement isolates server-owned accrual behind authenticated POST."
+          if [ -e "supabase/functions/economy-settlement/index.ts" ]; then
+            echo "::error::Retired economy-settlement source must not be restored."
+            exit 1
+          fi
+          echo "PASS: legacy economy-settlement source remains retired; scheduled database jobs own accrual and release."
 
 
   preview-forged-gameplay-award:
@@ -119,12 +118,12 @@ jobs:
           response_file="$(mktemp)"
           status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request POST "https://lchkctclxzwwvfwosava.supabase.co/functions/v1/economy-settlement" --header "Content-Type: application/json" --data '{"action":"settle"}')"
           echo "HTTP status: $status"
-          if [ "$status" != "401" ]; then
+          if [ "$status" != "404" ]; then
             cat "$response_file"
             rm -f "$response_file"
-            echo "::error::Expected HTTP 401 for unauthenticated economy settlement; received $status"
+            echo "::error::Expected HTTP 404 because the retired economy-settlement function is absent; received $status"
             exit 1
           fi
           rm -f "$response_file"
-          echo "PASS: unauthenticated economy settlement was rejected.";
+          echo "PASS: retired economy-settlement endpoint remains absent.";
 
