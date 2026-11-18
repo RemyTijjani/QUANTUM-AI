@@ -42,7 +42,7 @@ begin
       (array[
         'Nova', 'Orion', 'Vega', 'Atlas', 'Nyx', 'Echo',
         'Astra', 'Raven', 'Sol', 'Onyx', 'Lyra', 'Zenith'
-      ])[1 + ((s.id - 1) % 12)] || '-' || lpad(s.id::text, 5, '0') as display_name,
+      ])[1 + ((s.id - 1) % 12)] as display_name,
       case
         when s.id = 1 then 50000::numeric
         else (
