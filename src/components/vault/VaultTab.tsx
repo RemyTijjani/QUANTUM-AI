@@ -1,4 +1,4 @@
-import { ArrowDownLeft, Coins, History, Image, Wallet } from 'lucide-react';
+import { ArrowDownLeft, Coins, History, Wallet } from 'lucide-react';
 import { formatZp } from '@/lib/format';
 import type { VerifiedLedgerEntry } from '@/lib/economy/verifiedEconomy';
 import TonWalletConnection from './TonWalletConnection';
@@ -15,15 +15,9 @@ export default function VaultTab({
 }) {
   return (
     <div className="w-full min-w-0 space-y-4 pb-6">
-      <header className="min-w-0 space-y-2 py-1">
-        <div className="flex items-center gap-2 text-neon-400">
-          <Wallet size={18} />
-          <p className="label">Your finances</p>
-        </div>
+      <header className="flex items-center gap-2 py-1">
+        <Wallet size={18} className="text-neon-400" />
         <h1 className="font-display text-2xl font-bold tracking-wide text-white">Vault</h1>
-        <p className="max-w-sm text-xs leading-relaxed text-neon-600">
-          Your ZORD balances, wallet connection and transaction activity — all in one place.
-        </p>
       </header>
 
       <ZapWalletPanel
@@ -36,7 +30,6 @@ export default function VaultTab({
           <ArrowDownLeft size={16} className="text-neon-400" />
           <div>
             <h2 className="title">TON wallet</h2>
-            <p className="mt-1 text-[10px] text-neon-700">Connect an external wallet</p>
           </div>
         </div>
         <TonWalletConnection />
@@ -47,7 +40,6 @@ export default function VaultTab({
           <History size={16} className="text-neon-400" />
           <div>
             <h2 className="title">ZP activity</h2>
-            <p className="mt-1 text-[10px] text-neon-700">Your latest verified point movements</p>
           </div>
         </div>
         {transactions.length === 0 ? (
@@ -84,15 +76,6 @@ export default function VaultTab({
         )}
       </section>
 
-      <section className="panel flex min-w-0 items-start gap-3 p-4">
-        <Image size={17} className="mt-0.5 shrink-0 text-neon-500" />
-        <div>
-          <h2 className="title">Collectibles</h2>
-          <p className="mt-1 text-[10px] leading-relaxed text-neon-700">
-            Collectibles and NFT features are planned. They are not available in the Vault yet.
-          </p>
-        </div>
-      </section>
     </div>
   );
 }
