@@ -50,7 +50,7 @@ jobs:
           audit_status=$?
           set -e
           if [ "$audit_status" -eq 124 ] || [ "$audit_status" -eq 137 ]; then
-            echo "::warning::npm audit timed out after 90 seconds; type-check, lint and build will continue."
+            echo "::warning::npm audit timed out after 45 seconds; type-check, lint and build will continue."
             exit 0
           fi
           node <<'NODE'
@@ -61,6 +61,15 @@ jobs:
             console.log(`[${item.severity.toUpperCase()}] ${name} | direct=${item.isDirect} | range=${item.range} | fix=${JSON.stringify(item.fixAvailable)} | via=${via}`);
           }
           NODE
+          set +e
+          timeout --kill-after=5s 45s npm audit --omit=dev --json > /tmp/npm-audit-production.json
+          production_audit_status=$?
+          set -e
+          if [ "$production_audit_status" -eq 124 ] || [ "$production_audit_status" -eq 137 ]; then
+            echo "::warning::Production dependency audit timed out after 45 seconds."
+          else
+            node -e "const audit=require('/tmp/npm-audit-production.json'); console.log('Production dependency vulnerability totals:', JSON.stringify(audit.metadata?.vulnerabilities ?? {}));"
+          fi
 
       - name: Type-check frontend
         run: npm run typecheck
