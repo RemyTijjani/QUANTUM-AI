@@ -78,7 +78,7 @@ jobs:
           supabase functions list --remote="$PREVIEW_PROJECT_REF" > /tmp/preview-functions.txt
           cat /tmp/preview-functions.txt
           missing_functions=0
-          for name in telegram-auth admin-api public-events event-participation gameplay-actions player-economy agent-rental-payments; do
+          for name in telegram-auth admin-api public-events event-participation gameplay-actions mission-actions player-economy agent-rental-payments mystery-box-actions ton-wallet zap-wallet; do
             if grep -Fq "$name" /tmp/preview-functions.txt; then
               echo "$name: deployed"
             else
@@ -89,7 +89,7 @@ jobs:
           echo "Checking only the names of required custom Edge Function secrets; values and digests are not printed."
           supabase secrets list --remote="$PREVIEW_PROJECT_REF" > /tmp/preview-secret-list.txt
           missing_secrets=0
-          for name in TONCENTER_API_KEY ZORD_GRAM_TREASURY_ADDRESS; do
+          for name in BOT_TOKEN TONCENTER_API_KEY ZORD_GRAM_TREASURY_ADDRESS; do
             if grep -Eq "^\\s*${name}([[:space:]|]|$)" /tmp/preview-secret-list.txt; then
               echo "$name: present"
             else
