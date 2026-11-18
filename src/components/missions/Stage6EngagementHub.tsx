@@ -131,17 +131,21 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
 
   const refresh = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
-    const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
-      body: { action: 'get_daily_streak_state' },
-    });
-    if (requestError || !data?.streak) {
-      setError('Could not load your trusted streak status.');
+    try {
+      const { data, error: requestError } = await supabase.functions.invoke('gameplay-actions', {
+        body: { action: 'get_daily_streak_state' },
+      });
+      if (requestError || !data?.streak) {
+        setError('Could not load your trusted streak status.');
+        return;
+      }
+      setStatus(data.streak as DailyStreakStatus);
+      setError('');
+    } catch {
+      setError('Could not load your trusted streak status. Check your connection and retry.');
+    } finally {
       setLoading(false);
-      return;
     }
-    setStatus(data.streak as DailyStreakStatus);
-    setError('');
-    setLoading(false);
   }, []);
 
   useEffect(() => {
