@@ -3,9 +3,10 @@ import { Bot } from 'lucide-react';
 interface CharacterCardProps {
   fixed: number;
   rate: string;
+  entityNumber: number | null;
 }
 
-export default function CharacterCard({ fixed, rate }: CharacterCardProps) {
+export default function CharacterCard({ fixed, rate, entityNumber }: CharacterCardProps) {
   const stats = [
     { label: 'Fragments online', value: `${fixed}/4` },
     { label: 'Mining rate', value: `${rate} ZP/s` },
@@ -20,7 +21,7 @@ export default function CharacterCard({ fixed, rate }: CharacterCardProps) {
         </div>
         <div className="min-w-0">
           <p className="label">Entity profile</p>
-          <h3 className="title mt-1 truncate">ZORD Entity #047</h3>
+          <h3 className="title mt-1 truncate">ZORD Entity {entityNumber === null ? '—' : `#${String(entityNumber).padStart(8, '0')}`}</h3>
           <p className="break-words font-mono text-[10px] leading-relaxed text-neon-500 min-[380px]:text-[11px]">Autonomous fragment core // signal degraded</p>
         </div>
       </div>
