@@ -279,106 +279,75 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
   const isMainnetWallet = walletNetwork === '-239';
 
   return (
-    <section className="panel min-w-0 space-y-5 overflow-hidden rounded-2xl border border-neon/25 bg-gradient-to-b from-neon/[0.06] to-black/30 p-3 min-[380px]:p-4 sm:p-5">
-      <div className="space-y-2">
-        <p className="label">Native coin · TON mainnet</p>
-        <h2 className="title">Rent a mining agent</h2>
-        <p className="max-w-xl text-[11px] leading-relaxed text-neon-500">
-          ZORD displays the native TON coin as GRAM. Both rentals run for 30 days.
-          Working agents generate ZP only.
-        </p>
+    <section className="panel min-w-0 space-y-3 overflow-hidden rounded-xl border border-neon/25 bg-gradient-to-b from-neon/[0.06] to-black/30 p-2.5 sm:p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="font-display text-sm font-bold text-neon-100">Mining agents</h2>
+          <p className="mt-0.5 font-mono text-[9px] text-neon-500">30-day rentals · paid in GRAM</p>
+        </div>
+        <span className="rounded-full border border-amber-300/20 bg-amber-300/[0.04] px-2 py-1 font-mono text-[8px] text-amber-200">Preview · payments locked</span>
       </div>
 
-      <div className="rounded-xl border border-neon/20 bg-black/35 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neon/15 bg-black/30 px-2.5 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <Wallet size={15} className="shrink-0 text-cyan-300" />
-          <p className="label">TON wallet</p>
-        </div>
-        <div className="mt-2 flex flex-col gap-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
+          <Wallet size={14} className="shrink-0 text-cyan-300" />
           <div className="min-w-0">
-            <p className="font-mono text-[11px] text-neon-300">
-              {walletAddress ? shortAddress : walletReady ? 'Wallet not connected' : 'Loading wallet connector…'}
-            </p>
-            <p className="mt-1 font-mono text-[9px] text-neon-600">
-              {walletAddress ? (isMainnetWallet ? 'Connected · TON mainnet' : 'Connected · wrong network') : walletError ? 'Wallet connector needs attention' : 'Connect to prepare a secure checkout'}
-            </p>
+            <p className="font-mono text-[10px] text-neon-200">{walletAddress ? shortAddress : walletReady ? 'Wallet not connected' : 'Wallet connector loading'}</p>
+            <p className="font-mono text-[8px] text-neon-600">{walletAddress ? (isMainnetWallet ? 'TON mainnet' : 'Wrong network') : walletError ? 'Connection needs attention' : 'Optional · connect to test wallet'}</p>
             {walletError && <p role="alert" className="mt-1 break-words font-mono text-[9px] text-amber-300">{walletError}</p>}
           </div>
-          <button
-            type="button"
-            className="btn-ghost min-h-11 w-full shrink-0 min-[380px]:w-auto"
-            onClick={() => void connectWallet()}
-          >
-            {walletAddress ? 'Change wallet' : walletError ? 'Retry connector' : walletReady ? 'Connect wallet' : 'Load wallet connector'}
-          </button>
         </div>
+        <button type="button" className="btn-ghost min-h-9 w-full px-3 py-1.5 text-[10px] min-[380px]:w-auto" onClick={() => void connectWallet()}>
+          {walletAddress ? 'Change wallet' : walletError ? 'Retry' : walletReady ? 'Connect' : 'Load wallet'}
+        </button>
       </div>
 
-      <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.04] p-3">
-        <p className="font-mono text-[10px] leading-relaxed text-amber-200">
-          Preview safety mode: wallet connection can be tested, but rental payment requests, payment verification and rental activation are disabled. No GRAM funds can be sent from this screen until a separate launch approval and reviewed release.
-        </p>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2">
         {RENTAL_OPTIONS.map((option) => (
-          <article key={option.id} className="flex h-full min-w-0 flex-col rounded-xl border border-neon/20 bg-black/35 p-3 min-[380px]:p-4 transition-colors hover:border-neon/35">
-            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="font-display text-sm font-bold leading-snug text-neon-200">{option.title}</h3>
-                <p className="mt-2 text-[11px] leading-relaxed text-neon-500">{option.description}</p>
-              </div>
-              <span className="shrink-0 rounded-lg border border-cyan-300/20 bg-cyan-300/5 px-2.5 py-1.5 font-display text-sm font-bold text-cyan-200">{option.price}</span>
+          <article key={option.id} className="flex min-w-0 flex-col gap-2 rounded-lg border border-neon/20 bg-black/35 p-2.5 transition-colors hover:border-neon/35">
+            <div className="min-w-0">
+              <h3 className="font-display text-xs font-bold leading-tight text-neon-200">{option.id === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</h3>
+              <p className="mt-1 font-mono text-[9px] text-cyan-200">{option.rate}</p>
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-neon/10 pt-3 font-mono text-[10px] text-neon-400">
-              <span>{option.rate}</span>
-              <span>30 days</span>
+            <div className="flex items-baseline justify-between gap-1 border-t border-neon/10 pt-2">
+              <span className="font-display text-sm font-bold text-neon-100">{option.price}</span>
+              <span className="font-mono text-[8px] text-neon-600">30 days</span>
             </div>
             <button
               type="button"
-              className="btn-primary mt-auto min-h-11 w-full rounded-lg py-3"
+              className="btn-primary mt-auto min-h-9 w-full rounded-lg px-2 py-2 text-[9px]"
               disabled={!rentalBackendActionsEnabled || busy !== null || (intent !== null && Date.parse(intent.expiresAt) > Date.now())}
               onClick={() => void createIntent(option.id)}
             >
-              {busy === option.id ? <LoaderCircle size={14} className="animate-spin" /> : null}
-              {rentalBackendActionsEnabled ? (intent?.agentType === option.id ? 'Current checkout' : 'Create checkout') : 'Checkout disabled in Preview'}
+              {busy === option.id ? <LoaderCircle size={13} className="animate-spin" /> : null}
+              {rentalBackendActionsEnabled ? (intent?.agentType === option.id ? 'Current checkout' : 'Rent agent') : 'Preview locked'}
             </button>
           </article>
         ))}
       </div>
 
-      <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.035] p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="label">Verified rental mining</p>
-            <p className="mt-1 font-display text-sm font-bold text-cyan-200">Trusted ZP accrual</p>
-          </div>
-          <span className="rounded-full border border-cyan-300/20 px-2 py-1 font-mono text-[9px] uppercase text-cyan-200">
-            Server tracked
-          </span>
+      <div className="rounded-lg border border-cyan-300/15 bg-cyan-300/[0.025] p-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-display text-xs font-bold text-cyan-200">Active rentals</p>
+          <span className="font-mono text-[8px] text-neon-600">Verified by server</span>
         </div>
-        <p className="mt-2 font-mono text-[9px] leading-relaxed text-neon-500">
-          Confirmed rentals add ZP to your verified balance while active. Accrual stops at the exact rental expiry, and each credited period is protected against duplicate processing.
-        </p>
         {rentalSummaryLoading ? (
-          <p className="mt-3 font-mono text-[10px] text-neon-500">Checking your rental status…</p>
+          <p className="mt-2 font-mono text-[9px] text-neon-500">Loading…</p>
         ) : rentalSummaryError ? (
-          <p className="mt-3 font-mono text-[10px] text-amber-300">Verified rental status is temporarily unavailable. Your balance has not been changed by this display.</p>
+          <p className="mt-2 font-mono text-[9px] text-amber-300">Status unavailable. Try again later.</p>
         ) : activeRentals.length === 0 ? (
-          <p className="mt-3 font-mono text-[10px] text-neon-500">No confirmed mining rental is currently active.</p>
+          <p className="mt-2 font-mono text-[9px] text-neon-600">No active rentals</p>
         ) : (
-          <div className="mt-3 space-y-2">
+          <div className="mt-2 space-y-1.5">
             {activeRentals.map((rental) => (
-              <div key={rental.agentType + rental.startsAt} className="flex min-w-0 flex-col gap-3 rounded-lg border border-neon/15 bg-black/25 p-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
+              <div key={rental.agentType + rental.startsAt} className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-black/25 px-2 py-1.5">
                 <div className="min-w-0">
-                  <p className="font-display text-xs font-bold text-neon-200">
-                    {rental.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}
-                  </p>
-                  <p className="mt-1 font-mono text-[10px] text-cyan-200">{rental.ratePerSecond} ZP / second</p>
+                  <p className="font-display text-[10px] font-bold text-neon-200">{rental.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</p>
+                  <p className="font-mono text-[8px] text-cyan-200">{rental.ratePerSecond} ZP/s</p>
                 </div>
-                <div className="min-w-0 break-words text-left min-[380px]:shrink-0 min-[380px]:text-right">
-                  <p className="font-mono text-[9px] uppercase text-green-300">Active</p>
-                  <p className="mt-1 font-mono text-[9px] text-neon-500">Until {new Date(rental.expiresAt).toLocaleString()}</p>
+                <div className="shrink-0 text-right">
+                  <p className="font-mono text-[8px] uppercase text-green-300">Active</p>
+                  <p className="font-mono text-[8px] text-neon-600">Until {new Date(rental.expiresAt).toLocaleDateString()}</p>
                 </div>
               </div>
             ))}
@@ -387,110 +356,77 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
       </div>
 
       {intent && (
-        <div className="space-y-4 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.04] p-4">
+        <div className="space-y-2 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.04] p-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-display text-xs font-bold uppercase text-cyan-300">Wallet checkout ready</p>
-            <span className="font-mono text-[9px] uppercase text-amber-300">
-              {transactionSubmitted ? 'Submitted · verifying' : 'Awaiting wallet'}
-            </span>
+            <p className="font-display text-[10px] font-bold uppercase text-cyan-300">Checkout details</p>
+            <span className="font-mono text-[8px] uppercase text-amber-300">{transactionSubmitted ? 'Submitted · verifying' : 'Awaiting wallet'}</span>
           </div>
-          <div>
-            <p className="label">Exact amount</p>
-            <p className="mt-1 font-display text-xl text-cyan-200">
-              {(Number(intent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} GRAM
-            </p>
-            <p className="font-mono text-[9px] text-neon-600">TON mainnet · native coin · not a jetton</p>
-          </div>
-          <div>
-            <p className="label">Payment reference</p>
-            <p className="mt-1 break-all font-mono text-[10px] text-cyan-200">{intent.paymentReference}</p>
-            <p className="mt-1 font-mono text-[9px] text-neon-600">
-              This reference is attached automatically as the TON transaction comment.
-            </p>
-          </div>
-          <p className="font-mono text-[9px] leading-relaxed text-neon-600">
-            Request expires: {new Date(intent.expiresAt).toLocaleString()}
-          </p>
-          <button
-            type="button"
-            className="btn-cyan min-h-11 w-full"
-            disabled={!paymentsEnabled || !walletAddress || !isMainnetWallet || busy !== null || sendAttempted}
-            onClick={() => void sendPayment()}
-          >
-            {busy === 'send' ? <LoaderCircle size={14} className="animate-spin" /> : null}
-            {paymentsEnabled ? 'Approve payment in TON wallet' : 'Real GRAM transfer locked in Preview'}
+          <p className="font-display text-lg text-cyan-200">{(Number(intent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} GRAM</p>
+          <p className="break-all font-mono text-[9px] text-neon-500">Reference: {intent.paymentReference}</p>
+          <p className="font-mono text-[8px] text-neon-600">Expires {new Date(intent.expiresAt).toLocaleString()}</p>
+          <button type="button" className="btn-cyan min-h-9 w-full text-[10px]" disabled={!paymentsEnabled || !walletAddress || !isMainnetWallet || busy !== null || sendAttempted} onClick={() => void sendPayment()}>
+            {paymentsEnabled ? 'Approve in wallet' : 'GRAM transfer locked in Preview'}
           </button>
-          {!paymentsEnabled && (
-            <p className="font-mono text-[9px] leading-relaxed text-amber-300">
-              Checkout creation and payment verification are locked in Preview. Wallet connection can be tested, but no rental can be activated or funds moved.
-            </p>
-          )}
-          {sendAttempted && !transactionSubmitted && (
-            <p className="font-mono text-[9px] leading-relaxed text-amber-300">
-              A wallet request was attempted. Check wallet activity and payment status before creating another checkout; do not retry blindly.
-            </p>
-          )}
-          <button
-            type="button"
-            className="btn-ghost min-h-11 w-full"
-            disabled={!rentalBackendActionsEnabled || busy !== null}
-            onClick={() => void verifyIntent()}
-          >
-            {busy === 'verify' ? <LoaderCircle size={14} className="animate-spin" /> : null}
-            {rentalBackendActionsEnabled ? 'Check mainnet payment' : 'Payment verification disabled in Preview'}
+          {sendAttempted && !transactionSubmitted && <p className="font-mono text-[9px] text-amber-300">Check wallet activity before retrying.</p>}
+          <button type="button" className="btn-ghost min-h-9 w-full text-[10px]" disabled={!rentalBackendActionsEnabled || busy !== null} onClick={() => void verifyIntent()}>
+            {rentalBackendActionsEnabled ? 'Verify payment' : 'Verification locked in Preview'}
           </button>
-          {activeUntil && (
-            <p className="font-mono text-[10px] text-green-300">
-              Rental recorded until {new Date(activeUntil).toLocaleString()}.
-            </p>
-          )}
+          {activeUntil && <p className="font-mono text-[9px] text-green-300">Active until {new Date(activeUntil).toLocaleString()}</p>}
         </div>
       )}
 
-      {notice && (
-        <p role="status" className={'font-mono text-[10px] leading-relaxed ' + (noticeKind === 'error' ? 'text-red-300' : noticeKind === 'success' ? 'text-green-300' : 'text-amber-300')}>
-          {notice}
-        </p>
-      )}
-      <p className="font-mono text-[9px] leading-relaxed text-amber-300">
-        A wallet connection never activates a rental. The server independently verifies the TON mainnet transaction and its unique comment. Only confirmed rentals earn ZP, and accrual stops at expiry.
-      </p>
+      {notice && <p role="status" className={'font-mono text-[9px] leading-relaxed ' + (noticeKind === 'error' ? 'text-red-300' : noticeKind === 'success' ? 'text-green-300' : 'text-amber-300')}>{notice}</p>}
     </section>
-  );
 }
 
 export default function ZordAgentsTab({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEconomy: () => Promise<void> | void }) {
   const tiers = [
-    { name: 'Sentinel', tier: 'Tier 1', icon: ShieldCheck, summary: 'AI moderation and community protection.', features: ['Threat and spam monitoring', 'Community safety workflows', 'Configurable moderation rules'] },
-    { name: 'Poly-Shield', tier: 'Tier 2', icon: Shield, summary: 'Expanded multi-layer protection for Telegram communities.', features: ['All Sentinel capabilities', 'Advanced community defense', 'Expanded moderation controls'] },
-    { name: 'Omini Glitch', tier: 'Tier 3', icon: Sparkles, summary: 'Full community intelligence and creative operations.', features: ['All Sentinel and Poly-Shield capabilities', 'AI content creation for Telegram groups and channels', 'Meme creation for community engagement'] },
+    { name: 'Sentinel', tier: 'Tier 1', icon: ShieldCheck, summary: 'Core moderation', features: ['Spam and threat detection', 'Community safety rules'] },
+    { name: 'Poly-Shield', tier: 'Tier 2', icon: Shield, summary: 'Advanced protection', features: ['Sentinel features', 'Multi-layer community defense'] },
+    { name: 'Omini Glitch', tier: 'Tier 3', icon: Sparkles, summary: 'Protection + content tools', features: ['Sentinel and Poly-Shield features', 'AI content and meme creation'] },
   ];
 
   return (
-    <div className="min-w-0 space-y-6 pb-5">
-      <header className="panel relative min-w-0 overflow-hidden rounded-2xl border border-neon/30 bg-gradient-to-br from-neon/[0.10] via-black/30 to-cyan-400/[0.04] p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-neon-400"><Bot size={18} /><span className="label">ZORD autonomous services</span></div>
-          <span className="rounded-full border border-green-400/25 bg-green-400/[0.06] px-2.5 py-1 font-mono text-[9px] uppercase tracking-wider text-green-300">Agent hub</span>
+    <div className="min-w-0 space-y-3 pb-4">
+      <header className="flex items-center justify-between gap-2 border-b border-neon/15 pb-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Bot size={17} className="shrink-0 text-neon-300" />
+          <h1 className="font-display text-base font-bold tracking-wide text-neon-100">Agents</h1>
         </div>
-        <h1 className="mt-3 font-display text-2xl font-bold tracking-wide text-neon-100">ZORD Agents</h1>
-        <p className="mt-2 max-w-xl text-xs leading-relaxed text-neon-400">Explore mining agents and community protection services in one place. Compare what each service offers before choosing your next step.</p>
+        <span className="rounded-full border border-green-400/25 px-2 py-1 font-mono text-[8px] uppercase text-green-300">Agent hub</span>
       </header>
 
       <TemporaryRewardPanel />
-
       <AgentRentalCheckout onRefreshVerifiedEconomy={onRefreshVerifiedEconomy} />
 
-
-
-      <section className="space-y-4">
-        <div className="min-w-0 space-y-2"><p className="label">Community protection</p><h2 className="title">Choose a service tier</h2><p className="text-xs leading-relaxed text-neon-500">Compare the protection levels below. Telegram bot provisioning is not available yet.</p></div>
-        {tiers.map(({ name, tier, icon: Icon, summary, features }) => <article key={name} className="panel min-w-0 space-y-4 rounded-2xl border border-neon/20 bg-gradient-to-br from-black/35 to-neon/[0.035] p-3 min-[380px]:p-4 sm:p-5 transition-colors hover:border-neon/35">
-          <div className="flex items-center justify-between gap-3"><span className="rounded-md border border-cyan-300/20 bg-cyan-300/5 px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-cyan-200">{tier}</span><span className="flex h-9 w-9 items-center justify-center rounded-xl border border-neon/20 bg-neon/5"><Icon size={18} className="text-neon-300" /></span></div>
-          <div><h3 className="font-display text-base font-bold uppercase tracking-wider text-neon-200">{name}</h3><p className="mt-1 text-[11px] leading-relaxed text-neon-500">{summary}</p></div>
-          <ul className="space-y-2">{features.map(feature => <li key={feature} className="flex items-start gap-2 text-[11px] leading-relaxed text-neon-400"><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-neon-400" />{feature}</li>)}</ul>
-          <div className="flex min-w-0 items-start gap-2 rounded-lg border border-amber-300/15 bg-amber-300/[0.04] px-3 py-2"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" /><span className="min-w-0 font-mono text-[9px] leading-relaxed text-amber-200">Coming soon · Telegram bot provisioning is not active yet</span></div>
-        </article>)}
+      <section className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-display text-sm font-bold text-neon-100">Community services</h2>
+          <span className="font-mono text-[8px] text-neon-600">Coming soon</span>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {tiers.map(({ name, tier, icon: Icon, summary, features }) => (
+            <article key={name} className="flex min-w-0 items-center gap-2 rounded-lg border border-neon/20 bg-black/30 p-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-neon/20 bg-neon/5">
+                <Icon size={15} className="text-neon-300" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h3 className="font-display text-[10px] font-bold uppercase text-neon-200">{name}</h3>
+                  <span className="font-mono text-[8px] text-cyan-300">{tier}</span>
+                </div>
+                <p className="font-mono text-[8px] text-neon-500">{summary}</p>
+                <details className="mt-1">
+                  <summary className="cursor-pointer font-mono text-[8px] text-cyan-300">Features</summary>
+                  <ul className="mt-1 space-y-1">
+                    {features.map((feature) => <li key={feature} className="font-mono text-[8px] leading-relaxed text-neon-400">• {feature}</li>)}
+                  </ul>
+                </details>
+              </div>
+              <span className="shrink-0 rounded-full border border-amber-300/15 px-1.5 py-1 font-mono text-[7px] text-amber-200">Soon</span>
+            </article>
+          ))}
+        </div>
       </section>
     </div>
   );
