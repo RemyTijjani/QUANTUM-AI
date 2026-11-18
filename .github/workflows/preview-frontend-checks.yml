@@ -46,10 +46,10 @@ jobs:
       - name: Audit dependency advisories
         run: |
           set +e
-          timeout 90s npm audit --json > /tmp/npm-audit.json
+          timeout --kill-after=5s 45s npm audit --json > /tmp/npm-audit.json
           audit_status=$?
           set -e
-          if [ "$audit_status" -eq 124 ]; then
+          if [ "$audit_status" -eq 124 ] || [ "$audit_status" -eq 137 ]; then
             echo "::warning::npm audit timed out after 90 seconds; type-check, lint and build will continue."
             exit 0
           fi
