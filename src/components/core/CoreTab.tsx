@@ -3,6 +3,7 @@ import {
   Flame,
   Gift,
   Compass,
+  Store,
 } from 'lucide-react';
 import type { FragmentId } from '@/lib/game/config';
 import { fixedCount, fragmentCooldownRemaining, tierInfo } from '@/lib/game/state';
@@ -37,6 +38,7 @@ interface CoreTabProps {
   onOpenStreaks: () => void;
   onOpenMysteryBoxes: () => void;
   onOpenRaffles: () => void;
+  onOpenMarket: () => void;
 }
 
 export default function CoreTab({
@@ -60,6 +62,7 @@ export default function CoreTab({
   onOpenStreaks,
   onOpenMysteryBoxes,
   onOpenRaffles,
+  onOpenMarket,
 }: CoreTabProps) {
   const miningLeft = state.coreMiningUntil - now;
   const nextFragmentCooldown = Math.min(
@@ -308,6 +311,20 @@ export default function CoreTab({
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
         Each Fragment has its own assigned advertising provider. Ad unlocking will activate after publisher approval and trusted server-side verification. Once unlocked, fix the Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
       </p>
+      <section className="panel min-w-0 border border-violet-400/25 bg-gradient-to-r from-violet-500/10 via-black/45 to-cyan-500/5 p-3" aria-label="ZORD Market">
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-violet-300/25 bg-violet-400/10 text-violet-200"><Store size={18} /></span>
+            <span className="min-w-0">
+              <span className="block font-display text-sm font-bold uppercase tracking-wider text-violet-100">ZORD Market</span>
+              <span className="mt-0.5 block truncate font-mono text-[9px] text-neon-500">Mining agents & community services</span>
+            </span>
+          </div>
+          <button type="button" onClick={onOpenMarket} className="shrink-0 rounded-lg border border-violet-300/30 bg-violet-400/10 px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-wide text-violet-100 transition hover:bg-violet-400/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+            Open market
+          </button>
+        </div>
+      </section>
       <CharacterCard fixed={fixed} rate={miningRateLabel} entityNumber={entityNumber} />
 
 
