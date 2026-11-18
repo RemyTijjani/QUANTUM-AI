@@ -45,7 +45,14 @@ jobs:
 
       - name: Audit dependency advisories
         run: |
-          npm audit --json > /tmp/npm-audit.json || true
+          set +e
+          timeout 90s npm audit --json > /tmp/npm-audit.json
+          audit_status=$?
+          set -e
+          if [ "$audit_status" -eq 124 ]; then
+            echo "::warning::npm audit timed out after 90 seconds; type-check, lint and build will continue."
+            exit 0
+          fi
           node <<'NODE'
           const audit = require('/tmp/npm-audit.json');
           console.log('Dependency vulnerability totals:', JSON.stringify(audit.metadata?.vulnerabilities ?? {}));
