@@ -13,6 +13,7 @@ import MilestonesList from '@/components/network/MilestonesList';
 interface NetworkTabProps {
   state: GameState;
   notify: Notify;
+  onRefreshVerifiedEconomy?: () => Promise<void>;
 }
 
 interface VerifiedReferral {
@@ -24,7 +25,7 @@ interface VerifiedReferral {
 
 const SHARE_TEXT = 'Mine ZP with me in ZORD Autonomous Agent — Total Group Dominion';
 
-export default function NetworkTab({ state, notify }: NetworkTabProps) {
+export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: NetworkTabProps) {
   const link = buildReferralLink(state.referralCode);
   const [referrals, setReferrals] = useState<VerifiedReferral[]>([]);
   const [loadingReferrals, setLoadingReferrals] = useState(true);
@@ -112,11 +113,17 @@ export default function NetworkTab({ state, notify }: NetworkTabProps) {
         return;
       }
       await refreshKickbacks();
+      try {
+        await onRefreshVerifiedEconomy?.();
+      } catch {
+        notify('Your referral kickback was claimed, but the ZP balance could not refresh. Reopen the Vault or refresh later.', 'error');
+      }
       notify(`${formatZp(result.claimedZp ?? 0)} ZP referral kickback claimed successfully`);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not claim referral kickbacks.', 'error');
       try {
         await refreshKickbacks();
+        await onRefreshVerifiedEconomy?.();
       } catch {
         setKickbackError(true);
       }
