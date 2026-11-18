@@ -83,7 +83,7 @@ export default function CoreTab({
   const miningRateLabel = verifiedZpBalance === null ? '—' : formatRate(rate);
   const maxMiningRate = Math.max(
     FRAGMENT_ZP_PER_SEC * FRAGMENT_IDS.length * fragmentMiningRateMultiplier * 2,
-    AGENTS.alpha.zpPerSec + AGENTS.overclock.zpPerSec + AGENTS.alpha.zpPerSec,
+    AGENTS.alpha.zpPerSec + AGENTS.overclock.zpPerSec,
     rate,
   );
   const miningRateProgress = verifiedZpBalance !== null && maxMiningRate > 0
