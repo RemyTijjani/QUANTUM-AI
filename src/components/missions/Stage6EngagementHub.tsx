@@ -101,6 +101,9 @@ type DailyStreakStatus = {
   nextStreakDay: number;
   claimDate: string;
   lastClaimDate?: string | null;
+  lastRewardType?: DailyStreakClaim['rewardType'] | null;
+  lastRewardAmount?: number | null;
+  lastRewardMetadata?: Record<string, unknown> | null;
 };
 
 type DailyStreakClaim = {
@@ -139,7 +142,19 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
         setError('Could not load your trusted streak status.');
         return;
       }
-      setStatus(data.streak as DailyStreakStatus);
+      const streak = data.streak as DailyStreakStatus;
+      setStatus(streak);
+      if (streak.claimedToday && streak.lastRewardType) {
+        setLastClaim({
+          streakDay: streak.currentStreakDay,
+          rewardType: streak.lastRewardType,
+          rewardAmount: streak.lastRewardAmount ?? null,
+          rewardMetadata: streak.lastRewardMetadata ?? {},
+          alreadyClaimed: true,
+        });
+      } else {
+        setLastClaim(null);
+      }
       setError('');
     } catch {
       setError('Could not load your trusted streak status. Check your connection and retry.');
