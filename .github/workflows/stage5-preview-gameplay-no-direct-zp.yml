@@ -43,7 +43,15 @@ jobs:
             echo "::error::Gameplay route contains a direct economy write or privileged reward reference."
             exit 1
           fi
-          echo "PASS: gameplay-actions contains only the eight approved trusted gameplay and reward-entitlement routes and no economy/reward write references."
+          if grep -Eiq 'admin\.rpc\("(begin_fragment_unlock|complete_fragment_unlock)"' "$file"; then
+            echo "::error::Fragment unlock route can complete without an ad-provider verification callback."
+            exit 1
+          fi
+          grep -Fq 'reason: "ad_verification_not_configured"' "$file" || {
+            echo "::error::Fragment unlock routes must fail closed until ad verification is configured."
+            exit 1
+          }
+          echo "PASS: gameplay-actions contains only the eight approved routes, no direct economy writes, and no unverified Fragment unlock path."
       - name: Assert player-economy endpoint is read-only
         shell: bash
         run: |
