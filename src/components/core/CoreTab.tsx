@@ -18,6 +18,7 @@ import type { VerifiedAgentRental } from '@/lib/economy/verifiedEconomy';
 
 interface CoreTabProps {
   state: GameState;
+  now: number;
   notify: Notify;
   onWatchAd: (id: FragmentId) => void;
   onFixFragment: (id: FragmentId) => Promise<boolean>;
@@ -37,6 +38,7 @@ interface CoreTabProps {
 
 export default function CoreTab({
   state,
+  now,
   notify,
   onWatchAd,
   onFixFragment,
@@ -53,7 +55,6 @@ export default function CoreTab({
   onOpenMysteryBoxes,
   onOpenRaffles,
 }: CoreTabProps) {
-  const now = Date.now();
   const miningLeft = state.coreMiningUntil - now;
   const nextFragmentCooldown = Math.min(
     ...FRAGMENT_IDS
