@@ -312,7 +312,7 @@ export default function MysteryBoxPanel({
         <div role="status" aria-live="polite" className="mystery-reward-reveal panel space-y-2 border border-emerald-400/30 bg-emerald-400/5 p-4">
           <div className="flex items-center gap-2 text-emerald-300"><Sparkles size={16} /><p className="label">Recorded reward</p></div>
           <p className="font-display text-lg font-bold text-emerald-200">{lastReward.rewardLabel || (lastReward.rewardType === 'zp' ? `${lastReward.zpAmount} ZP` : lastReward.rewardType === 'zap' ? `${lastReward.zapAmount} ZAP` : '2× Fragment Mining boost · 6 hours')}</p>
-          <p className="font-mono text-[9px] text-neon-600">The server has recorded this boost as an activation reward. Open ZORD Agents → Temporary Activations to activate it; the six-hour timer starts only when you activate it. It changes the in-game mining estimate, not your verified ZP balance.</p>
+          <p className="font-mono text-[9px] text-neon-600">The server has recorded this boost as an activation reward. Open ZORD Agents → Temporary Activations to activate it; the six-hour timer starts only when you activate it and doubles trusted Fragment mining accrual while active.</p>
         </div>
       )}
 
