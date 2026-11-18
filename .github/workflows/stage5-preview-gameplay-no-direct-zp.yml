@@ -62,7 +62,17 @@ jobs:
             echo "::error::Player economy endpoint contains a write operation."
             exit 1
           fi
-          echo "PASS: player-economy accepts GET only and contains no balance write operation."
+          if grep -Eiq 'admin\\.rpc\\("(accrue_agent_rental_zp|accrue_fragment_mining_pending_zp|release_fragment_mining_accruals|release_matured_fragment_zp|claim_player_referral_kickbacks)' "$file"; then
+            echo "::error::Player economy GET endpoint contains a state-changing settlement RPC."
+            exit 1
+          fi
+          echo "PASS: player-economy is GET-only, has no direct balance writes, and performs no settlement RPCs."
+          settlement_file="supabase/functions/economy-settlement/index.ts"
+          grep -Fq 'if (req.method !== "POST")' "$settlement_file"
+          grep -Fq 'auth.getUser' "$settlement_file"
+          grep -Fq 'admin.rpc(' "$settlement_file"
+          echo "PASS: economy-settlement isolates server-owned accrual behind authenticated POST."
+
 
   preview-forged-gameplay-award:
     name: Reject forged ordinary gameplay ZP award (Preview)
