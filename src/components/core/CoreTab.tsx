@@ -73,10 +73,10 @@ export default function CoreTab({
     ? Math.max(0, Math.min(100, (rate / maxMiningRate) * 100))
     : 0;
   const netZapProgress = zapAchievements?.netZap ?? zapEarned;
-  const tier = tierInfo(netZapProgress ?? 0);
+  const tier = netZapProgress === null || netZapProgress === undefined ? null : tierInfo(netZapProgress);
   const coreRank = zapAchievements?.coreRank;
-  const rankNumber = coreRank?.rankNumber ?? tier.tier;
-  const rankProgress = Math.max(0, Math.min(100, coreRank?.progressPercent ?? tier.progress * 100));
+  const rankNumber = coreRank?.rankNumber ?? tier?.tier ?? null;
+  const rankProgress = Math.max(0, Math.min(100, coreRank?.progressPercent ?? (tier ? tier.progress * 100 : 0)));
   const zapProgress = netZapProgress === null || netZapProgress === undefined
     ? 0
     : Math.max(0, Math.min(100, ((netZapProgress % 100) + 100) % 100));
@@ -174,12 +174,11 @@ export default function CoreTab({
           </div>
           <div className="min-w-0 rounded-xl border border-cyan-400/20 bg-black/40 p-2.5">
             <p className="label">Core rank</p>
-            <p className="mt-1 break-words font-display text-xl text-cyan-200">{tier.rank}</p>
-            <p className="mt-1 text-[9px] text-cyan-700">Rank {rankNumber} · {formatZp(netZapProgress ?? 0)} net ZAP</p>
+            <p className="mt-1 break-words font-display text-xl text-cyan-200">{tier?.rank ?? '—'}</p>
+            <p className="mt-1 text-[9px] text-cyan-700">Rank {rankNumber ?? '—'} · {netZapProgress === null || netZapProgress === undefined ? '—' : formatZp(netZapProgress)} net ZAP</p>
           </div>
           <div className="min-w-0 rounded-xl border border-neon/20 bg-black/40 p-2.5">
             <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{fixed}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
-            <p className="mt-1 text-[9px] text-neon-700">Displayed rate estimate: {formatRate(rate)}</p>
           </div>
         </div>
       </section>
