@@ -17,10 +17,12 @@ function downloadCsv(filename: string, rows: Array<Record<string, unknown>>) {
   const headers = Object.keys(rows[0]);
   const quote = (value: unknown) => {
     const raw = value === null || value === undefined ? '' : String(value);
-    return '"' + raw.replace(/"/g, '""') + '"';
+    // Neutralize spreadsheet formulas in player-controlled values before CSV export.
+    const safe = /^[\u0000-\u0020]*[=+\-@]/.test(raw) ? `'${raw}` : raw;
+    return '"' + safe.replace(/"/g, '""') + '"';
   };
   const csv = [headers.map(quote).join(','), ...rows.map((row) => headers.map((key) => quote(row[key])).join(','))].join('\r\n');
-  const blob = new Blob(['\\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
