@@ -16,11 +16,14 @@ interface FragmentBaysProps {
   fragments: Record<FragmentId, FragmentStatus>;
   cooldowns: Record<FragmentId, number>;
   miningUntil: Record<FragmentId, number>;
+  miningEnabled: boolean;
+  miningPausedByRental: boolean;
+  rateMultiplier: number;
   now: number;
   onFragmentPress: (id: FragmentId) => void;
 }
 
-export default function FragmentBays({ fragments, cooldowns, miningUntil, now, onFragmentPress }: FragmentBaysProps) {
+export default function FragmentBays({ fragments, cooldowns, miningUntil, miningEnabled, miningPausedByRental, rateMultiplier, now, onFragmentPress }: FragmentBaysProps) {
   return (
     <section className="space-y-3">
       <div className="px-1">
@@ -35,6 +38,9 @@ export default function FragmentBays({ fragments, cooldowns, miningUntil, now, o
             status={fragments[id]}
             cooldownRemaining={Math.max(0, cooldowns[id] - now)}
             miningRemaining={Math.max(0, miningUntil[id] - now)}
+            miningEnabled={miningEnabled}
+            miningPausedByRental={miningPausedByRental}
+            rateMultiplier={rateMultiplier}
             onPress={() => onFragmentPress(id)}
           />
         ))}
@@ -48,23 +54,33 @@ function FragmentBay({
   status,
   cooldownRemaining,
   miningRemaining,
+  miningEnabled,
+  miningPausedByRental,
+  rateMultiplier,
   onPress,
 }: {
   id: FragmentId;
   status: FragmentStatus;
   cooldownRemaining: number;
   miningRemaining: number;
+  miningEnabled: boolean;
+  miningPausedByRental: boolean;
+  rateMultiplier: number;
   onPress: () => void;
 }) {
   const cooldownActive = cooldownRemaining > 0;
   const miningActive = status === 'fixed' && miningRemaining > 0;
-  const label = miningActive
-    ? `Mining · ${formatCooldown(miningRemaining)}`
-    : cooldownActive
-      ? `Cooldown · ${formatCooldown(cooldownRemaining)}`
-      : status === 'fixed'
-        ? 'Ad verification required'
-        : STATUS_LABEL[status];
+  const label = miningActive && !miningEnabled
+    ? `Global pause · ${formatCooldown(miningRemaining)}`
+    : miningActive && miningPausedByRental
+      ? `Agent active · ${formatCooldown(miningRemaining)}`
+      : miningActive
+        ? `Mining · ${formatCooldown(miningRemaining)}`
+        : cooldownActive
+          ? `Cooldown · ${formatCooldown(cooldownRemaining)}`
+          : status === 'fixed'
+            ? 'Ad verification required'
+            : STATUS_LABEL[status];
 
   return (
     <button
@@ -82,9 +98,9 @@ function FragmentBay({
         {FRAGMENT_NAMES[id]}
       </span>
       <span className="font-mono text-[10px] uppercase tracking-wider opacity-90">{label}</span>
-      {status === 'fixed' && miningActive && (
+      {status === 'fixed' && miningActive && miningEnabled && !miningPausedByRental && (
         <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-yellow-500/90">
-          +{FRAGMENT_ZP_PER_SEC.toFixed(2)} ZP/sec
+          +{(FRAGMENT_ZP_PER_SEC * rateMultiplier).toFixed(2)} ZP/sec
         </span>
       )}
     </button>
