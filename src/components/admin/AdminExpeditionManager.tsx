@@ -15,7 +15,7 @@ function toLocalDateTimeInput(value: string | null): string {
 }
 
 const kinds: { value: ObjectiveKind; label: string; icon: typeof BookOpen }[] = [
-  { value: 'briefing', label: 'Briefing', icon: BookOpen }, { value: 'quiz', label: 'Knowledge challenge', icon: ShieldCheck },
+  { value: 'briefing', label: 'Instructions', icon: BookOpen }, { value: 'quiz', label: 'Knowledge challenge', icon: ShieldCheck },
   { value: 'game', label: 'Game mission', icon: Gamepad2 }, { value: 'community', label: 'Community activity', icon: Users },
   { value: 'external', label: 'External ecosystem', icon: Globe }, { value: 'milestone', label: 'Milestone', icon: Trophy },
 ];
@@ -374,6 +374,6 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       )}
       <p className="text-[9px] leading-relaxed text-slate-500">Verifying evidence updates Expedition completion and eligibility only. It does not issue ZP/ZAP or change player balances.</p>
     </section>
-    <p className="text-[10px] leading-relaxed text-slate-500">Existing Game Events are preserved. Publishing an Expedition makes it visible to players; reward issuance remains a separate, explicit Admin action after completion.</p>
+    <p className="text-[10px] leading-relaxed text-slate-500">Existing expedition records are preserved. Publishing an Expedition makes it visible to players; reward issuance remains a separate, explicit Admin action after completion.</p>
   </section>;
 }
