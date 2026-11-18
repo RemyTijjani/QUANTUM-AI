@@ -54,7 +54,7 @@ export default function AdminExpeditionManager({ creds }: { creds: AdminCredenti
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewReasons, setReviewReasons] = useState<Record<string, string>>({});
   const [reviewMessage, setReviewMessage] = useState('');
-  const counts = useMemo(() => ({ expeditions: drafts.length, live: drafts.filter(e => e.status === 'registration_open' || e.status === 'active').length, drafts: drafts.filter(e => e.status === 'draft').length, pendingReviews: reviewQueue.individualSubmissions.length + reviewQueue.teamSubmissions.length }), [events, drafts, reviewQueue]);
+  const counts = useMemo(() => ({ expeditions: drafts.length, live: drafts.filter(e => e.status === 'registration_open' || e.status === 'active').length, drafts: drafts.filter(e => e.status === 'draft').length, pendingReviews: reviewQueue.individualSubmissions.length + reviewQueue.teamSubmissions.length }), [drafts, reviewQueue]);
 
   const loadDrafts = useCallback(async () => {
     setLoadingDrafts(true);
