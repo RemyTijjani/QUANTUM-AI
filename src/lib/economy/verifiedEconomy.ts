@@ -21,6 +21,8 @@ export interface VerifiedEconomy {
   pendingFragmentZp: number;
   nextFragmentReleaseAt: string | null;
   activeAgentRentals: VerifiedAgentRental[];
+  fragmentMiningEnabled: boolean;
+  fragmentMiningRateMultiplier: number;
   updatedAt: string | null;
   transactions: VerifiedLedgerEntry[];
 }
@@ -99,7 +101,11 @@ export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
     !Number.isFinite(value.pendingKickback) ||
     typeof value.pendingFragmentZp !== 'number' ||
     !Number.isFinite(value.pendingFragmentZp) ||
-    !(value.nextFragmentReleaseAt === null || typeof value.nextFragmentReleaseAt === 'string')
+    !(value.nextFragmentReleaseAt === null || typeof value.nextFragmentReleaseAt === 'string') ||
+    typeof value.fragmentMiningEnabled !== 'boolean' ||
+    typeof value.fragmentMiningRateMultiplier !== 'number' ||
+    !Number.isFinite(value.fragmentMiningRateMultiplier) ||
+    value.fragmentMiningRateMultiplier <= 0
   ) {
     throw new VerifiedEconomyError('The verified economy service returned invalid balance data.');
   }
@@ -160,6 +166,8 @@ export async function fetchVerifiedEconomy(): Promise<VerifiedEconomy> {
     pendingFragmentZp: value.pendingFragmentZp,
     nextFragmentReleaseAt: value.nextFragmentReleaseAt,
     activeAgentRentals,
+    fragmentMiningEnabled: value.fragmentMiningEnabled,
+    fragmentMiningRateMultiplier: value.fragmentMiningRateMultiplier,
     updatedAt: value.updatedAt ?? null,
     transactions,
   };
