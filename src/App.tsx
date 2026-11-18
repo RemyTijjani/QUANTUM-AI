@@ -282,6 +282,7 @@ function GameApp({
           <NetworkTab
             state={state}
             notify={notify}
+            onRefreshVerifiedEconomy={refreshVerifiedBalance}
           />
         )}
 
