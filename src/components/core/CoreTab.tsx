@@ -104,7 +104,11 @@ export default function CoreTab({
       });
       return;
     }
-    notify(`${FRAGMENT_NAMES[id]} is already online`, 'info');
+    if (fragmentCooldownRemaining(state, id, now) > 0) {
+      notify('Fragment cooldown is still active', 'info');
+      return;
+    }
+    onWatchAd(id);
   };
 
   return (
@@ -264,6 +268,7 @@ export default function CoreTab({
       <FragmentBays
         fragments={state.fragments}
         cooldowns={state.fragmentCooldowns}
+        miningUntil={state.fragmentMiningUntil}
         now={now}
         onFragmentPress={(id) => handleFragment(id, state.fragments[id])}
       />
