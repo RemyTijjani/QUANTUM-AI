@@ -17,8 +17,15 @@ function downloadCsv(filename: string, rows: Array<Record<string, unknown>>) {
   const headers = Object.keys(rows[0]);
   const quote = (value: unknown) => {
     const raw = value === null || value === undefined ? '' : String(value);
-    // Neutralize spreadsheet formulas in player-controlled values before CSV export.
-    const safe = /^[\u0000-\u0020]*[=+\-@]/.test(raw) ? `'${raw}` : raw;
+    // Neutralize spreadsheet formulas after leading control/whitespace characters.
+    let firstSignificant = 0;
+    while (firstSignificant < raw.length) {
+      const code = raw.charCodeAt(firstSignificant);
+      if (code <= 0x20 || (code >= 0x7f && code <= 0x9f)) firstSignificant += 1;
+      else break;
+    }
+    const first = raw[firstSignificant];
+    const safe = first === '=' || first === '+' || first === '-' || first === '@' ? `'${raw}` : raw;
     return '"' + safe.replace(/"/g, '""') + '"';
   };
   const csv = [headers.map(quote).join(','), ...rows.map((row) => headers.map((key) => quote(row[key])).join(','))].join('\r\n');
