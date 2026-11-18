@@ -282,7 +282,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
       <div className="grid gap-2 md:grid-cols-[1fr_2fr_auto]"><select value={objectiveKind} onChange={e => setObjectiveKind(e.target.value as ObjectiveKind)} className="admin-field">{kinds.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}</select><input value={objectiveTitle} onChange={e => setObjectiveTitle(e.target.value)} maxLength={160} placeholder="Objective instruction" className="admin-field" /><button type="button" onClick={addObjective} disabled={!objectiveTitle.trim() || objectives.length>=20} className="border border-emerald-400/30 px-3 py-2 text-xs text-emerald-300 disabled:opacity-40"><Plus size={14}/></button></div>
       {objectives.map((o,i) => { const k = kinds.find(x => x.value===o.kind)!; const Icon=k.icon; return <div key={o.id} className="grid gap-2 border border-white/10 bg-[#101a14] p-3 md:grid-cols-[minmax(0,1fr)_150px_auto]"><div className="flex min-w-0 items-start gap-3"><span className="pt-1 text-[10px] text-slate-500">{i+1}</span><Icon size={15} className="mt-0.5 text-slate-300"/><div className="min-w-0"><p className="text-xs text-slate-100">{o.title}</p><p className="text-[9px] text-slate-500">{k.label} · Required</p><p className="mt-1 text-[9px] text-emerald-300">{verificationSource(o.kind, o.scope)}</p></div></div><label className="admin-field-label">Completion scope<select value={o.scope} onChange={e => setObjectives(v => v.map(x => x.id===o.id ? { ...x, scope: e.target.value as Objective['scope'] } : x))} className="admin-field"><option value="individual">Individual</option><option value="team">Team</option><option value="both">Both</option></select></label><button type="button" onClick={() => setObjectives(v => v.filter(x => x.id!==o.id))} className="text-left text-[10px] text-red-300">Remove</button></div>; })}
       {!objectives.length && <p className="border border-dashed border-white/10 p-6 text-center text-xs text-slate-500">No objectives added yet.</p>}
-      <p className="text-[10px] text-slate-500">Automatic source matching applies only to the source shown above. Other objective evidence remains in the manual review queue. Briefings are not automatically verified yet.</p>
+      <p className="text-[10px] text-slate-500">Automatic source matching applies only to the source shown above. Other objective evidence remains in the manual review queue. Raffle entries are not an automatic Expedition verification source.</p>
     </div>;
     if (step === 3) return <div className="grid gap-4 md:grid-cols-2">
       <label className="admin-field-label">Reward type<select value={rewardType} onChange={e => setRewardType(e.target.value)} className="admin-field"><option value="ZP">ZP</option><option value="ZAP">ZAP</option><option value="none">No reward</option></select></label>
@@ -308,7 +308,7 @@ export default function AdminExpeditionManager({ events, creds }: { events: Admi
     ['Drafts', counts.drafts, Layers],
     ['Live / registration', counts.live, Clock3],
     ['Pending reviews', counts.pendingReviews, ShieldCheck],
-    ['Game Events', counts.gameEvents, CalendarDays],
+    ['Expeditions', counts.gameEvents, CalendarDays],
   ] as const;
 
   return <section className="space-y-4">
