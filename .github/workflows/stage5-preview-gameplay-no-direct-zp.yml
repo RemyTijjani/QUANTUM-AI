@@ -11,6 +11,8 @@ on:
       - "supabase/functions/gameplay-actions/index.ts"
       - "supabase/functions/player-economy/index.ts"
       - "supabase/functions/economy-settlement/index.ts"
+      - "supabase/functions/agent-rental-payments/index.ts"
+      - "src/components/agents/ZordAgentsTab.tsx"
   workflow_dispatch:
 
 permissions:
@@ -54,6 +56,21 @@ jobs:
             exit 1
           }
           echo "PASS: gameplay-actions contains only the eight approved routes, no direct economy writes, and no unverified Fragment unlock path."
+      - name: Assert Preview agent rental payments remain locked
+        shell: bash
+        run: |
+          set -euo pipefail
+          payment_file="supabase/functions/agent-rental-payments/index.ts"
+          ui_file="src/components/agents/ZordAgentsTab.tsx"
+          grep -Fq 'const MAINNET_RENTAL_INTENTS_ENABLED = false;' "$payment_file"
+          guard_count="$(grep -Fc 'if (!MAINNET_RENTAL_INTENTS_ENABLED)' "$payment_file")"
+          if [ "$guard_count" -lt 2 ]; then
+            echo "::error::Both rental intent creation and payment verification must be disabled in Preview."
+            exit 1
+          fi
+          grep -Fq 'const paymentsEnabled = false;' "$ui_file"
+          grep -Fq 'const rentalBackendActionsEnabled = false;' "$ui_file"
+          echo "PASS: Preview cannot create or verify rental payments or send real GRAM."
       - name: Assert player-economy endpoint is read-only
         shell: bash
         run: |
