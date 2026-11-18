@@ -70,7 +70,7 @@ function FragmentBay({
 }) {
   const cooldownActive = cooldownRemaining > 0;
   const miningActive = status === 'fixed' && miningRemaining > 0;
-  const label = status === 'fixed' && !miningEnabled
+  const label = !miningEnabled
     ? 'Global mining paused'
     : miningActive && miningPausedByRental
       ? `Agent active · ${formatCooldown(miningRemaining)}`
@@ -86,11 +86,11 @@ function FragmentBay({
     <button
       type="button"
       onClick={onPress}
-      disabled={cooldownActive}
+      disabled={cooldownActive || !miningEnabled}
       aria-label={`${FRAGMENT_NAMES[id]}: ${label}`}
       className={`relative flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center transition duration-500 active:scale-95 ${BAY_STYLE[status]} ${
         status === 'unlocked' && !cooldownActive ? 'animate-soft-pulse' : ''
-      } ${cooldownActive ? 'cursor-not-allowed opacity-80' : ''}`}
+      } ${cooldownActive || !miningEnabled ? 'cursor-not-allowed opacity-80' : ''}`}
     >
       {status === 'fixed' && <Check size={14} className="absolute right-2 top-2" />}
       <FaIcon name={FRAGMENT_ICON[id]} size={22} />
