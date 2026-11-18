@@ -72,10 +72,11 @@ export const BOOSTER_REWARD = 500;
 export const SUB_NODE_RATE = 0.001;
 export const KICKBACK_RATE = 0.1;
 
+// Cumulative referral milestone rewards are credited in whole ZAP.
 export const MILESTONES = [
-  { threshold: 3, reward: 500 },
-  { threshold: 10, reward: 2000 },
-  { threshold: 25, reward: 5000 },
+  { threshold: 3, rewardZap: 10 },
+  { threshold: 10, rewardZap: 20 },
+  { threshold: 25, rewardZap: 50 },
 ] as const;
 
 export type MissionKind = 'daily' | 'social' | 'creator';
