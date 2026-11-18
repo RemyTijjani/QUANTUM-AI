@@ -1,6 +1,5 @@
 name: Stage 5 Preview Migration Status (Read Only)
-# Recheck the complete Preview function inventory after adding economy-settlement.
-# Re-run the read-only Preview ledger audit after migration inventory reconciliation.
+# Audit the current Preview function inventory and migration ledger without changing either.
 
 on:
   workflow_dispatch:
@@ -79,7 +78,7 @@ jobs:
           supabase functions list --remote="$PREVIEW_PROJECT_REF" > /tmp/preview-functions.txt
           cat /tmp/preview-functions.txt
           missing_functions=0
-          for name in telegram-auth admin-api public-events event-participation gameplay-actions mission-actions referral-kickbacks economy-settlement player-economy agent-rental-payments mystery-box-actions ton-wallet zap-wallet; do
+          for name in telegram-auth admin-api public-events event-participation gameplay-actions mission-actions referral-kickbacks player-economy agent-rental-payments mystery-box-actions ton-wallet zap-wallet; do
             if grep -Fq "$name" /tmp/preview-functions.txt; then
               echo "$name: deployed"
             else
@@ -87,6 +86,11 @@ jobs:
               missing_functions=1
             fi
           done
+          if grep -Fq "economy-settlement" /tmp/preview-functions.txt; then
+            echo "::error::Deprecated economy-settlement endpoint must remain retired; settlement runs through scheduled trusted database jobs."
+            exit 1
+          fi
+          echo "Deprecated economy-settlement endpoint: absent (expected)."
           echo "Checking only the names of required custom Edge Function secrets; values and digests are not printed."
           supabase secrets list --remote="$PREVIEW_PROJECT_REF" > /tmp/preview-secret-list.txt
           missing_secrets=0
