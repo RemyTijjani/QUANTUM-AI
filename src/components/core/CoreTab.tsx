@@ -1,4 +1,4 @@
-import { AGENTS, CORE_BASE_RATE, FRAGMENT_IDS, FRAGMENT_NAMES, FRAGMENT_ZP_PER_SEC } from '@/lib/game/config';
+import { AGENTS, FRAGMENT_IDS, FRAGMENT_NAMES, FRAGMENT_ZP_PER_SEC } from '@/lib/game/config';
 import {
   Store,
   Flame,
@@ -6,7 +6,7 @@ import {
   Compass,
 } from 'lucide-react';
 import type { FragmentId } from '@/lib/game/config';
-import { fixedCount, fragmentCooldownRemaining, passiveRate, tierInfo } from '@/lib/game/state';
+import { fixedCount, fragmentCooldownRemaining, tierInfo } from '@/lib/game/state';
 import type { GameState, FragmentStatus } from '@/lib/game/state';
 import { formatRate, formatZp, formatRemaining } from '@/lib/format';
 import { Coins, Award } from 'lucide-react';
@@ -15,6 +15,7 @@ import CoreCircuit from '@/components/core/CoreCircuit';
 import FragmentBays from '@/components/core/FragmentBays';
 import CharacterCard from '@/components/core/CharacterCard';
 import type { ZapAchievements } from '@/lib/economy/zapWallet';
+import type { VerifiedAgentRental } from '@/lib/economy/verifiedEconomy';
 
 interface CoreTabProps {
   state: GameState;
@@ -22,6 +23,7 @@ interface CoreTabProps {
   onWatchAd: (id: FragmentId) => void;
   onFixFragment: (id: FragmentId) => Promise<boolean>;
   verifiedZpBalance: number | null;
+  activeAgentRentals: VerifiedAgentRental[];
   zapEarned: number | null;
   zapLoading: boolean;
   zapAchievements: ZapAchievements | null;
@@ -40,6 +42,7 @@ export default function CoreTab({
   onWatchAd,
   onFixFragment,
   verifiedZpBalance,
+  activeAgentRentals,
   zapEarned,
   zapLoading,
   zapAchievements,
@@ -52,15 +55,24 @@ export default function CoreTab({
   onOpenRaffles,
 }: CoreTabProps) {
   const now = Date.now();
-  const rate = passiveRate(state, now);
-  const miningLeft = state.coreMiningUntil - now;
   const fixed = fixedCount(state);
+  const paidRentalRate = activeAgentRentals
+    .filter((rental) => Date.parse(rental.startsAt) <= now && Date.parse(rental.expiresAt) > now)
+    .reduce((sum, rental) => sum + rental.ratePerSecond, 0);
+  const temporaryAgentRate = state.temporaryAgentUntil > now ? AGENTS.alpha.zpPerSec : 0;
+  const fragmentRate = paidRentalRate > 0 || state.coreMiningUntil <= now
+    ? 0
+    : fixed * FRAGMENT_ZP_PER_SEC * (state.fragmentMiningBoostUntil > now ? state.fragmentMiningBoostMultiplier : 1);
+  const rate = verifiedZpBalance === null ? 0 : paidRentalRate + temporaryAgentRate + fragmentRate;
+  const miningRateLabel = verifiedZpBalance === null ? '—' : formatRate(rate);
   const maxMiningRate = Math.max(
-    CORE_BASE_RATE + FRAGMENT_ZP_PER_SEC * FRAGMENT_IDS.length,
-    ...Object.values(AGENTS).map((agent) => agent.zpPerSec),
+    FRAGMENT_ZP_PER_SEC * FRAGMENT_IDS.length * 2,
+    AGENTS.alpha.zpPerSec + AGENTS.overclock.zpPerSec,
     rate,
   );
-  const miningRateProgress = maxMiningRate > 0 ? Math.max(0, Math.min(100, (rate / maxMiningRate) * 100)) : 0;
+  const miningRateProgress = verifiedZpBalance !== null && maxMiningRate > 0
+    ? Math.max(0, Math.min(100, (rate / maxMiningRate) * 100))
+    : 0;
   const netZapProgress = zapAchievements?.netZap ?? zapEarned;
   const tier = tierInfo(netZapProgress ?? 0);
   const coreRank = zapAchievements?.coreRank;
@@ -115,10 +127,10 @@ export default function CoreTab({
               className="grid h-[4.25rem] w-[4.25rem] place-items-center rounded-full"
               style={{ background: `conic-gradient(#7cf7c5 ${miningRateProgress}%, rgba(124,247,197,0.12) 0)` }}
               role="img"
-              aria-label={`ZP mining rate ${formatRate(rate)} per second`}
+              aria-label={verifiedZpBalance === null ? 'ZP mining rate unavailable' : `ZP mining rate ${miningRateLabel} per second`}
             >
               <div className="grid h-[3.55rem] w-[3.55rem] place-items-center rounded-full bg-[#07110f]">
-                <span className="font-display text-sm font-bold tabular-nums text-neon-100">{formatRate(rate)}</span>
+                <span className="font-display text-sm font-bold tabular-nums text-neon-100">{miningRateLabel}</span>
               </div>
             </div>
           </div>
@@ -259,7 +271,7 @@ export default function CoreTab({
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
         Each Fragment has its own assigned advertising provider. Ad unlocking will activate after publisher approval and trusted server-side verification. Once unlocked, fix the Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
       </p>
-      <CharacterCard fixed={fixed} rate={formatRate(rate)} />
+      <CharacterCard fixed={fixed} rate={miningRateLabel} />
 
 
 
