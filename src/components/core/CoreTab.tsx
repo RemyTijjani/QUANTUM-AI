@@ -128,7 +128,7 @@ export default function CoreTab({
     <div className="min-w-0 space-y-5 pb-3">
       <section className="panel min-w-0 border border-cyan-300/20 bg-black/35 p-3" aria-label="Mining and progression">
         <div className="grid grid-cols-2 items-center gap-3">
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-1.5">
             <div
               className="grid h-[4.25rem] w-[4.25rem] place-items-center rounded-full"
               style={{ background: `conic-gradient(#67ddff ${zapProgress}%, rgba(103,221,255,0.12) 0)` }}
@@ -141,8 +141,9 @@ export default function CoreTab({
                 </span>
               </div>
             </div>
+            <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-cyan-200">ZAP Progress</span>
           </div>
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-1.5">
             <div
               className="grid h-[4.25rem] w-[4.25rem] place-items-center rounded-full"
               style={{ background: `conic-gradient(#7cf7c5 ${miningRateProgress}%, rgba(124,247,197,0.12) 0)` }}
@@ -153,6 +154,7 @@ export default function CoreTab({
                 <span className="font-display text-sm font-bold tabular-nums text-neon-100">{miningRateLabel}</span>
               </div>
             </div>
+            <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-emerald-200">ZP Mining Rate</span>
           </div>
         </div>
         <div
