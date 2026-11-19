@@ -96,6 +96,42 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Your verified player profile could not be found." }, 403);
     }
 
+    if (body.action === "submit_creator_ops_submission") {
+      const missionId = typeof body.missionId === "string" ? body.missionId.trim() : "";
+      const linkUrl = typeof body.linkUrl === "string" ? body.linkUrl.trim() : "";
+      if (!missionId || missionId.length > 120 || !linkUrl || linkUrl.length > 2048) {
+        return json({ error: "A valid Creator Ops mission and submission link are required." }, 400);
+      }
+      const { data, error } = await admin.rpc("submit_creator_ops_submission", {
+        p_player_id: player.id,
+        p_mission_id: missionId,
+        p_link_url: linkUrl,
+      });
+      if (error) {
+        console.error("Creator Ops submission failed:", error);
+        return json({ error: "This Creator Ops submission could not be accepted. Check the link and submission status, then try again." }, 409);
+      }
+      const submission = Array.isArray(data) ? data[0] : data;
+      if (!submission) return json({ error: "The submission was not recorded." }, 409);
+      return json({ success: true, submission });
+    }
+
+    if (body.action === "submit_x_follow_submission") {
+      const xAccount = typeof body.xAccount === "string" ? body.xAccount.trim() : "";
+      if (!xAccount || xAccount.length > 200) {
+        return json({ error: "Enter a valid X username or profile link." }, 400);
+      }
+      const { data, error } = await admin.rpc("submit_x_follow_submission", {
+        p_player_id: player.id,
+        p_x_account: xAccount,
+      });
+      if (error) {
+        console.error("X Follow submission failed:", error);
+        return json({ error: "Your X account could not be submitted. Check the username and existing submission status." }, 409);
+      }
+      return json(data);
+    }
+
     if (body.action === "get_task_statuses") {
       const utcDate = new Date().toISOString().slice(0, 10);
       const nowIso = new Date().toISOString();
