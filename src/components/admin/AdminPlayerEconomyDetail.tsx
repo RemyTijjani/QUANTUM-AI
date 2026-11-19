@@ -12,7 +12,7 @@ interface Props {
 const amount = (value: number | string | null | undefined) => {
   if (value === null || value === undefined) return '—';
   const raw = String(value);
-  if (/^-?\\d+$/.test(raw)) {
+  if (/^-?\d+$/.test(raw)) {
     try { return BigInt(raw).toLocaleString(); } catch { return raw; }
   }
   const parsed = Number(value);
