@@ -29,6 +29,13 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const TON_CONNECT_DOMAIN = "zord-autonomous-agent.vercel.app";
+const TON_CONNECT_PREVIEW_ALIAS = "zord-autonomous-agent-git-security-fd8d9b-remytijjanis-projects.vercel.app";
+
+function isAllowedTonConnectDomain(domain: string): boolean {
+  return domain === TON_CONNECT_DOMAIN ||
+    domain === TON_CONNECT_PREVIEW_ALIAS ||
+    /^zord-autonomous-agent-[a-z0-9]+-remytijjanis-projects\\.vercel\\.app$/.test(domain);
+}
 const TONCENTER_ENDPOINT = "https://toncenter.com/api/v2/jsonRPC";
 const TONCENTER_API_KEY = Deno.env.get("TONCENTER_API_KEY") ?? "";
 const WALLETTG_TRAMPOLINE_HASH = "9149ae51c1e4689710cebf7830297b16acfbadb363a920a537893e7ffeeca768";
@@ -159,7 +166,7 @@ async function verifyTonProof(body: Record<string, unknown>, expectedPayload: st
   const proof = body.proof && typeof body.proof === "object" && !Array.isArray(body.proof)
     ? body.proof as Record<string, unknown>
     : null;
-  if (!proof || network !== "-239" || !TON_CONNECT_DOMAIN.includes(".") || !addressText) return null;
+  if (!proof || network !== "-239" || !addressText) return null;
 
   const timestampValue = proof.timestamp;
   const timestamp = typeof timestampValue === "number"
@@ -180,7 +187,8 @@ async function verifyTonProof(body: Record<string, unknown>, expectedPayload: st
   if (!Number.isSafeInteger(timestamp) || timestamp <= 0) return null;
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - timestamp) > PROOF_TTL_SECONDS) return null;
-  if (domainValue !== TON_CONNECT_DOMAIN || domainLength !== new TextEncoder().encode(domainValue).length) return null;
+  if (!isAllowedTonConnectDomain(domainValue) ||
+      domainLength !== new TextEncoder().encode(domainValue).length) return null;
   if (payload !== expectedPayload || new TextEncoder().encode(payload).length > 128) return null;
   if (publicKeyHint && !/^[0-9a-fA-F]{64}$/.test(publicKeyHint)) return null;
 
