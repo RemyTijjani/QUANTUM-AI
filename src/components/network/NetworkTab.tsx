@@ -116,7 +116,18 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
     try {
       const summary = await claimReferralMilestone(threshold);
       setMilestoneSummary(summary);
-      notify(`Referral milestone claimed: ${threshold} referrals reward credited in ZAP.`, 'success');
+      let balanceRefreshFailed = false;
+      try {
+        await onRefreshVerifiedEconomy?.();
+      } catch {
+        balanceRefreshFailed = true;
+      }
+      notify(
+        balanceRefreshFailed
+          ? `Milestone reward claimed in ZAP for ${threshold} referrals. Your balance could not refresh; reopen Core or refresh later.`
+          : `Referral milestone claimed: ${threshold} referrals reward credited in ZAP.`,
+        balanceRefreshFailed ? 'error' : 'success',
+      );
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not claim this referral milestone.', 'error');
       try {
