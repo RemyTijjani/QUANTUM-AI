@@ -261,3 +261,14 @@ The roadmap is sequential: do not mark a later stage complete because its UI exi
 - TON Connect proof logic is present and the allowed Preview host pattern is configured, but a live wallet proof and actual withdrawal/payout test have not been performed.
 - The ZORD bot's administrator status in `@zordcommunity` is not confirmed. Telegram membership verification cannot be signed off until this is checked with the configured bot.
 - No real mainnet transfer, wallet payout, ad reward, player balance change, or Production change was performed.
+
+
+### Stage 8 follow-up — payment recovery UI — 2026-11-19
+- Added authenticated `list_pending_intents` to `agent-rental-payments`. It returns at most five pending intents belonging only to the signed-in player; no other player's intent IDs or payment details are exposed.
+- The Agents tab now restores pending rental checkouts after reload and renders each request separately so multiple pending payments can be reconciled independently.
+- Removed the Preview-only UI block from the existing-intent verification action while keeping payment initiation disabled. The Preview UI no longer exposes a transfer action for these old intents; each card offers only a TON mainnet reconciliation check.
+- Verification refresh failures no longer overwrite a confirmed-payment success with a misleading payment-failed message. The pending list is refreshed independently after confirmation.
+- Supabase Preview `agent-rental-payments` v12 is ACTIVE. The frontend commits through `cb0186bc6435ae79c7379c17a3417ca902095ad4` reached READY Preview; the follow-up cleanup commit `ac9494de585b23e06e2a51d1ea673ed6f9381fd7` was building at the time of this note.
+- Preview still contains two pending intents for the same player and neither has a transaction hash. Both are now individually recoverable in that player's Agents tab. They remain unchanged until the player checks each one against the TON mainnet ledger.
+- New mainnet rental intent creation and all new payment transfers remain disabled. No player balance, rental, intent status, or Production resource was changed.
+- Stage 8 remains in progress: provider-issued ad IDs/callback credentials, verified ad callback integration, live TON wallet proof, pending-intent mainnet reconciliation, and safe withdrawal/payout acceptance tests are still outstanding.
