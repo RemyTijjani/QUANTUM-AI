@@ -151,6 +151,43 @@ function normalizeZapWallet(value: unknown): ZapWallet | null {
 }
 
 const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zap-wallet`;
+const claimFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zap-achievement-claim`;
+
+async function claimRequest<T>(body: Record<string, string>): Promise<T> {
+  const { data, error } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (error || !token) {
+    throw new Error('Your session has expired. Reopen the Mini App and try again.');
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(claimFunctionUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error('Could not reach the achievement claim service.');
+  }
+
+  const result: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = result && typeof result === 'object' &&
+      typeof (result as { error?: unknown }).error === 'string'
+      ? (result as { error: string }).error
+      : `Achievement claim request failed (${response.status}).`;
+    throw new Error(message);
+  }
+  if (!result || typeof result !== 'object') {
+    throw new Error('The achievement claim service returned an invalid response.');
+  }
+  return result as T;
+}
 
 async function request<T>(method: 'GET' | 'POST', body?: Record<string, string>, query = ''): Promise<T> {
   const { data, error } = await supabase.auth.getSession();
@@ -280,7 +317,7 @@ export async function createZapAchievementClaimIntent(level: number): Promise<Za
   const result = await request<{
     success: boolean;
     intent: ZapAchievementClaimIntent;
-  }>('POST', { action: 'create', level: String(level) });
+  }>;\n  const result = await claimRequest<{\n    success: boolean;\n    intent: ZapAchievementClaimIntent;\n  }>({ action: 'create', level: String(level) });\n\n  const intent = result.intent;\n  if (!result.success || !intent || typeof intent.intentId !== 'string' ||\n      typeof intent.destinationWallet !== 'string' || typeof intent.memo !== 'string' ||\n      intent.amountNano !== '100000000' || typeof intent.reused !== 'boolean') {\n    throw new Error('The achievement claim service returned an invalid payment request.');\n  }\n  return intent;\n}\n\nexport async function verifyZapAchievementClaim(intentId: string): Promise<{ claimed: boolean; pending: boolean; level?: number }> {\n  const result = await claimRequest<{\n    success: boolean;\n    claimed?: boolean;\n    pending?: boolean;\n    level?: number;\n    error?: string;\n  }>({ action: 'verify', intentId });\n\n  if (result.pending) return { claimed: false, pending: true };\n  if (!result.success || !result.claimed) {\n    throw new Error(result.error || 'The Gram payment could not be verified.');\n  }\n  return { claimed: true, pending: false, level: result.level };\n}\n
 
   const intent = result.intent;
   if (!result.success || !intent || typeof intent.intentId !== 'string' ||
