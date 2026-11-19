@@ -35,3 +35,5 @@ jobs:
           fi
           rm -f "$response_file"
           echo "PASS: Preview player-economy rejected an invalid token despite a caller-supplied player ID."
+
+# Stage 5 Preview validation rerun: 2026-11-19
