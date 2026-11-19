@@ -314,10 +314,10 @@ export async function transferZap(
 }
 
 export async function createZapAchievementClaimIntent(level: number): Promise<ZapAchievementClaimIntent> {
-  const result = await request<{
+  const result = await claimRequest<{
     success: boolean;
     intent: ZapAchievementClaimIntent;
-  }>;\n  const result = await claimRequest<{\n    success: boolean;\n    intent: ZapAchievementClaimIntent;\n  }>({ action: 'create', level: String(level) });\n\n  const intent = result.intent;\n  if (!result.success || !intent || typeof intent.intentId !== 'string' ||\n      typeof intent.destinationWallet !== 'string' || typeof intent.memo !== 'string' ||\n      intent.amountNano !== '100000000' || typeof intent.reused !== 'boolean') {\n    throw new Error('The achievement claim service returned an invalid payment request.');\n  }\n  return intent;\n}\n\nexport async function verifyZapAchievementClaim(intentId: string): Promise<{ claimed: boolean; pending: boolean; level?: number }> {\n  const result = await claimRequest<{\n    success: boolean;\n    claimed?: boolean;\n    pending?: boolean;\n    level?: number;\n    error?: string;\n  }>({ action: 'verify', intentId });\n\n  if (result.pending) return { claimed: false, pending: true };\n  if (!result.success || !result.claimed) {\n    throw new Error(result.error || 'The Gram payment could not be verified.');\n  }\n  return { claimed: true, pending: false, level: result.level };\n}\n
+  }>({ action: 'create', level: String(level) });
 
   const intent = result.intent;
   if (!result.success || !intent || typeof intent.intentId !== 'string' ||
@@ -329,13 +329,13 @@ export async function createZapAchievementClaimIntent(level: number): Promise<Za
 }
 
 export async function verifyZapAchievementClaim(intentId: string): Promise<{ claimed: boolean; pending: boolean; level?: number }> {
-  const result = await request<{
+  const result = await claimRequest<{
     success: boolean;
     claimed?: boolean;
     pending?: boolean;
     level?: number;
     error?: string;
-  }>('POST', { action: 'verify', intentId });
+  }>({ action: 'verify', intentId });
 
   if (result.pending) return { claimed: false, pending: true };
   if (!result.success || !result.claimed) {
