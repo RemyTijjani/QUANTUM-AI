@@ -263,7 +263,7 @@ export default function CoreTab({
               <p className="py-2 text-center text-[10px] text-cyan-600">Loading achievements…</p>
             ) : zapAchievements && zapAchievements.achievements.length > 0 ? (
               <div className="space-y-2">
-                {[...zapAchievements.achievements].sort((a, b) => b.level - a.level).slice(0, 6).map((achievement) => (
+                {[...zapAchievements.achievements].sort((a, b) => b.level - a.level).map((achievement) => (
                   <details key={achievement.level} className="group rounded-lg border border-cyan-400/10 bg-black/25">
                     <summary className="flex cursor-pointer list-none items-center gap-3 p-2.5 [&::-webkit-details-marker]:hidden">
                       <span className={"grid h-8 w-8 shrink-0 place-items-center rounded-full border " + ((achievement.isClaimed || achievement.isMinted) ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'border-emerald-300/40 bg-emerald-300/10 text-emerald-200' : 'border-slate-500/30 bg-slate-500/10 text-slate-400')}>
