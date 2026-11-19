@@ -232,8 +232,6 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
     setBusy(agentType);
     setNotice('');
     setActiveUntil(null);
-    setSendAttempted(false);
-    setTransactionSubmitted(false);
     try {
       const { data, error } = await supabase.functions.invoke('agent-rental-payments', {
         body: { action: 'create_intent', agentType },
