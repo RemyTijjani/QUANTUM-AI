@@ -67,13 +67,20 @@ jobs:
           ui_file="src/components/agents/ZordAgentsTab.tsx"
           grep -Fq 'const MAINNET_RENTAL_INTENTS_ENABLED = false;' "$payment_file"
           guard_count="$(grep -Fc 'if (!MAINNET_RENTAL_INTENTS_ENABLED)' "$payment_file")"
-          if [ "$guard_count" -lt 2 ]; then
-            echo "::error::Both rental intent creation and payment verification must be disabled in Preview."
+          if [ "$guard_count" != "1" ]; then
+            echo "::error::Only new rental intent creation must be blocked; existing-intent verification must remain available for reconciliation."
             exit 1
           fi
-          grep -Fq 'const paymentsEnabled = false;' "$ui_file"
+          grep -Fq 'body.action === "list_pending_intents"' "$payment_file"
+          grep -Fq 'body.action === "verify_payment"' "$payment_file"
+          grep -Fq '.eq("player_id", player.id)' "$payment_file"
           grep -Fq 'const rentalBackendActionsEnabled = false;' "$ui_file"
-          echo "PASS: Preview cannot create or verify rental payments or send real GRAM."
+          grep -Fq 'Check this existing payment' "$ui_file"
+          if grep -Fq 'sendTransaction(' "$ui_file"; then
+            echo "::error::Preview rental UI must not expose a mainnet transfer action."
+            exit 1
+          fi
+          echo "PASS: Preview blocks new rental checkout and transfers while allowing authenticated, player-scoped reconciliation of existing intents."
       - name: Assert player-economy endpoint is read-only
         shell: bash
         run: |
