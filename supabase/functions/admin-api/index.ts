@@ -391,6 +391,7 @@ interface AdminRequestBody {
     | "publish_expedition"
     | "reschedule_expedition"
     | "list_players"
+    | "get_zap_circulation"
     | "get_player_economy"
     | "list_event_participants"
     | "update_event_participant_status"
@@ -423,6 +424,10 @@ interface AdminRequestBody {
     | "export_player_data";
   adminUsername?: string;
   search?: string;
+  playerOffset?: number;
+  playerLimit?: number;
+  ledgerOffset?: number;
+  ledgerLimit?: number;
   playerId?: string;
   zapAmount?: number;
   tonAmount?: number | string;
@@ -1103,6 +1108,35 @@ Deno.serve(async (req: Request) => {
       return json(data);
     }
 
+    // READ-ONLY ZAP CIRCULATION REPORT. This route is protected by the
+    // existing server-side Admin credential and rate-limit checks above.
+    if (body.action === "get_zap_circulation") {
+      const search = typeof body.search === "string" ? body.search.trim() : "";
+      const playerOffset = body.playerOffset ?? 0;
+      const playerLimit = body.playerLimit ?? 50;
+      const ledgerOffset = body.ledgerOffset ?? 0;
+      const ledgerLimit = body.ledgerLimit ?? 100;
+      if (search.length > 64 ||
+          !Number.isSafeInteger(playerOffset) || playerOffset < 0 ||
+          !Number.isSafeInteger(playerLimit) || playerLimit < 1 || playerLimit > 100 ||
+          !Number.isSafeInteger(ledgerOffset) || ledgerOffset < 0 ||
+          !Number.isSafeInteger(ledgerLimit) || ledgerLimit < 1 || ledgerLimit > 100) {
+        return json({ error: "Invalid ZAP circulation report filters." }, 400);
+      }
+      const { data, error } = await db.rpc("admin_get_zap_circulation", {
+        p_search: search,
+        p_player_offset: playerOffset,
+        p_player_limit: playerLimit,
+        p_ledger_offset: ledgerOffset,
+        p_ledger_limit: ledgerLimit,
+      });
+      if (error || !data || typeof data !== "object") {
+        console.error("Admin ZAP circulation report failed:", error);
+        return json({ error: "Could not load the ZAP circulation report." }, 500);
+      }
+      return json(data);
+    }
+
     // READ-ONLY PLAYER ECONOMY AND LEDGER DETAIL.
     if (body.action === "get_player_economy") {
       const playerId = typeof body.playerId === "string" ? body.playerId : "";
@@ -1110,7 +1144,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: "A valid player ID is required" }, 400);
       }
 
-      const [economyRes, ledgerRes] = await Promise.all([
+      const [economyRes, ledgerRes, zapWalletRes] = await Promise.all([
         db
           .from("player_economy")
           .select("player_id, zp_balance, lifetime_zp, pending_kickback, created_at, updated_at, last_accrued_at")
@@ -1122,9 +1156,11 @@ Deno.serve(async (req: Request) => {
           .eq("player_id", playerId)
           .order("created_at", { ascending: false })
           .limit(50),
+        db.rpc("get_player_zap_wallet", { p_player_id: playerId }),
       ]);
 
-      if (economyRes.error || ledgerRes.error) {
+      if (economyRes.error || ledgerRes.error || zapWalletRes.error || !zapWalletRes.data) {
+        console.error("Player economy detail lookup failed:", economyRes.error || ledgerRes.error || zapWalletRes.error);
         return json({ error: "Failed to load player economy history" }, 500);
       }
 
@@ -1132,7 +1168,8 @@ Deno.serve(async (req: Request) => {
         economy: economyRes.data ?? null,
         ledger: ledgerRes.data ?? [],
         ledgerLimit: 50,
-        zapBalanceAvailable: false,
+        zapBalanceAvailable: true,
+        zapWallet: zapWalletRes.data,
       });
     }
 
