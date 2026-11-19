@@ -248,3 +248,16 @@ The roadmap is sequential: do not mark a later stage complete because its UI exi
 - Fifteen timestamp prefixes were aligned to the exact already-applied remote versions. Their SQL content was preserved byte-for-byte; no migration was re-executed.
 - Three superseded or draft-only migrations were moved to docs/migration-notes so Supabase CLI will not treat them as pending deployable migrations. The earlier ZAP source-only preparation file was also archived after its safe parts were applied through a new tracked migration.
 - The migration-status workflow is expected to verify the clean 114/114 state. A final clean database dry-run remains a sign-off check, but the prior 19/15 drift is resolved.
+
+
+### Stage 8 focused repair — 2026-11-19
+- Re-reviewed the current Preview rental-payment implementation against the Stage 8 acceptance gate.
+- Found a regression: the UI and backend correctly blocked creation of new mainnet rental intents, but the backend also blocked `verify_payment`. That contradicted the existing-intent reconciliation requirement and could strand a player who had already sent a payment.
+- Restored authenticated, player-scoped verification for existing intent IDs only. New `create_intent` requests remain hard-blocked by `MAINNET_RENTAL_INTENTS_ENABLED = false`; no real mainnet payment initiation was enabled.
+- Committed to `security/trusted-gameplay-migration` as `285bcd918cef9823ee9d26deab2b51276e0488a5`; deployed Supabase Preview `agent-rental-payments` v11 (ACTIVE). Vercel Preview for the same commit is READY.
+- Static verification confirms the create-intent guard remains present and the verify-payment launch guard is absent. Existing intents are still authenticated, scoped to the signed-in player, checked against the exact recipient/amount/reference/time window, and credited only through the idempotent service-role confirmation RPC.
+- The two old Preview intents remain pending and have not been marked paid, expired, cancelled, or credited by this repair. They must be reconciled against TON mainnet before any status change.
+- Ad status remains blocked on provider-issued placement IDs, credentials, and verified callback configuration. Fragment ad UI is still a publisher-review placeholder; AdsGram must remain optional and confined to Mystery Box, never Fragments or Missions. The Mystery Box AdsGram button is still disabled pending the verified integration.
+- TON Connect proof logic is present and the allowed Preview host pattern is configured, but a live wallet proof and actual withdrawal/payout test have not been performed.
+- The ZORD bot's administrator status in `@zordcommunity` is not confirmed. Telegram membership verification cannot be signed off until this is checked with the configured bot.
+- No real mainnet transfer, wallet payout, ad reward, player balance change, or Production change was performed.
