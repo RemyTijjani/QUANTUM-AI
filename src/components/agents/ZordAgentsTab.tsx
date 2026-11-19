@@ -76,6 +76,21 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
   const [walletError, setWalletError] = useState('');
   const [sendAttempted, setSendAttempted] = useState(false);
   const [transactionSubmitted, setTransactionSubmitted] = useState(false);
+  const [diagnosticBusy, setDiagnosticBusy] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<{
+    success: boolean;
+    diagnostics?: {
+      tonCenterKeyConfigured?: boolean;
+      treasuryAddressConfigured?: boolean;
+      treasuryAddressValid?: boolean;
+      tonCenterReachable?: boolean;
+      tonCenterAuthorized?: boolean;
+      tonCenterHttpStatus?: number;
+      tonCenterResponseValid?: boolean;
+      latencyMs?: number;
+    };
+    error?: string;
+  } | null>(null);
 
   // Hard safety lock: Preview must never initiate a real TON transfer.
   // Do not replace this with an environment flag; enabling payments requires
@@ -153,6 +168,29 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
     } catch (error) {
       setWalletReady(false);
       setWalletError(error instanceof Error ? error.message : 'Could not open the TON wallet selector.');
+    }
+  };
+
+  const runGramDiagnostic = async () => {
+    setDiagnosticBusy(true);
+    setDiagnosticResult(null);
+    setNotice('');
+    try {
+      const { data, error } = await supabase.functions.invoke('agent-rental-payments', {
+        body: { action: 'diagnostics' },
+      });
+      if (error) throw new Error(error.message || 'The diagnostic request failed.');
+      if (!data?.diagnostics) throw new Error(data?.error || 'The diagnostic returned an incomplete response.');
+      setDiagnosticResult(data);
+      setNotice(data.success
+        ? 'TON Center connection and treasury configuration passed the read-only check.'
+        : (data.error || 'The read-only connection check did not pass.'));
+      setNoticeKind(data.success ? 'success' : 'error');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not run the GRAM connection check.');
+      setNoticeKind('error');
+    } finally {
+      setDiagnosticBusy(false);
     }
   };
 
@@ -302,6 +340,47 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         <button type="button" className="btn-ghost min-h-9 w-full px-3 py-1.5 text-[10px] min-[380px]:w-auto" onClick={() => void connectWallet()}>
           {walletAddress ? 'Change wallet' : walletError ? 'Retry' : walletReady ? 'Connect' : 'Load wallet'}
         </button>
+      </div>
+
+      <div className="rounded-lg border border-cyan-300/20 bg-cyan-300/[0.035] p-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-display text-[10px] font-bold text-cyan-200">GRAM connection test</p>
+            <p className="mt-0.5 font-mono text-[8px] text-neon-600">Read-only · no payment or wallet approval</p>
+          </div>
+          <button
+            type="button"
+            className="btn-ghost min-h-9 px-3 py-1.5 text-[9px]"
+            disabled={diagnosticBusy}
+            onClick={() => void runGramDiagnostic()}
+          >
+            {diagnosticBusy ? <LoaderCircle size={12} className="animate-spin" /> : null}
+            {diagnosticBusy ? 'Testing…' : 'Test GRAM connection'}
+          </button>
+        </div>
+        {diagnosticResult?.diagnostics && (
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            {[
+              ['API key configured', diagnosticResult.diagnostics.tonCenterKeyConfigured],
+              ['Treasury configured', diagnosticResult.diagnostics.treasuryAddressConfigured],
+              ['Treasury address valid', diagnosticResult.diagnostics.treasuryAddressValid],
+              ['TON Center reachable', diagnosticResult.diagnostics.tonCenterReachable],
+              ['API key accepted', diagnosticResult.diagnostics.tonCenterAuthorized],
+              ['Transaction response valid', diagnosticResult.diagnostics.tonCenterResponseValid],
+            ].map(([label, passed]) => (
+              <div key={String(label)} className="flex min-w-0 items-center justify-between gap-1 rounded bg-black/25 px-2 py-1">
+                <span className="font-mono text-[8px] text-neon-500">{label}</span>
+                <span className={'shrink-0 font-mono text-[8px] ' + (passed ? 'text-green-300' : 'text-amber-300')}>{passed ? 'PASS' : 'CHECK'}</span>
+              </div>
+            ))}
+            {typeof diagnosticResult.diagnostics.tonCenterHttpStatus === 'number' && (
+              <p className="col-span-2 font-mono text-[8px] text-neon-600">
+                HTTP {diagnosticResult.diagnostics.tonCenterHttpStatus}
+                {typeof diagnosticResult.diagnostics.latencyMs === 'number' ? ` · ${diagnosticResult.diagnostics.latencyMs} ms` : ''}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">
