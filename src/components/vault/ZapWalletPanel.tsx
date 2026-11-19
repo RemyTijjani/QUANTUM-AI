@@ -14,10 +14,10 @@ import {
 
 export default function ZapWalletPanel({
   verifiedZpBalance,
-  onConversionComplete,
+  onWalletChanged,
 }: {
   verifiedZpBalance: number | null;
-  onConversionComplete: () => Promise<void> | void;
+  onWalletChanged: () => Promise<void> | void;
 }) {
   const [wallet, setWallet] = useState<ZapWallet | null>(null);
   const [amountZp, setAmountZp] = useState('1000');
@@ -113,13 +113,22 @@ export default function ZapWalletPanel({
     try {
       const result = await transferZap(identifier, transferAmount, key);
       setWallet(result.wallet);
-      setTransferSuccess(`Sent ${formatZp(result.transfer.amount)} ZAP to ${result.recipient.displayName}.`);
+      const confirmationMessage = `Sent ${formatZp(result.transfer.amount)} ZAP to ${result.recipient.displayName}.`;
+      setTransferSuccess(confirmationMessage);
       setRecipientIdentifier('');
       setTransferAmount('100');
       setConfirmingTransfer(false);
       setRecipientPreview(null);
       setTransferRequestKey(null);
       setTransferRequestSignature(null);
+
+      // The transfer is already committed by the server. Refresh Core rank and
+      // achievement progress without ever reporting a successful transfer as failed.
+      try {
+        await onWalletChanged();
+      } catch {
+        setTransferSuccess(`${confirmationMessage} Your wallet is updated, but Core progress could not refresh. Please refresh the page.`);
+      }
     } catch (sendError) {
       setTransferError(sendError instanceof Error ? sendError.message : 'The transfer could not be completed.');
       await loadWallet();
@@ -175,7 +184,7 @@ export default function ZapWalletPanel({
       // The conversion is already confirmed by the server. A dashboard refresh
       // failure must not be reported as a failed conversion.
       try {
-        await onConversionComplete();
+        await onWalletChanged();
       } catch {
         setSuccess(`${confirmationMessage} Your wallet is updated, but the dashboard could not refresh. Please refresh the page.`);
       }
