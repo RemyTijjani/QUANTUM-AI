@@ -13,7 +13,7 @@ import {
   type TonWalletData,
 } from '@/lib/economy/tonWallet';
 
-function rawTonAddress(value: string): string {
+export function rawTonAddress(value: string): string {
   const raw = value.match(/^(-?\d+):([0-9a-fA-F]{64})$/);
   if (raw) return `${Number(raw[1])}:${raw[2].toLowerCase()}`;
   try {
@@ -43,7 +43,7 @@ function formatStatus(status: string): string {
   return status.replace(/_/g, ' ');
 }
 
-export default function TonWalletConnection() {
+export default function TonWalletConnection({ onWalletStatusChange }: { onWalletStatusChange?: (connected: boolean) => void } = {}) {
   const [wallet, setWallet] = useState<TonConnectWallet | null>(null);
   const [walletData, setWalletData] = useState<TonWalletData | null>(null);
   const [ready, setReady] = useState(false);
@@ -226,6 +226,10 @@ export default function TonWalletConnection() {
 
   const isMainnet = wallet?.account.chain === '-239';
   const isVerified = walletData?.wallet?.verification_status === 'verified' && (!wallet || (wallet.account.chain === '-239' && rawTonAddress(wallet.account.address) === walletData.wallet.wallet_address));
+
+  useEffect(() => {
+    onWalletStatusChange?.(Boolean(wallet && isVerified));
+  }, [wallet, isVerified, onWalletStatusChange]);
   const availableNano = walletData?.balance.availableNano ?? '0';
   const availableTon = nanoTonToTon(availableNano);
   const hasEnough = (() => {
