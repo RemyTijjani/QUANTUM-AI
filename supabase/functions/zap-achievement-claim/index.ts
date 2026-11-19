@@ -32,7 +32,7 @@ function rawAddress(value: unknown): string {
 }
 
 function decodeComment(message: Record<string, unknown>): string {
-  if (typeof message.message === "string") return message.message;
+  if (typeof message.message === "string" && message.message.length > 0) return message.message;
   const rawBody = message.msg_data && typeof message.msg_data === "object"
     ? (message.msg_data as Record<string, unknown>).body
     : null;
@@ -80,10 +80,11 @@ async function findVerifiedPayment(intent: Record<string, unknown>) {
     throw new Error("The achievement payment request is invalid.");
   }
 
-  const url = new URL(TONCENTER_TRANSACTIONS_ENDPOINT);
-  url.searchParams.set("address", destination);
-  url.searchParams.set("limit", "100");
-  const response = await fetch(url, { headers: { "X-API-Key": TONCENTER_API_KEY } });
+  const response = await fetch(TONCENTER_TRANSACTIONS_ENDPOINT, {
+    method: "POST",
+    headers: { "X-API-Key": TONCENTER_API_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ address: destination, limit: 100 }),
+  });
   if (!response.ok) throw new Error("The Gram network verifier is temporarily unavailable.");
   const payload: unknown = await response.json();
   if (!payload || typeof payload !== "object" || (payload as Record<string, unknown>).ok !== true) {
