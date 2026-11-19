@@ -151,6 +151,77 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid request." }, 400);
     }
 
+    if (body.action === "diagnostics") {
+      // Authenticated, read-only connectivity check. This never creates intents or transfers funds.
+      let treasuryAddressValid = false;
+      try {
+        rawAddress(TREASURY_ADDRESS);
+        treasuryAddressValid = true;
+      } catch {
+        return json({
+          success: false,
+          diagnostics: {
+            tonCenterKeyConfigured: Boolean(TONCENTER_API_KEY),
+            treasuryAddressConfigured: Boolean(TREASURY_ADDRESS),
+            treasuryAddressValid: false,
+            tonCenterReachable: false,
+          },
+          error: "The configured treasury address is invalid.",
+        }, 200);
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      try {
+        const startedAt = Date.now();
+        const response = await fetch("https://toncenter.com/api/v2/getTransactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-API-Key": TONCENTER_API_KEY },
+          body: JSON.stringify({ address: TREASURY_ADDRESS, limit: 1 }),
+          signal: controller.signal,
+        });
+        const latencyMs = Date.now() - startedAt;
+        let payload: Record<string, unknown> | null = null;
+        try {
+          payload = await response.json();
+        } catch {
+          payload = null;
+        }
+        const apiAccepted = response.ok && payload?.ok === true && Array.isArray(payload.result);
+        return json({
+          success: apiAccepted,
+          diagnostics: {
+            tonCenterKeyConfigured: Boolean(TONCENTER_API_KEY),
+            treasuryAddressConfigured: Boolean(TREASURY_ADDRESS),
+            treasuryAddressValid,
+            tonCenterReachable: response.ok,
+            tonCenterAuthorized: response.status !== 401 && response.status !== 403,
+            tonCenterHttpStatus: response.status,
+            tonCenterResponseValid: apiAccepted,
+            latencyMs,
+          },
+          ...(apiAccepted ? {} : { error: response.status === 401 || response.status === 403
+            ? "TON Center rejected the API key."
+            : "TON Center did not return a valid transaction response." }),
+        }, 200);
+      } catch (error) {
+        const timedOut = error instanceof DOMException && error.name === "AbortError";
+        return json({
+          success: false,
+          diagnostics: {
+            tonCenterKeyConfigured: Boolean(TONCENTER_API_KEY),
+            treasuryAddressConfigured: Boolean(TREASURY_ADDRESS),
+            treasuryAddressValid,
+            tonCenterReachable: false,
+            tonCenterResponseValid: false,
+          },
+          error: timedOut ? "TON Center connectivity check timed out." : "Could not reach TON Center.",
+        }, 200);
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
     if (body.action === "create_intent") {
       if (!MAINNET_RENTAL_INTENTS_ENABLED) {
         return json({ error: "Mainnet agent rental payments are disabled until ZORD launch approval." }, 403);
