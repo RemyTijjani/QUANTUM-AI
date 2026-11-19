@@ -31,6 +31,9 @@ interface CoreTabProps {
   zapLoading: boolean;
   zapAchievements: ZapAchievements | null;
   zapAchievementsLoading: boolean;
+  gramWalletConnected: boolean;
+  onOpenVault: () => void;
+  onClaimAchievement: (level: number) => Promise<void>;
   pendingFragmentZp: number;
   nextFragmentReleaseAt: string | null;
   entityNumber: number | null;
@@ -55,6 +58,9 @@ export default function CoreTab({
   zapLoading,
   zapAchievements,
   zapAchievementsLoading,
+  gramWalletConnected,
+  onOpenVault,
+  onClaimAchievement,
   pendingFragmentZp,
   nextFragmentReleaseAt,
   entityNumber,
@@ -101,7 +107,7 @@ export default function CoreTab({
   const rankProgress = Math.max(0, Math.min(100, coreRank?.progressPercent ?? (tier ? tier.progress * 100 : 0)));
   const zapProgress = netZapProgress === null || netZapProgress === undefined
     ? 0
-    : Math.max(0, Math.min(100, ((netZapProgress % 100) + 100) % 100));
+    : Math.max(0, Math.min(100, ((netZapProgress % 500) + 500) % 500 / 5));
 
   const handleFragment = (id: FragmentId, status: FragmentStatus) => {
     if (status === 'locked') {
@@ -249,7 +255,7 @@ export default function CoreTab({
             <div className="rounded-lg border border-cyan-400/15 bg-black/30 p-3">
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-cyan-200">Next badge · Level {zapAchievements ? zapAchievements.currentLevel + 1 : 1}</span>
-                <span className="font-mono tabular-nums text-cyan-100">{zapAchievements ? formatZp(zapAchievements.nextLevelAt) : '100'} ZAP</span>
+                <span className="font-mono tabular-nums text-cyan-100">{zapAchievements ? formatZp(zapAchievements.nextLevelAt) : '500'} ZAP</span>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-cyan-950"><div className="h-full rounded-full bg-cyan-300 transition-all" style={{ width: String(zapProgress) + '%' }} /></div>
             </div>
@@ -260,24 +266,24 @@ export default function CoreTab({
                 {[...zapAchievements.achievements].sort((a, b) => b.level - a.level).slice(0, 6).map((achievement) => (
                   <details key={achievement.level} className="group rounded-lg border border-cyan-400/10 bg-black/25">
                     <summary className="flex cursor-pointer list-none items-center gap-3 p-2.5 [&::-webkit-details-marker]:hidden">
-                      <span className={"grid h-8 w-8 shrink-0 place-items-center rounded-full border " + (achievement.isMinted ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'border-emerald-300/40 bg-emerald-300/10 text-emerald-200' : 'border-slate-500/30 bg-slate-500/10 text-slate-400')}>
+                      <span className={"grid h-8 w-8 shrink-0 place-items-center rounded-full border " + ((achievement.isClaimed || achievement.isMinted) ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'border-emerald-300/40 bg-emerald-300/10 text-emerald-200' : 'border-slate-500/30 bg-slate-500/10 text-slate-400')}>
                         <Award size={15} />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-[10px] font-semibold text-cyan-100">Level {achievement.level} badge</span>
-                        <span className="block text-[9px] text-cyan-700">{achievement.isMinted ? 'Minted' : achievement.isUnlocked ? 'Unlocked' : 'Locked'}</span>
+                        <span className="block text-[9px] text-cyan-700">{(achievement.isClaimed || achievement.isMinted) ? 'Claimed · Permanent' : achievement.isUnlocked ? 'Unlocked · Unclaimed' : 'Locked'}</span>
                       </span>
                       <span className="text-xs text-cyan-400 transition-transform group-open:rotate-180">⌄</span>
                     </summary>
                     <div className="border-t border-cyan-400/10 px-3 py-2.5">
                       <p className="text-[9px] text-cyan-700">{formatZp(achievement.requiredNetZap)} net ZAP required</p>
-                      <span className={"mt-2 inline-flex rounded-full px-2 py-1 text-[8px] uppercase tracking-wide " + (achievement.isMinted ? 'bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'bg-emerald-300/10 text-emerald-200' : 'bg-slate-500/10 text-slate-400')}>{achievement.isMinted ? 'Minted' : achievement.isUnlocked ? 'Unlocked' : 'Locked'}</span>
+                      <span className={"mt-2 inline-flex rounded-full px-2 py-1 text-[8px] uppercase tracking-wide " + ((achievement.isClaimed || achievement.isMinted) ? 'bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'bg-emerald-300/10 text-emerald-200' : 'bg-slate-500/10 text-slate-400')}>{(achievement.isClaimed || achievement.isMinted) ? 'Claimed · Permanent' : achievement.isUnlocked ? 'Unlocked · Unclaimed' : 'Locked'}</span>
                     </div>
                   </details>
                 ))}
               </div>
             ) : (
-              <p className="rounded-lg border border-dashed border-cyan-400/15 px-3 py-4 text-center text-[10px] leading-relaxed text-cyan-700">First badge unlocks at 100 net ZAP.</p>
+              <p className="rounded-lg border border-dashed border-cyan-400/15 px-3 py-4 text-center text-[10px] leading-relaxed text-cyan-700">First badge unlocks at 500 net ZAP.</p>
             )}
           </div>
         </details>
