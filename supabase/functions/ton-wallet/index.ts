@@ -34,7 +34,7 @@ const TON_CONNECT_PREVIEW_ALIAS = "zord-autonomous-agent-git-security-fd8d9b-rem
 function isAllowedTonConnectDomain(domain: string): boolean {
   return domain === TON_CONNECT_DOMAIN ||
     domain === TON_CONNECT_PREVIEW_ALIAS ||
-    /^zord-autonomous-agent-[a-z0-9]+-remytijjanis-projects\\.vercel\\.app$/.test(domain);
+    /^zord-autonomous-agent-[a-z0-9]+-remytijjanis-projects\.vercel\.app$/.test(domain);
 }
 const TONCENTER_ENDPOINT = "https://toncenter.com/api/v2/jsonRPC";
 const TONCENTER_API_KEY = Deno.env.get("TONCENTER_API_KEY") ?? "";
