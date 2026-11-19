@@ -92,14 +92,27 @@ jobs:
         run: |
           set -euo pipefail
           state_file="src/lib/game/state.ts"
-          if grep -Eq 'milestone\\.reward|rewardZp|credit\\([^)]*milestone' "$state_file"; then
+          if grep -Eq 'milestone\.reward|rewardZp|credit\([^)]*milestone' "$state_file"; then
             echo "::error::Legacy local reducer still contains a referral milestone reward path."
             exit 1
           fi
           grep -Fq "case 'claimMilestone':" "$state_file"
           grep -Fq 'return s;' "$state_file"
-          placements="$(grep -Ril --include='*.tsx' --include='*.ts' 'AdsGram' src || true)"
-          unexpected="$(printf '%s\\n' "$placements" | grep -v '^src/components/missions/MysteryBoxPanel.tsx
+          if grep -Ril --include='*.tsx' --include='*.ts' 'AdsGram' src | grep -vFx 'src/components/missions/MysteryBoxPanel.tsx'; then
+            echo "::error::AdsGram references found outside the Mystery Box UI."
+            exit 1
+          fi
+          grep -Fq 'Watch Ad · coming soon' src/components/missions/MysteryBoxPanel.tsx
+          grep -Fq 'Open for 500 ZP' src/components/missions/MysteryBoxPanel.tsx
+          grep -Fq "if p_method = 'ad' then" supabase/migrations/20261114192246_repeatable_mystery_box_openings.sql
+          grep -Fq "'adsgram_not_configured'" supabase/migrations/20261114192246_repeatable_mystery_box_openings.sql
+          echo "PASS: referral milestones cannot mint client-side ZP; AdsGram is only referenced in Mystery Box UI, the ad path fails closed, and the 500 ZP alternative is available."
+
+      - name: Assert Preview economy settlement is authenticated and server-owned
+        shell: bash
+        run: |
+          set -euo pipefail
+          settlement_file="supabase/functions/economy-settlement/index.ts"
           grep -Fq 'if (req.method !== "POST")' "$settlement_file"
           grep -Fq 'authClient.auth.getUser' "$settlement_file"
           grep -Fq 'body.action !== "settle"' "$settlement_file"
@@ -108,8 +121,7 @@ jobs:
             echo "::error::Economy settlement accepts caller-supplied player identity or reward amounts."
             exit 1
           fi
-          echo "PASS: economy-settlement is authenticated, POST-only, resolves player identity from the verified session, and delegates to trusted RPCs."
-
+          echo "PASS: economy-settlement is authenticated, POST-only, derives player identity from the verified session, and delegates to trusted RPCs."
 
   preview-forged-gameplay-award:
     name: Reject forged ordinary gameplay ZP award (Preview)
