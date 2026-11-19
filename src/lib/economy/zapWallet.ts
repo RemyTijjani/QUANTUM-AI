@@ -64,6 +64,7 @@ export interface ZapAchievementClaimIntent {
   destinationWallet: string;
   memo: string;
   expiresAt: string;
+  reused: boolean;
 }
 
 export interface ZapAchievements {
@@ -284,7 +285,7 @@ export async function createZapAchievementClaimIntent(level: number): Promise<Za
   const intent = result.intent;
   if (!result.success || !intent || typeof intent.intentId !== 'string' ||
       typeof intent.destinationWallet !== 'string' || typeof intent.memo !== 'string' ||
-      intent.amountNano !== '100000000') {
+      intent.amountNano !== '100000000' || typeof intent.reused !== 'boolean') {
     throw new Error('The achievement claim service returned an invalid payment request.');
   }
   return intent;
