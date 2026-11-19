@@ -91,6 +91,42 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
     };
     error?: string;
   } | null>(null);
+ 
+  const restorePendingIntent = async () => {
+    const { data, error } = await supabase.functions.invoke('agent-rental-payments', {
+      body: { action: 'list_pending_intents' },
+    });
+    if (error || !data?.success) {
+      throw new Error(data?.error || error?.message || 'Could not restore an existing payment request.');
+    }
+    const intents = Array.isArray(data.intents) ? data.intents : [];
+    setIntent(intents.length > 0 ? intents[0] as PaymentIntent : null);
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    void supabase.functions.invoke('agent-rental-payments', {
+      body: { action: 'list_pending_intents' },
+    }).then(({ data, error }) => {
+      if (!mounted) return;
+      if (error || !data?.success) {
+        setNotice(data?.error || error?.message || 'Existing payment requests could not be restored.');
+        setNoticeKind('error');
+        return;
+      }
+      const intents = Array.isArray(data.intents) ? data.intents : [];
+      if (intents.length > 0) {
+        setIntent(intents[0] as PaymentIntent);
+        setNotice('An existing rental payment request was restored. You can verify it against TON mainnet; sending a new payment remains disabled.');
+        setNoticeKind('info');
+      }
+    }).catch((error) => {
+      if (!mounted) return;
+      setNotice(error instanceof Error ? error.message : 'Existing payment requests could not be restored.');
+      setNoticeKind('error');
+    });
+    return () => { mounted = false; };
+  }, []);
 
   // Hard safety lock: Preview must never initiate a real TON transfer.
   // Do not replace this with an environment flag; enabling payments requires
@@ -226,11 +262,6 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
 
   const verifyIntent = async () => {
     if (!intent) return;
-    if (!rentalBackendActionsEnabled) {
-      setNotice('Payment verification is disabled during Preview safety testing because it can update rental records.');
-      setNoticeKind('info');
-      return;
-    }
     setBusy('verify');
     setNotice('');
     try {
@@ -246,6 +277,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         setNotice(data.alreadyPaid ? 'This rental payment was already confirmed.' : 'Payment confirmed and rental recorded.');
         setNoticeKind('success');
         await onRefreshVerifiedEconomy();
+        await restorePendingIntent();
       } else {
         throw new Error(data?.error || 'The payment has not been confirmed.');
       }
@@ -452,7 +484,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         <div className="space-y-2 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.04] p-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="font-display text-[10px] font-bold uppercase text-cyan-300">Checkout details</p>
-            <span className="font-mono text-[8px] uppercase text-amber-300">{transactionSubmitted ? 'Submitted · verifying' : 'Awaiting wallet'}</span>
+            <span className="font-mono text-[8px] uppercase text-amber-300">{transactionSubmitted ? 'Submitted · verifying' : 'Existing request · verify only'}</span>
           </div>
           <p className="font-display text-lg text-cyan-200">{(Number(intent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} GRAM</p>
           <p className="break-all font-mono text-[9px] text-neon-500">Reference: {intent.paymentReference}</p>
@@ -461,9 +493,10 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
             {paymentsEnabled ? 'Approve in wallet' : 'GRAM transfer locked in Preview'}
           </button>
           {sendAttempted && !transactionSubmitted && <p className="font-mono text-[9px] text-amber-300">Check wallet activity before retrying.</p>}
-          <button type="button" className="btn-ghost min-h-9 w-full text-[10px]" disabled={!rentalBackendActionsEnabled || busy !== null} onClick={() => void verifyIntent()}>
-            {rentalBackendActionsEnabled ? 'Verify payment' : 'Verification locked in Preview'}
+          <button type="button" className="btn-ghost min-h-9 w-full text-[10px]" disabled={busy !== null} onClick={() => void verifyIntent()}>
+            {busy === 'verify' ? <LoaderCircle size={13} className="animate-spin" /> : 'Check existing payment'}
           </button>
+          <p className="font-mono text-[8px] leading-relaxed text-neon-700">This checks only the existing payment reference on TON mainnet. No new transfer can be started from Preview.</p>
           {activeUntil && <p className="font-mono text-[9px] text-green-300">Active until {new Date(activeUntil).toLocaleString()}</p>}
         </div>
       )}
