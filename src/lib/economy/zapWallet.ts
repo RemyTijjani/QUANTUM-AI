@@ -39,6 +39,9 @@ export interface ZapAchievement {
   requiredNetZap: number;
   isUnlocked: boolean;
   isMinted: boolean;
+  isClaimed: boolean;
+  claimedAt?: string | null;
+  claimTransactionHash?: string | null;
   unlockedAt: string | null;
   mintedAt: string | null;
   nftCollectionAddress: string | null;
@@ -51,6 +54,16 @@ export interface ZapCoreRank {
   currentThreshold: number;
   nextThreshold: number;
   progressPercent: number;
+}
+
+export interface ZapAchievementClaimIntent {
+  intentId: string;
+  level: number;
+  amountNano: string;
+  senderWallet: string;
+  destinationWallet: string;
+  memo: string;
+  expiresAt: string;
 }
 
 export interface ZapAchievements {
@@ -260,4 +273,35 @@ export async function transferZap(
     recipient: result.recipient,
     wallet,
   };
+}
+
+export async function createZapAchievementClaimIntent(level: number): Promise<ZapAchievementClaimIntent> {
+  const result = await request<{
+    success: boolean;
+    intent: ZapAchievementClaimIntent;
+  }>('POST', { action: 'create', level: String(level) });
+
+  const intent = result.intent;
+  if (!result.success || !intent || typeof intent.intentId !== 'string' ||
+      typeof intent.destinationWallet !== 'string' || typeof intent.memo !== 'string' ||
+      intent.amountNano !== '100000000') {
+    throw new Error('The achievement claim service returned an invalid payment request.');
+  }
+  return intent;
+}
+
+export async function verifyZapAchievementClaim(intentId: string): Promise<{ claimed: boolean; pending: boolean; level?: number }> {
+  const result = await request<{
+    success: boolean;
+    claimed?: boolean;
+    pending?: boolean;
+    level?: number;
+    error?: string;
+  }>('POST', { action: 'verify', intentId });
+
+  if (result.pending) return { claimed: false, pending: true };
+  if (!result.success || !result.claimed) {
+    throw new Error(result.error || 'The Gram payment could not be verified.');
+  }
+  return { claimed: true, pending: false, level: result.level };
 }
