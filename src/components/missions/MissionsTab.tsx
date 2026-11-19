@@ -411,21 +411,22 @@ function CreatorOpsCard({
 
     setSubmitting(true);
 
-    const { data, error } = await supabase
-      .rpc('submit_creator_ops_submission', {
-        p_mission_id: mission.id,
-        p_link_url: trimmed,
-      })
-      .single();
+    const { data, error } = await supabase.functions.invoke('mission-actions', {
+      body: {
+        action: 'submit_creator_ops_submission',
+        missionId: mission.id,
+        linkUrl: trimmed,
+      },
+    });
 
     setSubmitting(false);
 
-    if (error || !data) {
-      notify(error?.message || 'Submission failed. Try again.', 'error');
+    if (error || !data?.success || !data?.submission) {
+      notify(data?.error || error?.message || 'Submission failed. Try again.', 'error');
       return;
     }
 
-    setSubmission(data as CreatorOpsSubmission);
+    setSubmission(data.submission as CreatorOpsSubmission);
     setLink('');
     await onStatusChanged();
     notify('Link submitted for admin review. ZP credited on approval.');
@@ -562,8 +563,10 @@ function XFollowSubmissionCard({ notify, onStatusChanged }: { notify: Notify; on
     if (!account.trim() || submitting) return;
     setSubmitting(true);
     try {
-      const { data, error } = await supabase.rpc('submit_x_follow_submission', { p_x_account: account.trim() });
-      if (error || !data || data.success !== true) { notify(error?.message || data?.error || 'Could not submit your X account. Try again.', 'error'); return; }
+      const { data, error } = await supabase.functions.invoke('mission-actions', {
+        body: { action: 'submit_x_follow_submission', xAccount: account.trim() },
+      });
+      if (error || !data || data.success !== true) { notify(data?.error || error?.message || 'Could not submit your X account. Try again.', 'error'); return; }
       setStatus('pending'); setSubmittedAccount(String(data.xUsername || account.trim()).replace(/^@/, '')); setAccount('');
       await onStatusChanged?.();
       notify('Your X account was submitted. An Admin will check the follow and review it.');
