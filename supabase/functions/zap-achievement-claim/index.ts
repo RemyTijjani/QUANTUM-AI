@@ -118,7 +118,7 @@ async function findVerifiedPayment(intent: Record<string, unknown>) {
       typeof txId === "string" && txId.length > 10 &&
       Number.isFinite(txTime) && txTime >= createdAt - 60_000 && txTime <= expiresAt
     ) {
-      return { transactionHash: txId, senderWallet: sender, destinationWallet: destination, amountNano: amount, memo };
+      return { transactionHash: txId, senderWallet: sender, destinationWallet: String(intent.destinationWallet), amountNano: amount, memo };
     }
   }
   return null;
