@@ -13,6 +13,9 @@ on:
       - "supabase/functions/economy-settlement/index.ts"
       - "supabase/functions/agent-rental-payments/index.ts"
       - "src/components/agents/ZordAgentsTab.tsx"
+      - "src/components/missions/MissionsTab.tsx"
+      - "supabase/functions/mission-actions/index.ts"
+      - "supabase/migrations/20261119064818_route_player_submission_rpcs_through_mission_actions.sql"
   workflow_dispatch:
 
 permissions:
@@ -122,6 +125,23 @@ jobs:
             exit 1
           fi
           echo "PASS: economy-settlement is authenticated, POST-only, derives player identity from the verified session, and delegates to trusted RPCs."
+
+      - name: Assert player submissions use the authenticated server boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          ui_file="src/components/missions/MissionsTab.tsx"
+          api_file="supabase/functions/mission-actions/index.ts"
+          grep -Fq "functions.invoke('mission-actions'" "$ui_file"
+          if grep -Eiq "\.rpc\(['\"]submit_(creator_ops|x_follow)_submission" "$ui_file"; then
+            echo "::error::Player submission UI still calls a SECURITY DEFINER RPC directly."
+            exit 1
+          fi
+          grep -Fq 'body.action === "submit_creator_ops_submission"' "$api_file"
+          grep -Fq 'body.action === "submit_x_follow_submission"' "$api_file"
+          grep -Fq 'authClient.auth.getUser' "$api_file"
+          grep -Fq 'p_player_id: player.id' "$api_file"
+          echo "PASS: Creator Ops and X Follow writes go through a JWT-verified Edge Function and server-derived player identity."
 
   preview-forged-gameplay-award:
     name: Reject forged ordinary gameplay ZP award (Preview)
