@@ -173,11 +173,70 @@ export interface AdminEconomyLedgerEntry {
   created_at: string | null;
 }
 
+export interface AdminZapWalletDetail {
+  balance: string;
+  lifetimeEarned: string;
+  lifetimeSpent: string;
+  updatedAt: string | null;
+  transactions: Array<{
+    id: string;
+    entryType: string;
+    amount: string;
+    balanceAfter: string;
+    source: string;
+    description: string | null;
+    createdAt: string;
+  }>;
+}
+
 export interface AdminPlayerEconomyDetail {
   economy: AdminPlayerEconomy | null;
   ledger: AdminEconomyLedgerEntry[];
   ledgerLimit: number;
-  zapBalanceAvailable: false;
+  zapBalanceAvailable: true;
+  zapWallet: AdminZapWalletDetail;
+}
+
+export interface AdminZapCirculationSummary {
+  totalHeld: string;
+  lifetimeEarned: string;
+  lifetimeSpent: string;
+  playersHolding: number;
+  totalPlayers: number;
+  transferCount: number;
+  transferredAmount: string;
+}
+
+export interface AdminZapCirculationPlayer {
+  player_id: string;
+  username: string | null;
+  first_name: string | null;
+  referral_code: string | null;
+  balance: string;
+  lifetime_earned: string;
+  lifetime_spent: string;
+  last_activity: string | null;
+}
+
+export interface AdminZapCirculationLedgerEntry {
+  id: string;
+  player_id: string;
+  player_name: string;
+  entry_type: string;
+  amount: string;
+  balance_after: string;
+  source: string;
+  source_reference: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface AdminZapCirculationData {
+  summary: AdminZapCirculationSummary;
+  playerCount: number;
+  players: AdminZapCirculationPlayer[];
+  ledgerCount: number;
+  ledger: AdminZapCirculationLedgerEntry[];
 }
 
 export interface AdminPlayer {
@@ -440,12 +499,38 @@ export async function getPlayerEconomy(
   if (
     !Array.isArray(result.ledger) ||
     result.ledgerLimit !== 50 ||
-    result.zapBalanceAvailable !== false ||
+    result.zapBalanceAvailable !== true ||
+    !result.zapWallet || typeof result.zapWallet !== 'object' ||
+    !Array.isArray(result.zapWallet.transactions) ||
     (result.economy !== null && typeof result.economy !== 'object')
   ) {
     throw new AdminApiError('Received an unexpected player economy response.');
   }
   return result as AdminPlayerEconomyDetail;
+}
+
+export async function getZapCirculation(
+  creds: AdminCredentials,
+  input: { search?: string; playerOffset?: number; ledgerOffset?: number } = {},
+): Promise<AdminZapCirculationData> {
+  const body = await callAdminApi(creds, {
+    action: 'get_zap_circulation',
+    search: input.search ?? '',
+    playerOffset: input.playerOffset ?? 0,
+    playerLimit: 50,
+    ledgerOffset: input.ledgerOffset ?? 0,
+    ledgerLimit: 100,
+  });
+  if (!body || typeof body !== 'object') {
+    throw new AdminApiError('Received an unexpected ZAP circulation response.');
+  }
+  const result = body as Partial<AdminZapCirculationData>;
+  if (!result.summary || typeof result.summary !== 'object' ||
+      !Array.isArray(result.players) || !Array.isArray(result.ledger) ||
+      typeof result.playerCount !== 'number' || typeof result.ledgerCount !== 'number') {
+    throw new AdminApiError('Received an incomplete ZAP circulation report.');
+  }
+  return result as AdminZapCirculationData;
 }
 
 export async function listPlayers(
