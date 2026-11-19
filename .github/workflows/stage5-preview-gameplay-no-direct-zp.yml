@@ -202,4 +202,26 @@ jobs:
           rm -f "$response_file"
           echo "PASS: unauthenticated economy settlement was rejected."
 
+
+      - name: Reject unauthenticated agent rental payment actions
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://lchkctclxzwwvfwosava.supabase.co/functions/v1/agent-rental-payments"
+          for body in \
+            '{"action":"list_pending_intents"}' \
+            '{"action":"verify_payment","intentId":"473be3a7-0049-4136-90a6-54ce341c97e1"}' \
+            '{"action":"create_intent","agentType":"alpha_miner"}'; do
+            response_file="$(mktemp)"
+            status="$(curl --silent --show-error --output "$response_file" --write-out "%{http_code}" --request POST "$endpoint" --header "Content-Type: application/json" --data "$body")"
+            if [ "$status" != "401" ]; then
+              echo "::error::Expected HTTP 401 for unauthenticated agent-rental-payments request; received $status"
+              cat "$response_file"
+              rm -f "$response_file"
+              exit 1
+            fi
+            rm -f "$response_file"
+          done
+          echo "PASS: listing, verifying, and creating agent-rental payment intents all require a verified player session."
+
 # Stage 5 Preview validation rerun: 2026-11-19
