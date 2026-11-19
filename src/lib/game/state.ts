@@ -481,28 +481,10 @@ export function gameReducer(
       );
 
     case 'claimMilestone': {
-      const milestone = MILESTONES.find(
-        (m) => m.threshold === action.threshold
-      );
-
-      if (
-        !milestone ||
-        s.claimedMilestones.includes(milestone.threshold) ||
-        s.subNodes.length < milestone.threshold
-      ) {
-        return s;
-      }
-
-      return credit(
-        {
-          ...s,
-          claimedMilestones: [
-            ...s.claimedMilestones,
-            milestone.threshold,
-          ],
-        },
-        milestone.reward
-      );
+      // Referral milestones now award server-owned ZAP, not local ZP.
+      // This legacy client reducer must never mint or simulate that reward.
+      // The authenticated referral milestone flow owns eligibility and payout.
+      return s;
     }
 
     case 'recruitSubNode': {
