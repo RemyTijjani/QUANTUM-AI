@@ -24,7 +24,7 @@ export default function VaultTab({
 
       <ZapWalletPanel
         verifiedZpBalance={verifiedZpBalance}
-        onConversionComplete={onRefreshVerifiedEconomy}
+        onWalletChanged={onRefreshVerifiedEconomy}
       />
 
       <section className="panel min-w-0 space-y-3 p-4">
