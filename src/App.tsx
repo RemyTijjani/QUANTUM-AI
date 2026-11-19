@@ -261,14 +261,20 @@ function GameApp({
 
   const handleClaimAchievement = useCallback(async (level: number) => {
     try {
-      const intent = await createZapAchievementClaimIntent(level);
       const ui = await loadTonConnectUI();
       const wallet = ui.wallet;
-      if (!wallet || wallet.account.chain !== '-239' ||
-          rawTonAddress(wallet.account.address) !== intent.senderWallet) {
+      if (!wallet || wallet.account.chain !== '-239') {
         setGramWalletConnected(false);
         setTab('vault');
-        notify('Connect and verify the same Gram wallet in Vault before paying for this achievement.', 'info');
+        notify('Connect and verify your Gram wallet in Vault before paying for this achievement.', 'info');
+        return;
+      }
+
+      const intent = await createZapAchievementClaimIntent(level);
+      if (rawTonAddress(wallet.account.address) !== intent.senderWallet) {
+        setGramWalletConnected(false);
+        setTab('vault');
+        notify('Reconnect the Gram wallet that was verified for this claim, then try again.', 'info');
         return;
       }
 
