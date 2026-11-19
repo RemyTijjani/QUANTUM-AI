@@ -31,7 +31,7 @@ export default function VaultTab({
         <div className="flex items-center gap-2">
           <ArrowDownLeft size={16} className="text-neon-400" />
           <div>
-            <h2 className="title">TON wallet</h2>
+            <h2 className="title">Gram wallet</h2>
           </div>
         </div>
         <TonWalletConnection onWalletStatusChange={onWalletStatusChange} />
