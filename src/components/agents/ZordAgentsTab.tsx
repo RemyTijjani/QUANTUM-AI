@@ -276,12 +276,26 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         setActiveUntil(typeof data.expiresAt === 'string' ? data.expiresAt : null);
         setNotice(data.alreadyPaid ? 'This rental payment was already confirmed.' : 'Payment confirmed and rental recorded.');
         setNoticeKind('success');
-        await onRefreshVerifiedEconomy();
-        await restorePendingIntent();
+        try {
+          await onRefreshVerifiedEconomy();
+        } catch {
+          setNotice('Payment confirmed and rental recorded. Your balance display could not refresh yet; reopen the Agents tab shortly.');
+          setNoticeKind('info');
+        }
+        try {
+          await restorePendingIntent();
+        } catch {
+          // The confirmed payment remains recorded even if the pending-list refresh fails.
+        }
       } else {
         throw new Error(data?.error || 'The payment has not been confirmed.');
       }
     } catch (error) {
+      try {
+        await restorePendingIntent();
+      } catch {
+        // Preserve the original verification error.
+      }
       setNotice(error instanceof Error ? error.message : 'Payment verification failed.');
       setNoticeKind('error');
     } finally {
