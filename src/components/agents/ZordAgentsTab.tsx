@@ -63,6 +63,7 @@ const RENTAL_OPTIONS: {
 
 function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEconomy: () => Promise<void> | void }) {
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
+  const [pendingIntents, setPendingIntents] = useState<PaymentIntent[]>([]);
   const [busy, setBusy] = useState<'alpha_miner' | 'overclocked_core' | 'send' | 'verify' | null>(null);
   const [notice, setNotice] = useState('');
   const [noticeKind, setNoticeKind] = useState<'info' | 'success' | 'error'>('info');
@@ -99,8 +100,9 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
     if (error || !data?.success) {
       throw new Error(data?.error || error?.message || 'Could not restore an existing payment request.');
     }
-    const intents = Array.isArray(data.intents) ? data.intents : [];
-    setIntent(intents.length > 0 ? intents[0] as PaymentIntent : null);
+    const intents = Array.isArray(data.intents) ? data.intents as PaymentIntent[] : [];
+    setPendingIntents(intents);
+    setIntent(intents[0] ?? null);
   };
 
   useEffect(() => {
@@ -114,9 +116,10 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         setNoticeKind('error');
         return;
       }
-      const intents = Array.isArray(data.intents) ? data.intents : [];
+      const intents = Array.isArray(data.intents) ? data.intents as PaymentIntent[] : [];
+      setPendingIntents(intents);
       if (intents.length > 0) {
-        setIntent(intents[0] as PaymentIntent);
+        setIntent(intents[0]);
         setNotice('An existing rental payment request was restored. You can verify it against TON mainnet; sending a new payment remains disabled.');
         setNoticeKind('info');
       }
@@ -260,13 +263,13 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
     }
   };
 
-  const verifyIntent = async () => {
-    if (!intent) return;
+  const verifyIntent = async (targetIntent: PaymentIntent | null = intent) => {
+    if (!targetIntent) return;
     setBusy('verify');
     setNotice('');
     try {
       const { data, error } = await supabase.functions.invoke('agent-rental-payments', {
-        body: { action: 'verify_payment', intentId: intent.id },
+        body: { action: 'verify_payment', intentId: targetIntent.id },
       });
       if (error) throw new Error(error.message || 'Payment verification could not be completed.');
       if (data?.pending) {
@@ -494,25 +497,26 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         )}
       </div>
 
-      {intent && (
-        <div className="space-y-2 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.04] p-2.5">
+      {pendingIntents.map((pendingIntent) => (
+        <div key={pendingIntent.id} className="space-y-2 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.04] p-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-display text-[10px] font-bold uppercase text-cyan-300">Checkout details</p>
-            <span className="font-mono text-[8px] uppercase text-amber-300">{transactionSubmitted ? 'Submitted · verifying' : 'Existing request · verify only'}</span>
+            <p className="font-display text-[10px] font-bold uppercase text-cyan-300">Existing checkout · {pendingIntent.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</p>
+            <span className="font-mono text-[8px] uppercase text-amber-300">Reconciliation only</span>
           </div>
-          <p className="font-display text-lg text-cyan-200">{(Number(intent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} GRAM</p>
-          <p className="break-all font-mono text-[9px] text-neon-500">Reference: {intent.paymentReference}</p>
-          <p className="font-mono text-[8px] text-neon-600">Expires {new Date(intent.expiresAt).toLocaleString()}</p>
-          <button type="button" className="btn-cyan min-h-9 w-full text-[10px]" disabled={!paymentsEnabled || !walletAddress || !isMainnetWallet || busy !== null || sendAttempted} onClick={() => void sendPayment()}>
-            {paymentsEnabled ? 'Approve in wallet' : 'GRAM transfer locked in Preview'}
+          <p className="font-display text-lg text-cyan-200">{(Number(pendingIntent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} GRAM</p>
+          <p className="break-all font-mono text-[9px] text-neon-500">Reference: {pendingIntent.paymentReference}</p>
+          <p className="font-mono text-[8px] text-neon-600">Payment window ended {new Date(pendingIntent.expiresAt).toLocaleString()}</p>
+          <button type="button" className="btn-ghost min-h-9 w-full text-[10px]" disabled={busy !== null} onClick={() => void verifyIntent(pendingIntent)}>
+            {busy === 'verify' ? <LoaderCircle size={13} className="animate-spin" /> : 'Check this existing payment'}
           </button>
-          {sendAttempted && !transactionSubmitted && <p className="font-mono text-[9px] text-amber-300">Check wallet activity before retrying.</p>}
-          <button type="button" className="btn-ghost min-h-9 w-full text-[10px]" disabled={busy !== null} onClick={() => void verifyIntent()}>
-            {busy === 'verify' ? <LoaderCircle size={13} className="animate-spin" /> : 'Check existing payment'}
-          </button>
-          <p className="font-mono text-[8px] leading-relaxed text-neon-700">This checks only the existing payment reference on TON mainnet. No new transfer can be started from Preview.</p>
-          {activeUntil && <p className="font-mono text-[9px] text-green-300">Active until {new Date(activeUntil).toLocaleString()}</p>}
+          <p className="font-mono text-[8px] leading-relaxed text-neon-700">Checks only this payment reference on TON mainnet. Preview cannot initiate another transfer.</p>
         </div>
+      ))}
+
+      {activeUntil && (
+        <p className="rounded-lg border border-green-300/20 bg-green-300/5 p-2 font-mono text-[9px] text-green-300">
+          Rental confirmed until {new Date(activeUntil).toLocaleString()}
+        </p>
       )}
 
       {notice && <p role="status" className={'font-mono text-[9px] leading-relaxed ' + (noticeKind === 'error' ? 'text-red-300' : noticeKind === 'success' ? 'text-green-300' : 'text-amber-300')}>{notice}</p>}
