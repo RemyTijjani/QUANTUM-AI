@@ -272,3 +272,11 @@ The roadmap is sequential: do not mark a later stage complete because its UI exi
 - Preview still contains two pending intents for the same player and neither has a transaction hash. Both are now individually recoverable in that player's Agents tab. They remain unchanged until the player checks each one against the TON mainnet ledger.
 - New mainnet rental intent creation and all new payment transfers remain disabled. No player balance, rental, intent status, or Production resource was changed.
 - Stage 8 remains in progress: provider-issued ad IDs/callback credentials, verified ad callback integration, live TON wallet proof, pending-intent mainnet reconciliation, and safe withdrawal/payout acceptance tests are still outstanding.
+
+
+### Stage 8 validation follow-up — 2026-11-19
+- Preview frontend checks passed at UI commit `383d462da13f86de3f5fdd846e08e72a9bcba87b`: TypeScript type-check, ESLint, and Vite build all succeeded.
+- Updated Stage 5 security regression workflow to reflect the intended split: new rental checkout creation remains disabled, while existing payment reconciliation is allowed only for an authenticated player. The workflow also tests that unauthenticated list, verify, and create requests all receive HTTP 401.
+- The updated Preview security workflow passed at commit `1f6da0de2708d2bd93c1bdfd2161285f40056d31` (run 44611175952).
+- Latest Vercel Preview is READY at commit `1f6da0de2708d2bd93c1bdfd2161285f40056d31`. Supabase Preview `agent-rental-payments` v12 remains ACTIVE.
+- These checks verify source/build and unauthenticated access boundaries. They do not prove a real TON wallet signature, payment receipt, withdrawal, or ad callback. Stage 8 remains in progress until those external acceptance tests and provider configurations are completed.
