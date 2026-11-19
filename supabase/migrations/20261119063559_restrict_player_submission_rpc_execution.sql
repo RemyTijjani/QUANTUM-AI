@@ -1,8 +1,10 @@
--- Stage 5: keep player-submission RPCs behind the authenticated mission-actions Edge Function.
--- The Edge Function validates the caller with auth.getUser(), derives the player
--- identity from that verified session, and invokes these RPCs using service_role.
--- Direct authenticated execution would bypass that server-side validation path.
--- Preserve SECURITY DEFINER and the pinned search_path; restrict EXECUTE to service_role.
+-- Historical Stage 5 grant-tightening attempt.
+-- Follow-up inspection confirmed these SECURITY DEFINER RPCs intentionally use
+-- auth.uid(), validate the caller's player identity, and are the authenticated
+-- client submission path. The immediately following migration
+-- 20261119063636_restore_guarded_player_submission_rpc_access.sql restores
+-- authenticated EXECUTE while keeping PUBLIC and anon revoked.
+-- Keep this migration in history; do not replay it independently.
 
 REVOKE ALL PRIVILEGES
   ON FUNCTION public.submit_creator_ops_submission(text, text)
