@@ -206,13 +206,19 @@ Deno.serve(async (req: Request) => {
         const alreadyJoined = participationById.get(item.id) ?? null;
         const prerequisiteMet = item.access_mode === "open" ||
           (!!item.prerequisite_expedition_id && completedPrerequisites.has(item.prerequisite_expedition_id));
-        const notStarted = !!item.starts_at && new Date(item.starts_at).getTime() > now;
+        const notStarted = !item.starts_at || new Date(item.starts_at).getTime() > now;
         const ended = !!item.ends_at && new Date(item.ends_at).getTime() <= now;
         const registrationNotOpen = !!item.registration_opens_at && new Date(item.registration_opens_at).getTime() > now;
         const registrationClosed = !!item.registration_closes_at && new Date(item.registration_closes_at).getTime() <= now;
+        const registrationOpen = (item.status === "registration_open" || item.status === "scheduled") &&
+          !registrationNotOpen && !registrationClosed && notStarted && !ended;
         const myTeam = alreadyJoined?.teamId ? teamsById.get(alreadyJoined.teamId) ?? null : null;
         return {
           ...item,
+          // A scheduled Expedition may accept registrations before its start time.
+          // Expose the effective registration state so the player UI matches the
+          // server-side join checks and does not hide an open registration window.
+          status: item.status === "scheduled" && registrationOpen ? "registration_open" : item.status,
           objectives: (objectivesById.get(item.id) ?? []).map((objective) => ({
             ...objective,
             progress: progressByObjective.get(item.id + ":" + String(objective.id)) ?? { individual: null, team: null },
@@ -222,8 +228,7 @@ Deno.serve(async (req: Request) => {
           myRewardIssuance: rewardIssuanceByExpedition.get(item.id) ?? null,
           isUnlocked: prerequisiteMet,
           lockedReason: prerequisiteMet ? null : "Complete the prerequisite Expedition first.",
-          canJoinSolo: prerequisiteMet && !alreadyJoined && !registrationNotOpen && !registrationClosed && !notStarted && !ended &&
-            (item.status === "registration_open" || item.status === "scheduled") &&
+          canJoinSolo: prerequisiteMet && !alreadyJoined && registrationOpen &&
             (item.participation_mode === "solo" || item.participation_mode === "both"),
           registrationOpensAt: item.registration_opens_at ?? item.starts_at,
           registrationClosesAt: item.registration_closes_at ?? item.starts_at,
