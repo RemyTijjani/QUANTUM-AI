@@ -278,6 +278,17 @@ export default function CoreTab({
                     <div className="border-t border-cyan-400/10 px-3 py-2.5">
                       <p className="text-[9px] text-cyan-700">{formatZp(achievement.requiredNetZap)} net ZAP required</p>
                       <span className={"mt-2 inline-flex rounded-full px-2 py-1 text-[8px] uppercase tracking-wide " + ((achievement.isClaimed || achievement.isMinted) ? 'bg-amber-300/10 text-amber-200' : achievement.isUnlocked ? 'bg-emerald-300/10 text-emerald-200' : 'bg-slate-500/10 text-slate-400')}>{(achievement.isClaimed || achievement.isMinted) ? 'Claimed · Permanent' : achievement.isUnlocked ? 'Unlocked · Unclaimed' : 'Locked'}</span>
+                      {achievement.isClaimed || achievement.isMinted ? (
+                        <p className="mt-2 rounded-lg border border-amber-300/20 bg-amber-300/5 px-2.5 py-2 text-[9px] text-amber-200">Permanently stored in your collection.</p>
+                      ) : achievement.isUnlocked ? (
+                        <button
+                          type="button"
+                          className="btn-primary mt-2 w-full"
+                          onClick={() => gramWalletConnected ? void onClaimAchievement(achievement.level) : onOpenVault()}
+                        >
+                          {gramWalletConnected ? 'Claim Achievement · 0.1 Gram' : 'Connect Wallet to Claim'}
+                        </button>
+                      ) : null}
                     </div>
                   </details>
                 ))}
