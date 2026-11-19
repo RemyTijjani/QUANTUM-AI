@@ -30,9 +30,12 @@ import { AuthProvider, useAuth } from '@/hooks/useTelegramAuth';
 import { useMissions } from '@/hooks/useMissions';
 import { fetchVerifiedEconomy } from '@/lib/economy/verifiedEconomy';
 import type { VerifiedAgentRental } from '@/lib/economy/verifiedEconomy';
-import { fetchZapAchievements, fetchZapWallet } from '@/lib/economy/zapWallet';
+import { createZapAchievementClaimIntent, fetchZapAchievements, fetchZapWallet, verifyZapAchievementClaim } from '@/lib/economy/zapWallet';
 import type { ZapAchievements } from '@/lib/economy/zapWallet';
 import type { VerifiedLedgerEntry } from '@/lib/economy/verifiedEconomy';
+import { fetchTonWallet } from '@/lib/economy/tonWallet';
+import { encodeTonCommentPayload, loadTonConnectUI } from '@/lib/ton-connect';
+import { rawTonAddress } from '@/components/vault/TonWalletConnection';
 
 import type { MissionSpec } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
@@ -144,6 +147,7 @@ function GameApp({
   const [zapLoading, setZapLoading] = useState(true);
   const [zapAchievements, setZapAchievements] = useState<ZapAchievements | null>(null);
   const [zapAchievementsLoading, setZapAchievementsLoading] = useState(true);
+  const [gramWalletConnected, setGramWalletConnected] = useState(false);
   const [pendingFragmentZp, setPendingFragmentZp] = useState(0);
   const [nextFragmentReleaseAt, setNextFragmentReleaseAt] = useState<string | null>(null);
   const [verifiedTransactions, setVerifiedTransactions] = useState<VerifiedLedgerEntry[]>([]);
@@ -202,12 +206,109 @@ function GameApp({
     };
   }, [playerId, refreshVerifiedBalance]);
 
+  useEffect(() => {
+    let mounted = true;
+    let savedWallet: Awaited<ReturnType<typeof fetchTonWallet>>['wallet'] = null;
+    let activeWallet: Awaited<ReturnType<typeof loadTonConnectUI>>['wallet'] = null;
+    let unsubscribe: (() => void) | undefined;
+
+    const syncStatus = () => {
+      if (!mounted) return;
+      setGramWalletConnected(Boolean(
+        activeWallet &&
+        activeWallet.account.chain === '-239' &&
+        savedWallet?.verification_status === 'verified' &&
+        rawTonAddress(activeWallet.account.address) === savedWallet.wallet_address
+      ));
+    };
+
+    void Promise.all([fetchTonWallet(), loadTonConnectUI()]).then(([data, ui]) => {
+      if (!mounted) return;
+      savedWallet = data.wallet;
+      activeWallet = ui.wallet;
+      syncStatus();
+      unsubscribe = ui.onStatusChange((nextWallet) => {
+        activeWallet = nextWallet;
+        syncStatus();
+        if (nextWallet) {
+          void fetchTonWallet().then((latest) => {
+            if (!mounted) return;
+            savedWallet = latest.wallet;
+            syncStatus();
+          }).catch(() => undefined);
+        }
+      });
+    }).catch(() => {
+      if (mounted) setGramWalletConnected(false);
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, [playerId]);
+
   const identity = resolveIdentity(
     auth,
     getTelegramUser(),
   );
 
   const { toast, notify } = useToast();
+
+  const handleWalletStatusChange = useCallback((connected: boolean) => {
+    setGramWalletConnected(connected);
+  }, []);
+
+  const handleClaimAchievement = useCallback(async (level: number) => {
+    try {
+      const intent = await createZapAchievementClaimIntent(level);
+      const ui = await loadTonConnectUI();
+      const wallet = ui.wallet;
+      if (!wallet || wallet.account.chain !== '-239' ||
+          rawTonAddress(wallet.account.address) !== intent.senderWallet) {
+        setGramWalletConnected(false);
+        setTab('vault');
+        notify('Connect and verify the same Gram wallet in Vault before paying for this achievement.', 'info');
+        return;
+      }
+
+      if (intent.reused) {
+        const verification = await verifyZapAchievementClaim(intent.intentId);
+        if (verification.claimed) {
+          const achievements = await fetchZapAchievements();
+          setZapAchievements(achievements);
+          setZapEarned(achievements.netZap);
+          notify(`Level ${level} badge is permanently stored in your collection.`, 'info');
+        } else {
+          notify('Your previous claim payment is still awaiting network confirmation. Verify again shortly; ZORD will not request a second payment.', 'info');
+        }
+        return;
+      }
+
+      await ui.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        network: '-239',
+        messages: [{
+          address: intent.destinationWallet,
+          amount: intent.amountNano,
+          payload: encodeTonCommentPayload(intent.memo),
+        }],
+      });
+
+      const verification = await verifyZapAchievementClaim(intent.intentId);
+      if (verification.pending) {
+        notify('Gram payment submitted. Network confirmation is pending; tap the claim again shortly to verify without paying twice.', 'info');
+        return;
+      }
+
+      const achievements = await fetchZapAchievements();
+      setZapAchievements(achievements);
+      setZapEarned(achievements.netZap);
+      notify(`Level ${level} badge claimed and permanently stored.`, 'info');
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not complete the achievement claim.', 'error');
+    }
+  }, [notify]);
 
   const [tab, setTab] = useState<TabId>('core');
   const [missionsInitialView, setMissionsInitialView] = useState<EngagementView>('missions');
@@ -258,6 +359,9 @@ function GameApp({
             zapLoading={zapLoading}
             zapAchievements={zapAchievements}
             zapAchievementsLoading={zapAchievementsLoading}
+            gramWalletConnected={gramWalletConnected}
+            onOpenVault={() => setTab('vault')}
+            onClaimAchievement={handleClaimAchievement}
             pendingFragmentZp={pendingFragmentZp}
             nextFragmentReleaseAt={nextFragmentReleaseAt}
             entityNumber={entityNumber}
@@ -303,7 +407,7 @@ function GameApp({
         )}
 
         {tab === 'vault' && (
-          <VaultTab verifiedZpBalance={verifiedZpBalance} transactions={verifiedTransactions} onRefreshVerifiedEconomy={refreshVerifiedBalance} />
+          <VaultTab verifiedZpBalance={verifiedZpBalance} transactions={verifiedTransactions} onRefreshVerifiedEconomy={refreshVerifiedBalance} onWalletStatusChange={handleWalletStatusChange} />
         )}
       </main>
 
