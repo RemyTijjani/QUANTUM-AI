@@ -80,7 +80,45 @@ export default function AdminPlayerEconomyDetail({ creds, playerId, playerLabel 
           {!detail?.economy && (
             <p className="text-[11px] text-amber-300">No player_economy record exists for this player yet.</p>
           )}
-          <p className="text-[10px] text-slate-400">ZAP balance is not present in the supplied player_economy schema, so no ZAP balance is displayed here.</p>
+
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">ZAP wallet accounting</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="border border-cyan-300/20 bg-cyan-300/5 p-3">
+                <p className="text-[9px] uppercase tracking-wider text-slate-400">Current ZAP</p>
+                <p className="mt-1 text-lg font-bold text-cyan-100">{amount(detail?.zapWallet.balance)}</p>
+              </div>
+              <div className="border border-emerald-300/20 bg-emerald-300/5 p-3">
+                <p className="text-[9px] uppercase tracking-wider text-slate-400">Lifetime earned</p>
+                <p className="mt-1 text-lg font-bold text-emerald-100">{amount(detail?.zapWallet.lifetimeEarned)}</p>
+              </div>
+              <div className="border border-amber-300/20 bg-amber-300/5 p-3">
+                <p className="text-[9px] uppercase tracking-wider text-slate-400">Lifetime spent</p>
+                <p className="mt-1 text-lg font-bold text-amber-100">{amount(detail?.zapWallet.lifetimeSpent)}</p>
+              </div>
+            </div>
+            <h4 className="pt-2 text-[10px] font-bold uppercase tracking-wider text-cyan-200">Recent ZAP ledger entries (up to 50)</h4>
+            {detail?.zapWallet.transactions.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] border-collapse text-left">
+                  <thead><tr className="border-b border-white/10 text-[9px] uppercase text-slate-400">
+                    <th className="px-2 py-2">Type / source</th><th className="px-2 py-2">Amount</th><th className="px-2 py-2">Balance after</th><th className="px-2 py-2">Description</th><th className="px-2 py-2">Date</th>
+                  </tr></thead>
+                  <tbody>
+                    {detail.zapWallet.transactions.map((entry) => (
+                      <tr key={entry.id} className="border-b border-white/10 text-[10px] text-cyan-100">
+                        <td className="px-2 py-2"><span className="capitalize">{entry.entryType}</span><span className="mt-1 block text-[9px] text-slate-500">{entry.source}</span></td>
+                        <td className="px-2 py-2 font-mono">{entry.entryType === 'credit' ? '+' : '−'}{amount(entry.amount)}</td>
+                        <td className="px-2 py-2 font-mono">{amount(entry.balanceAfter)}</td>
+                        <td className="max-w-[150px] truncate px-2 py-2">{entry.description || '—'}</td>
+                        <td className="px-2 py-2 text-slate-400">{dateLabel(entry.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="py-3 text-center text-[11px] text-slate-400">No ZAP transactions found.</p>}
+          </div>
 
           <div className="space-y-2">
             <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-300">
