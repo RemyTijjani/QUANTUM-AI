@@ -8,10 +8,12 @@ export default function VaultTab({
   verifiedZpBalance,
   transactions,
   onRefreshVerifiedEconomy,
+  onWalletStatusChange,
 }: {
   verifiedZpBalance: number | null;
   transactions: VerifiedLedgerEntry[];
   onRefreshVerifiedEconomy: () => Promise<void> | void;
+  onWalletStatusChange?: (connected: boolean) => void;
 }) {
   return (
     <div className="w-full min-w-0 space-y-4 pb-6">
@@ -32,7 +34,7 @@ export default function VaultTab({
             <h2 className="title">TON wallet</h2>
           </div>
         </div>
-        <TonWalletConnection />
+        <TonWalletConnection onWalletStatusChange={onWalletStatusChange} />
       </section>
 
       <section className="panel space-y-3 p-4">
