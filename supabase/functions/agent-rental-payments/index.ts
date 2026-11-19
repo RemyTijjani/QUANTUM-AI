@@ -222,6 +222,35 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (body.action === "list_pending_intents") {
+      // Only return this authenticated player's still-pending requests so a
+      // checkout can be recovered after a reload without creating a new one.
+      const { data: intents, error: intentsError } = await admin
+        .from("agent_rental_payment_intents")
+        .select("id, agent_type, amount_nano, currency, network, recipient_address, payment_reference, expires_at")
+        .eq("player_id", player.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (intentsError) {
+        console.error("Pending agent rental intent lookup failed:", intentsError);
+        return json({ error: "Could not restore your existing payment request." }, 500);
+      }
+      return json({
+        success: true,
+        intents: (intents ?? []).map((intent) => ({
+          id: intent.id,
+          agentType: intent.agent_type,
+          amountNano: String(intent.amount_nano),
+          currency: intent.currency,
+          network: intent.network,
+          recipientAddress: intent.recipient_address,
+          paymentReference: intent.payment_reference,
+          expiresAt: intent.expires_at,
+        })),
+      });
+    }
+
     if (body.action === "create_intent") {
       if (!MAINNET_RENTAL_INTENTS_ENABLED) {
         return json({ error: "Mainnet agent rental payments are disabled until ZORD launch approval." }, 403);
