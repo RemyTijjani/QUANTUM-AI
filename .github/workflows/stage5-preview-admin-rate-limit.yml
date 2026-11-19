@@ -61,3 +61,5 @@ jobs:
             exit 1
           fi
           echo "PASS: five invalid attempts returned HTTP 401; the sixth remained throttled with HTTP 429 despite a forged X-Forwarded-For header."
+
+# Stage 5 Preview validation rerun: 2026-11-19
