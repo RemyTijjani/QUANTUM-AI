@@ -292,6 +292,9 @@ Deno.serve(async (req: Request) => {
           .select("id, status").eq("objective_id", objectiveId).eq("player_id", player.id).maybeSingle();
         if (existingError) return json({ error: "Could not check existing objective progress." }, 500);
         if (existing?.status === "verified") return json({ error: "This objective has already been verified." }, 409);
+        if (existing?.status === "submitted") {
+          return json({ error: "Your evidence is already waiting for review. You can submit again after the operations team rejects it." }, 409);
+        }
         const { data, error } = await admin.from("expedition_objective_progress").upsert({
           expedition_id: expeditionId, objective_id: objectiveId, player_id: player.id,
           team_id: participation.team_id, status: "submitted", contribution_count: 1, evidence,
@@ -317,6 +320,9 @@ Deno.serve(async (req: Request) => {
         .select("id, status").eq("objective_id", objectiveId).eq("team_id", participation.team_id).maybeSingle();
       if (existingTeamError) return json({ error: "Could not check existing team objective progress." }, 500);
       if (existingTeamProgress?.status === "verified") return json({ error: "This team objective has already been verified." }, 409);
+      if (existingTeamProgress?.status === "submitted") {
+        return json({ error: "Your team evidence is already waiting for review. You can submit again after the operations team rejects it." }, 409);
+      }
       const { data, error } = await admin.from("expedition_team_objective_progress").upsert({
         expedition_id: expeditionId, objective_id: objectiveId, team_id: participation.team_id,
         status: "submitted", contribution_count: 1, evidence, verified_by: null, verified_at: null,
