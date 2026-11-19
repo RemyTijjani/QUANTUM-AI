@@ -260,18 +260,36 @@ export default function MysteryBoxPanel({
           <div className="rounded-lg border border-violet-300/25 bg-black/30 p-3"><p className="label">Premium</p><p className="mt-1 font-display text-2xl text-violet-200">{counts.premium}</p><p className="font-mono text-[8px] uppercase text-violet-400/70">Available</p></div>
         </div>
       <div className="mt-4 space-y-3 border-t border-neon/15 pt-4">
-        <div className="space-y-3 rounded-lg border border-violet-300/20 bg-violet-400/5 p-3">
-          <div><p className="label">Daily free box</p><p className="mt-1 font-mono text-[9px] text-neon-500">One free Mystery Box every 24 hours. This is separate from Daily Streak.</p></div>
-          {repeatBox?.freeClaimAvailable ? (
-            <button type="button" onClick={() => void claimDailyBox()} disabled={dailyClaimBusy || loading} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-violet-300/35 bg-violet-300/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-violet-100 disabled:opacity-50">
-              {dailyClaimBusy ? <Loader2 size={14} className="animate-spin" /> : <Gift size={14} />}
-              {dailyClaimBusy ? 'Claiming your free box…' : 'Claim free daily box'}
-            </button>
-          ) : repeatBox?.nextFreeClaimAt ? (
-            <p className="rounded-lg border border-violet-300/20 bg-black/20 p-3 font-mono text-[9px] text-violet-200">Next free box in {formatCountdown(new Date(repeatBox.nextFreeClaimAt).getTime() - nowMs)}</p>
-          ) : (
-            <p className="font-mono text-[9px] text-neon-700">Daily box availability is loading. Refresh if this message remains.</p>
-          )}
+        <div className="space-y-3 rounded-xl border border-violet-300/25 bg-gradient-to-r from-violet-500/10 via-black/25 to-cyan-500/5 p-3 sm:p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className={"mystery-box-art flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-violet-300/35 bg-violet-400/10 text-violet-100 " + (dailyClaimBusy ? "mystery-box-art--opening" : "")}>
+              <Gift size={28} />
+            </span>
+            <div className="min-w-0">
+              <p className="label">Daily Discovery Box</p>
+              <p className="mt-1 font-display text-sm font-bold text-violet-100">Your Mystery Box is always here</p>
+              <p className="mt-1 font-mono text-[9px] leading-relaxed text-neon-500">Claim one free box every 24 hours. This is independent of your Daily Streak.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void claimDailyBox()}
+            disabled={dailyClaimBusy || loading || repeatBox?.freeClaimAvailable !== true}
+            aria-label="Claim your free daily Mystery Box"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-violet-300/40 bg-violet-300/15 px-3 py-3 font-mono text-[10px] font-bold uppercase tracking-wide text-violet-100 transition hover:bg-violet-300/20 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            {dailyClaimBusy ? <Loader2 size={15} className="animate-spin" /> : <Gift size={15} />}
+            {dailyClaimBusy
+              ? 'Claiming your box…'
+              : !repeatBox
+                ? 'Checking availability…'
+                : repeatBox.freeClaimAvailable
+                  ? 'Claim your free Mystery Box'
+                  : repeatBox.nextFreeClaimAt
+                    ? `Available in ${formatCountdown(new Date(repeatBox.nextFreeClaimAt).getTime() - nowMs)}`
+                    : 'Daily box unavailable'}
+          </button>
+          <p className="font-mono text-[8px] leading-relaxed text-neon-700">After claiming, your box appears in Your Boxes below. Open it there to reveal the server-selected reward.</p>
         </div>
         <div className="space-y-3 border-t border-neon/15 pt-4">
           <div className="flex flex-wrap items-start justify-between gap-2 min-[380px]:items-center">
