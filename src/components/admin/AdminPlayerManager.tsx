@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Search, RefreshCw, Users, CalendarDays, UserRound, Wallet } from 'lucide-react';
 import AdminPlayerEconomyDetail from '@/components/admin/AdminPlayerEconomyDetail';
+import AdminZapCirculation from '@/components/admin/AdminZapCirculation';
 import { AdminApiError, listPlayers } from '@/lib/admin/adminApi';
 import type { AdminCredentials, AdminPlayer } from '@/lib/admin/adminApi';
 
@@ -45,7 +46,9 @@ export default function AdminPlayerManager({ creds }: Props) {
   };
 
   return (
-    <section className="space-y-5 rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm sm:p-5">
+    <div className="space-y-5">
+      <AdminZapCirculation creds={creds} />
+      <section className="space-y-5 rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-3">
         <div>
           <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -182,6 +185,7 @@ export default function AdminPlayerManager({ creds }: Props) {
       <p className="text-[10px] text-slate-500">
         This directory does not change player accounts or balances. Economy details are available for inspection only; account restrictions and manual adjustments are not enabled here.
       </p>
-    </section>
+      </section>
+    </div>
   );
 }
