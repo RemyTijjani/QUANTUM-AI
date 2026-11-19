@@ -11,11 +11,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import TemporaryRewardPanel from './TemporaryRewardPanel';
-import {
-  encodeTonCommentPayload,
-  getTonConnectUI,
-  loadTonConnectUI,
-} from '@/lib/ton-connect';
+import { loadTonConnectUI } from '@/lib/ton-connect';
 import type { TonConnectWallet } from '@/lib/ton-connect';
 
 type AgentRentalType = 'alpha_miner' | 'overclocked_core';
@@ -75,8 +71,6 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
   const [walletNetwork, setWalletNetwork] = useState<string | null>(null);
   const [walletReady, setWalletReady] = useState(false);
   const [walletError, setWalletError] = useState('');
-  const [sendAttempted, setSendAttempted] = useState(false);
-  const [transactionSubmitted, setTransactionSubmitted] = useState(false);
   const [diagnosticBusy, setDiagnosticBusy] = useState(false);
   const [diagnosticResult, setDiagnosticResult] = useState<{
     success: boolean;
@@ -131,10 +125,6 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
     return () => { mounted = false; };
   }, []);
 
-  // Hard safety lock: Preview must never initiate a real TON transfer.
-  // Do not replace this with an environment flag; enabling payments requires
-  // separate explicit approval and a reviewed release process.
-  const paymentsEnabled = false;
   // Preview keeps rental checkout and payment verification disabled.
   // Enable only after explicit launch approval and a reviewed payment release.
   const rentalBackendActionsEnabled = false;
@@ -303,62 +293,6 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
       setNoticeKind('error');
     } finally {
       setBusy(null);
-    }
-  };
-
-  const sendPayment = async () => {
-    if (!intent) return;
-
-    if (!paymentsEnabled) {
-      setNotice('Real TON transfers are disabled during Preview testing. Wallet connection can be tested safely without sending funds.');
-      setNoticeKind('info');
-      return;
-    }
-
-    try {
-      const ui = getTonConnectUI();
-      const wallet = ui.wallet;
-      if (!wallet) throw new Error('Connect your TON wallet before continuing.');
-      if (wallet.account.chain !== '-239' || intent.network !== 'mainnet') {
-        throw new Error('This checkout accepts TON mainnet wallets only. Switch your wallet to TON mainnet.');
-      }
-
-      const now = Math.floor(Date.now() / 1000);
-      const expiry = Math.floor(new Date(intent.expiresAt).getTime() / 1000);
-      const validUntil = Math.min(now + 300, expiry);
-      if (!Number.isFinite(validUntil) || validUntil <= now) {
-        throw new Error('This payment request has expired. Create a new checkout.');
-      }
-
-      setBusy('send');
-      setSendAttempted(true);
-      setNotice('Confirm the exact amount and recipient in your wallet.');
-      setNoticeKind('info');
-
-      const response = await ui.sendTransaction({
-        validUntil,
-        network: '-239',
-        messages: [{
-          address: intent.recipientAddress,
-          amount: intent.amountNano,
-          payload: encodeTonCommentPayload(intent.paymentReference),
-        }],
-      });
-
-      if (!response?.boc) {
-        throw new Error('The wallet did not return a transaction confirmation. Check wallet activity before retrying.');
-      }
-
-      setTransactionSubmitted(true);
-      setNotice('Wallet returned a transaction response. Checking TON mainnet for confirmation...');
-      setNoticeKind('info');
-      setBusy(null);
-      await verifyIntent();
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'The wallet transaction was not confirmed. Check wallet activity before retrying.');
-      setNoticeKind('error');
-    } finally {
-      setBusy((current) => current === 'send' ? null : current);
     }
   };
 
