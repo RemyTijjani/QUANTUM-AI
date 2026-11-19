@@ -125,12 +125,26 @@ function streakRewardLabel(claim: DailyStreakClaim) {
   return 'Free Agent 1 — 24 hours after activation';
 }
 
+function formatUtcCountdown(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
+}
+
 function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<void>; notify: Notify }) {
   const [status, setStatus] = useState<DailyStreakStatus | null>(null);
   const [lastClaim, setLastClaim] = useState<DailyStreakClaim | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState('');
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const refresh = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -214,6 +228,9 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
   const currentDay = status?.currentStreakDay ?? 0;
   const nextDay = status?.nextStreakDay ?? 1;
   const claimedToday = status?.claimedToday ?? false;
+  const nextUtcMidnight = new Date(nowMs);
+  nextUtcMidnight.setUTCHours(24, 0, 0, 0);
+  const nextClaimCountdown = formatUtcCountdown(nextUtcMidnight.getTime() - nowMs);
 
   return (
     <section className="space-y-3">
@@ -228,23 +245,29 @@ function DailyStreakScreen({ onZpReward, notify }: { onZpReward: () => Promise<v
           <div><p className="label">Current streak</p><p className="mt-1 font-display text-3xl text-neon-200">{loading ? '—' : currentDay} <span className="text-xs text-neon-600">days</span></p></div>
           <div className="text-right"><p className="label">Best streak</p><p className="mt-1 font-display text-xl text-cyan-200">{loading ? '—' : status?.bestStreakDay ?? 0}</p></div>
         </div>
-        <div className="grid grid-cols-7 gap-1.5">
-          {Array.from({ length: 7 }, (_, index) => index + 1).map((day) => {
+        <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6">
+          {Array.from({ length: 30 }, (_, index) => index + 1).map((day) => {
             const completed = day <= currentDay;
+            const isNext = day === nextDay && !claimedToday;
+            const dayReward = day <= 7 ? `${day * 100} ZP` : 'Random';
             return (
-              <div key={day} className={`rounded-lg border px-1 py-3 text-center ${completed ? 'border-neon/40 bg-neon/10' : 'border-neon/15 bg-black/30'}`}>
+              <div
+                key={day}
+                aria-label={`Day ${day}: ${completed ? 'claimed' : isNext ? 'available to claim' : 'locked'}`}
+                className={`min-w-0 rounded-lg border px-1 py-2.5 text-center ${completed ? 'border-neon/40 bg-neon/10' : isNext ? 'border-cyan-300/45 bg-cyan-300/10' : 'border-neon/15 bg-black/30'}`}
+              >
                 <p className="font-mono text-[8px] text-neon-600">DAY {day}</p>
-                <div className={`mx-auto mt-2 flex h-7 w-7 items-center justify-center rounded-full border ${completed ? 'border-neon/50 text-neon-300' : 'border-neon/20 text-neon-700'}`}>
-                  {completed ? <CheckCircle2 size={13} /> : <Clock3 size={12} />}
+                <div className={`mx-auto mt-1.5 flex h-6 w-6 items-center justify-center rounded-full border ${completed ? 'border-neon/50 text-neon-300' : isNext ? 'border-cyan-300/50 text-cyan-200' : 'border-neon/20 text-neon-700'}`}>
+                  {completed ? <CheckCircle2 size={12} /> : isNext ? <Gift size={12} /> : <Clock3 size={11} />}
                 </div>
-                <p className="mt-1 font-mono text-[8px] text-neon-500">{day * 100} ZP</p>
+                <p className="mt-1 truncate font-mono text-[8px] text-neon-500">{dayReward}</p>
               </div>
             );
           })}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neon/10 pt-3 font-mono text-[9px] text-neon-600">
           <span>UTC claim date: {status?.claimDate ?? '—'}</span>
-          <span>{claimedToday ? 'Claimed today' : `Next reward: Day ${nextDay}`}</span>
+          <span>{claimedToday ? `Claimed · Next claim in ${nextClaimCountdown}` : `Available · Day ${nextDay}`}</span>
         </div>
         {error && <p className="font-mono text-[10px] text-amber-300">{error}</p>}
         <button
