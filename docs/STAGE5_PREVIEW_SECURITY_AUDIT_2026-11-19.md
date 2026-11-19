@@ -67,3 +67,28 @@ This report supersedes older point-in-time Stage 5 migration counts in the Stage
 - No production database, deployment, or main branch was touched.
 - No AdsGram placements were added or changed. AdsGram remains exclusive to the optional Mystery Box placement per product requirements.
 - Stage 5 remains **in progress** until the remaining Auth setting and end-to-end Preview acceptance tests pass.
+
+
+## Follow-up remediation — 2026-11-19 06:50 UTC
+
+The Stage 5 follow-up moved Creator Ops and X Follow submission writes behind the authenticated `mission-actions` Edge Function.
+
+- Added migration `20261119064818_route_player_submission_rpcs_through_mission_actions.sql`.
+- The Edge Function verifies the caller with `auth.getUser()`, resolves the player ID from that verified session, then calls the service-role-only submission RPCs.
+- Updated `MissionsTab.tsx` to call `mission-actions`; direct client RPC calls were removed.
+- Deployed Preview `mission-actions` version **11**, with `verify_jwt=true`.
+- Verified both submission RPCs now have `authenticated_execute=false`, `anon_execute=false`, and `service_role_execute=true`.
+- Re-ran Supabase security advisors: the two authenticated SECURITY DEFINER warnings are gone. Remaining security findings are 79 informational RLS-enabled/no-policy notices (the affected tables have no anon/authenticated grants) and one Auth warning for leaked-password protection.
+- Preview migration reconciliation now reports **132/132** SQL migration files matched to the applied ledger, with no missing versions in either direction.
+- Rollback-isolated SQL regression tests passed for fragment action idempotency (same request returns duplicate; same request ID reused for a different fragment is rejected) and Mystery Box repeat opening idempotency (same request is charged once). The AdsGram method remains fail-closed with `adsgram_not_configured`. All test fixture writes were rolled back.
+- The Stage 5 no-direct-gameplay-ZP workflow passed after adding checks that the local referral milestone reducer cannot mint ZP and AdsGram appears only in the Mystery Box UI. A further check now verifies Creator Ops/X Follow use the authenticated Edge Function.
+- Frontend typecheck, lint, and build passed on commit `6e848b26cb74bc44958a2759f322c74864c57cf2`; subsequent submission UI changes are undergoing the current Preview frontend check.
+
+### Remaining external acceptance gates
+
+1. Enable **Leaked Password Protection** in Supabase Preview Auth settings. The connected Supabase tools can inspect database settings and advisors but do not expose the Auth password-protection toggle.
+2. Run the two-account end-to-end acceptance test with two valid Preview user sessions. No test credentials or account-creation/session tool is available in this integration, so this cannot honestly be marked passed yet.
+3. Repair the GitHub Actions secret `SUPABASE_DB_PASSWORD` with the current **Preview database password**. The Stage 5 migration-status workflow confirms it is linked to project `lchkctclxzwwvfwosava`, but its remote migration-list step fails with PostgreSQL password authentication (`28P01`). The Supabase-connected migration ledger query independently confirms the 132/132 match. Do not paste the password into chat.
+4. Owner-level managed-role default privileges remain outside the available database execution role's authority.
+
+Production remains untouched. No player balances, payout ledgers, or payment transfers were changed by the rollback-isolated tests.
