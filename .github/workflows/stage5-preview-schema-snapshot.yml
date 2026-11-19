@@ -60,3 +60,5 @@ jobs:
           path: preview-schema.sql
           if-no-files-found: error
           retention-days: 7
+
+# Stage 5 Preview validation rerun: 2026-11-19
