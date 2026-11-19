@@ -328,3 +328,5 @@ jobs:
               (SELECT count(*) FROM public.agent_rental_payment_intents) AS agent_rental_payment_intent_rows,
               (SELECT count(*) FROM public.player_agent_rentals) AS player_agent_rental_rows;
           "
+
+# Stage 5 Preview validation rerun: 2026-11-19
