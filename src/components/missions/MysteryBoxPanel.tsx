@@ -89,6 +89,12 @@ export default function MysteryBoxPanel({
   const [dailyClaimBusy, setDailyClaimBusy] = useState(false);
   const [repeatMessage, setRepeatMessage] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const freeClaimAvailable = Boolean(
+    repeatBox && (
+      repeatBox.freeClaimAvailable ||
+      (repeatBox.nextFreeClaimAt !== null && new Date(repeatBox.nextFreeClaimAt).getTime() <= nowMs)
+    )
+  );
 
   const loadInventory = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
@@ -141,7 +147,7 @@ export default function MysteryBoxPanel({
   }), [inventory.availableBoxes]);
 
   const claimDailyBox = async () => {
-    if (dailyClaimBusy || !repeatBox?.freeClaimAvailable) return;
+    if (dailyClaimBusy || !freeClaimAvailable) return;
     setDailyClaimBusy(true);
     setOpeningId('daily-claim');
     setRepeatMessage(null);
@@ -274,7 +280,7 @@ export default function MysteryBoxPanel({
           <button
             type="button"
             onClick={() => void claimDailyBox()}
-            disabled={dailyClaimBusy || loading || repeatBox?.freeClaimAvailable !== true}
+            disabled={dailyClaimBusy || loading || !freeClaimAvailable}
             aria-label="Claim your free daily Mystery Box"
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-violet-300/40 bg-violet-300/15 px-3 py-3 font-mono text-[10px] font-bold uppercase tracking-wide text-violet-100 transition hover:bg-violet-300/20 disabled:cursor-not-allowed disabled:opacity-55"
           >
@@ -283,7 +289,7 @@ export default function MysteryBoxPanel({
               ? 'Claiming your box…'
               : !repeatBox
                 ? 'Checking availability…'
-                : repeatBox.freeClaimAvailable
+                : freeClaimAvailable
                   ? 'Claim your free Mystery Box'
                   : repeatBox.nextFreeClaimAt
                     ? `Available in ${formatCountdown(new Date(repeatBox.nextFreeClaimAt).getTime() - nowMs)}`
