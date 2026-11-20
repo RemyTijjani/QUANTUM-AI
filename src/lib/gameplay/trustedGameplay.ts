@@ -16,6 +16,7 @@ export async function fetchTrustedFragments(): Promise<TrustedFragment[]> {
 
 export interface TrustedUnlockStart {
   sessionId: string | null;
+  ymid: string | null;
   alreadyUnlocked: boolean;
 }
 
@@ -25,22 +26,25 @@ export async function beginTrustedUnlock(fragmentId: FragmentId): Promise<Truste
   });
   if (error) throw error;
   if (data?.success && data.alreadyUnlocked === true) {
-    return { sessionId: null, alreadyUnlocked: true };
+    return { sessionId: null, ymid: null, alreadyUnlocked: true };
   }
-  if (!data?.success || typeof data.sessionId !== 'string') {
-    throw new Error(data?.reason === 'cooldown' ? 'This fragment is still cooling down.' : 'Could not start the trusted unlock session.');
+  if (!data?.success || typeof data.sessionId !== 'string' || typeof data.ymid !== 'string') {
+    throw new Error(data?.reason === 'cooldown' ? 'This fragment is still cooling down.' : (data?.error ?? 'Could not start the trusted unlock session.'));
   }
-  return { sessionId: data.sessionId, alreadyUnlocked: false };
+  return { sessionId: data.sessionId, ymid: data.ymid, alreadyUnlocked: false };
 }
 
-export async function completeTrustedUnlock(sessionId: string): Promise<void> {
+export async function completeTrustedUnlock(sessionId: string): Promise<boolean> {
   const { data, error } = await supabase.functions.invoke('gameplay-actions', {
-    body: { action: 'complete_fragment_unlock', sessionId },
+    body: { action: 'confirm_fragment_unlock', sessionId },
   });
   if (error) throw error;
   if (!data?.success) {
-    throw new Error(data?.reason === 'wait_required' ? 'Please wait until the server unlock timer finishes.' : 'The server could not verify this unlock.');
+    throw new Error(data?.reason === 'session_expired'
+      ? 'The ad verification session expired. Please try again.'
+      : 'The server could not verify this Monetag ad session.');
   }
+  return data.completed === true;
 }
 
 export async function fixTrustedFragment(fragmentId: FragmentId): Promise<void> {
