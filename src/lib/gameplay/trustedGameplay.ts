@@ -49,15 +49,15 @@ export async function completeTrustedUnlock(sessionId: string, provider: 'moneta
 }
 
 
-export async function completeFreeShieldUnlock(sessionId: string): Promise<boolean> {
+export async function completeFreeFragmentUnlock(sessionId: string): Promise<boolean> {
   const { data, error } = await supabase.functions.invoke('gameplay-actions', {
-    body: { action: 'complete_free_shield_fragment_unlock', sessionId },
+    body: { action: 'complete_free_fragment_unlock', sessionId },
   });
   if (error) throw error;
   if (!data?.success) {
     throw new Error(data?.reason === 'wait_required'
-      ? 'The Shield unlock animation is still running.'
-      : 'The server could not complete the free Shield unlock.');
+      ? 'The Fragment activation animation is still running.'
+      : 'The server could not complete the free Fragment unlock.');
   }
   return data.completed === true;
 }
