@@ -337,7 +337,7 @@ function GameApp({
   };
 
   const handleWatchFragmentAd = async () => {
-    if ((adFragment !== 'top' && adFragment !== 'right' && adFragment !== 'bottom') || adProcessing) return;
+    if ((adFragment !== 'top' && adFragment !== 'left' && adFragment !== 'right' && adFragment !== 'bottom') || adProcessing) return;
     setAdProcessing(true);
 
     try {
@@ -353,12 +353,12 @@ function GameApp({
       }
 
       if (session.provider === 'free') {
-        // Shield remains ad-free. Keep the five-second scan animation visible,
+        // Shield and Processor are ad-free. Keep the five-second scan animation visible,
         // then let the server enforce the same minimum duration before unlocking.
         await new Promise((resolve) => window.setTimeout(resolve, 5000));
-        const completed = await trustedGameplay.completeFreeShieldUnlock(session.sessionId);
+        const completed = await trustedGameplay.completeFreeFragmentUnlock(session.sessionId);
         setAdFragment(null);
-        if (completed) notify('Shield Fragment unlocked. No advertisement required.', 'info');
+        if (completed) notify(`${fragmentId === 'top' ? 'Shield' : 'Processor'} Fragment unlocked. No advertisement required.`, 'info');
         return;
       }
 
