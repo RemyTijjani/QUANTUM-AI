@@ -10,7 +10,7 @@ import { FRAGMENT_IDS } from '@/lib/game/config';
 import {
   beginTrustedUnlock,
   completeTrustedUnlock,
-  completeFreeShieldUnlock,
+  completeFreeFragmentUnlock,
   fetchTrustedFragments,
   fixTrustedFragment,
   fetchActiveTemporaryRewards,
@@ -26,7 +26,7 @@ export function useGame(
   trustedGameplay: {
     beginUnlock: (id: FragmentId) => Promise<{ sessionId: string | null; ymid: string | null; alreadyUnlocked: boolean; provider: 'monetag' | 'onclicka' | 'free' }>;
     completeUnlock: (sessionId: string, provider?: 'monetag' | 'onclicka') => Promise<boolean>;
-    completeFreeShieldUnlock: (sessionId: string) => Promise<boolean>;
+    completeFreeFragmentUnlock: (sessionId: string) => Promise<boolean>;
     fixFragment: (id: FragmentId) => Promise<void>;
   };
 } {
@@ -94,8 +94,8 @@ export function useGame(
       if (completed) await applyTrustedFragments();
       return completed;
     },
-    completeFreeShieldUnlock: async (sessionId: string) => {
-      const completed = await completeFreeShieldUnlock(sessionId);
+    completeFreeFragmentUnlock: async (sessionId: string) => {
+      const completed = await completeFreeFragmentUnlock(sessionId);
       if (completed) await applyTrustedFragments();
       return completed;
     },
