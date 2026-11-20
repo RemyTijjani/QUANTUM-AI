@@ -322,11 +322,11 @@ export default function CoreTab({
               : Number.isFinite(nextFragmentCooldown)
                 ? `Next Fragment available in ${formatRemaining(nextFragmentCooldown)}`
                 : fixed > 0
-                  ? 'Verify an ad to unlock or reactivate a Fragment and resume mining.'
-                  : 'Verify an ad to unlock a Fragment and start mining.'}
+                  ? 'Unlock Shield for free, or verify an ad to unlock or reactivate another Fragment and resume mining.'
+                  : 'Unlock Shield for free, or verify an ad to unlock another Fragment and start mining.'}
       </p>
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
-        Each Fragment has its own assigned advertising provider. Ad unlocking will activate after publisher approval and trusted server-side verification. Once unlocked, fix the Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
+        Shield unlocks free after its five-second activation animation. Capacitor and Atom require their assigned rewarded ads and trusted server-side verification. Once unlocked, fix a Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
       </p>
       <section className="panel min-w-0 border border-violet-400/25 bg-gradient-to-r from-violet-500/10 via-black/45 to-cyan-500/5 p-3" aria-label="ZORD Market">
         <div className="flex min-w-0 items-center justify-between gap-3">
