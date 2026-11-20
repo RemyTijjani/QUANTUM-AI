@@ -110,10 +110,10 @@ Deno.serve(async (req: Request) => {
 
     if (body.action === "begin_fragment_unlock") {
       const fragmentId = body.fragmentId;
-      if (fragmentId !== "top" && fragmentId !== "right" && fragmentId !== "bottom") {
+      if (fragmentId !== "top" && fragmentId !== "left" && fragmentId !== "right" && fragmentId !== "bottom") {
         return json({ success: false, reason: "provider_not_configured", error: "This Fragment's assigned ad provider is not connected yet." }, 503);
       }
-      const provider = fragmentId === "top" ? "free" : fragmentId === "bottom" ? "onclicka" : "monetag";
+      const provider = fragmentId === "top" || fragmentId === "left" ? "free" : fragmentId === "bottom" ? "onclicka" : "monetag";
       const { data: start, error: startError } = await admin.rpc("begin_fragment_unlock", {
         p_player_id: player.id,
         p_fragment_id: fragmentId,
@@ -143,7 +143,7 @@ Deno.serve(async (req: Request) => {
         if (existing.ad_provider !== null) {
           return json({ error: "The Shield unlock session is not a free session." }, 409);
         }
-        return json({ success: true, sessionId: start.sessionId, ymid: null, provider: "free", fragmentId: "top" });
+        return json({ success: true, sessionId: start.sessionId, ymid: null, provider: "free", fragmentId });
       }
       if (existing.ad_provider && existing.ad_provider !== provider) {
         return json({ error: "This Fragment session belongs to another ad provider." }, 409);
@@ -217,18 +217,18 @@ Deno.serve(async (req: Request) => {
       return json(data, data?.success === false ? 409 : 200);
     }
 
-    if (body.action === "complete_free_shield_fragment_unlock") {
+    if (body.action === "complete_free_fragment_unlock") {
       if (typeof body.sessionId !== "string" ||
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.sessionId)) {
-        return json({ error: "A valid Shield unlock session is required." }, 400);
+        return json({ error: "A valid free Fragment unlock session is required." }, 400);
       }
-      const { data, error } = await admin.rpc("complete_free_shield_fragment_unlock", {
+      const { data, error } = await admin.rpc("complete_free_fragment_unlock", {
         p_player_id: player.id,
         p_session_id: body.sessionId,
       });
       if (error) {
-        console.error("Free Shield unlock failed:", error);
-        return json({ error: "Could not complete the Shield unlock." }, 500);
+        console.error("Free Fragment unlock failed:", error);
+        return json({ error: "Could not complete the free Fragment unlock." }, 500);
       }
       return json(data, data?.success === false ? 409 : 200);
     }
