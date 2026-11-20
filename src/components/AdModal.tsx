@@ -7,6 +7,7 @@ interface AdModalProps {
   fragmentId: FragmentId;
   isReactivation?: boolean;
   isProcessing?: boolean;
+  isActivationStarted?: boolean;
   onWatch: () => void;
   onClose: () => void;
 }
@@ -15,6 +16,7 @@ export default function AdModal({
   fragmentId,
   isReactivation = false,
   isProcessing = false,
+  isActivationStarted = false,
   onWatch,
   onClose,
 }: AdModalProps) {
@@ -66,7 +68,7 @@ export default function AdModal({
         </div>
         {isFreeFragment && (
           <div className="h-1.5 overflow-hidden rounded-full bg-cyan-950">
-            <div className={"h-full rounded-full bg-cyan-300 transition-[width] duration-[5000ms] ease-linear " + (isProcessing ? "w-full" : "w-0")} />
+            <div className={"h-full rounded-full bg-cyan-300 transition-[width] duration-[5000ms] ease-linear " + (isActivationStarted ? "w-full" : "w-0")} />
           </div>
         )}
 
