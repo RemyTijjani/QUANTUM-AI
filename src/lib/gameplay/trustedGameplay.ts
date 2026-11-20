@@ -29,7 +29,7 @@ export async function beginTrustedUnlock(fragmentId: FragmentId): Promise<Truste
   if (data?.success && data.alreadyUnlocked === true) {
     return { sessionId: null, ymid: null, alreadyUnlocked: true, provider: fragmentId === 'bottom' ? 'onclicka' : 'monetag' };
   }
-  if (!data?.success || typeof data.sessionId !== 'string' || typeof data.ymid !== 'string') {
+  if (!data?.success || typeof data.sessionId !== 'string' || (data.provider !== 'onclicka' && typeof data.ymid !== 'string')) {
     throw new Error(data?.reason === 'cooldown' ? 'This fragment is still cooling down.' : (data?.error ?? 'Could not start the trusted unlock session.'));
   }
   return { sessionId: data.sessionId, ymid: typeof data.ymid === 'string' ? data.ymid : null, alreadyUnlocked: false, provider: data.provider === 'onclicka' ? 'onclicka' : 'monetag' };
