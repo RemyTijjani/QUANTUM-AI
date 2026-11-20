@@ -109,19 +109,107 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body.action === "begin_fragment_unlock") {
+      if (body.fragmentId !== "right") {
+        return json({
+          success: false,
+          reason: "provider_not_configured",
+          error: "This Fragment's assigned ad provider is not connected yet.",
+        }, 503);
+      }
+
+      const { data: start, error: startError } = await admin.rpc("begin_fragment_unlock", {
+        p_player_id: player.id,
+        p_fragment_id: "right",
+      });
+      if (startError) {
+        console.error("Monetag Fragment session creation failed:", startError);
+        return json({ error: "Could not start the Fragment ad session." }, 500);
+      }
+      if (start?.success === false) return json(start, 409);
+      if (start?.alreadyUnlocked === true) return json({ success: true, alreadyUnlocked: true });
+      if (typeof start?.sessionId !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(start.sessionId)) {
+        return json({ error: "The Fragment ad session could not be initialized." }, 500);
+      }
+
+      const { data: existing, error: lookupError } = await admin
+        .from("fragment_unlock_sessions")
+        .select("id, ad_provider, monetag_ymid, status")
+        .eq("id", start.sessionId)
+        .eq("player_id", player.id)
+        .maybeSingle();
+      if (lookupError || !existing || existing.status !== "pending") {
+        console.error("Monetag Fragment session lookup failed:", lookupError);
+        return json({ error: "The Fragment ad session is unavailable." }, 409);
+      }
+      if (existing.ad_provider && existing.ad_provider !== "monetag") {
+        return json({ error: "This Fragment session belongs to another ad provider." }, 409);
+      }
+
+      let ymid = existing.monetag_ymid as string | null;
+      if (!ymid) {
+        const candidate = crypto.randomUUID();
+        const { data: updated, error: updateError } = await admin
+          .from("fragment_unlock_sessions")
+          .update({ ad_provider: "monetag", monetag_ymid: candidate })
+          .eq("id", start.sessionId)
+          .eq("player_id", player.id)
+          .eq("status", "pending")
+          .is("monetag_ymid", null)
+          .select("monetag_ymid")
+          .maybeSingle();
+        if (updateError) {
+          console.error("Monetag ymid assignment failed:", updateError);
+          return json({ error: "Could not prepare the Monetag verification session." }, 500);
+        }
+        if (updated?.monetag_ymid) {
+          ymid = updated.monetag_ymid as string;
+        } else {
+          const { data: latest, error: latestError } = await admin
+            .from("fragment_unlock_sessions")
+            .select("monetag_ymid, ad_provider")
+            .eq("id", start.sessionId)
+            .eq("player_id", player.id)
+            .maybeSingle();
+          if (latestError || latest?.ad_provider !== "monetag" || !latest.monetag_ymid) {
+            return json({ error: "Could not prepare the Monetag verification session." }, 409);
+          }
+          ymid = latest.monetag_ymid as string;
+        }
+      }
+
       return json({
-        success: false,
-        reason: "ad_verification_not_configured",
-        error: "Fragment unlocks are paused until a configured ad provider verifies a completed view.",
-      }, 503);
+        success: true,
+        sessionId: start.sessionId,
+        ymid,
+        provider: "monetag",
+        fragmentId: "right",
+      });
+    }
+
+    if (body.action === "confirm_fragment_unlock") {
+      if (typeof body.sessionId !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.sessionId)) {
+        return json({ error: "A valid Fragment ad session is required." }, 400);
+      }
+
+      const { data, error } = await admin.rpc("mark_monetag_fragment_sdk_completed", {
+        p_player_id: player.id,
+        p_session_id: body.sessionId,
+      });
+      if (error) {
+        console.error("Monetag SDK completion confirmation failed:", error);
+        return json({ error: "Could not verify the completed Monetag ad session." }, 500);
+      }
+      return json(data, data?.success === false ? 409 : 200);
     }
 
     if (body.action === "complete_fragment_unlock") {
       return json({
         success: false,
-        reason: "ad_verification_not_configured",
-        error: "Fragment unlocks are paused until a configured ad provider verifies a completed view.",
-      }, 503);
+        reason: "legacy_completion_disabled",
+        error: "Use the Monetag-verified Fragment completion flow.",
+      }, 410);
     }
 
     if (body.action === "fix_fragment") {
