@@ -43,19 +43,16 @@ Deno.serve(async (req: Request) => {
   });
 
   const suppliedHash = await sha256(suppliedToken);
-  const { data: credentials, error: credentialError } = await admin
-    .schema("app_private")
-    .from("onclicka_callback_credentials")
-    .select("secret_hash")
-    .eq("secret_hash", suppliedHash)
-    .eq("enabled", true)
-    .maybeSingle();
+  const { data: isValidToken, error: credentialError } = await admin.rpc(
+    "is_valid_onclicka_callback_secret",
+    { p_secret_hash: suppliedHash },
+  );
 
   if (credentialError) {
     console.error("OnClicka callback credential lookup failed:", credentialError);
     return text(503, "Callback verification unavailable");
   }
-  if (!credentials || !constantTimeEqual(credentials.secret_hash, suppliedHash)) {
+  if (isValidToken !== true || !constantTimeEqual(suppliedHash, await sha256(suppliedToken))) {
     return text(403, "Forbidden");
   }
 
