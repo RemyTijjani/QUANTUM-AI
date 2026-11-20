@@ -337,7 +337,7 @@ function GameApp({
   };
 
   const handleWatchFragmentAd = async () => {
-    if ((adFragment !== 'right' && adFragment !== 'bottom') || adProcessing) return;
+    if ((adFragment !== 'top' && adFragment !== 'right' && adFragment !== 'bottom') || adProcessing) return;
     setAdProcessing(true);
 
     try {
@@ -349,7 +349,17 @@ function GameApp({
         return;
       }
       if (!session.sessionId) {
-        throw new Error('ZORD could not prepare a secure ad session.');
+        throw new Error('ZORD could not prepare a secure unlock session.');
+      }
+
+      if (session.provider === 'free') {
+        // Shield remains ad-free. Keep the five-second scan animation visible,
+        // then let the server enforce the same minimum duration before unlocking.
+        await new Promise((resolve) => window.setTimeout(resolve, 5000));
+        const completed = await trustedGameplay.completeFreeShieldUnlock(session.sessionId);
+        setAdFragment(null);
+        if (completed) notify('Shield Fragment unlocked. No advertisement required.', 'info');
+        return;
       }
 
       if (session.provider === 'onclicka') {
