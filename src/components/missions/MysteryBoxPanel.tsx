@@ -71,6 +71,17 @@ function formatCountdown(milliseconds: number) {
   return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
 }
 
+function isOpenResult(value: unknown): value is OpenResult {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return candidate.success === true
+    && (candidate.boxTier === 'standard' || candidate.boxTier === 'premium')
+    && typeof candidate.rewardCode === 'string'
+    && (candidate.rewardType === 'zp' || candidate.rewardType === 'zap' || candidate.rewardType === 'boost')
+    && (candidate.zpAmount === null || typeof candidate.zpAmount === 'number')
+    && (candidate.zapAmount === null || typeof candidate.zapAmount === 'number');
+}
+
 export default function MysteryBoxPanel({
   onZpReward,
   notify,
@@ -239,14 +250,14 @@ export default function MysteryBoxPanel({
         return;
       }
 
-      let result: Record<string, unknown> | null = null;
+      let result: unknown = null;
       for (let attempt = 0; attempt < 20; attempt += 1) {
         const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
           body: { action: 'confirm_mystery_box_ad', sessionId: session.sessionId },
         });
         if (error) throw new Error(error.message || 'Could not confirm the Monetag ad session.');
         if (data?.completed === true && data?.success === true) {
-          result = data as Record<string, unknown>;
+          result = data;
           break;
         }
         if (data?.reason && data.reason !== 'session_not_pending') {
@@ -261,7 +272,10 @@ export default function MysteryBoxPanel({
         return;
       }
 
-      setLastReward(result as OpenResult);
+      if (!isOpenResult(result)) {
+        throw new Error('The verified Mystery Box response was incomplete. Please refresh your inventory.');
+      }
+      setLastReward(result);
       notify('Monetag verified your rewarded ad. Your Mystery Box reward has been recorded.');
       await loadInventory(true);
       await onZpReward();
