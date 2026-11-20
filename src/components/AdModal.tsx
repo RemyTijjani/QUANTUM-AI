@@ -22,7 +22,7 @@ export default function AdModal({
   const isFreeShield = fragmentId === 'top';
 
   return (
-    <Modal title="Fragment ad placement" onClose={isProcessing ? () => undefined : onClose}>
+    <Modal title="Fragment activation" onClose={isProcessing ? () => undefined : onClose}>
       <div className="space-y-4">
         <div>
           <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-neon-600">
