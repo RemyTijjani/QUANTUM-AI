@@ -109,20 +109,17 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body.action === "begin_fragment_unlock") {
-      if (body.fragmentId !== "right") {
-        return json({
-          success: false,
-          reason: "provider_not_configured",
-          error: "This Fragment's assigned ad provider is not connected yet.",
-        }, 503);
+      const fragmentId = body.fragmentId;
+      if (fragmentId !== "right" && fragmentId !== "bottom") {
+        return json({ success: false, reason: "provider_not_configured", error: "This Fragment's assigned ad provider is not connected yet." }, 503);
       }
-
+      const provider = fragmentId === "bottom" ? "onclicka" : "monetag";
       const { data: start, error: startError } = await admin.rpc("begin_fragment_unlock", {
         p_player_id: player.id,
-        p_fragment_id: "right",
+        p_fragment_id: fragmentId,
       });
       if (startError) {
-        console.error("Monetag Fragment session creation failed:", startError);
+        console.error("Trusted Fragment session creation failed:", startError);
         return json({ error: "Could not start the Fragment ad session." }, 500);
       }
       if (start?.success === false) return json(start, 409);
@@ -139,11 +136,28 @@ Deno.serve(async (req: Request) => {
         .eq("player_id", player.id)
         .maybeSingle();
       if (lookupError || !existing || existing.status !== "pending") {
-        console.error("Monetag Fragment session lookup failed:", lookupError);
+        console.error("Fragment session lookup failed:", lookupError);
         return json({ error: "The Fragment ad session is unavailable." }, 409);
       }
-      if (existing.ad_provider && existing.ad_provider !== "monetag") {
+      if (existing.ad_provider && existing.ad_provider !== provider) {
         return json({ error: "This Fragment session belongs to another ad provider." }, 409);
+      }
+
+      if (provider === "onclicka") {
+        if (!existing.ad_provider) {
+          const { error: updateError } = await admin
+            .from("fragment_unlock_sessions")
+            .update({ ad_provider: "onclicka" })
+            .eq("id", start.sessionId)
+            .eq("player_id", player.id)
+            .eq("status", "pending")
+            .is("ad_provider", null);
+          if (updateError) {
+            console.error("OnClicka provider assignment failed:", updateError);
+            return json({ error: "Could not prepare the OnClicka verification session." }, 500);
+          }
+        }
+        return json({ success: true, sessionId: start.sessionId, provider: "onclicka", fragmentId: "bottom" });
       }
 
       let ymid = existing.monetag_ymid as string | null;
@@ -177,14 +191,7 @@ Deno.serve(async (req: Request) => {
           ymid = latest.monetag_ymid as string;
         }
       }
-
-      return json({
-        success: true,
-        sessionId: start.sessionId,
-        ymid,
-        provider: "monetag",
-        fragmentId: "right",
-      });
+      return json({ success: true, sessionId: start.sessionId, ymid, provider: "monetag", fragmentId: "right" });
     }
 
     if (body.action === "confirm_fragment_unlock") {
@@ -200,6 +207,22 @@ Deno.serve(async (req: Request) => {
       if (error) {
         console.error("Monetag SDK completion confirmation failed:", error);
         return json({ error: "Could not verify the completed Monetag ad session." }, 500);
+      }
+      return json(data, data?.success === false ? 409 : 200);
+    }
+
+    if (body.action === "confirm_onclicka_fragment_unlock") {
+      if (typeof body.sessionId !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.sessionId)) {
+        return json({ error: "A valid Fragment ad session is required." }, 400);
+      }
+      const { data, error } = await admin.rpc("mark_onclicka_fragment_sdk_completed", {
+        p_player_id: player.id,
+        p_session_id: body.sessionId,
+      });
+      if (error) {
+        console.error("OnClicka SDK completion confirmation failed:", error);
+        return json({ error: "Could not verify the completed OnClicka ad session." }, 500);
       }
       return json(data, data?.success === false ? 409 : 200);
     }
