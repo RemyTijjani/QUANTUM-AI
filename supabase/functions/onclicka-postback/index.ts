@@ -10,13 +10,6 @@ function text(status: number, message: string) {
   });
 }
 
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -52,7 +45,7 @@ Deno.serve(async (req: Request) => {
     console.error("OnClicka callback credential lookup failed:", credentialError);
     return text(503, "Callback verification unavailable");
   }
-  if (isValidToken !== true || !constantTimeEqual(suppliedHash, await sha256(suppliedToken))) {
+  if (isValidToken !== true) {
     return text(403, "Forbidden");
   }
 
