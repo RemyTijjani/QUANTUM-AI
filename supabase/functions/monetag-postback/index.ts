@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
     zoneId !== MONETAG_ZONE_ID ||
     eventType !== "impression" ||
     rewardEventType !== "valued" ||
-    requestVar !== "fragment_right" ||
+    !["fragment_right", "mystery_box"].includes(requestVar) ||
     !UUID_PATTERN.test(ymid)
   ) {
     return response(200, "Event ignored");
@@ -60,7 +60,9 @@ Deno.serve(async (req: Request) => {
   });
 
   const { data: completion, error: completionError } = await admin.rpc(
-    "record_monetag_fragment_valued_postback",
+    requestVar === "mystery_box"
+      ? "record_monetag_mystery_box_valued_postback"
+      : "record_monetag_fragment_valued_postback",
     { p_ymid: ymid },
   );
 
