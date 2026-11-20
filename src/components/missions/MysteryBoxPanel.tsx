@@ -211,6 +211,68 @@ export default function MysteryBoxPanel({
     }
   };
 
+  const openRepeatBoxWithAd = async () => {
+    if (repeatBusy || !repeatBox) return;
+    setRepeatBusy(true);
+    setOpeningId('repeat-ad');
+    setRepeatMessage(null);
+    setLastReward(null);
+    try {
+      const requestId = crypto.randomUUID();
+      const { data: session, error: sessionError } = await supabase.functions.invoke('mystery-box-actions', {
+        body: { action: 'begin_mystery_box_ad', requestId },
+      });
+      if (sessionError || !session?.success || !session.sessionId || !session.ymid) {
+        throw new Error(session?.message || sessionError?.message || 'Monetag could not prepare your rewarded-ad session.');
+      }
+
+      const showAd = (window as Window & {
+        show_12235928?: (options: { type: 'end'; ymid: string; requestVar: string }) => Promise<{ reward_event_type?: string } | undefined>;
+      }).show_12235928;
+      if (typeof showAd !== 'function') {
+        throw new Error('Monetag is still loading. Please try again in a moment.');
+      }
+
+      const event = await showAd({ type: 'end', ymid: session.ymid, requestVar: 'mystery_box' });
+      if (event?.reward_event_type !== 'valued') {
+        notify('Monetag did not confirm a valued rewarded ad. No Mystery Box was granted.', 'info');
+        return;
+      }
+
+      let result: Record<string, unknown> | null = null;
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
+          body: { action: 'confirm_mystery_box_ad', sessionId: session.sessionId },
+        });
+        if (error) throw new Error(error.message || 'Could not confirm the Monetag ad session.');
+        if (data?.completed === true && data?.success === true) {
+          result = data as Record<string, unknown>;
+          break;
+        }
+        if (data?.reason && data.reason !== 'session_not_pending') {
+          throw new Error('Monetag verification could not complete this Mystery Box opening.');
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 1500));
+      }
+
+      if (!result) {
+        notify('Monetag reported the ad, but ZORD is still waiting for its verified server postback. No box has been credited yet.', 'info');
+        await loadInventory(true);
+        return;
+      }
+
+      setLastReward(result as OpenResult);
+      notify('Monetag verified your rewarded ad. Your Mystery Box reward has been recorded.');
+      await loadInventory(true);
+      await onZpReward();
+    } catch (requestError) {
+      notify(requestError instanceof Error ? requestError.message : 'The Monetag rewarded ad could not be verified. No box was granted.', 'error');
+    } finally {
+      setRepeatBusy(false);
+      setOpeningId(null);
+    }
+  };
+
   const openBox = async (box: MysteryBox) => {
     if (openingId) return;
     setOpeningId(box.entitlementId);
@@ -313,7 +375,7 @@ export default function MysteryBoxPanel({
               )}
               {repeatMessage && <p role="alert" className="rounded-lg border border-red-400/20 bg-red-400/5 p-3 font-mono text-[9px] text-red-300">{repeatMessage}</p>}
               <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2">
-                <button type="button" disabled className="min-h-11 rounded-lg border border-neon/15 bg-black/20 px-3 py-2 font-mono text-[9px] font-bold uppercase text-neon-700 disabled:opacity-70" title="AdsGram integration is not enabled yet">Watch Ad · coming soon</button>
+                <button type="button" onClick={() => void openRepeatBoxWithAd()} disabled={repeatBusy || (repeatBox.cooldownUntil !== null && new Date(repeatBox.cooldownUntil).getTime() > nowMs)} className="min-h-11 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-cyan-100 disabled:opacity-40">{repeatBusy && openingId === "repeat-ad" ? <Loader2 size={14} className="mx-auto animate-spin" /> : "Watch Monetag Ad"}</button>
                 <button type="button" onClick={() => void openRepeatBox()} disabled={repeatBusy || (repeatBox.cooldownUntil !== null && new Date(repeatBox.cooldownUntil).getTime() > nowMs) || repeatBox.zpBalance < 500} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-amber-100 disabled:opacity-40">
                   {repeatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Open for 500 ZP'}
                 </button>
@@ -323,7 +385,7 @@ export default function MysteryBoxPanel({
           ) : (
             <p className="rounded-lg border border-neon/15 bg-black/20 p-3 font-mono text-[9px] text-neon-700">Repeat opening status is loading. Refresh if this message remains.</p>
           )}
-          <p className="font-mono text-[8px] leading-relaxed text-neon-700">Both repeat options share one server-enforced 2-hour cooldown. AdsGram stays disabled until provider verification is implemented.</p>
+          <p className="font-mono text-[8px] leading-relaxed text-neon-700">Both repeat options share one server-enforced 2-hour cooldown. Monetag rewards are credited only after its valued server postback and ZORD SDK completion are both recorded.</p>
         </div>
       </div>
       </div>
