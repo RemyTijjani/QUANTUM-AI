@@ -117,6 +117,37 @@ Deno.serve(async (req: Request) => {
       return json(data, data?.success === false ? 429 : 200);
     }
 
+    if (body.action === "begin_mystery_box_ad") {
+      if (typeof body.requestId !== "string" || !UUID_PATTERN.test(body.requestId)) {
+        return json({ error: "A valid Mystery Box ad request is required." }, 400);
+      }
+      const { data, error } = await admin.rpc("begin_mystery_box_monetag_session", {
+        p_player_id: player.id,
+        p_request_id: body.requestId,
+      });
+      if (error) {
+        console.error("Monetag Mystery Box session creation failed:", error);
+        return json({ error: "Could not prepare the rewarded-ad session." }, 500);
+      }
+      if (data?.success === false) return json(data, data.code === "cooldown_active" ? 429 : 409);
+      return json(data);
+    }
+
+    if (body.action === "confirm_mystery_box_ad") {
+      if (typeof body.sessionId !== "string" || !UUID_PATTERN.test(body.sessionId)) {
+        return json({ error: "A valid Mystery Box ad session is required." }, 400);
+      }
+      const { data, error } = await admin.rpc("confirm_mystery_box_monetag_sdk", {
+        p_player_id: player.id,
+        p_session_id: body.sessionId,
+      });
+      if (error) {
+        console.error("Monetag Mystery Box SDK completion failed:", error);
+        return json({ error: "Could not confirm the rewarded-ad completion." }, 500);
+      }
+      return json(data, data?.success === false ? 409 : 200);
+    }
+
     if (body.action === "open_repeat_mystery_box") {
       if (
         (body.method !== "zp" && body.method !== "ad") ||
