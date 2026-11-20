@@ -23,8 +23,8 @@ export function useGame(
   isLoading: boolean;
   clockNow: number;
   trustedGameplay: {
-    beginUnlock: (id: FragmentId) => Promise<{ sessionId: string | null; alreadyUnlocked: boolean }>;
-    completeUnlock: (sessionId: string) => Promise<void>;
+    beginUnlock: (id: FragmentId) => Promise<{ sessionId: string | null; ymid: string | null; alreadyUnlocked: boolean }>;
+    completeUnlock: (sessionId: string) => Promise<boolean>;
     fixFragment: (id: FragmentId) => Promise<void>;
   };
 } {
@@ -88,8 +88,9 @@ export function useGame(
       return result;
     },
     completeUnlock: async (sessionId: string) => {
-      await completeTrustedUnlock(sessionId);
-      await applyTrustedFragments();
+      const completed = await completeTrustedUnlock(sessionId);
+      if (completed) await applyTrustedFragments();
+      return completed;
     },
     fixFragment: async (id: FragmentId) => {
       await fixTrustedFragment(id);
