@@ -1,9 +1,7 @@
-import { useState } from 'react';
-import { RotateCcw, User } from 'lucide-react';
-import { AGENTS, FRAGMENT_IDS } from '@/lib/game/config';
-import { activeAgents, fixedCount, passiveRate, tierInfo } from '@/lib/game/state';
-import type { GameState } from '@/lib/game/state';
-import { formatZp, formatRate, formatRemaining } from '@/lib/format';
+import { Award, ShieldCheck, User, Wallet } from 'lucide-react';
+import { formatZp } from '@/lib/format';
+import { tierInfo } from '@/lib/game/state';
+import type { ZapAchievements } from '@/lib/economy/zapWallet';
 import Modal from '@/components/Modal';
 
 export interface ProfileIdentity {
@@ -12,94 +10,87 @@ export interface ProfileIdentity {
 }
 
 interface ProfileModalProps {
-  state: GameState;
   identity: ProfileIdentity | null;
-  onReset: () => void;
+  verifiedZpBalance: number | null;
+  verifiedZpLifetime: number | null;
+  zapEarned: number | null;
+  zapAchievements: ZapAchievements | null;
   onClose: () => void;
 }
 
-export default function ProfileModal({ state, identity, onReset, onClose }: ProfileModalProps) {
-  const [confirmingReset, setConfirmingReset] = useState(false);
-  const now = Date.now();
-  const tier = tierInfo(state.lifetimeZp);
-  const rentals = activeAgents(state, now);
-  const displayName = identity?.username
-    ? `@${identity.username}`
-    : identity?.firstName ?? 'Unnamed operative';
+export default function ProfileModal({
+  identity,
+  verifiedZpBalance,
+  verifiedZpLifetime,
+  zapEarned,
+  zapAchievements,
+  onClose,
+}: ProfileModalProps) {
+  const netZap = zapAchievements?.netZap ?? zapEarned;
+  const tier = netZap === null ? null : tierInfo(netZap);
+  const rankNumber = zapAchievements?.coreRank?.rankNumber ?? tier?.tier ?? null;
+  const displayName = identity?.firstName
+    ? identity.username
+      ? `${identity.firstName} · @${identity.username}`
+      : identity.firstName
+    : identity?.username
+      ? `@${identity.username}`
+      : 'Unnamed operative';
 
   return (
     <Modal title="Operative Profile" onClose={onClose}>
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-neon/50 bg-neon/10 text-neon-400 shadow-glow">
-            <User size={26} />
+      <div className="space-y-4">
+        <section className="rounded-2xl border border-neon/30 bg-gradient-to-br from-neon/15 via-[#07130c] to-black p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-neon/40 bg-black/50 text-neon-300">
+              <User size={22} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="rounded-full border border-neon/30 bg-neon/10 px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-neon-300">
+                Core rank {rankNumber === null ? '—' : String(rankNumber).padStart(2, '0')}
+              </span>
+              <h3 className="mt-2 break-words font-display text-lg font-bold leading-tight text-white">{displayName}</h3>
+              <p className="mt-1 break-words font-mono text-xs text-neon-300">{tier?.rank ?? 'Rank unavailable'}</p>
+            </div>
           </div>
-          <div>
-            <p className="label">Operative rank</p>
-            <h3 className="mt-1 font-display text-base font-bold uppercase tracking-wide text-neon-300">
-              {tier.rank}
-            </h3>
-            <p className="mt-1 font-mono text-[11px] text-neon-300">{displayName}</p>
-            <p className="font-mono text-[11px] text-neon-500">ZORD Tier {String(tier.tier).padStart(2, '0')}</p>
-          </div>
-        </div>
-
-        <dl className="grid grid-cols-2 gap-2">
-          <Stat label="Total ZP balance" value={formatZp(state.zp)} />
-          <Stat label="Passive ZP/sec" value={formatRate(passiveRate(state, now))} />
-          <Stat label="Fragments connected" value={`${fixedCount(state)} / ${FRAGMENT_IDS.length}`} />
-          <Stat label="Lifetime ZP" value={formatZp(state.lifetimeZp)} />
-        </dl>
-
-        <section className="space-y-2">
-          <p className="label">Active hash-agents</p>
-          {rentals.length === 0 ? (
-            <p className="rounded-lg border border-neon/15 bg-black/40 px-4 py-3 font-mono text-[11px] text-neon-500">
-              No agents online. ZORD Agents are coming soon.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {rentals.map((id) => (
-                <li
-                  key={id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-neon/25 bg-neon/5 px-4 py-3"
-                >
-                  <span className="font-display text-[11px] font-bold uppercase tracking-wide text-neon-300">
-                    {AGENTS[id].name}
-                  </span>
-                  <span className="font-mono text-[11px] tabular-nums text-neon-400">
-                    {formatRemaining(state.agents[id] - now)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
 
-        <section className="space-y-3 border-t border-red-500/25 pt-5">
-          <p className="label !text-red-300/80">System utilities</p>
-          <p className="font-mono text-[11px] leading-relaxed text-neon-500">
-            Wipes ZP, fragments, rentals, sub-nodes and vault link. This cannot be undone.
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Wallet size={16} className="text-neon-400" />
+            <div>
+              <h3 className="font-display text-xs font-bold uppercase tracking-[0.14em] text-white">Verified economy</h3>
+              <p className="mt-0.5 font-mono text-[10px] text-neon-500">Balances recorded by the ZORD server</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <BalanceCard label="Available ZP" value={verifiedZpBalance === null ? 'Unavailable' : formatZp(verifiedZpBalance)} detail="Verified balance" />
+            <BalanceCard label="Lifetime ZP" value={verifiedZpLifetime === null ? 'Unavailable' : formatZp(verifiedZpLifetime)} detail="Server-recorded" />
+            <BalanceCard label="Net ZAP" value={netZap === null ? 'Unavailable' : formatZp(netZap)} detail="Earned minus spent" />
+            <BalanceCard label="Core rank" value={rankNumber === null ? 'Unavailable' : `#${rankNumber}`} detail={tier?.rank ?? 'Server data unavailable'} />
+          </div>
+        </section>
+
+        <section className="flex items-start gap-2 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.04] p-3">
+          <ShieldCheck size={15} className="mt-0.5 shrink-0 text-cyan-200" />
+          <p className="font-mono text-[10px] leading-relaxed text-cyan-100/80">
+            Your official ZP balance, lifetime earnings, ZAP score, and Core rank come from server-verified records. Local game estimates are not used as wallet balances.
           </p>
-          <button
-            type="button"
-            onClick={() => (confirmingReset ? onReset() : setConfirmingReset(true))}
-            className="w-full rounded-lg border border-red-500/60 bg-red-500/10 px-4 py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.16em] text-red-300 transition duration-200 hover:bg-red-500/20 active:scale-[0.98]"
-          >
-            <RotateCcw size={14} className="mr-2 inline" />
-            {confirmingReset ? 'Confirm wipe' : 'Reset system memory'}
-          </button>
         </section>
       </div>
     </Modal>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function BalanceCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="rounded-lg border border-neon/15 bg-black/40 px-3 py-3">
-      <dt className="font-mono text-[10px] uppercase tracking-wider text-neon-500">{label}</dt>
-      <dd className="mt-1 font-display text-sm font-bold tabular-nums text-neon-300">{value}</dd>
+    <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.025] p-3">
+      <div className="flex items-center gap-1.5 text-neon-400">
+        <Award size={13} />
+        <span className="font-mono text-[9px] font-semibold uppercase tracking-wider">{label}</span>
+      </div>
+      <p className="mt-2 break-words font-display text-lg font-bold leading-tight tabular-nums text-white">{value}</p>
+      <p className="mt-1 break-words font-mono text-[9px] text-neon-500">{detail}</p>
     </div>
   );
 }

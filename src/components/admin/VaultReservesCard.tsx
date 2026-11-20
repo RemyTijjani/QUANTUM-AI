@@ -38,9 +38,9 @@ export default function VaultReservesCard({ reserves, refreshing, onSave }: Vaul
   };
 
   return (
-    <div className="panel p-4 border border-neon/20 bg-neon/5 space-y-4">
-      <div className="flex items-center justify-between border-b border-neon/20 pb-2">
-        <h2 className="text-xs uppercase tracking-widest text-neon-400 font-bold flex items-center gap-2">
+    <div className="rounded-2xl border border-white/10 bg-[#111a14] p-4 shadow-sm bg-emerald-400/5 space-y-4">
+      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+        <h2 className="text-xs uppercase tracking-widest text-slate-300 font-bold flex items-center gap-2">
           <Coins size={14} /> Vault Reserves
         </h2>
         {!editing && (
@@ -48,7 +48,7 @@ export default function VaultReservesCard({ reserves, refreshing, onSave }: Vaul
             type="button"
             onClick={startEditing}
             disabled={refreshing}
-            className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-neon-500 transition hover:text-neon-300 disabled:opacity-50"
+            className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-slate-400 transition hover:text-emerald-300 disabled:opacity-50"
           >
             <Edit2 size={12} /> Edit
           </button>
@@ -58,7 +58,7 @@ export default function VaultReservesCard({ reserves, refreshing, onSave }: Vaul
       {editing ? (
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">TON Reserve</label>
+            <label className="text-[11px] text-slate-400 uppercase">Gram Reserve</label>
             <input
               type="number"
               min={0}
@@ -67,11 +67,11 @@ export default function VaultReservesCard({ reserves, refreshing, onSave }: Vaul
               onChange={(e) => setTonDraft(e.target.value)}
               required
               disabled={saving}
-              className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50"
+              className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50"
             />
           </div>
           <div>
-            <label className="text-[11px] text-neon-500 uppercase">ZP Reserve</label>
+            <label className="text-[11px] text-slate-400 uppercase">ZP Reserve</label>
             <input
               type="number"
               min={0}
@@ -80,18 +80,18 @@ export default function VaultReservesCard({ reserves, refreshing, onSave }: Vaul
               onChange={(e) => setZpDraft(e.target.value)}
               required
               disabled={saving}
-              className="w-full mt-1 bg-black/60 border border-neon/30 p-2 text-xs text-neon-300 disabled:opacity-50"
+              className="w-full mt-1 bg-[#080e0a] border border-white/10 p-2 text-xs text-emerald-300 disabled:opacity-50"
             />
           </div>
           {error && (
             <p role="alert" className="sm:col-span-2 text-[11px] text-red-400 border-l-2 border-red-500/50 pl-2">{error}</p>
           )}
           <div className="sm:col-span-2 flex gap-2">
-            <button type="submit" disabled={saving} className="flex-1 py-2 flex items-center justify-center gap-2 bg-neon/20 hover:bg-neon/30 border border-neon text-xs uppercase tracking-wider font-bold disabled:opacity-60">
+            <button type="submit" disabled={saving} className="flex-1 py-2 flex items-center justify-center gap-2 bg-emerald-400/15 hover:bg-emerald-400/20 border border-emerald-400/40 text-xs uppercase tracking-wider font-bold disabled:opacity-60">
               {saving && <Loader2 size={14} className="animate-spin" />}
               {saving ? 'Saving...' : 'Save Reserves'}
             </button>
-            <button type="button" onClick={() => setEditing(false)} disabled={saving} className="flex-1 py-2 border border-neon/30 text-xs uppercase tracking-wider text-neon-500 hover:text-neon-300 disabled:opacity-50">
+            <button type="button" onClick={() => setEditing(false)} disabled={saving} className="flex-1 py-2 border border-white/10 text-xs uppercase tracking-wider text-slate-400 hover:text-emerald-300 disabled:opacity-50">
               Cancel
             </button>
           </div>
@@ -99,18 +99,18 @@ export default function VaultReservesCard({ reserves, refreshing, onSave }: Vaul
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <div className="flex items-center gap-2 text-neon-500 mb-1">
-              <Coins size={14} /> <span className="text-[11px] uppercase tracking-wider">TON Reserve</span>
+            <div className="flex items-center gap-2 text-slate-400 mb-1">
+              <Coins size={14} /> <span className="text-[11px] uppercase tracking-wider">Gram Reserve</span>
             </div>
-            <p className="text-2xl font-display font-bold text-neon-300 tabular-nums">
+            <p className="text-2xl font-display font-bold text-emerald-300 tabular-nums">
               {refreshing ? '...' : reserves.tonReserve.toLocaleString(undefined, { maximumFractionDigits: 4 })}
             </p>
           </div>
           <div>
-            <div className="flex items-center gap-2 text-neon-500 mb-1">
+            <div className="flex items-center gap-2 text-slate-400 mb-1">
               <Cpu size={14} /> <span className="text-[11px] uppercase tracking-wider">ZP Reserve</span>
             </div>
-            <p className="text-2xl font-display font-bold text-neon-300 tabular-nums">
+            <p className="text-2xl font-display font-bold text-emerald-300 tabular-nums">
               {refreshing ? '...' : formatZp(reserves.zpReserve)}
             </p>
           </div>

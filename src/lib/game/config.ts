@@ -1,7 +1,8 @@
 export const APP_NAME = 'ZORD Autonomous Agent';
 export const APP_TAGLINE = 'Autonomous Intellect. Total Group Dominion.';
 
-export const TIER_SIZE = 2500;
+// Core Rank advances for every 500 net ZAP.
+export const TIER_SIZE = 500;
 
 export const RANKS = [
   'Initiate',
@@ -48,19 +49,19 @@ export interface AgentSpec {
 export const AGENTS: Record<AgentId, AgentSpec> = {
   alpha: {
     name: 'ZORD Alpha Miner Agent',
-    summary: 'Autonomous offline mining rig that keeps extracting ZP while you are away.',
-    zpPerSec: 10,
+    summary: 'Autonomous mining agent that generates ZP while active.',
+    zpPerSec: 0.1,
     priceTon: 1.5,
-    durationDays: 7,
+    durationDays: 30,
     kickbackMultiplier: 1,
   },
   overclock: {
     name: 'ZORD Overclocked Core Agent',
-    summary: 'Max-clock hash core that triples the network kickback on every sub-node.',
-    zpPerSec: 35,
+    summary: 'High-performance mining agent with an increased ZP generation rate.',
+    zpPerSec: 0.3,
     priceTon: 4.5,
     durationDays: 30,
-    kickbackMultiplier: 3,
+    kickbackMultiplier: 2,
   },
 };
 
@@ -71,13 +72,15 @@ export const BOOSTER_REWARD = 500;
 export const SUB_NODE_RATE = 0.001;
 export const KICKBACK_RATE = 0.1;
 
+// Cumulative referral milestone rewards are credited in whole ZAP.
 export const MILESTONES = [
-  { threshold: 3, reward: 500 },
-  { threshold: 10, reward: 2000 },
-  { threshold: 25, reward: 5000 },
+  { threshold: 3, rewardZap: 10 },
+  { threshold: 10, rewardZap: 20 },
+  { threshold: 25, rewardZap: 50 },
 ] as const;
 
 export type MissionKind = 'daily' | 'social' | 'creator';
+export type MissionRewardCurrency = 'ZP' | 'ZAP';
 
 export interface MissionSpec {
   id: string;
@@ -85,20 +88,21 @@ export interface MissionSpec {
   title: string;
   description: string;
   reward: number;
+  rewardCurrency?: MissionRewardCurrency;
   platform?: 'tiktok' | 'youtube';
   actionUrl?: string;
+  telegramChatId?: string;
 }
 
-export const AD_QUOTA_TARGET = 3;
+export const AD_QUOTA_TARGET = 8;
 
 export const RIVALS = [
   { name: 'NEON_WRAITH', zp: 184200 },
   { name: 'GHOST//KERNEL', zp: 142950 },
-  { name: 'VOID_SPLICER', zp: 97410 },
-  { name: 'PIXEL_MONK', zp: 61230 },
-  { name: 'CIPHER_OWL', zp: 38775 },
-  { name: 'BYTE_HERALD', zp: 21090 },
-  { name: 'SIGNAL_RAVEN', zp: 9640 },
+  { name: 'VOID_SPLICER', zp: 61230 },
+  { name: 'PIXEL_MONK', zp: 38775 },
+  { name: 'CIPHER_OWL', zp: 21090 },
+  { name: 'BYTE_HERALD', zp: 9640 },
 ];
 
 export const RECRUIT_POOL = [

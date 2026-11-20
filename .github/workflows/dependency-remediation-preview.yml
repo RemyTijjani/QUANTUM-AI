@@ -1,0 +1,60 @@
+name: Preview Dependency Remediation Proposal
+
+on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - .github/workflows/dependency-remediation-preview.yml
+
+permissions:
+  contents: read
+
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: security/trusted-gameplay-migration
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install current lockfile
+        run: npm ci
+
+      - name: Generate semver-compatible audit fixes
+        run: npm audit fix --ignore-scripts --no-fund || true
+
+      - name: Verify proposed dependency update
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm run build
+
+      - name: Report remaining advisories
+        run: |
+          npm audit --json > /tmp/npm-audit-after.json || true
+          node <<'NODE'
+          const audit = require('/tmp/npm-audit-after.json');
+          console.log('Post-fix dependency vulnerability totals:', JSON.stringify(audit.metadata?.vulnerabilities ?? {}));
+          for (const [name, item] of Object.entries(audit.vulnerabilities ?? {})) {
+            const via = (item.via ?? []).map((entry) => typeof entry === 'string' ? entry : entry.title).join(' | ');
+            console.log(`[${item.severity.toUpperCase()}] ${name} | direct=${item.isDirect} | range=${item.range} | fix=${JSON.stringify(item.fixAvailable)} | via=${via}`);
+          }
+          NODE
+
+      - name: Upload proposed lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-dependency-remediation
+          path: |
+            package.json
+            package-lock.json
+          if-no-files-found: error

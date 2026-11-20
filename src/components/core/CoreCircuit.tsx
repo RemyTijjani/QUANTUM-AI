@@ -34,7 +34,7 @@ interface CoreCircuitProps {
 
 export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
   return (
-    <section className="panel mx-auto w-full max-w-[360px] p-4">
+    <section className="panel mx-auto w-full min-w-0 max-w-[360px] p-3 min-[380px]:p-4">
       <div className="relative aspect-square w-full">
         <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden>
           {FRAGMENT_IDS.map((id) => (
@@ -93,7 +93,7 @@ export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
           );
         })}
 
-        <div className="absolute left-1/2 top-1/2 flex aspect-square w-[28%] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-xl border border-neon bg-[#06140b] shadow-glow">
+        <div className="absolute left-1/2 top-1/2 flex aspect-square w-[30%] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-xl border border-neon bg-[#06140b] shadow-glow">
           <div className="absolute -inset-[14%] animate-spin-slow rounded-full border border-dashed border-neon/40" />
           <Cpu size={26} className="text-neon-400 animate-soft-pulse" />
           <span className="mt-1 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-neon-400">ZP Core</span>

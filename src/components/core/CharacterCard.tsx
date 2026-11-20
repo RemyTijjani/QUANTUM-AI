@@ -2,40 +2,34 @@ import { Bot } from 'lucide-react';
 
 interface CharacterCardProps {
   fixed: number;
-  lifetimeZp: string;
   rate: string;
+  entityNumber: number | null;
 }
 
-export default function CharacterCard({ fixed, lifetimeZp, rate }: CharacterCardProps) {
+export default function CharacterCard({ fixed, rate, entityNumber }: CharacterCardProps) {
   const stats = [
-    { label: 'Fragments', value: `${fixed}/4` },
-    { label: 'Lifetime ZP', value: lifetimeZp },
-    { label: 'ZP / sec', value: rate },
+    { label: 'Fragments online', value: `${fixed}/4` },
+    { label: 'Mining rate', value: `${rate} ZP/s` },
+    { label: 'Reward maturity', value: '6h' },
   ];
 
   return (
-    <section className="panel p-5">
-      <div className="flex items-center gap-4">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-neon/50 bg-neon/10 text-neon-400 shadow-glow">
-          <Bot size={28} />
+    <section className="panel min-w-0 border border-neon/25 bg-black/35 p-3" aria-label="Entity profile">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neon/50 bg-neon/10 text-neon-400 shadow-glow">
+          <Bot size={23} />
         </div>
         <div className="min-w-0">
           <p className="label">Entity profile</p>
-          <h3 className="title mt-1 truncate">ZORD Entity #047</h3>
-          <p className="font-mono text-[11px] text-neon-500">Autonomous fragment core // signal degraded</p>
+          <h3 className="title mt-1 truncate">ZORD Entity {entityNumber === null ? '—' : `#${String(entityNumber).padStart(8, '0')}`}</h3>
         </div>
       </div>
 
-      <p className="mt-4 font-mono text-xs leading-relaxed text-neon-300/90">
-        ZORD was scattered across the grid in four pieces. Every fragment you restore strengthens its signal and
-        pulls more ZP from the dormant nodes. Restore the full circuit to bring ZORD back online.
-      </p>
-
-      <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-neon/15 pt-4">
+      <dl className="mt-3 grid grid-cols-3 gap-1.5 border-t border-neon/15 pt-3">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-lg border border-neon/15 bg-black/40 px-2 py-2.5 text-center">
-            <dt className="font-mono text-[10px] uppercase tracking-wider text-neon-500">{stat.label}</dt>
-            <dd className="mt-1 truncate font-display text-xs font-bold tabular-nums text-neon-300">{stat.value}</dd>
+          <div key={stat.label} className="min-w-0 rounded-lg border border-neon/15 bg-black/40 px-1.5 py-2 text-center">
+            <dt className="min-h-[2em] font-mono text-[8px] uppercase leading-tight tracking-wide text-neon-500">{stat.label}</dt>
+            <dd className="mt-1 break-words font-display text-[11px] font-bold tabular-nums text-neon-300">{stat.value}</dd>
           </div>
         ))}
       </dl>

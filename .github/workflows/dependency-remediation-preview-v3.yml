@@ -1,0 +1,82 @@
+name: Preview Dependency Remediation Proposal V3
+
+on:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - .github/workflows/dependency-remediation-preview-v3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: security/trusted-gameplay-migration
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install current lockfile
+        run: npm ci
+
+      - name: Update compatible dependency versions
+        run: npm update --ignore-scripts --no-fund
+
+      - name: Generate force-enabled audit fix proposal
+        run: npm audit fix --force --ignore-scripts --no-fund || true
+
+      - name: Verify proposed dependency update
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm run build
+
+      - name: Report remaining advisories
+        run: |
+          npm audit --json > /tmp/npm-audit-after.json || true
+          node <<'NODE'
+          const audit = require('/tmp/npm-audit-after.json');
+          console.log('Post-force-fix dependency vulnerability totals:', JSON.stringify(audit.metadata?.vulnerabilities ?? {}));
+          for (const [name, item] of Object.entries(audit.vulnerabilities ?? {})) {
+            const via = (item.via ?? []).map((entry) => typeof entry === 'string' ? entry : entry.title).join(' | ');
+            console.log(`[${item.severity.toUpperCase()}] ${name} | direct=${item.isDirect} | range=${item.range} | fix=${JSON.stringify(item.fixAvailable)} | via=${via}`);
+          }
+          NODE
+
+      - name: Commit verified dependency updates to Preview
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "No dependency updates to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore: update audited npm dependencies"
+          AUTH_HEADER="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="AUTHORIZATION: basic $AUTH_HEADER" pull --rebase origin security/trusted-gameplay-migration
+          git -c http.extraheader="AUTHORIZATION: basic $AUTH_HEADER" push origin HEAD:security/trusted-gameplay-migration
+
+      - name: Upload proposed dependency files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-dependency-remediation-v3
+          path: |
+            package.json
+            package-lock.json
+          if-no-files-found: error

@@ -32,24 +32,22 @@ export function restoreGameState(
   const merged: GameState = {
     ...fresh,
     ...parsed,
+    // Temporary reward timers are restored only from the authenticated server,
+    // never from localStorage or the client-controlled cloud game save.
+    temporaryAgentUntil: 0,
+    fragmentMiningBoostUntil: 0,
+    fragmentMiningBoostMultiplier: 1,
 
     referralCode:
       referralCode ?? parsed.referralCode ?? fresh.referralCode,
 
-    fragments: {
-      ...fresh.fragments,
-      ...(parsed.fragments ?? {}),
-    },
-
-    fragmentCooldowns: {
-      ...fresh.fragmentCooldowns,
-      ...(parsed.fragmentCooldowns ?? {}),
-    },
-
-    agents: {
-      ...fresh.agents,
-      ...(parsed.agents ?? {}),
-    },
+    // Fragment state, cooldowns, and mining sessions are restored only from
+    // the trusted gameplay service, never from a client-controlled cloud save.
+    fragments: { ...fresh.fragments },
+    fragmentCooldowns: { ...fresh.fragmentCooldowns },
+    fragmentMiningUntil: { ...fresh.fragmentMiningUntil },
+    agents: { ...fresh.agents },
+    coreMiningUntil: 0,
 
     adsWatched: {
       ...fresh.adsWatched,
@@ -110,11 +108,32 @@ export function saveState(
   if (!playerId) return;
 
   try {
+    const {
+      temporaryAgentUntil: _temporaryAgentUntil,
+      fragmentMiningBoostUntil: _fragmentMiningBoostUntil,
+      fragmentMiningBoostMultiplier: _fragmentMiningBoostMultiplier,
+      fragmentMiningUntil: _fragmentMiningUntil,
+      ...persistedState
+    } = state;
+    void _temporaryAgentUntil;
+    void _fragmentMiningBoostUntil;
+    void _fragmentMiningBoostMultiplier;
+    void _fragmentMiningUntil;
     window.localStorage.setItem(
       getStorageKey(playerId),
-      JSON.stringify(state),
+      JSON.stringify(persistedState),
     );
   } catch {
     // Local storage may be unavailable or full.
   }
+}
+
+/** Remove server-owned reward timers before writing the client game snapshot. */
+export function persistableGameState(state: GameState): Omit<GameState, 'temporaryAgentUntil' | 'fragmentMiningBoostUntil' | 'fragmentMiningBoostMultiplier' | 'fragmentMiningUntil'> {
+  const { temporaryAgentUntil: _agent, fragmentMiningBoostUntil: _boost, fragmentMiningBoostMultiplier: _multiplier, fragmentMiningUntil: _miningUntil, ...persisted } = state;
+  void _agent;
+  void _boost;
+  void _multiplier;
+  void _miningUntil;
+  return persisted;
 }

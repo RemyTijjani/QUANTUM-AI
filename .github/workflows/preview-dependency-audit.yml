@@ -1,0 +1,69 @@
+name: Preview dependency security audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: github.ref == 'refs/heads/security/trusted-gameplay-migration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out Preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: security/trusted-gameplay-migration
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --fetch-retries=2 --fetch-timeout=30000
+
+      - name: Audit all dependencies
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          set +e
+          timeout --kill-after=5s 45s npm audit --json > /tmp/npm-audit.json
+          status=$?
+          set -e
+          if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+            echo "::warning::Full dependency audit timed out; no dependency changes were made."
+            exit 0
+          fi
+          node <<'NODE'
+          const fs = require('node:fs');
+          const audit = JSON.parse(fs.readFileSync('/tmp/npm-audit.json', 'utf8'));
+          console.log('All dependency vulnerability totals:', JSON.stringify(audit.metadata?.vulnerabilities ?? {}));
+          for (const [name, item] of Object.entries(audit.vulnerabilities ?? {})) {
+            const via = (item.via ?? []).map(v => typeof v === 'string' ? v : v.title).join('; ');
+            console.log(`[${item.severity.toUpperCase()}] ${name} | direct=${item.isDirect} | range=${item.range} | fix=${JSON.stringify(item.fixAvailable)} | via=${via}`);
+          }
+          NODE
+
+      - name: Audit production dependencies
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          set +e
+          timeout --kill-after=5s 45s npm audit --omit=dev --json > /tmp/npm-audit-production.json
+          status=$?
+          set -e
+          if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+            echo "::warning::Production dependency audit timed out."
+            exit 0
+          fi
+          node -e "const audit=require('/tmp/npm-audit-production.json'); console.log('Production dependency vulnerability totals:', JSON.stringify(audit.metadata?.vulnerabilities ?? {}));"

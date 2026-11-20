@@ -12,7 +12,6 @@ import {
   FRAGMENT_IDS,
   FRAGMENT_UNLOCK_REWARD,
   KICKBACK_RATE,
-  MILESTONES,
   MYSTERY_FRAGMENT_COST,
   RANKS,
   SUB_NODE_RATE,
@@ -46,6 +45,8 @@ export interface GameState {
   lifetimeZp: number;
   fragments: Record<FragmentId, FragmentStatus>;
   fragmentCooldowns: Record<FragmentId, number>;
+  /** Per-fragment mining expiry; hydrated only from trusted gameplay. */
+  fragmentMiningUntil: Record<FragmentId, number>;
   agents: Record<AgentId, number>;
   kickbackPending: number;
   subNodes: SubNode[];
@@ -55,6 +56,10 @@ export interface GameState {
   wallet: WalletState;
   referralCode: string;
   coreMiningUntil: number;
+  /** Server-sourced temporary reward timers; excluded from saved game state. */
+  temporaryAgentUntil: number;
+  fragmentMiningBoostUntil: number;
+  fragmentMiningBoostMultiplier: number;
   lastTick: number;
 }
 
@@ -74,7 +79,8 @@ export type Command =
   | { type: 'claimMilestone'; threshold: number }
   | { type: 'recruitSubNode'; id: string; name: string }
   | { type: 'claimMission'; mission: MissionSpec }
-  | { type: 'creditZp'; amount: number };
+  | { type: 'creditZp'; amount: number }
+  | { type: 'setTemporaryRewards'; agentUntil: number; fragmentBoostUntil: number; fragmentBoostMultiplier: number };
 
 export type GameAction = Command & { now: number };
 
@@ -100,6 +106,12 @@ export function createInitialState(
       left: 0,
       right: 0,
     },
+    fragmentMiningUntil: {
+      top: 0,
+      bottom: 0,
+      left: 0,
+      right: 0,
+    },
     agents: { alpha: 0, overclock: 0 },
     kickbackPending: 0,
     subNodes: [],
@@ -113,6 +125,9 @@ export function createInitialState(
     },
     referralCode: referralCode ?? makeReferralCode(),
     coreMiningUntil: 0,
+    temporaryAgentUntil: 0,
+    fragmentMiningBoostUntil: 0,
+    fragmentMiningBoostMultiplier: 1,
     lastTick: now,
   };
 }
@@ -121,13 +136,13 @@ export const fixedCount = (s: GameState) =>
   FRAGMENT_IDS.filter((id) => s.fragments[id] === 'fixed').length;
 
 export const activeAgents = (s: GameState, now: number) =>
-  AGENT_IDS.filter((id) => s.agents[id] > now);
+  AGENT_IDS.filter((id) => s.agents[id] > now || (id === 'alpha' && s.temporaryAgentUntil > now));
 
 export const isAgentActive = (
   s: GameState,
   id: AgentId,
   now: number
-) => s.agents[id] > now;
+) => s.agents[id] > now || (id === 'alpha' && s.temporaryAgentUntil > now);
 
 export const fragmentCooldownRemaining = (
   s: GameState,
@@ -137,8 +152,18 @@ export const fragmentCooldownRemaining = (
 
 export function passiveRate(s: GameState, now: number) {
   const coreRate = now < s.coreMiningUntil ? CORE_BASE_RATE : 0;
-  const fragmentRate = fixedCount(s) * FRAGMENT_ZP_PER_SEC;
-  const agentRate = activeAgents(s, now).reduce(
+  const runningAgents = activeAgents(s, now);
+  // A fixed fragment maintains the rented agent; it does not add a separate
+  // fragment rate while an agent is active.
+  const baseFragmentRate = runningAgents.length > 0
+    ? 0
+    : fixedCount(s) * FRAGMENT_ZP_PER_SEC;
+  const fragmentRate = baseFragmentRate * (
+    s.fragmentMiningBoostUntil > now
+      ? Math.max(1, s.fragmentMiningBoostMultiplier)
+      : 1
+  );
+  const agentRate = runningAgents.reduce(
     (sum, id) => sum + AGENTS[id].zpPerSec,
     0
   );
@@ -163,7 +188,7 @@ export function tierInfo(lifetimeZp: number) {
 
   return {
     tier,
-    rank: RANKS[Math.min(tier - 1, RANKS.length - 1)],
+    rank: RANKS[tier - 1] ?? `Core ${tier}`,
     progress: intoTier / TIER_SIZE,
     intoTier,
     toNext: TIER_SIZE - intoTier,
@@ -270,6 +295,8 @@ export function advance(s: GameState, now: number): GameState {
     ...AGENT_IDS.map((id) => next.agents[id]),
     next.coreMiningUntil,
     ...FRAGMENT_IDS.map((id) => next.fragmentCooldowns[id]),
+    next.temporaryAgentUntil,
+    next.fragmentMiningBoostUntil,
   ].filter((end) => end > next.lastTick && end <= now);
 
   const boundaries = [...new Set([...expiries, now])].sort(
@@ -312,6 +339,16 @@ export function gameReducer(
     case 'tick':
       return s;
 
+    case 'setTemporaryRewards': {
+      const agentUntil = Number.isFinite(action.agentUntil) && action.agentUntil > now ? action.agentUntil : 0;
+      const fragmentBoostUntil = Number.isFinite(action.fragmentBoostUntil) && action.fragmentBoostUntil > now ? action.fragmentBoostUntil : 0;
+      const fragmentBoostMultiplier = fragmentBoostUntil > now && Number.isFinite(action.fragmentBoostMultiplier)
+        ? Math.max(1, Math.min(2, action.fragmentBoostMultiplier))
+        : 1;
+      if (s.temporaryAgentUntil === agentUntil && s.fragmentMiningBoostUntil === fragmentBoostUntil && s.fragmentMiningBoostMultiplier === fragmentBoostMultiplier) return s;
+      return { ...s, temporaryAgentUntil: agentUntil, fragmentMiningBoostUntil: fragmentBoostUntil, fragmentMiningBoostMultiplier: fragmentBoostMultiplier };
+    }
+
     case 'unlockFragment': {
       if (s.fragments[action.id] !== 'locked') return s;
 
@@ -351,7 +388,7 @@ export function gameReducer(
         },
         fragmentCooldowns: {
           ...s.fragmentCooldowns,
-          [action.id]: now + FRAGMENT_COOLDOWN_MS,
+          [action.id]: now + CORE_SESSION_MS + FRAGMENT_COOLDOWN_MS,
         },
         coreMiningUntil: now + CORE_SESSION_MS,
       };
@@ -443,28 +480,10 @@ export function gameReducer(
       );
 
     case 'claimMilestone': {
-      const milestone = MILESTONES.find(
-        (m) => m.threshold === action.threshold
-      );
-
-      if (
-        !milestone ||
-        s.claimedMilestones.includes(milestone.threshold) ||
-        s.subNodes.length < milestone.threshold
-      ) {
-        return s;
-      }
-
-      return credit(
-        {
-          ...s,
-          claimedMilestones: [
-            ...s.claimedMilestones,
-            milestone.threshold,
-          ],
-        },
-        milestone.reward
-      );
+      // Referral milestones now award server-owned ZAP, not local ZP.
+      // This legacy client reducer must never mint or simulate that reward.
+      // The authenticated referral milestone flow owns eligibility and payout.
+      return s;
     }
 
     case 'recruitSubNode': {

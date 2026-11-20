@@ -1,0 +1,332 @@
+name: Stage 5 Preview Migration Status (Read Only)
+# Audit the current Preview function inventory and migration ledger without changing either.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - security/trusted-gameplay-migration
+    paths:
+      - .github/workflows/stage5-preview-migration-status.yml
+      - supabase/migrations/**
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-preview-migrations:
+    if: github.ref == 'refs/heads/security/trusted-gameplay-migration'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Stage 5 security branch
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 3.1.0
+
+      - name: Validate Preview-only credentials
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$PREVIEW_PROJECT_REF" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "Missing SUPABASE_ACCESS_TOKEN, SUPABASE_PREVIEW_PROJECT_REF, or SUPABASE_DB_PASSWORD."
+            exit 1
+          fi
+          echo "Credentials are present. Target is the Preview project secret."
+
+      - name: Verify legacy Preview deploy target matches Preview secret (read only)
+        env:
+          LEGACY_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
+        run: |
+          if [ -z "$LEGACY_PROJECT_REF" ] || [ -z "$PREVIEW_PROJECT_REF" ]; then
+            echo "Cannot verify the legacy deployment target: a reference is missing."
+            exit 1
+          fi
+          if [ "$LEGACY_PROJECT_REF" != "$PREVIEW_PROJECT_REF" ]; then
+            echo "Deployment target mismatch: Preview-labelled workflows are not proven Preview-only."
+            exit 1
+          fi
+          echo "Verified: the legacy deployment target matches the dedicated Preview project."
+
+      - name: Link only the Preview project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "$PREVIEW_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: List existing Preview database branches (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
+        run: |
+          echo "Listing existing Supabase preview branches under the dedicated Preview project. This does not create or modify a branch."
+          supabase branches list --remote="$PREVIEW_PROJECT_REF"
+
+      - name: Inspect deployed Preview Edge Functions and required custom secret names (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
+        run: |
+          echo "Listing deployed Edge Functions for the Preview project (read only)."
+          supabase functions list --remote="$PREVIEW_PROJECT_REF" > /tmp/preview-functions.txt
+          cat /tmp/preview-functions.txt
+          missing_functions=0
+          for name in telegram-auth admin-api public-events event-participation gameplay-actions mission-actions referral-kickbacks economy-settlement player-economy agent-rental-payments mystery-box-actions ton-wallet zap-wallet; do
+            if grep -Fq "$name" /tmp/preview-functions.txt; then
+              echo "$name: deployed"
+            else
+              echo "$name: NOT FOUND"
+              missing_functions=1
+            fi
+          done
+          echo "Checking only the names of required custom Edge Function secrets; values and digests are not printed."
+          supabase secrets list --remote="$PREVIEW_PROJECT_REF" > /tmp/preview-secret-list.txt
+          missing_secrets=0
+          for name in BOT_TOKEN ADMIN_USERNAME ADMIN_PASSWORD TONCENTER_API_KEY ZORD_GRAM_TREASURY_ADDRESS; do
+            if grep -Eq "^\\s*${name}([[:space:]|]|$)" /tmp/preview-secret-list.txt; then
+              echo "$name: present"
+            else
+              echo "$name: NOT FOUND"
+              missing_secrets=1
+            fi
+          done
+          if [ "$missing_functions" -ne 0 ] || [ "$missing_secrets" -ne 0 ]; then
+            echo "Preview Edge Function deployment/configuration requires review."
+            exit 1
+          fi
+      - name: List local versus Preview migration history (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "Running read-only migration list against the linked Preview project."
+          echo "This workflow does not run db push, migration repair, migration up, or SQL writes."
+          supabase migration list --remote
+
+      - name: Inspect Preview migration ledger catalog (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db query --remote --read-only --output json "
+            SELECT
+              current_database() AS database_name,
+              current_user AS database_role,
+              to_regclass('supabase_migrations.schema_migrations')::text AS ledger_table,
+              (
+                SELECT jsonb_agg(
+                  jsonb_build_object(
+                    'column_name', column_name,
+                    'data_type', data_type,
+                    'ordinal_position', ordinal_position
+                  )
+                  ORDER BY ordinal_position
+                )
+                FROM information_schema.columns
+                WHERE table_schema = 'supabase_migrations'
+                  AND table_name = 'schema_migrations'
+              ) AS ledger_columns;
+          "
+
+      - name: Audit Preview referral rental and platform dependencies (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db query --remote --read-only --output json "
+            SELECT
+              (SELECT jsonb_agg(jsonb_build_object(
+                'status', status, 'count', row_count
+              ) ORDER BY status)
+               FROM (SELECT status, count(*) AS row_count
+                     FROM public.agent_rental_payment_intents GROUP BY status) s
+              ) AS rental_intents_by_status,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'id', id, 'agent_type', agent_type, 'amount_nano', amount_nano,
+                'status', status, 'created_at', created_at, 'expires_at', expires_at
+              ) ORDER BY created_at)
+               FROM public.agent_rental_payment_intents) AS rental_intents,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'function_name', p.proname,
+                'identity_arguments', pg_get_function_identity_arguments(p.oid),
+                'security_definer', p.prosecdef,
+                'search_path', (
+                  SELECT setting FROM unnest(coalesce(p.proconfig, ARRAY[]::text[])) setting
+                  WHERE setting LIKE 'search_path=%' LIMIT 1
+                ),
+                'execute_acl', coalesce(p.proacl::text, 'default')
+              ) ORDER BY p.proname)
+               FROM pg_proc p
+               JOIN pg_namespace n ON n.oid = p.pronamespace
+               WHERE n.nspname = 'public'
+                 AND p.proname IN (
+                   'register_referral',
+                   'create_agent_rental_payment_intent',
+                   'confirm_agent_rental_payment'
+                 )
+              ) AS critical_function_security,
+              (SELECT jsonb_agg(extname ORDER BY extname)
+               FROM pg_extension) AS installed_extensions,
+              to_regclass('cron.job')::text AS cron_job_catalog,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'schema_name', table_schema, 'role_name', grantee,
+                'privilege_type', privilege_type
+              ) ORDER BY table_schema, grantee, privilege_type)
+               FROM information_schema.role_table_grants
+               WHERE table_schema IN ('auth', 'storage', 'realtime')
+                 AND grantee IN ('anon', 'authenticated', 'service_role')
+              ) AS managed_schema_grants,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'schema_name', n.nspname,
+                'role_name', r.role_name,
+                'schema_usage', has_schema_privilege(r.role_name, n.oid, 'USAGE'),
+                'schema_create', has_schema_privilege(r.role_name, n.oid, 'CREATE'),
+                'table_privileges', (
+                  SELECT jsonb_agg(jsonb_build_object(
+                    'object_name', c.relname,
+                    'object_type', c.relkind,
+                    'select', has_table_privilege(r.role_name, c.oid, 'SELECT'),
+                    'insert', has_table_privilege(r.role_name, c.oid, 'INSERT'),
+                    'update', has_table_privilege(r.role_name, c.oid, 'UPDATE'),
+                    'delete', has_table_privilege(r.role_name, c.oid, 'DELETE'),
+                    'truncate', has_table_privilege(r.role_name, c.oid, 'TRUNCATE'),
+                    'references', has_table_privilege(r.role_name, c.oid, 'REFERENCES'),
+                    'trigger', has_table_privilege(r.role_name, c.oid, 'TRIGGER')
+                  ) ORDER BY c.relname)
+                  FROM pg_class c
+                  WHERE c.relnamespace = n.oid
+                    AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+                ),
+                'sequence_privileges', (
+                  SELECT jsonb_agg(jsonb_build_object(
+                    'object_name', c.relname,
+                    'select', has_sequence_privilege(r.role_name, c.oid, 'SELECT'),
+                    'usage', has_sequence_privilege(r.role_name, c.oid, 'USAGE'),
+                    'update', has_sequence_privilege(r.role_name, c.oid, 'UPDATE')
+                  ) ORDER BY c.relname)
+                  FROM pg_class c
+                  WHERE c.relnamespace = n.oid
+                    AND c.relkind = 'S'
+                )
+              ) ORDER BY n.nspname, r.role_name)
+               FROM pg_namespace n
+               CROSS JOIN (VALUES ('anon'), ('authenticated'), ('service_role')) r(role_name)
+               WHERE n.nspname IN ('auth', 'storage', 'realtime')
+              ) AS managed_schema_effective_privileges,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'schema_name', n.nspname,
+                'table_name', c.relname,
+                'row_security_enabled', c.relrowsecurity,
+                'force_row_security', c.relforcerowsecurity,
+                'policies', (
+                  SELECT coalesce(jsonb_agg(jsonb_build_object(
+                    'policy_name', p.policyname,
+                    'permissive', p.permissive,
+                    'roles', p.roles,
+                    'command', p.cmd,
+                    'using', p.qual,
+                    'with_check', p.with_check
+                  ) ORDER BY p.policyname), '[]'::jsonb)
+                  FROM pg_policies p
+                  WHERE p.schemaname = n.nspname
+                    AND p.tablename = c.relname
+                )
+              ) ORDER BY n.nspname, c.relname)
+               FROM pg_class c
+               JOIN pg_namespace n ON n.oid = c.relnamespace
+               WHERE n.nspname IN ('auth', 'storage', 'realtime')
+                 AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+              ) AS managed_schema_rls_policies,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'owner', pg_get_userbyid(d.defaclrole),
+                'schema_name', CASE WHEN d.defaclnamespace = 0 THEN 'global' ELSE n.nspname END,
+                'object_type', CASE d.defaclobjtype
+                  WHEN 'r' THEN 'tables'
+                  WHEN 'S' THEN 'sequences'
+                  WHEN 'f' THEN 'functions'
+                  WHEN 'T' THEN 'types'
+                  WHEN 'n' THEN 'schemas'
+                  ELSE d.defaclobjtype::text
+                END,
+                'default_acl', d.defaclacl::text
+              ) ORDER BY pg_get_userbyid(d.defaclrole), d.defaclnamespace, d.defaclobjtype)
+               FROM pg_default_acl d
+               LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace
+               WHERE d.defaclnamespace = 0 OR n.nspname = 'public'
+              ) AS default_privilege_acls,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'object_name', c.relname,
+                'object_type', c.relkind,
+                'role_name', r.role_name,
+                'row_security_enabled', c.relrowsecurity,
+                'select', CASE WHEN c.relkind = 'S'
+                  THEN has_sequence_privilege(r.role_name, c.oid, 'SELECT')
+                  ELSE has_table_privilege(r.role_name, c.oid, 'SELECT') END,
+                'insert', CASE WHEN c.relkind = 'S' THEN false
+                  ELSE has_table_privilege(r.role_name, c.oid, 'INSERT') END,
+                'update', CASE WHEN c.relkind = 'S'
+                  THEN has_sequence_privilege(r.role_name, c.oid, 'UPDATE')
+                  ELSE has_table_privilege(r.role_name, c.oid, 'UPDATE') END,
+                'delete', CASE WHEN c.relkind = 'S' THEN false
+                  ELSE has_table_privilege(r.role_name, c.oid, 'DELETE') END,
+                'usage', CASE WHEN c.relkind = 'S'
+                  THEN has_sequence_privilege(r.role_name, c.oid, 'USAGE')
+                  ELSE false END,
+                'truncate', CASE WHEN c.relkind = 'S' THEN false
+                  ELSE has_table_privilege(r.role_name, c.oid, 'TRUNCATE') END,
+                'references', CASE WHEN c.relkind = 'S' THEN false
+                  ELSE has_table_privilege(r.role_name, c.oid, 'REFERENCES') END,
+                'trigger', CASE WHEN c.relkind = 'S' THEN false
+                  ELSE has_table_privilege(r.role_name, c.oid, 'TRIGGER') END
+              ) ORDER BY c.relname, r.role_name)
+               FROM pg_class c
+               JOIN pg_namespace n ON n.oid = c.relnamespace
+               CROSS JOIN (VALUES ('anon'), ('authenticated'), ('service_role')) r(role_name)
+               WHERE n.nspname = 'public'
+                 AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+              ) AS public_relation_effective_privileges,
+              (SELECT jsonb_agg(jsonb_build_object(
+                'function_name', p.proname,
+                'identity_arguments', pg_get_function_identity_arguments(p.oid),
+                'role_name', r.role_name,
+                'security_definer', p.prosecdef,
+                'search_path', (
+                  SELECT setting FROM unnest(coalesce(p.proconfig, ARRAY[]::text[])) setting
+                  WHERE setting LIKE 'search_path=%' LIMIT 1
+                ),
+                'execute', has_function_privilege(r.role_name, p.oid, 'EXECUTE')
+              ) ORDER BY p.proname, pg_get_function_identity_arguments(p.oid), r.role_name)
+               FROM pg_proc p
+               JOIN pg_namespace n ON n.oid = p.pronamespace
+               CROSS JOIN (VALUES ('anon'), ('authenticated'), ('service_role')) r(role_name)
+               WHERE n.nspname = 'public'
+              ) AS public_function_effective_privileges;
+          "
+
+      - name: Audit Preview gameplay seed and reconciliation data (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db query --remote --read-only --output json "
+            SELECT
+              (SELECT count(*) FROM public.mission_tasks) AS mission_task_count,
+              (SELECT jsonb_agg(to_jsonb(m) ORDER BY m.id)
+               FROM public.mission_tasks AS m) AS mission_tasks,
+              (SELECT count(*) FROM public.vault_reserves) AS vault_reserve_row_count,
+              (SELECT jsonb_agg(to_jsonb(v)) FROM public.vault_reserves AS v) AS vault_reserve_rows,
+              (SELECT count(*) FROM public.players WHERE referral_code IS NOT NULL) AS players_with_referral_code,
+              (SELECT count(*) FROM public.referrals) AS legacy_referral_rows,
+              (SELECT count(*) FROM public.referral_sub_nodes) AS referral_sub_node_rows,
+              (SELECT count(*) FROM public.creator_ops_submissions) AS creator_ops_submission_rows,
+              (SELECT count(*) FROM public.game_event_activities) AS game_event_activity_rows,
+              (SELECT count(*) FROM public.game_event_participations) AS game_event_participation_rows,
+              (SELECT count(*) FROM public.gameplay_action_events) AS gameplay_action_event_rows,
+              (SELECT count(*) FROM public.agent_rental_payment_intents) AS agent_rental_payment_intent_rows,
+              (SELECT count(*) FROM public.player_agent_rentals) AS player_agent_rental_rows;
+          "
+
+# Stage 5 Preview validation rerun: 2026-11-19

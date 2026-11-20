@@ -59,17 +59,37 @@ async function authenticateWithBackend(
     );
   }
 
-  if (!data.email || !data.password || !data.referralCode) {
-    throw new Error('Backend returned incomplete player information.');
+  const hasTokenHash =
+    typeof data.tokenHash === 'string' && data.tokenHash.length > 0;
+  const hasReferralCode =
+    typeof data.referralCode === 'string' && data.referralCode.trim().length > 0;
+
+  if (!hasTokenHash || !hasReferralCode) {
+    // Log only response shape/presence, never tokens, referral codes or Telegram data.
+    console.error('Telegram auth response is incomplete:', {
+      responseKeys: Object.keys(data),
+      hasTokenHash,
+      hasReferralCode,
+      hasTelegramId: data.telegramId !== undefined && data.telegramId !== null,
+    });
+
+    const missingFields = [
+      !hasTokenHash ? 'session token' : null,
+      !hasReferralCode ? 'referral code' : null,
+    ].filter(Boolean).join(' and ');
+
+    throw new Error(
+      `Telegram authentication response is missing the ${missingFields}. Please retry.`,
+    );
   }
 
   const { data: sessionData, error: signInError } =
-    await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
+    await supabase.auth.verifyOtp({
+      token_hash: data.tokenHash,
+      type: 'magiclink',
     });
 
-  if (signInError || !sessionData.session) {
+  if (signInError || !sessionData.session || !sessionData.user) {
     throw new Error(
       signInError?.message || 'Failed to establish Supabase session.',
     );
@@ -81,6 +101,7 @@ async function authenticateWithBackend(
     username: data.username ?? null,
     firstName: data.firstName ?? null,
     referralCode: data.referralCode,
+    entityNumber: typeof data.entityNumber === 'number' && Number.isInteger(data.entityNumber) ? data.entityNumber : null,
   };
 
   try {
@@ -178,6 +199,16 @@ export function AuthProvider({
     let cancelled = false;
 
     const init = async () => {
+      // A normal browser must not clear or claim a Telegram player's local session.
+      // Stop before any local-session ownership changes when Telegram initData is absent.
+      if (!getTelegramInitData()) {
+        setAuth({
+          status: 'error',
+          message: 'Telegram login is not available in this browser session.',
+        });
+        return;
+      }
+
       const currentStartParam = getTelegramStartParam();
       const currentTgId = (() => {
         const initData = getTelegramInitData();
@@ -239,7 +270,7 @@ export function AuthProvider({
         if ('error' in result) {
           setAuth({
             status: 'error',
-            error: result.error,
+            message: result.error,
           } as AuthState);
 
           return;
@@ -255,7 +286,7 @@ export function AuthProvider({
         if (!cancelled) {
           setAuth({
             status: 'error',
-            error:
+            message:
               err instanceof Error
                 ? err.message
                 : 'Authentication failed.',
@@ -278,6 +309,7 @@ export function AuthProvider({
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
 
@@ -290,6 +322,7 @@ export function useAuth() {
   return ctx;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getStoredReferrerCode(): string | null {
   try {
     return window.localStorage.getItem(REFERRER_KEY);
@@ -298,6 +331,7 @@ export function getStoredReferrerCode(): string | null {
   }
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getStoredPlayer(): AuthPlayer | null {
   return loadStoredPlayer();
 }
