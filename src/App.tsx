@@ -320,6 +320,7 @@ function GameApp({
   const [missionsInitialView, setMissionsInitialView] = useState<EngagementView>('missions');
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [adFragment, setAdFragment] = useState<FragmentId | null>(null);
+  const [adProcessing, setAdProcessing] = useState(false);
 
   // Wait until the local snapshot is ready before rendering the player UI.
   if (isLoading) {
@@ -332,9 +333,70 @@ function GameApp({
   }
 
   const startFragmentUnlock = (fragmentId: FragmentId) => {
-    // Publisher-review preview only. Do not create an unlock session until
-    // the assigned ad provider is connected and server-side verification exists.
     setAdFragment(fragmentId);
+  };
+
+  const handleWatchFragmentAd = async () => {
+    if (adFragment !== 'right' || adProcessing) return;
+    setAdProcessing(true);
+
+    try {
+      const session = await trustedGameplay.beginUnlock('right');
+      if (session.alreadyUnlocked) {
+        setAdFragment(null);
+        notify('Atom Fragment is already unlocked.', 'info');
+        return;
+      }
+      if (!session.sessionId || !session.ymid) {
+        throw new Error('ZORD could not prepare a secure Monetag ad session.');
+      }
+
+      const showAd = (window as Window & {
+        show_12235928?: (options: {
+          type: 'end';
+          ymid: string;
+          requestVar: string;
+        }) => Promise<{ reward_event_type?: string } | undefined>;
+      }).show_12235928;
+
+      if (typeof showAd !== 'function') {
+        throw new Error('Monetag is still loading. Please try again in a moment.');
+      }
+
+      // "end" waits until the rewarded interstitial closes. A resolved
+      // Promise alone is not enough: Monetag must report a valued event.
+      const event = await showAd({
+        type: 'end',
+        ymid: session.ymid,
+        requestVar: 'fragment_right',
+      });
+
+      if (event?.reward_event_type !== 'valued') {
+        setAdFragment(null);
+        notify('Monetag did not confirm a valued ad view. No Fragment was unlocked.', 'info');
+        return;
+      }
+
+      // The server requires BOTH this post-close SDK signal and Monetag's
+      // independent secret-protected server postback for the same ymid.
+      let completed = false;
+      for (let attempt = 0; attempt < 15; attempt += 1) {
+        completed = await trustedGameplay.completeUnlock(session.sessionId);
+        if (completed) break;
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+      }
+
+      setAdFragment(null);
+      if (completed) {
+        notify('Monetag verified the rewarded ad. Atom Fragment unlocked.', 'info');
+      } else {
+        notify('Monetag confirmed the ad. ZORD is waiting for its server postback; the Fragment will unlock automatically after verification.', 'info');
+      }
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'The Monetag ad could not be verified. No reward was granted.', 'error');
+    } finally {
+      setAdProcessing(false);
+    }
   };
 
 
@@ -426,6 +488,8 @@ function GameApp({
         <AdModal
           fragmentId={adFragment}
           isReactivation={state.fragments[adFragment] === 'fixed'}
+          isProcessing={adProcessing}
+          onWatch={() => { void handleWatchFragmentAd(); }}
           onClose={() => setAdFragment(null)}
         />
       )}
