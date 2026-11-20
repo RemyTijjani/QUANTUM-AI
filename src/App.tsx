@@ -321,6 +321,7 @@ function GameApp({
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [adFragment, setAdFragment] = useState<FragmentId | null>(null);
   const [adProcessing, setAdProcessing] = useState(false);
+  const [adActivationStarted, setAdActivationStarted] = useState(false);
 
   // Wait until the local snapshot is ready before rendering the player UI.
   if (isLoading) {
@@ -353,6 +354,7 @@ function GameApp({
       }
 
       if (session.provider === 'free') {
+        setAdActivationStarted(true);
         // Shield and Processor are ad-free. Keep the five-second scan animation visible,
         // then let the server enforce the same minimum duration before unlocking.
         await new Promise((resolve) => window.setTimeout(resolve, 5000));
@@ -422,6 +424,7 @@ function GameApp({
       notify(error instanceof Error ? error.message : 'The ad could not be verified. No reward was granted.', 'error');
     } finally {
       setAdProcessing(false);
+      setAdActivationStarted(false);
     }
   };
 
@@ -514,8 +517,9 @@ function GameApp({
           fragmentId={adFragment}
           isReactivation={state.fragments[adFragment] === 'fixed'}
           isProcessing={adProcessing}
+          isActivationStarted={adActivationStarted}
           onWatch={() => { void handleWatchFragmentAd(); }}
-          onClose={() => setAdFragment(null)}
+          onClose={() => { setAdActivationStarted(false); setAdFragment(null); }}
         />
       )}
 
