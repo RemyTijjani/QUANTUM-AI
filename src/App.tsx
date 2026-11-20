@@ -337,68 +337,83 @@ function GameApp({
   };
 
   const handleWatchFragmentAd = async () => {
-    if (adFragment !== 'right' || adProcessing) return;
+    if ((adFragment !== 'right' && adFragment !== 'bottom') || adProcessing) return;
     setAdProcessing(true);
 
     try {
-      const session = await trustedGameplay.beginUnlock('right');
+      const fragmentId = adFragment;
+      const session = await trustedGameplay.beginUnlock(fragmentId);
       if (session.alreadyUnlocked) {
         setAdFragment(null);
-        notify('Atom Fragment is already unlocked.', 'info');
+        notify('Fragment is already unlocked.', 'info');
         return;
       }
-      if (!session.sessionId || !session.ymid) {
-        throw new Error('ZORD could not prepare a secure Monetag ad session.');
+      if (!session.sessionId) {
+        throw new Error('ZORD could not prepare a secure ad session.');
       }
 
-      const showAd = (window as Window & {
-        show_12235928?: (options: {
-          type: 'end';
-          ymid: string;
-          requestVar: string;
-        }) => Promise<{ reward_event_type?: string } | undefined>;
-      }).show_12235928;
+      if (session.provider === 'onclicka') {
+        const onclickaWindow = window as Window & {
+          initCdTma?: (options: { id: number }) => Promise<() => Promise<unknown>>;
+        };
+        if (typeof onclickaWindow.initCdTma !== 'function') {
+          throw new Error('OnClicka is still loading. Please try again in a moment.');
+        }
+        const showOnclickaAd = await onclickaWindow.initCdTma({ id: 6155605 });
+        if (typeof showOnclickaAd !== 'function') {
+          throw new Error('OnClicka could not initialize the rewarded ad.');
+        }
+        // The SDK Promise is only one signal. The server also waits for
+        // OnClicka's independent USERID callback before unlocking the Fragment.
+        await showOnclickaAd();
+      } else {
+        if (!session.ymid) throw new Error('ZORD could not prepare the Monetag verification ID.');
+        const showAd = (window as Window & {
+          show_12235928?: (options: {
+            type: 'end';
+            ymid: string;
+            requestVar: string;
+          }) => Promise<{ reward_event_type?: string } | undefined>;
+        }).show_12235928;
 
-      if (typeof showAd !== 'function') {
-        throw new Error('Monetag is still loading. Please try again in a moment.');
+        if (typeof showAd !== 'function') {
+          throw new Error('Monetag is still loading. Please try again in a moment.');
+        }
+        const event = await showAd({
+          type: 'end',
+          ymid: session.ymid,
+          requestVar: 'fragment_right',
+        });
+        if (event?.reward_event_type !== 'valued') {
+          setAdFragment(null);
+          notify('Monetag did not confirm a valued ad view. No Fragment was unlocked.', 'info');
+          return;
+        }
       }
 
-      // "end" waits until the rewarded interstitial closes. A resolved
-      // Promise alone is not enough: Monetag must report a valued event.
-      const event = await showAd({
-        type: 'end',
-        ymid: session.ymid,
-        requestVar: 'fragment_right',
-      });
-
-      if (event?.reward_event_type !== 'valued') {
-        setAdFragment(null);
-        notify('Monetag did not confirm a valued ad view. No Fragment was unlocked.', 'info');
-        return;
-      }
-
-      // The server requires BOTH this post-close SDK signal and Monetag's
-      // independent secret-protected server postback for the same ymid.
       let completed = false;
       for (let attempt = 0; attempt < 15; attempt += 1) {
-        completed = await trustedGameplay.completeUnlock(session.sessionId);
+        completed = await trustedGameplay.completeUnlock(session.sessionId, session.provider);
         if (completed) break;
         await new Promise((resolve) => window.setTimeout(resolve, 2000));
       }
 
       setAdFragment(null);
       if (completed) {
-        notify('Monetag verified the rewarded ad. Atom Fragment unlocked.', 'info');
+        notify(session.provider === 'onclicka'
+          ? 'OnClicka verified the rewarded ad. Capacitor Fragment unlocked.'
+          : 'Monetag verified the rewarded ad. Atom Fragment unlocked.', 'info');
       } else {
-        notify('Monetag confirmed the ad. ZORD is waiting for its server postback; the Fragment will unlock automatically after verification.', 'info');
+        notify(session.provider === 'onclicka'
+          ? 'OnClicka SDK completed. ZORD is waiting for its server callback; no reward is granted until it arrives.'
+          : 'Monetag confirmed the ad. ZORD is waiting for its server postback; the Fragment will unlock after verification.', 'info');
       }
     } catch (error) {
-      notify(error instanceof Error ? error.message : 'The Monetag ad could not be verified. No reward was granted.', 'error');
+      notify(error instanceof Error ? error.message : 'The ad could not be verified. No reward was granted.', 'error');
     } finally {
       setAdProcessing(false);
     }
   };
-
 
 
   return (
