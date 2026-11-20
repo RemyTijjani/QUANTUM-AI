@@ -42,9 +42,8 @@ Deno.serve(async (req: Request) => {
   const rewardEventType = params.get("reward_event_type") ?? "";
   const requestVar = params.get("request_var") ?? "";
 
-  // Clicks, non-valued impressions, other zones and other placements never
-  // unlock a Fragment. Monetag's Rewarded Interstitial impression postback
-  // must be valued and matched to this one-time player ad session.
+  // Only valued impressions for a known placement are processed. Each postback
+  // is matched to a one-time player session; the DB also requires SDK completion.
   if (
     zoneId !== MONETAG_ZONE_ID ||
     eventType !== "impression" ||
