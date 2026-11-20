@@ -59,37 +59,18 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: session, error: updateError } = await admin
-    .from("fragment_unlock_sessions")
-    .update({ monetag_valued_at: new Date().toISOString() })
-    .eq("monetag_ymid", ymid)
-    .eq("ad_provider", "monetag")
-    .eq("fragment_id", "right")
-    .eq("status", "pending")
-    .gt("expires_at", new Date().toISOString())
-    .is("monetag_valued_at", null)
-    .select("id")
-    .maybeSingle();
-
-  if (updateError) {
-    console.error("Monetag valued postback could not be recorded:", updateError);
-    return response(500, "Could not record event");
-  }
-
-  if (!session?.id) {
-    // Monetag retries are safe. A duplicate, expired, already-used or unknown
-    // ymid must never create a second reward.
-    return response(200, "No eligible session");
-  }
-
   const { data: completion, error: completionError } = await admin.rpc(
-    "try_complete_monetag_fragment_unlock",
-    { p_session_id: session.id },
+    "record_monetag_fragment_valued_postback",
+    { p_ymid: ymid },
   );
 
   if (completionError) {
-    console.error("Monetag Fragment completion failed:", completionError);
-    return response(500, "Could not complete verified session");
+    console.error("Monetag valued postback could not be recorded:", completionError);
+    return response(500, "Could not record event");
+  }
+
+  if (completion?.reason === "session_not_found" || completion?.reason === "session_not_pending") {
+    return response(200, "No eligible session");
   }
 
   return response(200, completion?.completed ? "Fragment unlocked" : "Verification recorded");
