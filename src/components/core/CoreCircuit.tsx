@@ -66,7 +66,7 @@ export default function CoreCircuit({ fragments, rate, miningUntil, now }: CoreC
               className="blur-[2px]"
             />
           ))}
-          {FRAGMENT_IDS.filter((id) => fragments[id] === 'fixed').map((id) => (
+          {FRAGMENT_IDS.filter((id) => activeFragments[id] === 'fixed').map((id) => (
             <path
               key={`live-${id}`}
               d={TRACE_PATH[id]}
