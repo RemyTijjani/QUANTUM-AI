@@ -65,6 +65,9 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
   const social = missions.filter((m) => m.kind === 'social');
   const creator = missions.filter((m) => m.kind === 'creator');
   const statusForMission = (mission: MissionSpec) => taskSummary?.statuses[mission.id] ?? missionStatus(state, mission, now);
+  // Hide one-time Social missions after the server confirms their reward claim.
+  // The claim record remains in the database for reward history and admin auditing.
+  const activeSocial = social.filter((mission) => statusForMission(mission) !== 'claimed');
 
   return (
     <div className="min-w-0 space-y-5 pb-3 sm:space-y-6 sm:pb-2">
@@ -114,7 +117,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
           <Megaphone size={14} className="text-neon-400" />
           <p className="label">Social Raids</p>
         </div>
-        {social.map((mission) => (
+        {activeSocial.map((mission) => (
           <MissionCard
             key={mission.id}
             mission={mission}
