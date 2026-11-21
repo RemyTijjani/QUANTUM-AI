@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
       const { data: expeditions, error: expeditionError } = await admin
         .from("expeditions")
         .select("id, slug, title, description, cover_image_url, category, access_mode, prerequisite_expedition_id, participation_mode, status, starts_at, ends_at, registration_opens_at, registration_closes_at, timezone, min_team_size, max_team_size, min_individual_contributions, require_shared_team_objectives, created_at")
-        .in("status", ["scheduled", "registration_open", "active", "completed"])
+        .in("status", ["scheduled", "registration_open", "active", "completed", "cancelled"])
         .order("starts_at", { ascending: true, nullsFirst: false })
         .limit(100);
       if (expeditionError) {
@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const ids = (expeditions ?? []).map((item) => item.id);
-      if (ids.length === 0) return json({ expeditions: [] });
+      if (ids.length === 0) return json({ expeditions: [], rewardHistory: [] });
 
       const [objectivesRes, rewardsRes, participationRes, individualProgressRes, rewardIssuancesRes] = await Promise.all([
         admin.from("expedition_objectives")
@@ -235,7 +235,18 @@ Deno.serve(async (req: Request) => {
           myTeam: myTeam ? { ...myTeam, members: membersByTeam.get(myTeam.id) ?? [] } : null,
         };
       });
-      return json({ expeditions: result });
+      const rewardHistory = result
+        .filter((item) => !!item.myParticipation && (
+          item.status === "completed" ||
+          (!!item.ends_at && new Date(item.ends_at).getTime() <= now)
+        ))
+        .map((item) => ({ ...item, status: "completed" }));
+      const activeExpeditions = result.filter((item) =>
+        item.status !== "completed" &&
+        item.status !== "cancelled" &&
+        !(item.ends_at && new Date(item.ends_at).getTime() <= now)
+      );
+      return json({ expeditions: activeExpeditions, rewardHistory });
     }
 
     const contentLength = Number(req.headers.get("content-length") ?? "0");
