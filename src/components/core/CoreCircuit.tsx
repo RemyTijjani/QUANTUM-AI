@@ -23,7 +23,7 @@ const NODE_POSITION: Record<FragmentId, string> = {
 
 const NODE_STYLE: Record<FragmentStatus, string> = {
   locked: 'border-dashed border-neon/40 bg-black/80 text-neon-600',
-  unlocked: 'border-cyan-400/80 bg-cyan-400/10 text-cyan-300 animate-soft-pulse',
+  unlocked: 'border-cyan-400/80 bg-cyan-400/10 text-cyan-300',
   fixed: 'border-yellow-500 bg-yellow-500/15 text-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)]',
 };
 
@@ -95,7 +95,7 @@ export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
 
         <div className="absolute left-1/2 top-1/2 flex aspect-square w-[30%] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-xl border border-neon bg-[#06140b] shadow-glow">
           <div className="absolute -inset-[14%] animate-spin-slow rounded-full border border-dashed border-neon/40" />
-          <Cpu size={26} className="text-neon-400 animate-soft-pulse" />
+          <Cpu size={26} className="text-neon-400" />
           <span className="mt-1 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-neon-400">ZP Core</span>
           <span className="font-mono text-[10px] tabular-nums text-neon-500">+{formatRate(rate)}/s</span>
         </div>
