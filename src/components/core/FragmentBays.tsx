@@ -4,6 +4,7 @@ import { CORE_SESSION_HOURS, FRAGMENT_IDS, FRAGMENT_ZP_PER_SEC, FRAGMENT_NAMES }
 import { formatCooldown, formatZp } from '@/lib/format';
 import type { FragmentId } from '@/lib/game/config';
 import type { FragmentStatus } from '@/lib/game/state';
+import type { VerifiedAgentRental } from '@/lib/economy/verifiedEconomy';
 import { FRAGMENT_ICON, STATUS_LABEL } from '@/components/core/fragmentVisuals';
 
 const BAY_STYLE: Record<FragmentStatus, string> = {
@@ -18,25 +19,30 @@ interface FragmentBaysProps {
   miningUntil: Record<FragmentId, number>;
   miningEnabled: boolean;
   miningPausedByRental: boolean;
+  activeAgentRentals: VerifiedAgentRental[];
   rateMultiplier: number;
   now: number;
   onFragmentPress: (id: FragmentId) => void;
 }
 
-export default function FragmentBays({ fragments, cooldowns, miningUntil, miningEnabled, miningPausedByRental, rateMultiplier, now, onFragmentPress }: FragmentBaysProps) {
+export default function FragmentBays({ fragments, cooldowns, miningUntil, miningEnabled, miningPausedByRental, activeAgentRentals, rateMultiplier, now, onFragmentPress }: FragmentBaysProps) {
   const miningSessionMs = CORE_SESSION_HOURS * 60 * 60 * 1000;
   const cycleFragments = FRAGMENT_IDS.filter((id) =>
     fragments[id] === 'fixed' && miningUntil[id] > 0
   );
   const cycleRate = FRAGMENT_ZP_PER_SEC * rateMultiplier;
-  const totalCycleZp = cycleFragments.length * cycleRate * (miningSessionMs / 1000);
-  const remainingCycleZp = cycleFragments.reduce((total, id) => {
+  const runningRentals = activeAgentRentals.filter((rental) => Date.parse(rental.startsAt) <= now && Date.parse(rental.expiresAt) > now);
+  const agentTotalZp = runningRentals.reduce((sum, rental) => sum + rental.ratePerSecond * ((Date.parse(rental.expiresAt) - Date.parse(rental.startsAt)) / 1000), 0);
+  const agentRemainingZp = runningRentals.reduce((sum, rental) => sum + rental.ratePerSecond * ((Date.parse(rental.expiresAt) - now) / 1000), 0);
+  const agentRate = runningRentals.reduce((sum, rental) => sum + rental.ratePerSecond, 0);
+  const agentMode = runningRentals.length > 0;
+  const totalCycleZp = agentMode ? agentTotalZp : cycleFragments.length * cycleRate * (miningSessionMs / 1000);
+  const remainingCycleZp = agentMode ? agentRemainingZp : cycleFragments.reduce((total, id) => {
     const remainingMs = Math.max(0, Math.min(miningSessionMs, miningUntil[id] - now));
     return total + cycleRate * (remainingMs / 1000);
   }, 0);
-  const cycleProgress = totalCycleZp > 0
-    ? Math.max(0, Math.min(100, (remainingCycleZp / totalCycleZp) * 100))
-    : 0;
+  const displayedRate = agentMode ? agentRate : cycleRate;
+  const cycleProgress = totalCycleZp > 0 ? Math.max(0, Math.min(100, (remainingCycleZp / totalCycleZp) * 100)) : 0;
   const activeMiningCount = cycleFragments.filter((id) => miningUntil[id] > now).length;
   const miningPaused = !miningEnabled || miningPausedByRental;
 
@@ -51,11 +57,13 @@ export default function FragmentBays({ fragments, cooldowns, miningUntil, mining
           <div className="min-w-0">
             <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-emerald-300">ZP mining capacity</p>
             <p className="mt-1 text-[10px] text-emerald-100/75">
-              {cycleFragments.length === 0
-                ? 'Fix a fragment to load its ZP cycle'
-                : miningPaused
-                  ? miningPausedByRental ? 'Fragment rewards paused while an agent is active' : 'Fragment mining paused by Admin'
-                  : `${activeMiningCount} fragment${activeMiningCount === 1 ? '' : 's'} contributing to this cycle`}
+              {agentMode
+                ? `${runningRentals.length} mining agent${runningRentals.length === 1 ? '' : 's'} generating ZP · fragments paused`
+                : cycleFragments.length === 0
+                  ? 'Rent a mining agent or fix a fragment to load ZP capacity'
+                  : miningPaused
+                    ? miningPausedByRental ? 'Fragment rewards paused while an agent is active' : 'Fragment mining paused by Admin'
+                    : `${activeMiningCount} fragment${activeMiningCount === 1 ? '' : 's'} contributing to this cycle`}
             </p>
           </div>
           <div className="shrink-0 text-right">
@@ -66,7 +74,7 @@ export default function FragmentBays({ fragments, cooldowns, miningUntil, mining
         <div
           className="mt-3 h-3 overflow-hidden rounded-full border border-emerald-300/15 bg-black/60"
           role="progressbar"
-          aria-label="Remaining ZP in the active fragment mining cycle"
+          aria-label="Remaining ZP in the active mining capacity"
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(cycleProgress)}
@@ -77,7 +85,7 @@ export default function FragmentBays({ fragments, cooldowns, miningUntil, mining
           />
         </div>
         <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[9px] text-emerald-500">
-          <span>{cycleFragments.length > 0 ? `+${(cycleRate).toFixed(2)} ZP/sec per fragment` : 'No active mining cycle'}</span>
+          <span>{agentMode ? `+${displayedRate.toFixed(2)} ZP/sec · rental agents` : cycleFragments.length > 0 ? `+${cycleRate.toFixed(2)} ZP/sec per fragment` : 'No active mining cycle'}</span>
           <span>{cycleFragments.length > 0 ? `${Math.round(cycleProgress)}% remaining` : '0% loaded'}</span>
         </div>
       </div>
