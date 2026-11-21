@@ -230,7 +230,7 @@ function TaskFormModal({
           </div>
           <div>
             <label className="text-[11px] text-slate-400 uppercase">Reward type</label>
-            <select value={rewardCurrency} onChange={(e) => setRewardCurrency(e.target.value as 'ZP' | 'ZAP')} disabled={saving} className="admin-field"><option value="ZP">ZP</option><option value="ZAP">ZAP (configuration only)</option></select>
+            <select value={rewardCurrency} onChange={(e) => setRewardCurrency(e.target.value as 'ZP' | 'ZAP')} disabled={saving} className="admin-field"><option value="ZP">ZP</option><option value="ZAP">ZAP (verified payouts enabled)</option></select>
           </div>
           <div>
             <label className="text-[11px] text-slate-400 uppercase">ZP cost to unlock</label>
@@ -267,7 +267,7 @@ function TaskFormModal({
             <p className="text-[10px] text-slate-400 mt-1">Required for Telegram rewards. Use the channel/group ID (not the invite link). The ZORD bot must be an administrator there. Leave blank for missions that are not Telegram membership missions.</p>
           </div>
         )}
-        <p className="text-[10px] text-amber-300">Reward safety: ZAP is configuration only and cannot be paid yet. ZP unlock cost is also only a setting; players are not charged. Mission rewards must not be treated as earned until the relevant activity has a trusted server-side verification and payout flow.</p>
+        <p className="text-[10px] text-amber-300">ZAP payouts are enabled for Telegram membership Social missions and approved Creator Ops submissions. Agent Uptime keeps its dedicated 10 ZAP daily claim. Other Daily ZAP tasks are not claimable yet. ZP unlock cost is a setting only; players are not charged.</p>
         <div>
           <label className="text-[11px] text-slate-400 uppercase">Link for the player (optional)</label>
           <input name="actionUrl" type="url" defaultValue={task?.actionUrl ?? ''} disabled={saving} placeholder="https://t.me/..." className="admin-field" />
