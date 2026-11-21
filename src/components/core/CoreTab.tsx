@@ -6,7 +6,7 @@ import {
   Store,
 } from 'lucide-react';
 import type { FragmentId } from '@/lib/game/config';
-import { fixedCount, fragmentCooldownRemaining, tierInfo } from '@/lib/game/state';
+import { fragmentCooldownRemaining, tierInfo } from '@/lib/game/state';
 import type { GameState, FragmentStatus } from '@/lib/game/state';
 import { formatRate, formatZp, formatRemaining } from '@/lib/format';
 import { Coins, Award } from 'lucide-react';
@@ -77,7 +77,6 @@ export default function CoreTab({
       .map((id) => state.fragmentCooldowns[id] - now),
     Number.POSITIVE_INFINITY,
   );
-  const fixed = fixedCount(state);
   const activeFragmentCount = FRAGMENT_IDS.filter((id) =>
     state.fragments[id] === 'fixed' && state.fragmentMiningUntil[id] > now
   ).length;
@@ -212,7 +211,7 @@ export default function CoreTab({
             <p className="mt-1 text-[9px] text-cyan-700">Rank {rankNumber ?? '—'} · {netZapProgress === null || netZapProgress === undefined ? '—' : formatZp(netZapProgress)} net ZAP</p>
           </div>
           <div className="min-w-0 rounded-xl border border-neon/20 bg-black/40 p-2.5">
-            <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{fixed}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
+            <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{activeFragmentCount}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
           </div>
         </div>
       </section>
@@ -301,7 +300,7 @@ export default function CoreTab({
       </section>
 
 
-      <CoreCircuit fragments={state.fragments} rate={rate} />
+      <CoreCircuit fragments={state.fragments} miningUntil={state.fragmentMiningUntil} now={now} rate={rate} />
       <FragmentBays
         fragments={state.fragments}
         cooldowns={state.fragmentCooldowns}
@@ -327,7 +326,7 @@ export default function CoreTab({
                   : 'Unlock Shield or Processor for free, or verify an ad to unlock another Fragment and start mining.'}
       </p>
       <p className="px-1 text-center font-mono text-[11px] leading-relaxed text-neon-500">
-        Shield and Processor unlock free after their five-second activation animation. Capacitor and Atom require their assigned rewarded ads and trusted server-side verification. Once unlocked, fix a Fragment into the core to begin server-recorded mining. {fixed} of {FRAGMENT_IDS.length} fragments fixed.
+        Shield and Processor unlock free after their five-second activation animation. Capacitor and Atom require their assigned rewarded ads and trusted server-side verification. Once unlocked, fix a Fragment into the core to begin server-recorded mining. {activeFragmentCount} of {FRAGMENT_IDS.length} fragments actively mining.
       </p>
       <section className="panel min-w-0 border border-violet-400/25 bg-gradient-to-r from-violet-500/10 via-black/45 to-cyan-500/5 p-3" aria-label="ZORD Market">
         <div className="flex min-w-0 items-center justify-between gap-3">
@@ -343,7 +342,7 @@ export default function CoreTab({
           </button>
         </div>
       </section>
-      <CharacterCard fixed={fixed} rate={miningRateLabel} entityNumber={entityNumber} />
+      <CharacterCard fixed={activeFragmentCount} rate={miningRateLabel} entityNumber={entityNumber} />
 
 
 
