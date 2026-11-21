@@ -165,10 +165,10 @@ function AdminConsole({
       if (decision === 'approved') {
         // Notify the app only after the backend confirms approval.
         // Do not credit the administrator's local game balance here.
-        onApproveSubmission(result.rewardZp);
+        if (result.rewardCurrency === 'ZP') onApproveSubmission(result.rewardAmount);
 
         addLog(
-          `[APPROVED] Mission reward +${formatZp(result.rewardZp)} ZP granted to ${result.playerReferralCode ?? 'submitting player'}`,
+          `[APPROVED] Mission reward +${formatZp(result.rewardAmount)} ${result.rewardCurrency} granted to ${result.playerReferralCode ?? 'submitting player'}`,
         );
       } else {
         addLog(
@@ -201,16 +201,16 @@ function AdminConsole({
   const handleBulkApprove = async () => {
     const selected = selectedSubmissionIds.filter((id) => data.submissions.some((submission) => submission.id === id));
     if (selected.length === 0 || bulkApproving) return;
-    if (!window.confirm(`Approve ${selected.length} selected submission(s)? Each approved submission will receive its configured ZP reward.`)) return;
+    if (!window.confirm(`Approve ${selected.length} selected submission(s)? Each approved submission will receive its configured ZP or ZAP reward.`)) return;
 
     setBulkApproving(true);
     setActionError(null);
     try {
       const result = await bulkApproveSubmissions(creds, selected);
       for (const item of result.results) {
-        if (item.success) onApproveSubmission(item.rewardZp ?? 0);
+        if (item.success && item.rewardCurrency === 'ZP') onApproveSubmission(item.rewardAmount ?? item.rewardZp ?? 0);
       }
-      addLog(`[BULK APPROVAL] ${result.approvedCount} approved; ${result.failedCount} failed. Individual Creator Ops rewards were processed by the backend.`);
+      addLog(`[BULK APPROVAL] ${result.approvedCount} approved; ${result.failedCount} failed. Individual Creator Ops ZP/ZAP rewards were processed by the backend.`);
       setSelectedSubmissionIds([]);
       await refresh();
       if (result.failedCount > 0) {
@@ -455,7 +455,7 @@ function AdminConsole({
                     </div>
 
                     <span className="shrink-0 rounded-md border border-white/10 bg-emerald-400/10 px-2 py-0.5 font-mono text-[10px] tabular-nums text-slate-300">
-                      +{formatZp(sub.reward_zp)} ZP
+                      +{formatZp(sub.reward_amount)} {sub.reward_currency}
                     </span>
                   </div>
 
