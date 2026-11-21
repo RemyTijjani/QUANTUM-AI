@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Compass, Plus, ChevronLeft, ChevronRight, Save, Users, BookOpen, Gamepad2, Globe, Trophy, CalendarDays, Layers, ShieldCheck, Clock3, Copy, CalendarClock, Trash2 } from 'lucide-react';
-import { listAdminExpeditions, publishAdminExpedition, rescheduleAdminExpedition, issueAdminExpeditionRewards, saveExpeditionDraft, deleteAdminExpeditionDraft, listAdminExpeditionObjectiveReviews, reviewAdminExpeditionObjective, type AdminCredentials, type AdminExpeditionDraftInput, type AdminExpeditionRecord, type AdminExpeditionObjectiveReview } from '@/lib/admin/adminApi';
+import { listAdminExpeditions, publishAdminExpedition, rescheduleAdminExpedition, issueAdminExpeditionRewards, saveExpeditionDraft, deleteAdminExpeditionDraft, deleteAdminExpedition, listAdminExpeditionObjectiveReviews, reviewAdminExpeditionObjective, type AdminCredentials, type AdminExpeditionDraftInput, type AdminExpeditionRecord, type AdminExpeditionObjectiveReview } from '@/lib/admin/adminApi';
 
 type ObjectiveKind = 'briefing' | 'quiz' | 'game' | 'community' | 'external' | 'milestone';
 type Objective = { id: number; kind: ObjectiveKind; title: string; scope: 'individual' | 'team' | 'both' };
@@ -265,6 +265,27 @@ export default function AdminExpeditionManager({ creds }: { creds: AdminCredenti
     }
   };
 
+  const deleteExpedition = async (draft: AdminExpeditionRecord) => {
+    if (draft.status === 'draft' || deletingId) return;
+    const confirmed = window.confirm(
+      `Delete "${draft.title}" from the Expedition interface? It will be hidden from players and the Admin list. Player participation, reward history and issued balances will be preserved.`
+    );
+    if (!confirmed) return;
+    setDeletingId(draft.id);
+    setSavedMessage('');
+    try {
+      await deleteAdminExpedition(creds, draft.id);
+      setDrafts((current) => current.filter((item) => item.id !== draft.id));
+      setSavedMessage(`"${draft.title}" was hidden. Player activity and reward records were preserved.`);
+      setSavedMessageKind('success');
+    } catch (error) {
+      setSavedMessage(error instanceof Error ? error.message : 'Could not delete this Expedition.');
+      setSavedMessageKind('error');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const publishDraft = async (draft: AdminExpeditionRecord) => {
     if (draft.status !== 'draft' || publishingId) return;
     const rewardWarning = draft.reward && draft.reward.reward_type !== 'none'
@@ -354,6 +375,7 @@ export default function AdminExpeditionManager({ creds }: { creds: AdminCredenti
           {d.status==='draft' && <><button type="button" onClick={() => editDraft(d)} className="border border-white/10 px-2 py-1 text-[10px] text-emerald-300">Edit</button><button type="button" onClick={() => duplicateExpedition(d)} className="flex items-center gap-1 border border-white/10 px-2 py-1 text-[10px] text-slate-200"><Copy size={11}/> Duplicate</button><button type="button" disabled={deletingId !== null} onClick={() => void deleteDraft(d)} className="flex items-center gap-1 border border-red-400/30 px-2 py-1 text-[10px] text-red-200 disabled:opacity-40"><Trash2 size={11}/>{deletingId === d.id ? 'Deleting…' : 'Delete draft'}</button><button type="button" disabled={publishingId===d.id} onClick={() => void publishDraft(d)} className="border border-amber-400/40 px-2 py-1 text-[10px] text-amber-200 disabled:opacity-40">{publishingId===d.id?'Publishing…':'Publish'}</button></>}
           {['scheduled','registration_open'].includes(d.status) && d.starts_at && new Date(d.starts_at) > new Date() && <><button type="button" onClick={() => beginReschedule(d)} className="flex items-center gap-1 border border-sky-400/30 px-2 py-1 text-[10px] text-sky-200"><CalendarClock size={11}/> Reschedule</button><button type="button" onClick={() => duplicateExpedition(d)} className="flex items-center gap-1 border border-white/10 px-2 py-1 text-[10px] text-slate-200"><Copy size={11}/> Duplicate</button></>}
           {d.status==='completed' && d.reward && d.reward.reward_type!=='none' && <button type="button" disabled={issuingRewardsId===d.id || !!issuingRewardsId} onClick={() => void issueRewards(d)} className="border border-emerald-400/40 bg-emerald-400/10 px-2 py-1 text-[10px] text-emerald-200 disabled:opacity-40">{issuingRewardsId===d.id ? 'Issuing…' : 'Issue eligible rewards'}</button>}
+          {d.status!=='draft' && <button type="button" disabled={deletingId !== null} onClick={() => void deleteExpedition(d)} className="flex items-center gap-1 border border-red-400/30 px-2 py-1 text-[10px] text-red-200 disabled:opacity-40"><Trash2 size={11}/>{deletingId === d.id ? 'Deleting…' : 'Delete Expedition'}</button>}
           {!['draft','scheduled','registration_open'].includes(d.status) && <button type="button" onClick={() => duplicateExpedition(d)} className="flex items-center gap-1 border border-white/10 px-2 py-1 text-[10px] text-slate-200"><Copy size={11}/> Duplicate</button>}
         </div>
         {reschedulingId===d.id && <div className="mt-3 grid w-full gap-2 border-t border-white/10 pt-3 sm:grid-cols-[1fr_1fr_auto_auto]">

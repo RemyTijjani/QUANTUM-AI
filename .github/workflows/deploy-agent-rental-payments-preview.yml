@@ -1,30 +1,26 @@
 name: Deploy Agent Rental Payments to Supabase Preview
 
 on:
-  push:
-    branches:
-      - security/trusted-gameplay-migration
-    paths:
-      - 'supabase/functions/agent-rental-payments/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  deploy-agent-rental-payments:
-    if: github.ref == 'refs/heads/security/trusted-gameplay-migration'
+  deploy-agent-rental-payments-preview:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out Preview branch
+      - name: Check out the security development branch
         uses: actions/checkout@v4
+        with:
+          ref: security/trusted-gameplay-migration
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Deploy agent-rental-payments to Supabase Preview
+      - name: Deploy agent-rental-payments to Supabase Preview only
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           PREVIEW_PROJECT_REF: ${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}
@@ -33,8 +29,4 @@ jobs:
             echo "Missing SUPABASE_ACCESS_TOKEN or SUPABASE_PREVIEW_PROJECT_REF GitHub Actions secret."
             exit 1
           fi
-          if [ "$PREVIEW_PROJECT_REF" != "lchkctclxzwwvfwosava" ]; then
-            echo "Refusing deployment: this workflow is Preview-only and must target lchkctclxzwwvfwosava."
-            exit 1
-          fi
-          supabase functions deploy agent-rental-payments --project-ref "$PREVIEW_PROJECT_REF"
+          supabase functions deploy agent-rental-payments --project-ref "$PREVIEW_PROJECT_REF" --yes

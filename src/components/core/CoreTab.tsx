@@ -212,7 +212,7 @@ export default function CoreTab({
             <p className="mt-1 text-[9px] text-cyan-700">Rank {rankNumber ?? '—'} · {netZapProgress === null || netZapProgress === undefined ? '—' : formatZp(netZapProgress)} net ZAP</p>
           </div>
           <div className="min-w-0 rounded-xl border border-neon/20 bg-black/40 p-2.5">
-            <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{fixed}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
+            <p className="label">Fragments online</p><p className="mt-1 font-display text-xl text-neon-200">{activeFragmentCount}<span className="text-sm text-neon-700"> / {FRAGMENT_IDS.length}</span></p>
           </div>
         </div>
       </section>
@@ -301,13 +301,14 @@ export default function CoreTab({
       </section>
 
 
-      <CoreCircuit fragments={state.fragments} rate={rate} />
+      <CoreCircuit fragments={state.fragments} miningUntil={state.fragmentMiningUntil} now={now} rate={rate} />
       <FragmentBays
         fragments={state.fragments}
         cooldowns={state.fragmentCooldowns}
         miningUntil={state.fragmentMiningUntil}
         miningEnabled={fragmentMiningEnabled}
         miningPausedByRental={paidRentalRate > 0}
+        activeAgentRentals={activeAgentRentals}
         rateMultiplier={effectiveFragmentRateMultiplier}
         now={now}
         onFragmentPress={(id) => handleFragment(id, state.fragments[id])}

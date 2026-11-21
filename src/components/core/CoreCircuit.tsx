@@ -30,9 +30,17 @@ const NODE_STYLE: Record<FragmentStatus, string> = {
 interface CoreCircuitProps {
   fragments: Record<FragmentId, FragmentStatus>;
   rate: number;
+  miningUntil: Record<FragmentId, number>;
+  now: number;
 }
 
-export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
+export default function CoreCircuit({ fragments, rate, miningUntil, now }: CoreCircuitProps) {
+  const activeFragments = Object.fromEntries(
+    FRAGMENT_IDS.map((id) => [
+      id,
+      fragments[id] === 'fixed' && miningUntil[id] > now ? 'fixed' : fragments[id] === 'fixed' ? 'locked' : fragments[id],
+    ]),
+  ) as Record<FragmentId, FragmentStatus>;
   return (
     <section className="panel mx-auto w-full min-w-0 max-w-[360px] p-3 min-[380px]:p-4">
       <div className="relative aspect-square w-full">
@@ -47,7 +55,7 @@ export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
               strokeLinecap="round"
             />
           ))}
-          {FRAGMENT_IDS.filter((id) => fragments[id] === 'fixed').map((id) => (
+          {FRAGMENT_IDS.filter((id) => activeFragments[id] === 'fixed').map((id) => (
             <path
               key={`glow-${id}`}
               d={TRACE_PATH[id]}
@@ -58,7 +66,7 @@ export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
               className="blur-[2px]"
             />
           ))}
-          {FRAGMENT_IDS.filter((id) => fragments[id] === 'fixed').map((id) => (
+          {FRAGMENT_IDS.filter((id) => activeFragments[id] === 'fixed').map((id) => (
             <path
               key={`live-${id}`}
               d={TRACE_PATH[id]}
@@ -73,7 +81,7 @@ export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
         </svg>
 
         {FRAGMENT_IDS.map((id) => {
-          const status = fragments[id];
+          const status = activeFragments[id];
           const icon =
             status === 'locked' ? (
               <Lock size={14} />

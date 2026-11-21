@@ -159,6 +159,7 @@ function journeyGuide(expedition: Expedition) {
 
 export default function ExpeditionsScreen() {
   const [expeditions, setExpeditions] = useState<Expedition[]>([]);
+  const [rewardHistory, setRewardHistory] = useState<Expedition[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -178,8 +179,9 @@ export default function ExpeditionsScreen() {
     if (quiet) setRefreshing(true);
     else setLoading(true);
     try {
-      const result = await callExpeditionApi<{ expeditions: Expedition[] }>('GET');
+      const result = await callExpeditionApi<{ expeditions: Expedition[]; rewardHistory?: Expedition[] }>('GET');
       setExpeditions(Array.isArray(result.expeditions) ? result.expeditions : []);
+      setRewardHistory(Array.isArray(result.rewardHistory) ? result.rewardHistory : []);
       setError('');
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Could not load Expeditions.');
@@ -600,6 +602,44 @@ export default function ExpeditionsScreen() {
           })}
         </div>
       )}
+      {rewardHistory.length > 0 && (
+        <section className="panel space-y-3 p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div><p className="label">Completed operations</p><h3 className="mt-1 font-display text-xs font-bold uppercase tracking-wide text-neon-200">Reward History</h3></div>
+            <span className="font-mono text-[9px] text-neon-500">{rewardHistory.length} record{rewardHistory.length === 1 ? '' : 's'}</span>
+          </div>
+          <div className="space-y-2">
+            {rewardHistory.map((item) => {
+              const issuance = item.myRewardIssuance;
+              const rewardText = issuance
+                ? `${issuance.amount.toLocaleString()} ${issuance.type.toUpperCase()}`
+                : rewardLabel(item.reward);
+              const statusText = issuance?.status === 'issued'
+                ? 'Reward paid'
+                : issuance?.status === 'voided'
+                  ? 'Not eligible for payout'
+                  : issuance?.status === 'pending'
+                    ? 'Awaiting processing'
+                    : item.myParticipation?.rewardEligible
+                      ? 'Eligible · awaiting Admin'
+                      : 'Participation recorded';
+              return (
+                <article key={item.id} className="rounded-lg border border-neon/15 bg-black/30 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0"><h4 className="break-words font-display text-[11px] font-bold text-neon-200">{item.title}</h4><p className="mt-1 font-mono text-[8px] text-neon-600">Ended {dateLabel(item.ends_at, item.timezone)}</p></div>
+                    <span className="font-mono text-[9px] text-cyan-200">{rewardText}</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-neon/10 pt-2">
+                    <span className="font-mono text-[9px] text-neon-400">{statusText}</span>
+                    <span className="font-mono text-[8px] text-neon-700">{item.myParticipation?.individualContributionCount ?? 0} contributions</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <p className="px-2 text-center font-mono text-[8px] leading-relaxed text-neon-800">Expedition rewards are not issued by this screen. Eligibility is calculated by trusted verification services and reward issuance remains controlled by the server.</p>
     </section>
   );
