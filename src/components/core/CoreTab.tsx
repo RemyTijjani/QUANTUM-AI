@@ -321,7 +321,7 @@ export default function CoreTab({
               ? `Mining active · ${formatRemaining(miningLeft)} remaining`
               : Number.isFinite(nextFragmentCooldown)
                 ? `Next Fragment available in ${formatRemaining(nextFragmentCooldown)}`
-                : fixed > 0
+                : activeFragmentCount > 0
                   ? 'Unlock Shield or Processor for free, or verify an ad to unlock or reactivate another Fragment and resume mining.'
                   : 'Unlock Shield or Processor for free, or verify an ad to unlock another Fragment and start mining.'}
       </p>
