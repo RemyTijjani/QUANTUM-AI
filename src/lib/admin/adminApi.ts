@@ -12,6 +12,8 @@ export interface AdminSubmission {
   platform: 'tiktok' | 'youtube';
   status: 'pending' | 'approved' | 'rejected';
   reward_zp: number;
+  reward_currency: "ZP" | "ZAP";
+  reward_amount: number;
   reviewed_at: string | null;
   created_at: string;
 }
@@ -269,7 +271,10 @@ export interface AdminVaultReserves {
 export interface ReviewResult {
   success: true;
   decision: 'approved' | 'rejected';
-  rewardZp: number;
+  rewardZp?: number;
+  rewardZap?: number;
+  rewardAmount: number;
+  rewardCurrency: 'ZP' | 'ZAP';
   playerReferralCode?: string | null;
   playerId?: string | null;
 }
@@ -363,7 +368,7 @@ export interface BulkApprovalResult {
   success: true;
   approvedCount: number;
   failedCount: number;
-  results: Array<{ submissionId: string; success: boolean; rewardZp?: number; reason?: string }>;
+  results: Array<{ submissionId: string; success: boolean; rewardZp?: number; rewardZap?: number; rewardAmount?: number; rewardCurrency?: 'ZP' | 'ZAP'; reason?: string }>;
 }
 
 export async function bulkApproveSubmissions(
@@ -404,15 +409,16 @@ export async function reviewSubmission(
   }
 
   const result = body as Partial<ReviewResult>;
+  const rewardCurrency = result.rewardCurrency;
+  const rewardAmount = result.rewardAmount ?? (rewardCurrency === 'ZAP' ? result.rewardZap : result.rewardZp);
 
-  // Verify the actual database review result.
-  // Referral code and player ID are optional display information.
   if (
     result.success !== true ||
     result.decision !== decision ||
-    typeof result.rewardZp !== 'number' ||
-    !Number.isFinite(result.rewardZp) ||
-    result.rewardZp < 0
+    (rewardCurrency !== 'ZP' && rewardCurrency !== 'ZAP') ||
+    typeof rewardAmount !== 'number' ||
+    !Number.isFinite(rewardAmount) ||
+    rewardAmount < 0
   ) {
     throw new AdminApiError(
       'The submission review could not be verified. Refresh the dashboard and check its status.',
@@ -422,7 +428,10 @@ export async function reviewSubmission(
   return {
     success: true,
     decision: result.decision,
-    rewardZp: result.rewardZp,
+    rewardZp: rewardCurrency === 'ZP' ? rewardAmount : undefined,
+    rewardZap: rewardCurrency === 'ZAP' ? rewardAmount : undefined,
+    rewardAmount,
+    rewardCurrency,
     playerReferralCode:
       typeof result.playerReferralCode === 'string'
         ? result.playerReferralCode
