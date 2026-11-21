@@ -86,7 +86,7 @@ export default function FragmentBays({ fragments, cooldowns, miningUntil, mining
         </div>
         <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[9px] text-emerald-500">
           <span>{agentMode ? `+${displayedRate.toFixed(2)} ZP/sec · rental agents` : cycleFragments.length > 0 ? `+${cycleRate.toFixed(2)} ZP/sec per fragment` : 'No active mining cycle'}</span>
-          <span>{cycleFragments.length > 0 ? `${Math.round(cycleProgress)}% remaining` : '0% loaded'}</span>
+          <span>{agentMode || cycleFragments.length > 0 ? `${Math.round(cycleProgress)}% remaining` : '0% loaded'}</span>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
