@@ -37,10 +37,14 @@ export default function FragmentBays({ fragments, cooldowns, miningUntil, mining
   const agentRate = runningRentals.reduce((sum, rental) => sum + rental.ratePerSecond, 0);
   const agentMode = runningRentals.length > 0;
   const totalCycleZp = agentMode ? agentTotalZp : cycleFragments.length * cycleRate * (miningSessionMs / 1000);
-  const remainingCycleZp = agentMode ? agentRemainingZp : cycleFragments.reduce((total, id) => {
-    const remainingMs = Math.max(0, Math.min(miningSessionMs, miningUntil[id] - now));
-    return total + cycleRate * (remainingMs / 1000);
-  }, 0);
+  const remainingCycleZp = agentMode
+    ? agentRemainingZp
+    : miningEnabled
+      ? cycleFragments.reduce((total, id) => {
+          const remainingMs = Math.max(0, Math.min(miningSessionMs, miningUntil[id] - now));
+          return total + cycleRate * (remainingMs / 1000);
+        }, 0)
+      : totalCycleZp;
   const displayedRate = agentMode ? agentRate : cycleRate;
   const cycleProgress = totalCycleZp > 0 ? Math.max(0, Math.min(100, (remainingCycleZp / totalCycleZp) * 100)) : 0;
   const activeMiningCount = cycleFragments.filter((id) => miningUntil[id] > now).length;
