@@ -308,6 +308,7 @@ export default function CoreTab({
         miningUntil={state.fragmentMiningUntil}
         miningEnabled={fragmentMiningEnabled}
         miningPausedByRental={paidRentalRate > 0}
+        activeAgentRentals={activeAgentRentals}
         rateMultiplier={effectiveFragmentRateMultiplier}
         now={now}
         onFragmentPress={(id) => handleFragment(id, state.fragments[id])}
