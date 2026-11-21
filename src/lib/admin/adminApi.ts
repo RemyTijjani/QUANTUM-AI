@@ -691,6 +691,16 @@ export async function issueAdminExpeditionRewards(
   }
   return result as AdminExpeditionRewardIssueResult;
 }
+export async function deleteAdminExpedition(
+  creds: AdminCredentials,
+  expeditionId: string,
+): Promise<void> {
+  const body = await callAdminApi(creds, { action: "delete_expedition", expeditionId });
+  if (!body || typeof body !== "object" || (body as { success?: unknown }).success !== true ||
+      (body as { preserved?: unknown }).preserved !== true) {
+    throw new AdminApiError("The Expedition deletion could not be verified. Refresh the list before retrying.");
+  }
+}
 export async function listAdminExpeditions(creds: AdminCredentials): Promise<AdminExpeditionRecord[]> {
   const body = await callAdminApi(creds, { action: 'list_expeditions' });
   if (!body || typeof body !== 'object' || !Array.isArray((body as { expeditions?: unknown }).expeditions)) {
