@@ -329,7 +329,7 @@ Deno.serve(async (req: Request) => {
     if (
       mission.kind !== "social" ||
       mission.status !== "published" ||
-      mission.reward_currency !== "ZP" ||
+      !["ZP", "ZAP"].includes(mission.reward_currency) ||
       Number(mission.unlock_cost_zp) !== 0 ||
       !Number.isSafeInteger(Number(mission.reward)) ||
       Number(mission.reward) <= 0 ||
