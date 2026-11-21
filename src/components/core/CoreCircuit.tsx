@@ -38,7 +38,7 @@ export default function CoreCircuit({ fragments, rate, miningUntil, now }: CoreC
   const activeFragments = Object.fromEntries(
     FRAGMENT_IDS.map((id) => [
       id,
-      activeFragments[id] === 'fixed' && miningUntil[id] > now ? 'fixed' : fragments[id] === 'fixed' ? 'locked' : fragments[id],
+      fragments[id] === 'fixed' && miningUntil[id] > now ? 'fixed' : fragments[id] === 'fixed' ? 'locked' : fragments[id],
     ]),
   ) as Record<FragmentId, FragmentStatus>;
   return (
@@ -55,7 +55,7 @@ export default function CoreCircuit({ fragments, rate, miningUntil, now }: CoreC
               strokeLinecap="round"
             />
           ))}
-          {FRAGMENT_IDS.filter((id) => fragments[id] === 'fixed').map((id) => (
+          {FRAGMENT_IDS.filter((id) => activeFragments[id] === 'fixed').map((id) => (
             <path
               key={`glow-${id}`}
               d={TRACE_PATH[id]}
