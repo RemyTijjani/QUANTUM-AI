@@ -28,7 +28,7 @@ interface FragmentBaysProps {
 export default function FragmentBays({ fragments, cooldowns, miningUntil, miningEnabled, miningPausedByRental, activeAgentRentals, rateMultiplier, now, onFragmentPress }: FragmentBaysProps) {
   const miningSessionMs = CORE_SESSION_HOURS * 60 * 60 * 1000;
   const cycleFragments = FRAGMENT_IDS.filter((id) =>
-    fragments[id] === 'fixed' && miningUntil[id] > 0
+    fragments[id] === 'fixed' && miningUntil[id] > now
   );
   const cycleRate = FRAGMENT_ZP_PER_SEC * rateMultiplier;
   const runningRentals = activeAgentRentals.filter((rental) => Date.parse(rental.startsAt) <= now && Date.parse(rental.expiresAt) > now);

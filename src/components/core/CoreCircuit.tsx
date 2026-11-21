@@ -29,10 +29,18 @@ const NODE_STYLE: Record<FragmentStatus, string> = {
 
 interface CoreCircuitProps {
   fragments: Record<FragmentId, FragmentStatus>;
+  miningUntil: Record<FragmentId, number>;
+  now: number;
   rate: number;
 }
 
-export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
+export default function CoreCircuit({ fragments, miningUntil, now, rate }: CoreCircuitProps) {
+  // A persisted "fixed" status can remain during its cooldown after mining ends.
+  // Only a future server-sourced mining expiry means the fragment is online.
+  const activeFragments = FRAGMENT_IDS.filter(
+    (id) => fragments[id] === 'fixed' && miningUntil[id] > now,
+  );
+
   return (
     <section className="panel mx-auto w-full min-w-0 max-w-[360px] p-3 min-[380px]:p-4">
       <div className="relative aspect-square w-full">
@@ -47,7 +55,7 @@ export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
               strokeLinecap="round"
             />
           ))}
-          {FRAGMENT_IDS.filter((id) => fragments[id] === 'fixed').map((id) => (
+          {activeFragments.map((id) => (
             <path
               key={`glow-${id}`}
               d={TRACE_PATH[id]}
@@ -58,7 +66,7 @@ export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
               className="blur-[2px]"
             />
           ))}
-          {FRAGMENT_IDS.filter((id) => fragments[id] === 'fixed').map((id) => (
+          {activeFragments.map((id) => (
             <path
               key={`live-${id}`}
               d={TRACE_PATH[id]}
@@ -73,7 +81,8 @@ export default function CoreCircuit({ fragments, rate }: CoreCircuitProps) {
         </svg>
 
         {FRAGMENT_IDS.map((id) => {
-          const status = fragments[id];
+          const isActive = activeFragments.includes(id);
+          const status = isActive ? 'fixed' : fragments[id] === 'fixed' ? 'locked' : fragments[id];
           const icon =
             status === 'locked' ? (
               <Lock size={14} />
