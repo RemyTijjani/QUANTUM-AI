@@ -235,10 +235,26 @@ Deno.serve(async (req: Request) => {
           myTeam: myTeam ? { ...myTeam, members: membersByTeam.get(myTeam.id) ?? [] } : null,
         };
       });
+      const cancelledIds = result.filter((item) => item.status === "cancelled").map((item) => item.id);
+      const deletedAfterCompletion = new Set<string>();
+      if (cancelledIds.length > 0) {
+        const { data: deletionAudits, error: deletionAuditError } = await admin.from("expedition_audit_log")
+          .select("expedition_id, before_state")
+          .in("expedition_id", cancelledIds)
+          .eq("action", "admin_deleted");
+        if (deletionAuditError) {
+          console.error("Expedition deletion history lookup failed:", deletionAuditError);
+          return json({ error: "Could not load Expedition reward history." }, 500);
+        }
+        for (const audit of deletionAudits ?? []) {
+          if (audit.before_state?.status === "completed") deletedAfterCompletion.add(audit.expedition_id);
+        }
+      }
       const rewardHistory = result
         .filter((item) => !!item.myParticipation && (
           item.status === "completed" ||
-          (!!item.ends_at && new Date(item.ends_at).getTime() <= now)
+          (item.status !== "cancelled" && !!item.ends_at && new Date(item.ends_at).getTime() <= now) ||
+          deletedAfterCompletion.has(item.id)
         ))
         .map((item) => ({ ...item, status: "completed" }));
       const activeExpeditions = result.filter((item) =>
