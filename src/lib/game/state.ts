@@ -267,34 +267,17 @@ function accrue(s: GameState, seconds: number): GameState {
   };
 }
 
-// Lock fragments exactly when their cooldown expires.
-function expireFragments(s: GameState, at: number): GameState {
-  const fragments = { ...s.fragments };
-  let changed = false;
-
-  for (const id of FRAGMENT_IDS) {
-    if (
-      fragments[id] === 'fixed' &&
-      s.fragmentCooldowns[id] <= at
-    ) {
-      fragments[id] = 'locked';
-      changed = true;
-    }
-  }
-
-  return changed ? { ...s, fragments } : s;
-}
-
 // Splits elapsed time at agent, core session, and fragment cooldown expiries.
 export function advance(s: GameState, now: number): GameState {
   if (now <= s.lastTick) return s;
 
-  let next = expireFragments(s, s.lastTick);
+  // Fragment status and cooldowns are server-authoritative. Local time
+  // advancement must never unlock, lock, or fix a Fragment on its own.
+  let next = s;
 
   const expiries = [
     ...AGENT_IDS.map((id) => next.agents[id]),
     next.coreMiningUntil,
-    ...FRAGMENT_IDS.map((id) => next.fragmentCooldowns[id]),
     next.temporaryAgentUntil,
     next.fragmentMiningBoostUntil,
   ].filter((end) => end > next.lastTick && end <= now);
@@ -309,7 +292,6 @@ export function advance(s: GameState, now: number): GameState {
       lastTick: end,
     };
 
-    next = expireFragments(next, end);
   }
 
   return next;
