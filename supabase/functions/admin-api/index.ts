@@ -383,6 +383,7 @@ interface AdminRequestBody {
     | "delete_event"
     | "save_expedition_draft"
     | "delete_expedition_draft"
+    | "delete_expedition"
     | "list_expedition_objective_reviews"
     | "review_expedition_objective"
     | "prepare_expedition_rewards"
@@ -591,7 +592,15 @@ function validateTask(
   }
 
   if (task.rewardCurrency && !['ZP', 'ZAP'].includes(task.rewardCurrency)) return "Invalid reward currency";
-  if (task.kind === "creator" && task.rewardCurrency === "ZAP") return "Creator Ops submissions can only pay ZP until the Stage 7 ZAP reward backend is implemented.";
+  if (task.rewardCurrency === "ZAP" && task.kind === "daily" &&
+      (task.id !== "agent-uptime" || task.reward !== 10)) {
+    return "Daily ZAP rewards are currently supported only by the fixed 10 ZAP Agent Uptime mission.";
+  }
+  if (task.rewardCurrency === "ZAP" && task.kind === "social" &&
+      !task.telegramChatId?.trim()) {
+    return "ZAP Social missions require Telegram channel or group membership verification.";
+  }
+  // Creator Ops ZP and ZAP rewards are both credited by the atomic admin review RPC.
   if (task.unlockCostZp !== undefined && (!Number.isSafeInteger(task.unlockCostZp) || task.unlockCostZp < 0)) return "Unlock cost must be a whole number of 0 or more";
   if (task.status && !['draft', 'published', 'paused', 'archived'].includes(task.status)) return "Invalid mission status";
   if (task.objectives !== undefined && (!Array.isArray(task.objectives) || task.objectives.length > 50 || task.objectives.some((v) => typeof v !== 'string' || v.length > 300))) return "Invalid mission objectives";
@@ -716,7 +725,7 @@ Deno.serve(async (req: Request) => {
         db
           .from("creator_ops_submissions")
           .select(
-            "id, mission_id, player_referral_code, link_url, platform, status, reward_zp, reviewed_at, created_at"
+            "id, mission_id, player_referral_code, link_url, platform, status, reward_zp, reward_currency, reward_amount, reviewed_at, created_at"
           )
           .eq("status", "pending")
           .order("created_at", { ascending: true }),
@@ -1398,6 +1407,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "list_expeditions") {
       const { data: rows, error } = await db.from("expeditions")
         .select("id, slug, title, description, category, access_mode, participation_mode, status, starts_at, ends_at, timezone, min_team_size, max_team_size, min_individual_contributions")
+        .neq("status", "cancelled")
         .order("created_at", { ascending: false }).limit(100);
       if (error) {
         console.error("Expedition list failed:", error);
@@ -1449,6 +1459,38 @@ Deno.serve(async (req: Request) => {
         return json({ error: messages[reason] ?? "The Expedition draft could not be deleted.", reason }, reason === "expedition_not_found" ? 404 : 409);
       }
       return json(result);
+    }
+
+    if (body.action === "delete_expedition") {
+      const id = body.expeditionId;
+      if (typeof id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+        return json({ error: "A valid Expedition ID is required" }, 400);
+      }
+      const { data: current, error: readError } = await db.from("expeditions")
+        .select("id, title, status").eq("id", id).maybeSingle();
+      if (readError || !current) return json({ error: "Expedition not found" }, 404);
+      if (current.status === "draft") return json({ error: "Unpublished drafts must use Delete draft." }, 409);
+      if (current.status === "cancelled") return json({ success: true, alreadyDeleted: true, title: current.title });
+      const { error: updateError } = await db.from("expeditions")
+        .update({ status: "cancelled", updated_by: ADMIN_USERNAME, updated_at: new Date().toISOString() })
+        .eq("id", id).eq("status", current.status);
+      if (updateError) {
+        console.error("Expedition soft deletion failed:", updateError);
+        return json({ error: "Could not delete this Expedition." }, 500);
+      }
+      const { error: auditError } = await db.from("expedition_audit_log").insert({
+        expedition_id: id, actor: ADMIN_USERNAME, action: "admin_deleted",
+        before_state: { status: current.status }, after_state: { status: "cancelled", preserved: true },
+      });
+      if (auditError) {
+        console.error("Expedition deletion audit failed:", auditError);
+        const { error: rollbackError } = await db.from("expeditions")
+          .update({ status: current.status, updated_by: ADMIN_USERNAME, updated_at: new Date().toISOString() })
+          .eq("id", id).eq("status", "cancelled");
+        if (rollbackError) return json({ error: "Audit failed and automatic rollback failed. Contact support before changing this Expedition again." }, 500);
+        return json({ error: "Deletion was rolled back because its audit record could not be saved." }, 500);
+      }
+      return json({ success: true, deletedId: id, title: current.title, preserved: true });
     }
 
     if (body.action === "publish_expedition") {
