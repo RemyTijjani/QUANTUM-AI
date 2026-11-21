@@ -56,7 +56,7 @@ export default function FragmentBays({ fragments, cooldowns, miningUntil, mining
         <p className="label">Fragment bays</p>
         <h2 className="title mt-1">Missing pieces</h2>
       </div>
-      <div className="rounded-xl border border-emerald-400/25 bg-emerald-950/20 p-3">
+      <div className="rounded-xl border-2 border-emerald-400/45 bg-gradient-to-br from-emerald-950/70 via-black/70 to-cyan-950/40 p-4 shadow-[0_0_18px_rgba(16,185,129,0.12)]">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-emerald-300">ZP mining capacity</p>
@@ -76,7 +76,7 @@ export default function FragmentBays({ fragments, cooldowns, miningUntil, mining
           </div>
         </div>
         <div
-          className="mt-3 h-3 overflow-hidden rounded-full border border-emerald-300/15 bg-black/60"
+          className="mt-3 h-4 overflow-hidden rounded-full border border-emerald-300/30 bg-black/80"
           role="progressbar"
           aria-label="Remaining ZP in the active mining capacity"
           aria-valuemin={0}
@@ -154,7 +154,7 @@ function FragmentBay({
       disabled={cooldownActive || !miningEnabled}
       aria-label={`${FRAGMENT_NAMES[id]}: ${label}`}
       className={`relative flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center transition duration-500 active:scale-95 ${BAY_STYLE[visualStatus]} ${
-        status === 'unlocked' && !cooldownActive ? 'animate-soft-pulse' : ''
+        status === 'unlocked' && !cooldownActive ? 'ring-1 ring-cyan-300/30' : ''
       } ${cooldownActive || !miningEnabled ? 'cursor-not-allowed opacity-80' : ''}`}
     >
       {status === 'fixed' && miningActive && <Check size={14} className="absolute right-2 top-2" />}
