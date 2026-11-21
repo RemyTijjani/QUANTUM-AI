@@ -70,6 +70,8 @@ function FragmentBay({
 }) {
   const cooldownActive = cooldownRemaining > 0;
   const miningActive = status === 'fixed' && miningRemaining > 0;
+  const expiredFixed = status === 'fixed' && !miningActive;
+  const visualStatus: FragmentStatus = expiredFixed ? 'locked' : status;
   const label = !miningEnabled
     ? 'Global mining paused'
     : miningActive && miningPausedByRental
@@ -78,8 +80,8 @@ function FragmentBay({
         ? `Mining · ${formatCooldown(miningRemaining)}`
         : cooldownActive
           ? `Cooldown · ${formatCooldown(cooldownRemaining)}`
-          : status === 'fixed'
-            ? 'Ad verification required'
+          : expiredFixed
+            ? 'Tap to reactivate'
             : STATUS_LABEL[status];
 
   return (
@@ -88,11 +90,11 @@ function FragmentBay({
       onClick={onPress}
       disabled={cooldownActive || !miningEnabled}
       aria-label={`${FRAGMENT_NAMES[id]}: ${label}`}
-      className={`relative flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center transition duration-500 active:scale-95 ${BAY_STYLE[status]} ${
+      className={`relative flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center transition duration-500 active:scale-95 ${BAY_STYLE[visualStatus]} ${
         status === 'unlocked' && !cooldownActive ? 'animate-soft-pulse' : ''
       } ${cooldownActive || !miningEnabled ? 'cursor-not-allowed opacity-80' : ''}`}
     >
-      {status === 'fixed' && <Check size={14} className="absolute right-2 top-2" />}
+      {status === 'fixed' && miningActive && <Check size={14} className="absolute right-2 top-2" />}
       <FaIcon name={FRAGMENT_ICON[id]} size={22} />
       <span className="font-display text-[10px] font-bold uppercase leading-tight tracking-wider">
         {FRAGMENT_NAMES[id]}
