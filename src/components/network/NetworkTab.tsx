@@ -299,15 +299,19 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
       </section>
 
       {kickbacks && kickbacks.recentActivity.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2 px-1">
-            <History size={14} className="text-neon-400" />
-            <div>
-              <p className="label">Referral reward history</p>
-              <h2 className="title mt-1">Recent activity</h2>
-            </div>
-          </div>
-          <div className="panel divide-y divide-neon/10">
+        <details className="panel group space-y-3">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 [&::-webkit-details-marker]:hidden">
+            <span className="flex min-w-0 items-center gap-2">
+              <History size={14} className="shrink-0 text-neon-400" />
+              <span className="min-w-0">
+                <span className="block label">Referral reward history</span>
+                <span className="mt-1 block title">Recent activity</span>
+              </span>
+              <span className="font-mono text-[9px] text-neon-600">{kickbacks.recentActivity.length}</span>
+            </span>
+            <span className="text-neon-500 transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <div className="divide-y divide-neon/10 border-t border-neon/10">
             {kickbacks.recentActivity.map((activity) => (
               <div key={activity.id} className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-4">
                 <div className="min-w-0">
@@ -325,7 +329,7 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
               </div>
             ))}
           </div>
-        </section>
+        </details>
       )}
 
       <section className="space-y-3">
@@ -347,17 +351,17 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
         )}
       </section>
 
-      <section className="space-y-3">
-        <div className="flex items-end justify-between px-1">
-          <div>
-            <p className="label">Confirmed referrals</p>
-            <h2 className="title mt-1 flex items-center gap-2">
+      <details className="panel group min-w-0 overflow-hidden">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0">
+            <span className="block label">Confirmed referrals</span>
+            <span className="title mt-1 flex items-center gap-2">
               <Users size={16} /> {loadingReferrals ? 'Loading...' : referrals.length} recruits
-            </h2>
-          </div>
-        </div>
-
-        <div className="panel min-w-0 overflow-hidden">
+            </span>
+          </span>
+          <span className="text-neon-500 transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="min-w-0 overflow-hidden border-t border-neon/15">
           {loadingReferrals ? (
             <p className="px-5 py-8 text-center font-mono text-xs text-neon-500">Loading confirmed referral records...</p>
           ) : referralError ? (
@@ -386,7 +390,7 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
             Only server-registered referrals are counted. Reward eligibility and claims are calculated by the secure referral service.
           </p>
         </div>
-      </section>
+      </details>
     </div>
   );
 }
