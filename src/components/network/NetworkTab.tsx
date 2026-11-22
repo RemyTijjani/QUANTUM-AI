@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Clock3, Coins, Copy, Gift, History, Share2, Users } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Clock3, Coins, Copy, Gift, History, Share2, Users } from 'lucide-react';
 import { buildReferralLink } from '@/lib/referral';
 import { openTelegramLink } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
@@ -299,32 +299,38 @@ export default function NetworkTab({ state, notify, onRefreshVerifiedEconomy }: 
       </section>
 
       {kickbacks && kickbacks.recentActivity.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2 px-1">
-            <History size={14} className="text-neon-400" />
-            <div>
-              <p className="label">Referral reward history</p>
-              <h2 className="title mt-1">Recent activity</h2>
-            </div>
-          </div>
-          <div className="panel divide-y divide-neon/10">
-            {kickbacks.recentActivity.map((activity) => (
-              <div key={activity.id} className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-4">
-                <div className="min-w-0">
-                  <p className="font-display text-xs font-bold text-neon-300">
-                    {activity.eventType.replace(/_/g, ' ')}
-                    {activity.referralLevel ? ` · Level ${activity.referralLevel}` : ''}
-                    {sourceLabel(activity.sourceEventType) ? ` · ${sourceLabel(activity.sourceEventType)}` : ''}
-                  </p>
-                  <p className="mt-1 font-mono text-[9px] text-neon-600">
-                    {new Date(activity.createdAt).toLocaleString()}
-                    {activity.status ? ` · ${activity.status}` : ''}
-                  </p>
+        <section className="panel min-w-0 overflow-hidden">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3.5 [&::-webkit-details-marker]:hidden sm:px-4">
+              <span className="flex min-w-0 items-center gap-2">
+                <History size={14} className="shrink-0 text-neon-400" />
+                <span className="min-w-0">
+                  <span className="block label">Referral reward history</span>
+                  <span className="mt-1 block font-display text-sm font-bold text-neon-300">Recent activity</span>
+                  <span className="mt-0.5 block font-mono text-[9px] text-neon-600">{kickbacks.recentActivity.length} reward records</span>
+                </span>
+              </span>
+              <ChevronDown size={16} className="shrink-0 text-neon-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="divide-y divide-neon/10 border-t border-neon/10">
+              {kickbacks.recentActivity.map((activity) => (
+                <div key={activity.id} className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-4">
+                  <div className="min-w-0">
+                    <p className="font-display text-xs font-bold text-neon-300">
+                      {activity.eventType.replace(/_/g, ' ')}
+                      {activity.referralLevel ? ` · Level ${activity.referralLevel}` : ''}
+                      {sourceLabel(activity.sourceEventType) ? ` · ${sourceLabel(activity.sourceEventType)}` : ''}
+                    </p>
+                    <p className="mt-1 font-mono text-[9px] text-neon-600">
+                      {new Date(activity.createdAt).toLocaleString()}
+                      {activity.status ? ` · ${activity.status}` : ''}
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-mono text-xs tabular-nums text-neon-300">{formatZp(activity.amount)} ZP</span>
                 </div>
-                <span className="shrink-0 font-mono text-xs tabular-nums text-neon-300">{formatZp(activity.amount)} ZP</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </details>
         </section>
       )}
 
