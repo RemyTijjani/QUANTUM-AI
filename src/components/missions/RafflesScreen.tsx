@@ -235,11 +235,18 @@ export default function RafflesScreen() {
         </div>
       )}
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div><h3 className="text-sm font-semibold text-neon-100">Your raffle history</h3><p className="mt-1 text-[10px] text-neon-600">Entries you have made, including the ZAP stake and tickets recorded.</p></div>
-          <span className="rounded-full border border-neon/20 bg-white/[0.03] px-2.5 py-1 text-[10px] text-neon-400">{entries.length} entr{entries.length === 1 ? 'y' : 'ies'}</span>
-        </div>
+      <details className="panel group space-y-3 p-3">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-neon-100">Your raffle history</span>
+            <span className="mt-1 block text-[10px] text-neon-600">Entries, ZAP stakes and recorded tickets.</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-2">
+            <span className="rounded-full border border-neon/20 bg-white/[0.03] px-2.5 py-1 text-[10px] text-neon-400">{entries.length} entr{entries.length === 1 ? 'y' : 'ies'}</span>
+            <span className="text-neon-500 transition-transform group-open:rotate-180">⌄</span>
+          </span>
+        </summary>
+        <div className="space-y-3 border-t border-neon/10 pt-3">
         {entries.length === 0 ? (
           <div className="rounded-xl border border-neon/15 bg-black/20 p-4 text-center">
             <Ticket size={22} className="mx-auto text-neon-500"/>
@@ -289,7 +296,8 @@ export default function RafflesScreen() {
             })}
           </div>
         )}
-      </section>
+        </div>
+      </details>
 
       {selected && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center overflow-y-auto bg-black/80 p-2 sm:items-center sm:p-3" role="dialog" aria-modal="true" aria-labelledby="raffle-entry-title">
