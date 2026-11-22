@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import FaIcon from '@/components/FaIcon';
-import { FRAGMENT_IDS } from '@/lib/game/config';
+import { FRAGMENT_IDS, FRAGMENT_NAMES, FRAGMENT_ZP_PER_SEC } from '@/lib/game/config';
 import { formatCooldown } from '@/lib/format';
 import type { FragmentId } from '@/lib/game/config';
 import type { FragmentStatus } from '@/lib/game/state';
