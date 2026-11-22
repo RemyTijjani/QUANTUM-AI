@@ -301,7 +301,16 @@ export default function CoreTab({
       </section>
 
 
-      <ZpMiningProgress\n        fragments={state.fragments}\n        miningUntil={state.fragmentMiningUntil}\n        miningEnabled={fragmentMiningEnabled}\n        miningPausedByRental={paidRentalRate > 0}\n        activeAgentRentals={activeAgentRentals}\n        rateMultiplier={effectiveFragmentRateMultiplier}\n        now={now}\n      />\n      <CoreCircuit fragments={state.fragments} miningUntil={state.fragmentMiningUntil} now={now} rate={rate} />
+      <ZpMiningProgress
+        fragments={state.fragments}
+        miningUntil={state.fragmentMiningUntil}
+        miningEnabled={fragmentMiningEnabled}
+        miningPausedByRental={paidRentalRate > 0}
+        activeAgentRentals={activeAgentRentals}
+        rateMultiplier={effectiveFragmentRateMultiplier}
+        now={now}
+      />
+      <CoreCircuit fragments={state.fragments} miningUntil={state.fragmentMiningUntil} now={now} rate={rate} />
       <FragmentBays
         fragments={state.fragments}
         cooldowns={state.fragmentCooldowns}
