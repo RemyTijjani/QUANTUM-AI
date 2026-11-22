@@ -4,7 +4,6 @@ import { FRAGMENT_IDS, FRAGMENT_ZP_PER_SEC, FRAGMENT_NAMES } from '@/lib/game/co
 import { formatCooldown } from '@/lib/format';
 import type { FragmentId } from '@/lib/game/config';
 import type { FragmentStatus } from '@/lib/game/state';
-import type { VerifiedAgentRental } from '@/lib/economy/verifiedEconomy';
 import { FRAGMENT_ICON, STATUS_LABEL } from '@/components/core/fragmentVisuals';
 
 const BAY_STYLE: Record<FragmentStatus, string> = {
@@ -19,22 +18,18 @@ interface FragmentBaysProps {
   miningUntil: Record<FragmentId, number>;
   miningEnabled: boolean;
   miningPausedByRental: boolean;
-  activeAgentRentals: VerifiedAgentRental[];
   rateMultiplier: number;
   now: number;
   onFragmentPress: (id: FragmentId) => void;
 }
 
-export default function FragmentBays({ fragments, cooldowns, miningUntil, miningEnabled, miningPausedByRental, activeAgentRentals, rateMultiplier, now, onFragmentPress }: FragmentBaysProps) {
-
-
+export default function FragmentBays({ fragments, cooldowns, miningUntil, miningEnabled, miningPausedByRental, rateMultiplier, now, onFragmentPress }: FragmentBaysProps) {
   return (
     <section className="space-y-3">
       <div className="px-1">
         <p className="label">Fragment bays</p>
         <h2 className="title mt-1">Missing pieces</h2>
       </div>
-
       <div className="grid grid-cols-2 gap-3">
         {FRAGMENT_IDS.map((id) => (
           <FragmentBay
