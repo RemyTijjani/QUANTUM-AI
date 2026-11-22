@@ -15,7 +15,7 @@ interface ZpMiningProgressProps {
 }
 
 export default function ZpMiningProgress({ fragments, miningUntil, miningEnabled, miningPausedByRental, activeAgentRentals, rateMultiplier, now }: ZpMiningProgressProps) {
-    const miningSessionMs = CORE_SESSION_HOURS * 60 * 60 * 1000;
+  const miningSessionMs = CORE_SESSION_HOURS * 60 * 60 * 1000;
   const cycleFragments = FRAGMENT_IDS.filter((id) =>
     fragments[id] === 'fixed' && miningUntil[id] > now
   );
@@ -40,9 +40,9 @@ export default function ZpMiningProgress({ fragments, miningUntil, miningEnabled
   const miningPaused = !miningEnabled || miningPausedByRental;
 
   return (
-          <div className="rounded-xl border-2 border-emerald-400/45 bg-gradient-to-br from-emerald-950/70 via-black/70 to-cyan-950/40 p-4 shadow-[0_0_18px_rgba(16,185,129,0.12)]">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
+    <div className="rounded-xl border-2 border-emerald-400/45 bg-gradient-to-br from-emerald-950/70 via-black/70 to-cyan-950/40 p-4 shadow-[0_0_18px_rgba(16,185,129,0.12)]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
             <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-emerald-300">ZP mining capacity</p>
             <p className="mt-1 text-[10px] text-emerald-100/75">
               {agentMode
@@ -54,28 +54,28 @@ export default function ZpMiningProgress({ fragments, miningUntil, miningEnabled
                     : `${activeMiningCount} fragment${activeMiningCount === 1 ? '' : 's'} contributing to this cycle`}
             </p>
           </div>
-          <div className="shrink-0 text-right">
+        <div className="shrink-0 text-right">
             <p className="font-display text-lg font-bold tabular-nums text-emerald-200">{formatZp(remainingCycleZp)} <span className="text-[9px] font-mono text-emerald-400">ZP LEFT</span></p>
             <p className="font-mono text-[9px] text-emerald-500">of {formatZp(totalCycleZp)} ZP</p>
           </div>
-        </div>
-        <div
-          className="mt-3 h-4 overflow-hidden rounded-full border border-emerald-300/30 bg-black/80"
+      </div>
+      <div
+        className="mt-3 h-4 overflow-hidden rounded-full border border-emerald-300/30 bg-black/80"
           role="progressbar"
           aria-label="Remaining ZP in the active mining capacity"
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(cycleProgress)}
         >
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-emerald-300 to-cyan-300 shadow-[0_0_12px_rgba(52,211,153,0.35)] transition-[width] duration-1000 ease-linear"
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-emerald-300 to-cyan-300 shadow-[0_0_12px_rgba(52,211,153,0.35)] transition-[width] duration-1000 ease-linear"
             style={{ width: String(cycleProgress) + '%' }}
-          />
-        </div>
-        <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[9px] text-emerald-500">
+        />
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[9px] text-emerald-500">
           <span>{agentMode ? `+${displayedRate.toFixed(2)} ZP/sec · rental agents` : cycleFragments.length > 0 ? `+${cycleRate.toFixed(2)} ZP/sec per fragment` : 'No active mining cycle'}</span>
           <span>{agentMode || cycleFragments.length > 0 ? `${Math.round(cycleProgress)}% remaining` : '0% loaded'}</span>
         </div>
-      </div>
+    </div>
   );
 }
