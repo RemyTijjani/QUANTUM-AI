@@ -13,6 +13,7 @@ import { Coins, Award } from 'lucide-react';
 import type { Notify } from '@/hooks/useToast';
 import CoreCircuit from '@/components/core/CoreCircuit';
 import FragmentBays from '@/components/core/FragmentBays';
+import ZpMiningProgress from '@/components/core/ZpMiningProgress';
 import CharacterCard from '@/components/core/CharacterCard';
 import type { ZapAchievements } from '@/lib/economy/zapWallet';
 import type { VerifiedAgentRental } from '@/lib/economy/verifiedEconomy';
@@ -300,7 +301,7 @@ export default function CoreTab({
       </section>
 
 
-      <CoreCircuit fragments={state.fragments} miningUntil={state.fragmentMiningUntil} now={now} rate={rate} />
+      <ZpMiningProgress\n        fragments={state.fragments}\n        miningUntil={state.fragmentMiningUntil}\n        miningEnabled={fragmentMiningEnabled}\n        miningPausedByRental={paidRentalRate > 0}\n        activeAgentRentals={activeAgentRentals}\n        rateMultiplier={effectiveFragmentRateMultiplier}\n        now={now}\n      />\n      <CoreCircuit fragments={state.fragments} miningUntil={state.fragmentMiningUntil} now={now} rate={rate} />
       <FragmentBays
         fragments={state.fragments}
         cooldowns={state.fragmentCooldowns}
