@@ -181,7 +181,8 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
         return;
       }
       setClaimed(true);
-      notify(data.alreadyClaimed ? 'This mission reward was already claimed.' : `Telegram membership verified. +${formatZp(Number(data.rewardZp) || mission.reward)} ZP credited.`);
+      const rewardAmount = mission.rewardCurrency === 'ZAP' ? Number(data.rewardZap) || mission.reward : Number(data.rewardZp) || mission.reward;
+      notify(data.alreadyClaimed ? 'This mission reward was already claimed.' : `Telegram membership verified. +${formatZp(rewardAmount)} ${mission.rewardCurrency ?? 'ZP'} credited.`);
       try {
         await onRefreshVerifiedEconomy?.();
       } catch {
@@ -311,7 +312,7 @@ function MissionCard({ mission, status, progressLabel, notify, onRefreshVerified
             disabled={claiming || claimed || legacyClaimed}
             className="mt-2 min-h-11 rounded border border-neon/40 bg-neon/10 px-3 py-2 font-mono text-[9px] uppercase tracking-wide text-neon-300 disabled:opacity-50 sm:text-[10px]"
           >
-            {claiming ? 'Checking membership...' : claimed || legacyClaimed ? 'Already claimed' : `Verify & claim +${formatZp(mission.reward)} ZP`}
+            {claiming ? 'Checking membership...' : claimed || legacyClaimed ? 'Already claimed' : `Verify & claim +${formatZp(mission.reward)} ${mission.rewardCurrency ?? 'ZP'}`}
           </button>
         ) : mission.id === 'agent-uptime' ? (
           <button
