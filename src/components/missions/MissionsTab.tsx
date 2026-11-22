@@ -68,6 +68,9 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
   // Hide one-time Social missions after the server confirms their reward claim.
   // The claim record remains in the database for reward history and admin auditing.
   const activeSocial = social.filter((mission) => statusForMission(mission) !== 'claimed');
+  // Hide non-daily Creator Ops missions only after the server confirms approval/reward.
+  // Pending submissions remain visible; daily missions are never filtered here.
+  const activeCreator = creator.filter((mission) => statusForMission(mission) !== 'claimed');
 
   return (
     <div className="min-w-0 space-y-5 pb-3 sm:space-y-6 sm:pb-2">
@@ -143,7 +146,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
             </button>
           </div>
         </div>
-        {creator.map((mission) => (
+        {activeCreator.map((mission) => (
           <CreatorOpsCard
             key={mission.id}
             mission={mission}
