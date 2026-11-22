@@ -37,13 +37,16 @@ export default function VaultTab({
         <TonWalletConnection onWalletStatusChange={onWalletStatusChange} />
       </section>
 
-      <section className="panel space-y-3 p-4">
-        <div className="flex items-center gap-2">
-          <History size={16} className="text-neon-400" />
-          <div>
-            <h2 className="title">ZP activity</h2>
-          </div>
-        </div>
+      <details className="panel group space-y-3 p-4">
+        <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+          <span className="flex min-w-0 items-center gap-2">
+            <History size={16} className="shrink-0 text-neon-400" />
+            <span className="title">ZP activity</span>
+            <span className="font-mono text-[9px] text-neon-600">{transactions.length}</span>
+          </span>
+          <span className="text-neon-500 transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="space-y-3">
         {transactions.length === 0 ? (
           <div className="rounded-lg border border-neon/10 bg-black/20 px-3 py-6 text-center">
             <Coins size={20} className="mx-auto mb-2 text-neon-700" />
@@ -76,7 +79,8 @@ export default function VaultTab({
             })}
           </div>
         )}
-      </section>
+        </div>
+      </details>
 
     </div>
   );
