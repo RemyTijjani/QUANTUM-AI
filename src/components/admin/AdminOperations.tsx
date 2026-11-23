@@ -62,6 +62,9 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
   const [exportBusy, setExportBusy] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [archiveNotice, setArchiveNotice] = useState<string | null>(null);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
 
   const loadMining = useCallback(async () => {
     setMiningError(null);
@@ -135,6 +138,34 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
       setCacheError(errorText(error));
     } finally {
       setCacheBusy(false);
+    }
+  };
+
+  const handleArchiveTest = async () => {
+    if (archiveBusy || !window.confirm('Copy up to 10 recent ZP economy ledger records to the private Cloudflare R2 archive and verify the downloaded copy? Original Supabase records will remain untouched.')) return;
+    setArchiveBusy(true);
+    setArchiveError(null);
+    setArchiveNotice(null);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-archive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ action: 'copy-test', adminUsername: creds.username, adminPassword: creds.password }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success || !result?.verified) {
+        throw new AdminApiError(typeof result?.error === 'string' ? result.error : `Archive test failed (${response.status}).`);
+      }
+      setArchiveNotice(result.copied === 0
+        ? 'Verification passed. No ZP ledger records were available to copy.'
+        : `Copied and verified ${result.copied} record(s). SHA-256: ${result.checksum}. R2 object: ${result.objectKey}`);
+    } catch (error) {
+      setArchiveError(errorText(error));
+    } finally {
+      setArchiveBusy(false);
     }
   };
 
@@ -212,6 +243,14 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
         {exportNotice && <p role="status" className="mb-2 text-[11px] text-emerald-300">{exportNotice}</p>}
         <button type="button" onClick={() => void handleExport()} disabled={exportBusy} className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2.5 text-xs font-semibold text-emerald-200 disabled:opacity-50"><Download size={14} />{exportBusy ? 'Preparing CSV…' : 'Export player summary CSV'}</button>
       </div>
+      <div className="min-w-0 rounded-2xl border border-white/10 bg-[#111a14] p-4">
+        <h3 className="mb-3 flex items-center gap-2 border-b border-white/10 pb-3 text-xs font-bold uppercase tracking-widest text-slate-200"><Database size={15} /> R2 History Archive Test</h3>
+        <p className="mb-3 text-[11px] leading-relaxed text-slate-400">Copies up to 10 recent ZP economy ledger records to the private Cloudflare R2 bucket, then downloads the object and checks its SHA-256 checksum and row count. This is copy-only; no Supabase history is changed or deleted.</p>
+        {archiveError && <p role="alert" className="mb-2 break-words text-[11px] text-red-300">{archiveError}</p>}
+        {archiveNotice && <p role="status" className="mb-2 break-words text-[11px] text-emerald-300">{archiveNotice}</p>}
+        <button type="button" onClick={() => void handleArchiveTest()} disabled={archiveBusy} className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2.5 text-xs font-semibold text-emerald-200 disabled:opacity-50"><Database size={14} />{archiveBusy ? 'Copying & verifying…' : 'Run 10-record R2 copy test'}</button>
+      </div>
+
     </section>
   );
 }
