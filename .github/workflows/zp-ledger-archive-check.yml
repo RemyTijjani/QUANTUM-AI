@@ -6,7 +6,6 @@ on:
       - "supabase/functions/history-archive/**"
       - "supabase/functions/player-history/**"
       - "supabase/functions/history-archive-scheduled/**"
-      - "supabase/functions/history-archive-scheduled/**"
       - "supabase/migrations/**"
       - "supabase/config.toml"
       - "src/components/admin/AdminOperations.tsx"
@@ -17,6 +16,8 @@ on:
     paths:
       - "supabase/functions/history-archive/**"
       - "supabase/functions/player-history/**"
+      - "supabase/functions/history-archive-scheduled/**"
+      - "supabase/migrations/**"
       - "src/components/admin/AdminOperations.tsx"
       - ".github/workflows/zp-ledger-archive-check.yml"
 
