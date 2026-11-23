@@ -5,12 +5,14 @@ on:
     paths:
       - "supabase/functions/history-archive/**"
       - "supabase/config.toml"
+      - "src/components/admin/AdminOperations.tsx"
       - ".github/workflows/zp-ledger-archive-check.yml"
   push:
     branches:
       - feature/zp-ledger-batch-archive
     paths:
       - "supabase/functions/history-archive/**"
+      - "src/components/admin/AdminOperations.tsx"
       - ".github/workflows/zp-ledger-archive-check.yml"
 
 permissions:
