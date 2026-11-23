@@ -408,12 +408,12 @@ function GameApp({
       } else {
         if (!session.ymid) throw new Error('ZORD could not prepare the Monetag verification ID.');
         const showAd = (window as Window & {
-          show_3571897?: (options: {
+          show_12235928?: (options: {
             type: 'end';
             ymid: string;
             requestVar: string;
           }) => Promise<{ reward_event_type?: string } | undefined>;
-        }).show_3571897;
+        }).show_12235928;
 
         if (typeof showAd !== 'function') {
           throw new Error('Monetag is still loading. Please try again in a moment.');
