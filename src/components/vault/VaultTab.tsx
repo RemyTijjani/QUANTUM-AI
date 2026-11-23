@@ -125,7 +125,7 @@ export default function VaultTab({
               ? 'Loading your complete ZP history…'
               : historyUnavailable
                 ? 'Showing available recent history. Complete archive history could not be reached.'
-                : 'Complete history loaded from your private archive and live ledger.'}
+                : 'Complete history of ZP activities'}
           </p>
           <div className="flex items-center gap-2">
             <History size={16} className="text-neon-400" />
