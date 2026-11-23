@@ -1,6 +1,6 @@
 INSERT INTO public.history_archive_other_control (table_name)
 VALUES ('raffle_audit_log'),('raffle_winners'),('daily_uplink_claims'),
-       ('share_uplink_mission_claims'),('telegram_mission_claims'),('agent_rental_zp_accruals')
+       ('share_uplink_mission_claims'),('telegram_mission_claims'),('agent_rental_zp_accruals'),('fragment_mining_rewards'),('gameplay_action_events'),('expedition_objective_progress'),('expedition_team_objective_progress'),('expedition_trusted_evidence'),('raffle_entries')
 ON CONFLICT (table_name) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION public.history_archive_other_batch(
@@ -73,6 +73,41 @@ BEGIN
     WHERE t.claimed_at<=now()-interval '6 hours'
       AND (p_after_eligible_at IS NULL OR (t.claimed_at,t.id)>(p_after_eligible_at,p_after_id))
     ORDER BY t.claimed_at,t.id LIMIT LEAST(GREATEST(COALESCE(p_batch_size,200),1),200);
+  ELSIF p_table_name = 'fragment_mining_rewards' THEN
+    RETURN QUERY SELECT t.id,t.credited_at,to_jsonb(t) FROM public.fragment_mining_rewards t
+    WHERE t.credited_at IS NOT NULL AND t.release_at<=now()-interval '6 hours'
+      AND t.credited_at<=now()-interval '6 hours'
+      AND (p_after_eligible_at IS NULL OR (t.credited_at,t.id)>(p_after_eligible_at,p_after_id))
+    ORDER BY t.credited_at,t.id LIMIT LEAST(GREATEST(COALESCE(p_batch_size,200),1),200);
+  ELSIF p_table_name = 'gameplay_action_events' THEN
+    RETURN QUERY SELECT t.id,t.created_at,to_jsonb(t) FROM public.gameplay_action_events t
+    WHERE t.created_at<=now()-interval '6 hours'
+      AND (p_after_eligible_at IS NULL OR (t.created_at,t.id)>(p_after_eligible_at,p_after_id))
+    ORDER BY t.created_at,t.id LIMIT LEAST(GREATEST(COALESCE(p_batch_size,200),1),200);
+  ELSIF p_table_name = 'raffle_entries' THEN
+    RETURN QUERY SELECT t.id,t.created_at,to_jsonb(t) FROM public.raffle_entries t
+    JOIN public.raffles r ON r.id=t.raffle_id
+    WHERE r.status='drawn' AND t.created_at<=now()-interval '6 hours'
+      AND (p_after_eligible_at IS NULL OR (t.created_at,t.id)>(p_after_eligible_at,p_after_id))
+    ORDER BY t.created_at,t.id LIMIT LEAST(GREATEST(COALESCE(p_batch_size,200),1),200);
+  ELSIF p_table_name = 'expedition_objective_progress' THEN
+    RETURN QUERY SELECT t.id,t.verified_at,to_jsonb(t) FROM public.expedition_objective_progress t
+    JOIN public.expeditions e ON e.id=t.expedition_id
+    WHERE e.status='cancelled' AND t.status='verified' AND t.verified_at<=now()-interval '6 hours'
+      AND (p_after_eligible_at IS NULL OR (t.verified_at,t.id)>(p_after_eligible_at,p_after_id))
+    ORDER BY t.verified_at,t.id LIMIT LEAST(GREATEST(COALESCE(p_batch_size,200),1),200);
+  ELSIF p_table_name = 'expedition_team_objective_progress' THEN
+    RETURN QUERY SELECT t.id,t.verified_at,to_jsonb(t) FROM public.expedition_team_objective_progress t
+    JOIN public.expeditions e ON e.id=t.expedition_id
+    WHERE e.status='cancelled' AND t.status='verified' AND t.verified_at<=now()-interval '6 hours'
+      AND (p_after_eligible_at IS NULL OR (t.verified_at,t.id)>(p_after_eligible_at,p_after_id))
+    ORDER BY t.verified_at,t.id LIMIT LEAST(GREATEST(COALESCE(p_batch_size,200),1),200);
+  ELSIF p_table_name = 'expedition_trusted_evidence' THEN
+    RETURN QUERY SELECT t.id,t.created_at,to_jsonb(t) FROM public.expedition_trusted_evidence t
+    JOIN public.expeditions e ON e.id=t.expedition_id
+    WHERE e.status='cancelled' AND t.created_at<=now()-interval '6 hours'
+      AND (p_after_eligible_at IS NULL OR (t.created_at,t.id)>(p_after_eligible_at,p_after_id))
+    ORDER BY t.created_at,t.id LIMIT LEAST(GREATEST(COALESCE(p_batch_size,200),1),200);
   ELSIF p_table_name = 'agent_rental_zp_accruals' THEN
     RETURN QUERY SELECT t.id,t.created_at,to_jsonb(t) FROM public.agent_rental_zp_accruals t
     WHERE t.period_end<=now()-interval '6 hours' AND t.created_at<=now()-interval '6 hours'
