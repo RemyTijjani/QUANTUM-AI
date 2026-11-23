@@ -30,6 +30,40 @@ type LedgerRow = {
   created_at: string | null;
 };
 
+type OtherHistoryItem = {
+  table: string;
+  id: string;
+  occurredAt: string | null;
+  record: Record<string, unknown>;
+};
+
+const PLAYER_HISTORY_TABLES = new Set([
+  "fragment_mining_accruals",
+  "fragment_mining_rewards",
+  "gameplay_action_events",
+  "creator_ops_submissions",
+  "x_follow_submissions",
+  "game_event_participation_audit",
+  "raffle_entries",
+  "raffle_winners",
+  "daily_uplink_claims",
+  "share_uplink_mission_claims",
+  "telegram_mission_claims",
+  "agent_rental_zp_accruals",
+  "agent_rental_payment_intents",
+  "player_agent_rentals",
+  "expedition_objective_progress",
+  "expedition_team_objective_progress",
+  "expedition_trusted_evidence",
+  "expedition_participations",
+  "expedition_reward_issuances",
+  "expedition_team_members",
+  "game_event_participations",
+  "briefing_attempts",
+  "briefing_progress",
+  "briefing_reward_issuances",
+]);
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -73,6 +107,23 @@ function toTransaction(row: LedgerRow) {
     description: row.description,
     createdAt: row.created_at,
   };
+}
+
+function otherHistoryKey(table: string, record: Record<string, unknown>): string {
+  if (typeof record.id === "string") return record.id;
+  if (typeof record.claim_date === "string" && typeof record.player_id === "string") {
+    return `${record.player_id}:${record.claim_date}`;
+  }
+  if (typeof record.player_id === "string") return `${record.player_id}:single`;
+  return JSON.stringify(record);
+}
+
+function otherHistoryTime(record: Record<string, unknown>): string | null {
+  for (const field of ["credited_at", "reviewed_at", "claimed_at", "selected_at", "verified_at", "completed_at", "created_at", "updated_at", "registered_at", "period_end", "started_at"]) {
+    const value = record[field];
+    if (typeof value === "string" && Number.isFinite(Date.parse(value))) return value;
+  }
+  return null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -183,6 +234,128 @@ Deno.serve(async (req: Request) => {
       }
     } while (continuationToken);
 
+    const otherHistoryByKey = new Map<string, OtherHistoryItem>();
+    const playerTeamIds = new Set<string>();
+    const addHistoryRows = (table: string, rows: Record<string, unknown>[] | null) => {
+      if (!rows) return;
+      for (const record of rows) {
+        const belongsToPlayer = record && record.player_id === player.id;
+        const belongsToPlayerTeam = table === "expedition_team_objective_progress" &&
+          typeof record?.team_id === "string" && playerTeamIds.has(record.team_id);
+        if (record && (belongsToPlayer || belongsToPlayerTeam)) {
+          const id = otherHistoryKey(table, record);
+          otherHistoryByKey.set(`${table}:${id}`, {
+            table,
+            id,
+            occurredAt: otherHistoryTime(record),
+            record,
+          });
+        }
+      }
+    };
+    const loadLiveHistory = async (
+      table: string,
+      query: { range: (from: number, to: number) => PromiseLike<{ data: Record<string, unknown>[] | null; error: { message: string } | null }> },
+    ) => {
+      let offset = 0;
+      while (true) {
+        const { data, error } = await query.range(offset, offset + 999);
+        if (error) throw new Error(`Live ${table} history lookup failed.`);
+        addHistoryRows(table, data);
+        if (!data || data.length < 1000) break;
+        offset += 1000;
+      }
+    };
+
+    let membershipOffset = 0;
+    while (true) {
+      const { data: memberships, error: membershipError } = await admin
+        .from("expedition_team_members").select("*").eq("player_id", player.id)
+        .range(membershipOffset, membershipOffset + 999);
+      if (membershipError) throw new Error("Live Expedition team history lookup failed.");
+      addHistoryRows("expedition_team_members", memberships as Record<string, unknown>[] | null);
+      for (const membership of memberships ?? []) {
+        if (typeof membership.team_id === "string") playerTeamIds.add(membership.team_id);
+      }
+      if (!memberships || memberships.length < 1000) break;
+      membershipOffset += 1000;
+    }
+
+    await Promise.all([
+      loadLiveHistory("fragment_mining_accruals", admin.from("fragment_mining_accruals").select("*").eq("player_id", player.id)),
+      loadLiveHistory("fragment_mining_rewards", admin.from("fragment_mining_rewards").select("*").eq("player_id", player.id)),
+      loadLiveHistory("gameplay_action_events", admin.from("gameplay_action_events").select("*").eq("player_id", player.id)),
+      loadLiveHistory("creator_ops_submissions", admin.from("creator_ops_submissions").select("*").eq("player_id", player.id)),
+      loadLiveHistory("x_follow_submissions", admin.from("x_follow_submissions").select("*").eq("player_id", player.id)),
+      loadLiveHistory("game_event_participation_audit", admin.from("game_event_participation_audit").select("*").eq("player_id", player.id)),
+      loadLiveHistory("raffle_entries", admin.from("raffle_entries").select("*").eq("player_id", player.id)),
+      loadLiveHistory("raffle_winners", admin.from("raffle_winners").select("*").eq("player_id", player.id)),
+      loadLiveHistory("daily_uplink_claims", admin.from("daily_uplink_claims").select("*").eq("player_id", player.id)),
+      loadLiveHistory("share_uplink_mission_claims", admin.from("share_uplink_mission_claims").select("*").eq("player_id", player.id)),
+      loadLiveHistory("telegram_mission_claims", admin.from("telegram_mission_claims").select("*").eq("player_id", player.id)),
+      loadLiveHistory("agent_rental_zp_accruals", admin.from("agent_rental_zp_accruals").select("*").eq("player_id", player.id)),
+      loadLiveHistory("agent_rental_payment_intents", admin.from("agent_rental_payment_intents").select("*").eq("player_id", player.id)),
+      loadLiveHistory("player_agent_rentals", admin.from("player_agent_rentals").select("*").eq("player_id", player.id)),
+      loadLiveHistory("expedition_objective_progress", admin.from("expedition_objective_progress").select("*").eq("player_id", player.id)),
+      loadLiveHistory("expedition_trusted_evidence", admin.from("expedition_trusted_evidence").select("*").eq("player_id", player.id)),
+      loadLiveHistory("expedition_participations", admin.from("expedition_participations").select("*").eq("player_id", player.id)),
+      loadLiveHistory("expedition_reward_issuances", admin.from("expedition_reward_issuances").select("*").eq("player_id", player.id)),
+      loadLiveHistory("game_event_participations", admin.from("game_event_participations").select("*").eq("player_id", player.id)),
+      loadLiveHistory("briefing_attempts", admin.from("briefing_attempts").select("*").eq("player_id", player.id)),
+      loadLiveHistory("briefing_progress", admin.from("briefing_progress").select("*").eq("player_id", player.id)),
+      loadLiveHistory("briefing_reward_issuances", admin.from("briefing_reward_issuances").select("*").eq("player_id", player.id)),
+    ]);
+
+    if (playerTeamIds.size > 0) {
+      await loadLiveHistory(
+        "expedition_team_objective_progress",
+        admin.from("expedition_team_objective_progress").select("*").in("team_id", Array.from(playerTeamIds)),
+      );
+    }
+
+    let otherContinuationToken: string | undefined;
+    let otherObjectsScanned = 0;
+    do {
+      const page = await s3.send(new ListObjectsV2Command({
+        Bucket: R2_BUCKET_NAME,
+        Prefix: "history/other/",
+        ContinuationToken: otherContinuationToken,
+        MaxKeys: 1000,
+      }));
+      for (const object of page.Contents ?? []) {
+        if (!object.Key || !object.Key.endsWith(".json.gz")) continue;
+        const table = object.Key.slice("history/other/".length).split("/")[0];
+        if (!PLAYER_HISTORY_TABLES.has(table)) continue;
+        otherObjectsScanned += 1;
+        if (otherObjectsScanned > 10000) throw new Error("Other history archive exceeds the safe readback limit.");
+        const archived = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: object.Key }));
+        const plain = await gunzip(await bodyToBytes(archived.Body));
+        const checksum = await sha256Hex(plain);
+        const document = JSON.parse(new TextDecoder().decode(plain)) as {
+          archive_type?: string;
+          row_count?: number;
+          records?: Record<string, unknown>[];
+        };
+        if (
+          document.archive_type !== `zord.history.${table}` ||
+          !Array.isArray(document.records) ||
+          document.row_count !== document.records.length ||
+          Number(archived.Metadata?.["row-count"]) !== document.records.length ||
+          !archived.Metadata?.sha256 ||
+          checksum !== archived.Metadata.sha256
+        ) throw new Error(`Other history archive integrity verification failed: ${object.Key}`);
+        addHistoryRows(table, document.records);
+      }
+      otherContinuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+      if (page.IsTruncated && !otherContinuationToken) throw new Error("R2 returned an incomplete other-history cursor.");
+    } while (otherContinuationToken);
+
+    const otherHistory = Array.from(otherHistoryByKey.values()).sort((a, b) => {
+      const aTime = a.occurredAt ? Date.parse(a.occurredAt) : 0;
+      const bTime = b.occurredAt ? Date.parse(b.occurredAt) : 0;
+      return bTime - aTime || b.id.localeCompare(a.id);
+    });
+
     const transactions = Array.from(rowsById.values())
       .filter((row) => row.player_id === player.id)
       .map(toTransaction)
@@ -197,7 +370,10 @@ Deno.serve(async (req: Request) => {
       transactions,
       count: transactions.length,
       archivedObjectsScanned: scannedObjects,
-      source: "r2_archive_and_live_ledger",
+      otherHistory,
+      otherHistoryCount: otherHistory.length,
+      otherArchiveObjectsScanned: otherObjectsScanned,
+      source: "r2_archive_and_live_history",
     });
   } catch (error) {
     console.error("Player ZP history readback failed:", error);
