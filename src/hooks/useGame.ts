@@ -24,8 +24,8 @@ export function useGame(
   isLoading: boolean;
   clockNow: number;
   trustedGameplay: {
-    beginUnlock: (id: FragmentId) => Promise<{ sessionId: string | null; ymid: string | null; alreadyUnlocked: boolean; provider: 'monetag' | 'onclicka' | 'free' }>;
-    completeUnlock: (sessionId: string, provider?: 'monetag' | 'onclicka') => Promise<boolean>;
+    beginUnlock: (id: FragmentId) => Promise<{ sessionId: string | null; ymid: string | null; alreadyUnlocked: boolean; provider: 'monetag' | 'onclicka' | 'adsun' | 'free' }>;
+    completeUnlock: (sessionId: string, provider?: 'monetag' | 'onclicka' | 'adsun') => Promise<boolean>;
     completeFreeFragmentUnlock: (sessionId: string) => Promise<boolean>;
     fixFragment: (id: FragmentId) => Promise<void>;
   };
@@ -89,7 +89,7 @@ export function useGame(
       if (result.alreadyUnlocked) await applyTrustedFragments();
       return result;
     },
-    completeUnlock: async (sessionId: string, provider: 'monetag' | 'onclicka' = 'monetag') => {
+    completeUnlock: async (sessionId: string, provider: 'monetag' | 'onclicka' | 'adsun' = 'monetag') => {
       const completed = await completeTrustedUnlock(sessionId, provider);
       if (completed) await applyTrustedFragments();
       return completed;
