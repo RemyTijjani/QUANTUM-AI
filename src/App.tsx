@@ -364,7 +364,34 @@ function GameApp({
         return;
       }
 
-      if (session.provider === 'onclicka') {
+      if (session.provider === 'adsun') {
+        const adsunWindow = window as Window & {
+          Adsun?: {
+            init: (options: { blockId: string; debug?: boolean; debugConsole?: boolean }) => {
+              show: () => Promise<{ done?: boolean }>;
+            };
+          };
+        };
+        if (typeof adsunWindow.Adsun?.init !== 'function') {
+          throw new Error('Adsun is still loading. Please try again in a moment.');
+        }
+        const controller = adsunWindow.Adsun.init({
+          blockId: '50344',
+          debug: false,
+          debugConsole: false,
+        });
+        if (!controller || typeof controller.show !== 'function') {
+          throw new Error('Adsun could not initialize the rewarded ad.');
+        }
+        const result = await controller.show();
+        if (result?.done !== true) {
+          setAdFragment(null);
+          notify('Adsun did not complete the rewarded ad. No Fragment was unlocked.', 'info');
+          return;
+        }
+        // The SDK only controls the ad experience. Unlocking is decided solely
+        // by Adsun's authenticated server-to-server Reward URL callback.
+      } else if (session.provider === 'onclicka') {
         const onclickaWindow = window as Window & {
           initCdTma?: (options: { id: number }) => Promise<() => Promise<unknown>>;
         };
@@ -412,13 +439,17 @@ function GameApp({
 
       setAdFragment(null);
       if (completed) {
-        notify(session.provider === 'onclicka'
-          ? 'OnClicka verified the rewarded ad. Capacitor Fragment unlocked.'
-          : 'Monetag verified the rewarded ad. Atom Fragment unlocked.', 'info');
+        notify(session.provider === 'adsun'
+          ? 'Adsun verified the rewarded ad. Capacitor Fragment unlocked.'
+          : session.provider === 'onclicka'
+            ? 'OnClicka verified the rewarded ad. Capacitor Fragment unlocked.'
+            : 'Monetag verified the rewarded ad. Atom Fragment unlocked.', 'info');
       } else {
-        notify(session.provider === 'onclicka'
-          ? 'OnClicka SDK completed. ZORD is waiting for its server callback; no reward is granted until it arrives.'
-          : 'Monetag confirmed the ad. ZORD is waiting for its server postback; the Fragment will unlock after verification.', 'info');
+        notify(session.provider === 'adsun'
+          ? 'Adsun finished the ad. ZORD is waiting for its server callback; no Fragment is unlocked until it arrives.'
+          : session.provider === 'onclicka'
+            ? 'OnClicka SDK completed. ZORD is waiting for its server callback; no reward is granted until it arrives.'
+            : 'Monetag confirmed the ad. ZORD is waiting for its server postback; the Fragment will unlock after verification.', 'info');
       }
     } catch (error) {
       notify(error instanceof Error ? error.message : 'The ad could not be verified. No reward was granted.', 'error');
