@@ -24,6 +24,35 @@ function json(body: unknown, status = 200) {
   });
 }
 
+async function hashAdminRateLimitKey(clientIp: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const hmacKey = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(SERVICE_ROLE_KEY),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    hmacKey,
+    encoder.encode(`${ADMIN_USERNAME.toLowerCase()}:${clientIp}`),
+  );
+  return Array.from(new Uint8Array(signature), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
+
+function isValidCursorPart(value: unknown): value is { id: string; created_at: string } {
+  if (!value || typeof value !== "object") return false;
+  const part = value as Record<string, unknown>;
+  return typeof part.id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(part.id) &&
+    typeof part.created_at === "string" &&
+    part.created_at.length <= 40 &&
+    Number.isFinite(Date.parse(part.created_at));
+}
+
 function bytesToHex(bytes: ArrayBuffer): string {
   return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -117,10 +146,42 @@ Deno.serve(async (req: Request) => {
 
   try {
     const payload = await req.json().catch(() => ({}));
+    const clientIp = req.headers.get("cf-connecting-ip")?.trim() || "unknown";
+    const rateLimitKey = await hashAdminRateLimitKey(clientIp);
+    const authClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: rateLimit, error: rateLimitError } = await authClient.rpc(
+      "admin_begin_login_attempt",
+      { p_key_hash: rateLimitKey },
+    );
+    if (rateLimitError || !rateLimit) {
+      console.error("History archive rate-limit check failed:", rateLimitError);
+      return json({ error: "Admin authentication temporarily unavailable." }, 503);
+    }
+    if (rateLimit.allowed !== true) {
+      const retryAfter = Math.max(1, Number(rateLimit.retryAfterSeconds) || 900);
+      return new Response(JSON.stringify({ error: "Too many login attempts. Try again later." }), {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Retry-After": String(retryAfter),
+        },
+      });
+    }
     if (!ADMIN_USERNAME || !ADMIN_PASSWORD ||
         payload?.adminUsername !== ADMIN_USERNAME ||
         payload?.adminPassword !== ADMIN_PASSWORD) {
       return json({ error: "Unauthorized. Admin access is required." }, 401);
+    }
+    const { error: clearError } = await authClient.rpc(
+      "admin_clear_login_failures",
+      { p_key_hash: rateLimitKey },
+    );
+    if (clearError) {
+      console.error("History archive rate-limit reset failed:", clearError);
+      return json({ error: "Admin authentication temporarily unavailable." }, 503);
     }
     if (payload?.action !== "copy-test" && payload?.action !== "copy-batch") {
       return json({ error: "Unsupported archive action." }, 400);
@@ -162,7 +223,7 @@ Deno.serve(async (req: Request) => {
     let highWater = payload?.cursor?.highWater ?? null;
     let after = payload?.cursor?.after ?? null;
 
-    if (payload?.cursor && (!highWater?.created_at || !highWater?.id || !after?.created_at || !after?.id)) {
+    if (payload?.cursor && (!isValidCursorPart(highWater) || !isValidCursorPart(after))) {
       return json({ error: "Invalid archive cursor." }, 400);
     }
 
@@ -183,12 +244,15 @@ Deno.serve(async (req: Request) => {
     }
 
     let query = admin.from("economy_ledger").select(columns)
-      .or(`created_at.lt.${highWater.created_at},and(created_at.eq.${highWater.created_at},id.lte.${highWater.id})`)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(batchSize);
+    // Once paging has begun, the last-row cursor is strictly below the fixed
+    // high-water mark. Apply exactly one composite filter per request.
     if (after) {
       query = query.or(`created_at.lt.${after.created_at},and(created_at.eq.${after.created_at},id.lt.${after.id})`);
+    } else {
+      query = query.or(`created_at.lt.${highWater.created_at},and(created_at.eq.${highWater.created_at},id.lte.${highWater.id})`);
     }
     const { data: rows, error: ledgerError } = await query;
     if (ledgerError) {
