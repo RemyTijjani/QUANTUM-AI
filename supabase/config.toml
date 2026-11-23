@@ -33,3 +33,6 @@ verify_jwt = false
 
 [functions.history-archive]
 verify_jwt = false
+
+[functions.player-history]
+verify_jwt = false
