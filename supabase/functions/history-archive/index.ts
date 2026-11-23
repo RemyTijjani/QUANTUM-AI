@@ -49,7 +49,7 @@ function isValidCursorPart(value: unknown): value is { id: string; created_at: s
   return typeof part.id === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(part.id) &&
     typeof part.created_at === "string" &&
-    /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(part.created_at) &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(part.created_at) &&
     Number.isFinite(Date.parse(part.created_at));
 }
 
