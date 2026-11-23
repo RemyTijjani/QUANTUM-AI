@@ -12,7 +12,8 @@ const BOT_TOKEN = Deno.env.get("BOT_TOKEN") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const MAX_INIT_DATA_AGE_SECONDS = 600;
+// Telegram initData is signed and still subject to the 24-hour age limit.
+const MAX_INIT_DATA_AGE_SECONDS = 24 * 60 * 60;
 
 interface TelegramUser {
   id: number;
