@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "supabase/functions/history-archive/**"
+      - "supabase/config.toml"
       - ".github/workflows/zp-ledger-archive-check.yml"
   push:
     branches:
