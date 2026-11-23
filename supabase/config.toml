@@ -30,3 +30,6 @@ verify_jwt = false
 
 [functions.intelligence-briefings]
 verify_jwt = false
+
+[functions.history-archive]
+verify_jwt = false
