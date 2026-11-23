@@ -92,7 +92,9 @@ BEGIN
     ORDER BY t.created_at,t.id LIMIT LEAST(GREATEST(COALESCE(p_batch_size,200),1),200);
   ELSIF p_table_name = 'expedition_participations' THEN
     RETURN QUERY SELECT t.id,t.completed_at,to_jsonb(t) FROM public.expedition_participations t
-    WHERE t.completed_at IS NOT NULL AND t.completed_at<=now()-interval '6 hours'
+    JOIN public.expeditions e ON e.id=t.expedition_id
+    WHERE e.status IN ('completed','cancelled','closed','finished')
+      AND t.completed_at IS NOT NULL AND t.completed_at<=now()-interval '6 hours'
       AND (p_after_eligible_at IS NULL OR (t.completed_at,t.id)>(p_after_eligible_at,p_after_id))
     ORDER BY t.completed_at,t.id LIMIT LEAST(GREATEST(COALESCE(p_batch_size,200),1),200);
   ELSIF p_table_name = 'expedition_reward_issuances' THEN
