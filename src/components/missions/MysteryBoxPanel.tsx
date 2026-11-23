@@ -233,41 +233,43 @@ export default function MysteryBoxPanel({
       const { data: session, error: sessionError } = await supabase.functions.invoke('mystery-box-actions', {
         body: { action: 'begin_mystery_box_ad', requestId },
       });
-      if (sessionError || !session?.success || !session.sessionId || !session.ymid) {
-        throw new Error(session?.message || sessionError?.message || 'Monetag could not prepare your rewarded-ad session.');
+      if (sessionError || !session?.success || typeof session.sessionId !== 'string' || session.provider !== 'onclicka') {
+        throw new Error(session?.message || sessionError?.message || 'OnClicka could not prepare your rewarded-ad session.');
       }
 
-      const showAd = (window as Window & {
-        show_12235928?: (options: { type: 'end'; ymid: string; requestVar: string }) => Promise<{ reward_event_type?: string } | undefined>;
-      }).show_12235928;
-      if (typeof showAd !== 'function') {
-        throw new Error('Monetag is still loading. Please try again in a moment.');
+      const onclickaWindow = window as Window & {
+        initCdTma?: (options: { id: number }) => Promise<() => Promise<unknown>>;
+      };
+      if (typeof onclickaWindow.initCdTma !== 'function') {
+        throw new Error('OnClicka is still loading. Please try again in a moment.');
+      }
+      const showOnclickaAd = await onclickaWindow.initCdTma({ id: 6155605 });
+      if (typeof showOnclickaAd !== 'function') {
+        throw new Error('OnClicka could not initialize the rewarded video.');
       }
 
-      const event = await showAd({ type: 'end', ymid: session.ymid, requestVar: 'mystery_box' });
-      if (event?.reward_event_type !== 'valued') {
-        notify('Monetag did not confirm a valued rewarded ad. No Mystery Box was granted.', 'info');
-        return;
-      }
+      // SDK completion is only one signal. The server callback is independently
+      // required before the database grants the box and starts the shared cooldown.
+      await showOnclickaAd();
 
       let result: unknown = null;
       for (let attempt = 0; attempt < 20; attempt += 1) {
         const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
           body: { action: 'confirm_mystery_box_ad', sessionId: session.sessionId },
         });
-        if (error) throw new Error(error.message || 'Could not confirm the Monetag ad session.');
-        if (data?.completed === true && data?.success === true) {
+        if (error) throw new Error(error.message || 'Could not confirm the OnClicka ad session.');
+        if (data?.success === true && data?.completed === true) {
           result = data;
           break;
         }
-        if (data?.reason && data.reason !== 'session_not_pending') {
-          throw new Error('Monetag verification could not complete this Mystery Box opening.');
+        if (data?.reason === 'session_expired') {
+          throw new Error('The OnClicka verification session expired. Please try again.');
         }
         await new Promise((resolve) => window.setTimeout(resolve, 1500));
       }
 
       if (!result) {
-        notify('Monetag reported the ad, but ZORD is still waiting for its verified server postback. No box has been credited yet.', 'info');
+        notify('OnClicka finished the video, but ZORD is still waiting for its verified server callback. No Mystery Box has been credited yet.', 'info');
         await loadInventory(true);
         return;
       }
@@ -276,11 +278,15 @@ export default function MysteryBoxPanel({
         throw new Error('The verified Mystery Box response was incomplete. Please refresh your inventory.');
       }
       setLastReward(result);
-      notify('Monetag verified your rewarded ad. Your Mystery Box reward has been recorded.');
+      notify('OnClicka verified your rewarded ad. Your Mystery Box reward has been recorded.');
       await loadInventory(true);
-      await onZpReward();
+      try {
+        await onZpReward();
+      } catch {
+        notify('The reward was recorded, but your ZP balance could not refresh. Reopen the Vault or refresh later.', 'error');
+      }
     } catch (requestError) {
-      notify(requestError instanceof Error ? requestError.message : 'The Monetag rewarded ad could not be verified. No box was granted.', 'error');
+      notify(requestError instanceof Error ? requestError.message : 'The OnClicka rewarded ad could not be verified. No box was granted.', 'error');
     } finally {
       setRepeatBusy(false);
       setOpeningId(null);
@@ -375,7 +381,7 @@ export default function MysteryBoxPanel({
         </div>
         <div className="space-y-3 border-t border-neon/15 pt-4">
           <div className="flex flex-wrap items-start justify-between gap-2 min-[380px]:items-center">
-            <div><p className="label">Open another box</p><p className="mt-1 font-mono text-[9px] text-neon-600">Spend 500 ZP for one more randomly tiered box.</p></div>
+            <div><p className="label">Open another box</p><p className="mt-1 font-mono text-[9px] text-neon-600">Watch an OnClicka rewarded video or spend 500 ZP for one more randomly tiered box.</p></div>
             <span className="rounded-md border border-amber-300/20 px-2 py-1 font-mono text-[8px] uppercase text-amber-200">500 ZP</span>
           </div>
           {repeatBox ? (
@@ -389,7 +395,7 @@ export default function MysteryBoxPanel({
               )}
               {repeatMessage && <p role="alert" className="rounded-lg border border-red-400/20 bg-red-400/5 p-3 font-mono text-[9px] text-red-300">{repeatMessage}</p>}
               <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2">
-                <button type="button" onClick={() => void openRepeatBoxWithAd()} disabled={repeatBusy || (repeatBox.cooldownUntil !== null && new Date(repeatBox.cooldownUntil).getTime() > nowMs)} className="min-h-11 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-cyan-100 disabled:opacity-40">{repeatBusy && openingId === "repeat-ad" ? <Loader2 size={14} className="mx-auto animate-spin" /> : "Watch Monetag Ad"}</button>
+                <button type="button" onClick={() => void openRepeatBoxWithAd()} disabled={repeatBusy || (repeatBox.cooldownUntil !== null && new Date(repeatBox.cooldownUntil).getTime() > nowMs)} className="min-h-11 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-cyan-100 disabled:opacity-40">{repeatBusy && openingId === "repeat-ad" ? <Loader2 size={14} className="mx-auto animate-spin" /> : "Watch OnClicka Ad"}</button>
                 <button type="button" onClick={() => void openRepeatBox()} disabled={repeatBusy || (repeatBox.cooldownUntil !== null && new Date(repeatBox.cooldownUntil).getTime() > nowMs) || repeatBox.zpBalance < 500} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 font-mono text-[9px] font-bold uppercase text-amber-100 disabled:opacity-40">
                   {repeatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Open for 500 ZP'}
                 </button>
@@ -399,7 +405,7 @@ export default function MysteryBoxPanel({
           ) : (
             <p className="rounded-lg border border-neon/15 bg-black/20 p-3 font-mono text-[9px] text-neon-700">Repeat opening status is loading. Refresh if this message remains.</p>
           )}
-          <p className="font-mono text-[8px] leading-relaxed text-neon-700">Both repeat options share one server-enforced 2-hour cooldown. Monetag rewards are credited only after its valued server postback and ZORD SDK completion are both recorded.</p>
+          <p className="font-mono text-[8px] leading-relaxed text-neon-700">Both repeat options share one server-enforced 2-hour cooldown. OnClicka rewards are credited only after its server callback and ZORD SDK completion are both recorded.</p>
         </div>
       </div>
       </div>
