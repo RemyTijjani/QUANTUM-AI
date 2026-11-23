@@ -79,7 +79,12 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
       return Math.max(0, Number(JSON.parse(saved ?? '{}')?.copied) || 0);
     } catch { return 0; }
   });
-  const [archiveDone, setArchiveDone] = useState(false);
+  const [archiveDone, setArchiveDone] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('zord-zp-ledger-archive-progress-v1');
+      return JSON.parse(saved ?? '{}')?.done === true;
+    } catch { return false; }
+  });
 
   const loadMining = useCallback(async () => {
     setMiningError(null);
@@ -188,7 +193,7 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
       setArchiveCursor(nextCursor);
       setArchiveCopied(nextCopied);
       setArchiveDone(result.done === true);
-      localStorage.setItem('zord-zp-ledger-archive-progress-v1', JSON.stringify({ cursor: nextCursor, copied: nextCopied, updatedAt: new Date().toISOString() }));
+      localStorage.setItem('zord-zp-ledger-archive-progress-v1', JSON.stringify({ cursor: nextCursor, copied: nextCopied, done: result.done === true, updatedAt: new Date().toISOString() }));
       setArchiveNotice(result.copied === 0
         ? 'Archive boundary reached. No more ledger records remain in this run.'
         : `Copied and read-back verified ${result.copied} records in this batch. ${nextCopied.toLocaleString()} records copied in this run. SHA-256: ${result.checksum}. R2 object: ${result.objectKey}. ${result.done ? 'Archive run complete.' : 'Resume cursor saved on this device.'}`);
