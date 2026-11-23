@@ -114,7 +114,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
       setPendingIntents(intents);
       if (intents.length > 0) {
         setIntent(intents[0]);
-        setNotice('An existing rental payment request was restored. You can verify it against TON mainnet; sending a new payment remains disabled.');
+        setNotice('An existing TON Mainnet checkout was restored. You can pay from your connected wallet or verify a transfer you already sent.');
         setNoticeKind('info');
       }
     }).catch((error) => {
@@ -223,7 +223,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
 
   const createIntent = async (agentType: AgentRentalType) => {
     if (!rentalBackendActionsEnabled) {
-      setNotice('Rental checkout creation is disabled during Preview safety testing. Wallet connection can still be tested.');
+      setNotice('Mainnet checkout is enabled. Connect a TON Mainnet wallet to continue.');
       setNoticeKind('info');
       return;
     }
