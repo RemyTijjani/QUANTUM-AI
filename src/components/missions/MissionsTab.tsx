@@ -114,7 +114,7 @@ export default function MissionsTab({ state, notify, missions, onOpenAdmin, onRe
           <Megaphone size={14} className="text-neon-400" />
           <p className="label">Social Raids</p>
         </div>
-        {social.map((mission) => (
+        {social.filter((mission) => statusForMission(mission) !== 'claimed').map((mission) => (
           <MissionCard
             key={mission.id}
             mission={mission}
@@ -433,6 +433,8 @@ function CreatorOpsCard({
   };
 
   const Icon = Video;
+
+  if (!loading && status === 'approved') return null;
 
   return (
     <div className="panel min-w-0 space-y-3 p-3 sm:p-4">
