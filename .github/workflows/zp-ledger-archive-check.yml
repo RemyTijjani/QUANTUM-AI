@@ -10,10 +10,12 @@ on:
       - "supabase/migrations/**"
       - "supabase/config.toml"
       - "src/components/admin/AdminOperations.tsx"
+      - "src/components/vault/VaultTab.tsx"
       - ".github/workflows/zp-ledger-archive-check.yml"
   push:
     branches:
       - feature/zp-ledger-r2-history-readback
+      - feature/archive-completed-mission-raffle-history
     paths:
       - "supabase/functions/history-archive/**"
       - "supabase/functions/player-history/**"
