@@ -88,14 +88,14 @@ Deno.serve(async (req: Request) => {
       console.error("ZP ledger test batch lookup failed:", ledgerError);
       return json({ error: "Could not read the ZP history test batch." }, 500);
     }
-    if (!rows?.length) return json({ success: true, copied: 0, verified: true, message: "No ZP ledger records exist for this player yet." });
+    if (!rows?.length) return json({ success: true, copied: 0, verified: true, message: "No ZP ledger records are available to copy." });
 
     const exportedAt = new Date().toISOString();
     const document = {
       schema_version: 1,
       archive_type: "zord.zp_economy_ledger.test_copy",
       exported_at: exportedAt,
-      player_id: player.id,
+      player_count: new Set(rows.map((row) => row.player_id)).size,
       row_count: rows.length,
       oldest_created_at: rows.reduce((v, row) => !v || (row.created_at && row.created_at < v) ? row.created_at : v, null as string | null),
       newest_created_at: rows.reduce((v, row) => !v || (row.created_at && row.created_at > v) ? row.created_at : v, null as string | null),
@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
     const plainBytes = new TextEncoder().encode(JSON.stringify(document));
     const checksum = await sha256(plainBytes);
     const compressedBytes = await transform(plainBytes, "gzip");
-    const objectKey = `test-copies/economy-ledger/player=${player.id}/exported_at=${exportedAt.replace(/[:.]/g, "-")}.json.gz`;
+    const objectKey = `test-copies/economy-ledger/batch=${exportedAt.replace(/[:.]/g, "-")}.json.gz`;
 
     const s3 = new S3Client({
       region: "auto",
