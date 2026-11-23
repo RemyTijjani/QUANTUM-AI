@@ -4,14 +4,16 @@ on:
   pull_request:
     paths:
       - "supabase/functions/history-archive/**"
+      - "supabase/functions/player-history/**"
       - "supabase/config.toml"
       - "src/components/admin/AdminOperations.tsx"
       - ".github/workflows/zp-ledger-archive-check.yml"
   push:
     branches:
-      - feature/zp-ledger-batch-archive
+      - feature/zp-ledger-r2-history-readback
     paths:
       - "supabase/functions/history-archive/**"
+      - "supabase/functions/player-history/**"
       - "src/components/admin/AdminOperations.tsx"
       - ".github/workflows/zp-ledger-archive-check.yml"
 
@@ -26,5 +28,5 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - name: Type-check history archive Edge Function
-        run: deno check supabase/functions/history-archive/index.ts
+      - name: Type-check archive and player history Edge Functions
+        run: deno check supabase/functions/history-archive/index.ts supabase/functions/player-history/index.ts

@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { ArrowDownLeft, Coins, History, Wallet } from 'lucide-react';
 import { formatZp } from '@/lib/format';
 import type { VerifiedLedgerEntry } from '@/lib/economy/verifiedEconomy';
+import { supabase } from '@/lib/supabase';
 import TonWalletConnection from './TonWalletConnection';
 import ZapWalletPanel from './ZapWalletPanel';
 
@@ -15,6 +17,75 @@ export default function VaultTab({
   onRefreshVerifiedEconomy: () => Promise<void> | void;
   onWalletStatusChange?: (connected: boolean) => void;
 }) {
+  const [history, setHistory] = useState<VerifiedLedgerEntry[]>(transactions);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyUnavailable, setHistoryUnavailable] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCompleteHistory() {
+      setHistoryLoading(true);
+      setHistoryUnavailable(false);
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (sessionError || !token) throw new Error('Session unavailable');
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/player-history`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+            cache: 'no-store',
+          },
+        );
+        const body: unknown = await response.json().catch(() => null);
+        if (!response.ok || !body || typeof body !== 'object' ||
+            !Array.isArray((body as { transactions?: unknown }).transactions)) {
+          throw new Error('Complete history unavailable');
+        }
+
+        const loaded = (body as { transactions: VerifiedLedgerEntry[] }).transactions;
+        if (!cancelled) {
+          const merged = new Map(loaded.map((entry) => [entry.id, entry]));
+          for (const entry of transactions) merged.set(entry.id, entry);
+          setHistory(Array.from(merged.values()).sort((a, b) => {
+            const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
+            const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
+            return bTime - aTime || b.id.localeCompare(a.id);
+          }));
+          setHistoryUnavailable(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setHistory(transactions);
+          setHistoryUnavailable(true);
+        }
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    }
+
+    void loadCompleteHistory();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    setHistory((current) => {
+      const merged = new Map(current.map((entry) => [entry.id, entry]));
+      for (const entry of transactions) merged.set(entry.id, entry);
+      return Array.from(merged.values()).sort((a, b) => {
+        const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
+        const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
+        return bTime - aTime || b.id.localeCompare(a.id);
+      });
+    });
+  }, [transactions]);
+
   return (
     <div className="w-full min-w-0 space-y-4 pb-6">
       <header className="flex items-center gap-2 py-1">
@@ -44,18 +115,25 @@ export default function VaultTab({
             <h2 className="title">ZP activity</h2>
           </div>
           <span className="flex items-center gap-2 text-[10px] text-neon-600">
-            {transactions.length} records
+            {history.length} records
             <span aria-hidden="true" className="transition-transform group-open:rotate-180">⌄</span>
           </span>
         </summary>
         <div className="mt-3 border-t border-neon/10 pt-2">
+          <p className="mb-2 text-[10px] text-neon-600">
+            {historyLoading
+              ? 'Loading your complete ZP history…'
+              : historyUnavailable
+                ? 'Showing available recent history. Complete archive history could not be reached.'
+                : 'Complete history loaded from your private archive and live ledger.'}
+          </p>
           <div className="flex items-center gap-2">
             <History size={16} className="text-neon-400" />
             <div>
               <h2 className="title">ZP activity</h2>
             </div>
           </div>
-          {transactions.length === 0 ? (
+          {history.length === 0 ? (
             <div className="rounded-lg border border-neon/10 bg-black/20 px-3 py-6 text-center">
               <Coins size={20} className="mx-auto mb-2 text-neon-700" />
               <p className="text-xs text-neon-500">{verifiedZpBalance === null ? 'ZP activity is loading or temporarily unavailable' : 'No ZP activity yet'}</p>
@@ -63,7 +141,7 @@ export default function VaultTab({
             </div>
           ) : (
             <div className="space-y-1">
-              {transactions.map((entry) => {
+              {history.map((entry) => {
                 const positive = entry.amount >= 0;
                 const dateLabel = entry.createdAt && Number.isFinite(Date.parse(entry.createdAt))
                   ? new Date(entry.createdAt).toLocaleString()
