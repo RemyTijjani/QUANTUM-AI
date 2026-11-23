@@ -44,13 +44,13 @@ export default function AdModal({
             <Radio size={22} className="text-cyan-200" />
           </div>
           <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">
-            {isMonetagFragment ? 'Monetag rewarded interstitial' : isAdsunFragment ? 'Adsun rewarded video' : isFreeFragment ? `Free ${freeFragmentName} activation` : 'Assigned rewarded provider'}
+            {isFreeFragment ? `Free ${freeFragmentName} activation` : 'Rewarded video'}
           </p>
           <p className="mt-2 max-w-[240px] font-mono text-[10px] leading-relaxed text-neon-500">
             {isMonetagFragment
-              ? 'Watch the rewarded ad. ZORD unlocks this Fragment only after the Monetag SDK and server postback both confirm a valued event.'
+              ? 'Watch the rewarded video. ZORD unlocks this Fragment only after the view is confirmed by the secure server verification process.'
               : isAdsunFragment
-                ? 'Watch the Adsun rewarded video. ZORD unlocks Capacitor only after Adsun confirms the completed view through its secure server callback.'
+                ? 'Watch the rewarded video. ZORD unlocks Capacitor only after the completed view is confirmed through its secure server callback.'
                 : isFreeFragment
                   ? `No advertisement is required. Complete the five-second activation scan to unlock ${freeFragmentName}.`
                   : 'Watch the rewarded ad. ZORD unlocks this Fragment only after its assigned provider confirms the view on the server.'}
