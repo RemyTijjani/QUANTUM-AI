@@ -51,7 +51,13 @@ export default function VaultTab({
 
         const loaded = (body as { transactions: VerifiedLedgerEntry[] }).transactions;
         if (!cancelled) {
-          setHistory(loaded);
+          const merged = new Map(loaded.map((entry) => [entry.id, entry]));
+          for (const entry of transactions) merged.set(entry.id, entry);
+          setHistory(Array.from(merged.values()).sort((a, b) => {
+            const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
+            const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
+            return bTime - aTime || b.id.localeCompare(a.id);
+          }));
           setHistoryUnavailable(false);
         }
       } catch {
@@ -66,6 +72,18 @@ export default function VaultTab({
 
     void loadCompleteHistory();
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    setHistory((current) => {
+      const merged = new Map(current.map((entry) => [entry.id, entry]));
+      for (const entry of transactions) merged.set(entry.id, entry);
+      return Array.from(merged.values()).sort((a, b) => {
+        const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
+        const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
+        return bTime - aTime || b.id.localeCompare(a.id);
+      });
+    });
   }, [transactions]);
 
   return (
