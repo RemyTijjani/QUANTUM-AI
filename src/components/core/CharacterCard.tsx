@@ -1,14 +1,14 @@
 import { Bot } from 'lucide-react';
 
 interface CharacterCardProps {
-  fixed: number;
+  activeFragments: number;
   rate: string;
   entityNumber: number | null;
 }
 
-export default function CharacterCard({ fixed, rate, entityNumber }: CharacterCardProps) {
+export default function CharacterCard({ activeFragments, rate, entityNumber }: CharacterCardProps) {
   const stats = [
-    { label: 'Fragments online', value: `${fixed}/4` },
+    { label: 'Fragments connected', value: `${activeFragments}/4` },
     { label: 'Mining rate', value: `${rate} ZP/s` },
     { label: 'Reward maturity', value: '6h' },
   ];
