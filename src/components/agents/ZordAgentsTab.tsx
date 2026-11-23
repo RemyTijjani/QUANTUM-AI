@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import TemporaryRewardPanel from './TemporaryRewardPanel';
-import { loadTonConnectUI } from '@/lib/ton-connect';
+import { encodeTonCommentPayload, loadTonConnectUI } from '@/lib/ton-connect';
 import type { TonConnectWallet } from '@/lib/ton-connect';
 
 type AgentRentalType = 'alpha_miner' | 'overclocked_core';
@@ -114,7 +114,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
       setPendingIntents(intents);
       if (intents.length > 0) {
         setIntent(intents[0]);
-        setNotice('An existing rental payment request was restored. You can verify it against TON mainnet; sending a new payment remains disabled.');
+        setNotice('An existing TON Mainnet checkout was restored. You can pay from your connected wallet or verify a transfer you already sent.');
         setNoticeKind('info');
       }
     }).catch((error) => {
@@ -125,9 +125,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
     return () => { mounted = false; };
   }, []);
 
-  // Preview keeps rental checkout and payment verification disabled.
-  // Enable only after explicit launch approval and a reviewed payment release.
-  const rentalBackendActionsEnabled = false;
+  const rentalBackendActionsEnabled = true;
 
   useEffect(() => {
     let mounted = true;
@@ -225,7 +223,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
 
   const createIntent = async (agentType: AgentRentalType) => {
     if (!rentalBackendActionsEnabled) {
-      setNotice('Rental checkout creation is disabled during Preview safety testing. Wallet connection can still be tested.');
+      setNotice('Mainnet checkout is enabled. Connect a TON Mainnet wallet to continue.');
       setNoticeKind('info');
       return;
     }
@@ -240,11 +238,57 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
       if (!data?.success || !data?.intent?.id) {
         throw new Error(data?.error || 'The payment service returned an incomplete request.');
       }
-      setIntent(data.intent as PaymentIntent);
-      setNotice('Checkout created. Connect your TON wallet to continue. No funds have been sent.');
+      const createdIntent = data.intent as PaymentIntent;
+      setIntent(createdIntent);
+      setPendingIntents((current) => [createdIntent, ...current.filter((item) => item.id !== createdIntent.id)]);
+      setNotice('Mainnet checkout created. Review the amount and destination, then approve the transfer in your TON wallet.');
       setNoticeKind('success');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Could not create a payment request.');
+      setNoticeKind('error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const sendPayment = async (targetIntent: PaymentIntent) => {
+    if (!walletAddress || !isMainnetWallet) {
+      setNotice('Connect a TON Mainnet wallet before sending this GRAM payment.');
+      setNoticeKind('error');
+      return;
+    }
+    if (Date.parse(targetIntent.expiresAt) <= Date.now()) {
+      setNotice('This payment request has expired. Create a new checkout before sending funds.');
+      setNoticeKind('error');
+      return;
+    }
+
+    setBusy('send');
+    setNotice('');
+    try {
+      const ui = await loadTonConnectUI();
+      if (!ui.account || ui.account.chain !== '-239' || ui.account.address !== walletAddress) {
+        throw new Error('Your connected wallet changed or is not on TON Mainnet. Reconnect and try again.');
+      }
+      const expirySeconds = Math.floor(Date.parse(targetIntent.expiresAt) / 1000);
+      const validUntil = Math.min(expirySeconds, Math.floor(Date.now() / 1000) + 300);
+      if (!Number.isFinite(validUntil) || validUntil <= Math.floor(Date.now() / 1000)) {
+        throw new Error('This payment request has expired. Create a new checkout.');
+      }
+      const result = await ui.sendTransaction({
+        validUntil,
+        network: '-239',
+        messages: [{
+          address: targetIntent.recipientAddress,
+          amount: targetIntent.amountNano,
+          payload: encodeTonCommentPayload(targetIntent.paymentReference),
+        }],
+      });
+      if (!result?.boc) throw new Error('The wallet did not return a submitted transaction.');
+      setNotice('Wallet submitted the transaction. Wait for TON Mainnet confirmation, then select Verify payment. Your rental activates only after server-side verification.');
+      setNoticeKind('info');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'The GRAM transfer could not be submitted.');
       setNoticeKind('error');
     } finally {
       setBusy(null);
@@ -306,7 +350,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
           <h2 className="font-display text-sm font-bold text-neon-100">Mining agents</h2>
           <p className="mt-0.5 font-mono text-[9px] text-neon-500">30-day rentals · paid in GRAM</p>
         </div>
-        <span className="rounded-full border border-amber-300/20 bg-amber-300/[0.04] px-2 py-1 font-mono text-[8px] text-amber-200">Preview · payments locked</span>
+        <span className="rounded-full border border-emerald-300/20 bg-emerald-300/[0.04] px-2 py-1 font-mono text-[8px] text-emerald-200">TON Mainnet · GRAM</span>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neon/15 bg-black/30 px-2.5 py-2">
@@ -314,7 +358,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
           <Wallet size={14} className="shrink-0 text-cyan-300" />
           <div className="min-w-0">
             <p className="font-mono text-[10px] text-neon-200">{walletAddress ? shortAddress : walletReady ? 'Wallet not connected' : 'Wallet connector loading'}</p>
-            <p className="font-mono text-[8px] text-neon-600">{walletAddress ? (isMainnetWallet ? 'TON mainnet' : 'Wrong network') : walletError ? 'Connection needs attention' : 'Optional · connect to test wallet'}</p>
+            <p className="font-mono text-[8px] text-neon-600">{walletAddress ? (isMainnetWallet ? 'TON mainnet' : 'Wrong network') : walletError ? 'Connection needs attention' : 'Connect a TON Mainnet wallet to pay'}</p>
             {walletError && <p role="alert" className="mt-1 break-words font-mono text-[9px] text-amber-300">{walletError}</p>}
           </div>
         </div>
@@ -432,16 +476,20 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
       {pendingIntents.map((pendingIntent) => (
         <div key={pendingIntent.id} className="space-y-2 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.04] p-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-display text-[10px] font-bold uppercase text-cyan-300">Existing checkout · {pendingIntent.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</p>
-            <span className="font-mono text-[8px] uppercase text-amber-300">Reconciliation only</span>
+            <p className="font-display text-[10px] font-bold uppercase text-cyan-300">GRAM checkout · {pendingIntent.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</p>
+            <span className="font-mono text-[8px] uppercase text-emerald-300">TON Mainnet</span>
           </div>
           <p className="font-display text-lg text-cyan-200">{(Number(pendingIntent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} GRAM</p>
-          <p className="break-all font-mono text-[9px] text-neon-500">Reference: {pendingIntent.paymentReference}</p>
-          <p className="font-mono text-[8px] text-neon-600">Payment window ended {new Date(pendingIntent.expiresAt).toLocaleString()}</p>
-          <button type="button" className="btn-ghost min-h-9 w-full text-[10px]" disabled={busy !== null} onClick={() => void verifyIntent(pendingIntent)}>
-            {busy === 'verify' ? <LoaderCircle size={13} className="animate-spin" /> : 'Check this existing payment'}
+          <p className="break-all font-mono text-[9px] text-neon-500">Destination: {pendingIntent.recipientAddress}</p>
+          <p className="break-all font-mono text-[9px] text-neon-500">Payment reference: {pendingIntent.paymentReference}</p>
+          <p className="font-mono text-[8px] text-neon-600">Request expires {new Date(pendingIntent.expiresAt).toLocaleString()}</p>
+          <button type="button" className="btn-primary min-h-9 w-full text-[10px]" disabled={busy !== null || !walletAddress || !isMainnetWallet || Date.parse(pendingIntent.expiresAt) <= Date.now()} onClick={() => void sendPayment(pendingIntent)}>
+            {busy === 'send' ? <LoaderCircle size={13} className="animate-spin" /> : `Pay ${ (Number(pendingIntent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '') } GRAM with TON wallet`}
           </button>
-          <p className="font-mono text-[8px] leading-relaxed text-neon-700">Checks only this payment reference on TON mainnet. Preview cannot initiate another transfer.</p>
+          <button type="button" className="btn-ghost min-h-9 w-full text-[10px]" disabled={busy !== null} onClick={() => void verifyIntent(pendingIntent)}>
+            {busy === 'verify' ? <LoaderCircle size={13} className="animate-spin" /> : 'Verify Mainnet payment'}
+          </button>
+          <p className="font-mono text-[8px] leading-relaxed text-neon-700">Only a matching, confirmed TON Mainnet transaction activates the 30-day rental.</p>
         </div>
       ))}
 
