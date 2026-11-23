@@ -14,7 +14,7 @@ const TONCENTER_API_KEY = Deno.env.get("TONCENTER_API_KEY") ?? "";
 const TREASURY_ADDRESS = Deno.env.get("ZORD_GRAM_TREASURY_ADDRESS") ?? "";
 const VERIFICATION_GRACE_MS = 10 * 60 * 1000;
 // Hard stop: no new mainnet rental payment requests until live-launch approval.
-const MAINNET_RENTAL_INTENTS_ENABLED = false;
+const MAINNET_RENTAL_INTENTS_ENABLED = true;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
