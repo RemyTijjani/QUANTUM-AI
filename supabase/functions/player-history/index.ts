@@ -53,6 +53,7 @@ const PLAYER_HISTORY_TABLES = new Set([
   "agent_rental_payment_intents",
   "player_agent_rentals",
   "expedition_objective_progress",
+  "expedition_team_objective_progress",
   "expedition_trusted_evidence",
   "expedition_participations",
   "expedition_reward_issuances",
@@ -234,10 +235,14 @@ Deno.serve(async (req: Request) => {
     } while (continuationToken);
 
     const otherHistoryByKey = new Map<string, OtherHistoryItem>();
+    const playerTeamIds = new Set<string>();
     const addHistoryRows = (table: string, rows: Record<string, unknown>[] | null) => {
       if (!rows) return;
       for (const record of rows) {
-        if (record && record.player_id === player.id) {
+        const belongsToPlayer = record && record.player_id === player.id;
+        const belongsToPlayerTeam = table === "expedition_team_objective_progress" &&
+          typeof record?.team_id === "string" && playerTeamIds.has(record.team_id);
+        if (record && (belongsToPlayer || belongsToPlayerTeam)) {
           const id = otherHistoryKey(table, record);
           otherHistoryByKey.set(`${table}:${id}`, {
             table,
@@ -262,6 +267,14 @@ Deno.serve(async (req: Request) => {
       }
     };
 
+    const { data: memberships, error: membershipError } = await admin
+      .from("expedition_team_members").select("*").eq("player_id", player.id);
+    if (membershipError) throw new Error("Live Expedition team history lookup failed.");
+    addHistoryRows("expedition_team_members", memberships as Record<string, unknown>[] | null);
+    for (const membership of memberships ?? []) {
+      if (typeof membership.team_id === "string") playerTeamIds.add(membership.team_id);
+    }
+
     await Promise.all([
       loadLiveHistory("fragment_mining_accruals", admin.from("fragment_mining_accruals").select("*").eq("player_id", player.id)),
       loadLiveHistory("fragment_mining_rewards", admin.from("fragment_mining_rewards").select("*").eq("player_id", player.id)),
@@ -278,10 +291,10 @@ Deno.serve(async (req: Request) => {
       loadLiveHistory("agent_rental_payment_intents", admin.from("agent_rental_payment_intents").select("*").eq("player_id", player.id)),
       loadLiveHistory("player_agent_rentals", admin.from("player_agent_rentals").select("*").eq("player_id", player.id)),
       loadLiveHistory("expedition_objective_progress", admin.from("expedition_objective_progress").select("*").eq("player_id", player.id)),
+      loadLiveHistory("expedition_team_objective_progress", admin.from("expedition_team_objective_progress").select("*").in("team_id", Array.from(playerTeamIds))),
       loadLiveHistory("expedition_trusted_evidence", admin.from("expedition_trusted_evidence").select("*").eq("player_id", player.id)),
       loadLiveHistory("expedition_participations", admin.from("expedition_participations").select("*").eq("player_id", player.id)),
       loadLiveHistory("expedition_reward_issuances", admin.from("expedition_reward_issuances").select("*").eq("player_id", player.id)),
-      loadLiveHistory("expedition_team_members", admin.from("expedition_team_members").select("*").eq("player_id", player.id)),
       loadLiveHistory("game_event_participations", admin.from("game_event_participations").select("*").eq("player_id", player.id)),
       loadLiveHistory("briefing_attempts", admin.from("briefing_attempts").select("*").eq("player_id", player.id)),
       loadLiveHistory("briefing_progress", admin.from("briefing_progress").select("*").eq("player_id", player.id)),
