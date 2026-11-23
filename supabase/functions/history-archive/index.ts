@@ -122,8 +122,9 @@ Deno.serve(async (req: Request) => {
       Bucket: R2_BUCKET_NAME,
       Key: objectKey,
       Body: compressedBytes,
-      ContentType: "application/json",
-      ContentEncoding: "gzip",
+      // Store the gzip bytes as an archive object, but do not set HTTP
+      // Content-Encoding: clients may transparently decompress GetObject bodies.
+      ContentType: "application/gzip",
       Metadata: {
         "schema-version": "1",
         "row-count": String(rows.length),
