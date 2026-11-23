@@ -183,7 +183,7 @@ Deno.serve(async (req: Request) => {
     }
 
     let query = admin.from("economy_ledger").select(columns)
-      .lte("created_at", highWater.created_at)
+      .or(`created_at.lt.${highWater.created_at},and(created_at.eq.${highWater.created_at},id.lte.${highWater.id})`)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(batchSize);
@@ -215,90 +215,6 @@ Deno.serve(async (req: Request) => {
       note: "Copy-only archive. No Supabase records were changed or deleted.",
     });
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    const { data: rows, error: ledgerError } = await admin
-      .from("economy_ledger")
-      .select("id, player_id, transaction_type, amount, balance_after, reference_id, description, created_at")
-      .order("created_at", { ascending: false, nullsFirst: false })
-      .order("id", { ascending: false })
-      .limit(10);
-    if (ledgerError) {
-      console.error("ZP ledger test batch lookup failed:", ledgerError);
-      return json({ error: "Could not read the ZP history test batch." }, 500);
-    }
-    if (!rows?.length) return json({ success: true, copied: 0, verified: true, message: "No ZP ledger records are available to copy." });
-
-    const exportedAt = new Date().toISOString();
-    const document = {
-      schema_version: 1,
-      archive_type: "zord.zp_economy_ledger.test_copy",
-      exported_at: exportedAt,
-      player_count: new Set(rows.map((row) => row.player_id)).size,
-      row_count: rows.length,
-      oldest_created_at: rows.reduce((v, row) => !v || (row.created_at && row.created_at < v) ? row.created_at : v, null as string | null),
-      newest_created_at: rows.reduce((v, row) => !v || (row.created_at && row.created_at > v) ? row.created_at : v, null as string | null),
-      records: rows,
-    };
-
-    const plainBytes = new TextEncoder().encode(JSON.stringify(document));
-    const checksum = await sha256(plainBytes);
-    const compressedBytes = await transform(plainBytes, "gzip");
-    const objectKey = `test-copies/economy-ledger/batch=${exportedAt.replace(/[:.]/g, "-")}.json.gz`;
-
-    const s3 = new S3Client({
-      region: "auto",
-      endpoint: getR2Endpoint(),
-      // R2's optional CRC32 response header can conflict with the SDK's
-      // automatic validation. The archive payload is independently verified
-      // after download using the SHA-256 digest below.
-      responseChecksumValidation: "WHEN_REQUIRED",
-      requestChecksumCalculation: "WHEN_REQUIRED",
-      credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
-    });
-
-    await s3.send(new PutObjectCommand({
-      Bucket: R2_BUCKET_NAME,
-      Key: objectKey,
-      Body: compressedBytes,
-      // Store the gzip bytes as an archive object, but do not set HTTP
-      // Content-Encoding: clients may transparently decompress GetObject bodies.
-      ContentType: "application/gzip",
-      Metadata: {
-        "schema-version": "1",
-        "row-count": String(rows.length),
-        "sha256": checksum,
-        "archive-type": "zord.zp_economy_ledger.test_copy",
-      },
-    }));
-
-    const downloaded = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: objectKey }));
-    const downloadedCompressed = await bodyToBytes(downloaded.Body);
-    const downloadedPlain = await transform(downloadedCompressed, "gunzip");
-    const downloadedChecksum = await sha256(downloadedPlain);
-    const restored = JSON.parse(new TextDecoder().decode(downloadedPlain));
-    const verified = downloadedChecksum === checksum &&
-      Array.isArray(restored.records) &&
-      restored.records.length === rows.length &&
-      restored.row_count === rows.length &&
-      restored.player_count === new Set(rows.map((row) => row.player_id)).size;
-
-    if (!verified) {
-      console.error("R2 copy verification failed for test object:", objectKey);
-      return json({ error: "The R2 test copy was uploaded but did not pass read-back verification.", copied: rows.length }, 502);
-    }
-
-    return json({
-      success: true,
-      copied: rows.length,
-      verified: true,
-      checksum,
-      objectKey,
-      source: "public.economy_ledger",
-      note: "Copy-only test. No Supabase records were changed or deleted.",
-    });
   } catch (error) {
     console.error("History archive test failed:", error);
     return json({ error: "The history archive test could not be completed." }, 500);
