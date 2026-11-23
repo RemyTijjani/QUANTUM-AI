@@ -6,6 +6,57 @@ import { supabase } from '@/lib/supabase';
 import TonWalletConnection from './TonWalletConnection';
 import ZapWalletPanel from './ZapWalletPanel';
 
+type OtherHistoryItem = {
+  table: string;
+  id: string;
+  occurredAt: string | null;
+  record: Record<string, unknown>;
+};
+
+const OTHER_HISTORY_LABELS: Record<string, string> = {
+  fragment_mining_accruals: 'Fragment mining accrual',
+  fragment_mining_rewards: 'Fragment reward',
+  gameplay_action_events: 'Gameplay action',
+  creator_ops_submissions: 'Creator Ops submission',
+  x_follow_submissions: 'X Follow submission',
+  game_event_participation_audit: 'Game participation review',
+  raffle_entries: 'Raffle entry',
+  raffle_winners: 'Raffle prize',
+  daily_uplink_claims: 'Daily Uplink claim',
+  share_uplink_mission_claims: 'Share Uplink claim',
+  telegram_mission_claims: 'Telegram mission claim',
+  agent_rental_zp_accruals: 'Agent rental accrual',
+  agent_rental_payment_intents: 'Agent rental payment',
+  player_agent_rentals: 'Mining agent rental',
+  expedition_objective_progress: 'Expedition objective',
+  expedition_trusted_evidence: 'Expedition evidence',
+  expedition_participations: 'Expedition participation',
+  expedition_reward_issuances: 'Expedition reward',
+  expedition_team_members: 'Expedition team membership',
+  game_event_participations: 'Game participation',
+  briefing_attempts: 'Briefing attempt',
+  briefing_progress: 'Briefing progress',
+  briefing_reward_issuances: 'Briefing reward',
+};
+
+function otherHistorySummary(item: OtherHistoryItem): string {
+  const record = item.record;
+  const parts: string[] = [];
+  const status = record.status ?? record.delivery_status ?? record.membership_status;
+  if (typeof status === 'string') parts.push(status.replace(/_/g, ' '));
+  const detail = record.action_type ?? record.action ?? record.service ?? record.platform ?? record.agent_type;
+  if (typeof detail === 'string') parts.push(detail.replace(/_/g, ' '));
+  const amount = record.amount ?? record.reward_zp ?? record.reward_amount ?? record.prize_amount ?? record.stake_zap;
+  if (typeof amount === 'number' || typeof amount === 'string') {
+    const currency = record.reward_currency ?? record.prize_currency ??
+      (record.stake_zap !== undefined ? 'ZAP' : 'ZP');
+    parts.push(`${amount} ${typeof currency === 'string' ? currency : ''}`.trim());
+  }
+  if (typeof record.score === 'number') parts.push(`Score ${record.score}`);
+  if (typeof record.passed === 'boolean') parts.push(record.passed ? 'Passed' : 'Not passed');
+  return parts.length ? parts.join(' · ') : 'Activity recorded';
+}
+
 export default function VaultTab({
   verifiedZpBalance,
   transactions,
@@ -20,6 +71,7 @@ export default function VaultTab({
   const [history, setHistory] = useState<VerifiedLedgerEntry[]>(transactions);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyUnavailable, setHistoryUnavailable] = useState(false);
+  const [otherHistory, setOtherHistory] = useState<OtherHistoryItem[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,7 +102,11 @@ export default function VaultTab({
         }
 
         const loaded = (body as { transactions: VerifiedLedgerEntry[] }).transactions;
+        const otherLoaded = Array.isArray((body as { otherHistory?: unknown }).otherHistory)
+          ? (body as { otherHistory: OtherHistoryItem[] }).otherHistory
+          : [];
         if (!cancelled) {
+          setOtherHistory(otherLoaded);
           const merged = new Map(loaded.map((entry) => [entry.id, entry]));
           for (const entry of transactions) merged.set(entry.id, entry);
           setHistory(Array.from(merged.values()).sort((a, b) => {
@@ -63,6 +119,7 @@ export default function VaultTab({
       } catch {
         if (!cancelled) {
           setHistory(transactions);
+          setOtherHistory([]);
           setHistoryUnavailable(true);
         }
       } finally {
@@ -163,6 +220,49 @@ export default function VaultTab({
                   </article>
                 );
               })}
+            </div>
+          )}
+        </div>
+      </details>
+
+      <details className="panel group space-y-0 p-4">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <History size={16} className="text-neon-400" />
+            <h2 className="title">Other activity history</h2>
+          </div>
+          <span className="flex items-center gap-2 text-[10px] text-neon-600">
+            {otherHistory.length} records
+            <span aria-hidden="true" className="transition-transform group-open:rotate-180">⌄</span>
+          </span>
+        </summary>
+        <div className="mt-3 border-t border-neon/10 pt-3">
+          <p className="mb-2 text-[10px] text-neon-600">
+            {historyLoading
+              ? 'Loading your other activity history…'
+              : historyUnavailable
+                ? 'Other activity history is temporarily unavailable.'
+                : 'Activity history from your live records and verified private archive.'}
+          </p>
+          {otherHistory.length === 0 ? (
+            <div className="rounded-lg border border-neon/10 bg-black/20 px-3 py-5 text-center">
+              <p className="text-xs text-neon-500">{historyLoading ? 'Loading activity…' : 'No other activity records yet'}</p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {otherHistory.map((item) => (
+                <article key={`${item.table}:${item.id}`} className="border-b border-neon/10 py-3 last:border-0">
+                  <p className="text-xs capitalize text-neon-200">
+                    {OTHER_HISTORY_LABELS[item.table] ?? item.table.replace(/_/g, ' ')}
+                  </p>
+                  <p className="mt-1 text-[10px] capitalize text-neon-500">{otherHistorySummary(item)}</p>
+                  <p className="mt-1 text-[9px] text-neon-700">
+                    {item.occurredAt && Number.isFinite(Date.parse(item.occurredAt))
+                      ? new Date(item.occurredAt).toLocaleString()
+                      : 'Date unavailable'}
+                  </p>
+                </article>
+              ))}
             </div>
           )}
         </div>
