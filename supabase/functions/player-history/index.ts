@@ -267,12 +267,18 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    const { data: memberships, error: membershipError } = await admin
-      .from("expedition_team_members").select("*").eq("player_id", player.id);
-    if (membershipError) throw new Error("Live Expedition team history lookup failed.");
-    addHistoryRows("expedition_team_members", memberships as Record<string, unknown>[] | null);
-    for (const membership of memberships ?? []) {
-      if (typeof membership.team_id === "string") playerTeamIds.add(membership.team_id);
+    let membershipOffset = 0;
+    while (true) {
+      const { data: memberships, error: membershipError } = await admin
+        .from("expedition_team_members").select("*").eq("player_id", player.id)
+        .range(membershipOffset, membershipOffset + 999);
+      if (membershipError) throw new Error("Live Expedition team history lookup failed.");
+      addHistoryRows("expedition_team_members", memberships as Record<string, unknown>[] | null);
+      for (const membership of memberships ?? []) {
+        if (typeof membership.team_id === "string") playerTeamIds.add(membership.team_id);
+      }
+      if (!memberships || memberships.length < 1000) break;
+      membershipOffset += 1000;
     }
 
     await Promise.all([
@@ -291,7 +297,6 @@ Deno.serve(async (req: Request) => {
       loadLiveHistory("agent_rental_payment_intents", admin.from("agent_rental_payment_intents").select("*").eq("player_id", player.id)),
       loadLiveHistory("player_agent_rentals", admin.from("player_agent_rentals").select("*").eq("player_id", player.id)),
       loadLiveHistory("expedition_objective_progress", admin.from("expedition_objective_progress").select("*").eq("player_id", player.id)),
-      loadLiveHistory("expedition_team_objective_progress", admin.from("expedition_team_objective_progress").select("*").in("team_id", Array.from(playerTeamIds))),
       loadLiveHistory("expedition_trusted_evidence", admin.from("expedition_trusted_evidence").select("*").eq("player_id", player.id)),
       loadLiveHistory("expedition_participations", admin.from("expedition_participations").select("*").eq("player_id", player.id)),
       loadLiveHistory("expedition_reward_issuances", admin.from("expedition_reward_issuances").select("*").eq("player_id", player.id)),
@@ -300,6 +305,13 @@ Deno.serve(async (req: Request) => {
       loadLiveHistory("briefing_progress", admin.from("briefing_progress").select("*").eq("player_id", player.id)),
       loadLiveHistory("briefing_reward_issuances", admin.from("briefing_reward_issuances").select("*").eq("player_id", player.id)),
     ]);
+
+    if (playerTeamIds.size > 0) {
+      await loadLiveHistory(
+        "expedition_team_objective_progress",
+        admin.from("expedition_team_objective_progress").select("*").in("team_id", Array.from(playerTeamIds)),
+      );
+    }
 
     let otherContinuationToken: string | undefined;
     let otherObjectsScanned = 0;
