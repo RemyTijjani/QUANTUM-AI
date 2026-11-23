@@ -110,6 +110,11 @@ Deno.serve(async (req: Request) => {
     const s3 = new S3Client({
       region: "auto",
       endpoint: getR2Endpoint(),
+      // R2's optional CRC32 response header can conflict with the SDK's
+      // automatic validation. The archive payload is independently verified
+      // after download using the SHA-256 digest below.
+      responseChecksumValidation: "WHEN_REQUIRED",
+      requestChecksumCalculation: "WHEN_REQUIRED",
       credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
     });
 
