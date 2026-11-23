@@ -136,7 +136,7 @@ Deno.serve(async (req: Request) => {
       Array.isArray(restored.records) &&
       restored.records.length === rows.length &&
       restored.row_count === rows.length &&
-      restored.player_id === player.id;
+      restored.player_count === new Set(rows.map((row) => row.player_id)).size;
 
     if (!verified) {
       console.error("R2 copy verification failed for test object:", objectKey);
