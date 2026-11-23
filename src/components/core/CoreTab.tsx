@@ -387,7 +387,7 @@ export default function CoreTab({
           </button>
         </div>
       </section>
-      <CharacterCard fixed={fixed} rate={miningRateLabel} entityNumber={entityNumber} />
+      <CharacterCard activeFragments={activeFragmentCount} rate={miningRateLabel} entityNumber={entityNumber} />
 
 
 
