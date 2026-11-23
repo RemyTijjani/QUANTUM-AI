@@ -139,12 +139,12 @@ export default function CoreTab({
   return (
     <div className="min-w-0 space-y-5 pb-3">
       <section
-        className="relative isolate min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.13),transparent_58%),linear-gradient(145deg,rgba(8,22,34,0.98),rgba(2,8,16,0.98)_58%,rgba(5,20,20,0.98))] p-2.5 shadow-[0_16px_45px_rgba(0,0,0,0.38)]"
+        className="relative isolate min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.13),transparent_58%),linear-gradient(145deg,rgba(8,22,34,0.98),rgba(2,8,16,0.98)_58%,rgba(5,20,20,0.98))] p-2 shadow-[0_16px_45px_rgba(0,0,0,0.38)]"
         aria-label="Mining and progression"
       >
         <div className="pointer-events-none absolute -left-12 -top-16 h-36 w-36 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 -right-10 h-36 w-36 rounded-full bg-emerald-400/10 blur-3xl" />
-        <div className="relative mb-2 flex items-center justify-between gap-2">
+        <div className="relative mb-1.5 flex items-center justify-between gap-2">
           <div>
             <p className="font-mono text-[9px] font-bold uppercase tracking-[0.24em] text-slate-400">Core telemetry</p>
             <p className="mt-0.5 font-display text-xs font-bold uppercase tracking-wider text-slate-100">Your power at a glance</p>
@@ -155,12 +155,12 @@ export default function CoreTab({
             Active
           </span>
         </div>
-        <div className="relative grid grid-cols-2 gap-2">
-          <div className="group relative flex min-w-0 flex-col items-center overflow-hidden rounded-xl border border-cyan-300/20 bg-gradient-to-b from-cyan-400/[0.09] to-slate-950/70 px-2 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+        <div className="relative grid grid-cols-2 gap-1.5">
+          <div className="group relative flex min-w-0 flex-col items-center overflow-hidden rounded-xl border border-cyan-300/20 bg-gradient-to-b from-cyan-400/[0.09] to-slate-950/70 px-1.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/60 to-transparent" />
             <span className="font-mono text-[9px] font-bold uppercase tracking-[0.28em] text-cyan-200">ZAP</span>
             <div
-              className="relative mt-1.5 grid h-[5rem] w-[5rem] place-items-center rounded-full p-[5px] shadow-[0_0_25px_rgba(34,211,238,0.16)] transition-transform duration-500 group-hover:scale-[1.04]"
+              className="relative mt-1 grid h-[4.6rem] w-[4.6rem] place-items-center rounded-full p-[5px] shadow-[0_0_25px_rgba(34,211,238,0.16)] transition-transform duration-500 group-hover:scale-[1.04]"
               style={{ background: `conic-gradient(from -90deg, #a5f3fc 0%, #22d3ee ${zapProgress}%, rgba(34,211,238,0.10) ${zapProgress}%, rgba(34,211,238,0.10) 100%)` }}
               role="img"
               aria-label={`ZAP progress ${zapProgress.toFixed(0)} percent`}
@@ -174,7 +174,7 @@ export default function CoreTab({
                 </div>
               </div>
             </div>
-            <p className="mt-1.5 font-mono text-[8px] font-semibold uppercase tracking-wider text-cyan-300/80">Build your rank</p>
+            <p className="mt-1 font-mono text-[8px] font-semibold uppercase tracking-wider text-cyan-300/80">Build your rank</p>
             <p className="mt-0.5 text-center text-[8px] leading-tight text-slate-500">Net ZAP moves you forward</p>
           </div>
           <div className="group relative flex min-w-0 flex-col items-center overflow-hidden rounded-xl border border-emerald-300/20 bg-gradient-to-b from-emerald-400/[0.09] to-slate-950/70 px-2 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
@@ -193,11 +193,11 @@ export default function CoreTab({
                 </div>
               </div>
             </div>
-            <p className="mt-1.5 font-mono text-[8px] font-semibold uppercase tracking-wider text-emerald-300/80">Live mining power</p>
+            <p className="mt-1 font-mono text-[8px] font-semibold uppercase tracking-wider text-emerald-300/80">Live mining power</p>
             <p className="mt-1 text-center text-[8px] leading-tight text-slate-500">Your ZP earned per second</p>
           </div>
         </div>
-        <div className="relative mt-2 rounded-lg border border-white/[0.07] bg-black/30 px-3 py-1.5">
+        <div className="relative mt-1.5 rounded-lg border border-white/[0.07] bg-black/30 px-2.5 py-1.5">
           <div className="mb-1 flex items-center justify-between gap-2 font-mono text-[8px] uppercase tracking-wider">
             <span className="text-slate-400">Next rank · keep rising</span>
             <span className="font-bold tabular-nums text-cyan-200">{Math.round(rankProgress)}%</span>
