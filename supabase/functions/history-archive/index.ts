@@ -49,7 +49,7 @@ function isValidCursorPart(value: unknown): value is { id: string; created_at: s
   return typeof part.id === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(part.id) &&
     typeof part.created_at === "string" &&
-    part.created_at.length <= 40 &&
+    /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(part.created_at) &&
     Number.isFinite(Date.parse(part.created_at));
 }
 
@@ -225,6 +225,13 @@ Deno.serve(async (req: Request) => {
 
     if (payload?.cursor && (!isValidCursorPart(highWater) || !isValidCursorPart(after))) {
       return json({ error: "Invalid archive cursor." }, 400);
+    }
+    if (payload?.cursor && highWater && after) {
+      const highTime = Date.parse(highWater.created_at);
+      const afterTime = Date.parse(after.created_at);
+      if (afterTime > highTime || (afterTime === highTime && after.id.localeCompare(highWater.id) > 0)) {
+        return json({ error: "Archive cursor is outside its starting boundary." }, 400);
+      }
     }
 
     if (!highWater) {
