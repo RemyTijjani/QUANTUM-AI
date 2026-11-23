@@ -65,6 +65,21 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveNotice, setArchiveNotice] = useState<string | null>(null);
   const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [archiveCursor, setArchiveCursor] = useState<{ highWater: { id: string; created_at: string }; after: { id: string; created_at: string } } | null>(() => {
+    try {
+      const saved = localStorage.getItem('zord-zp-ledger-archive-progress-v1');
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      return parsed?.cursor ?? null;
+    } catch { return null; }
+  });
+  const [archiveCopied, setArchiveCopied] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('zord-zp-ledger-archive-progress-v1');
+      return Math.max(0, Number(JSON.parse(saved ?? '{}')?.copied) || 0);
+    } catch { return 0; }
+  });
+  const [archiveDone, setArchiveDone] = useState(false);
 
   const loadMining = useCallback(async () => {
     setMiningError(null);
@@ -141,8 +156,11 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
     }
   };
 
-  const handleArchiveTest = async () => {
-    if (archiveBusy || !window.confirm('Copy up to 10 recent ZP economy ledger records to the private Cloudflare R2 archive and verify the downloaded copy? Original Supabase records will remain untouched.')) return;
+  const handleArchiveBatch = async (startFresh = false) => {
+    if (archiveBusy) return;
+    if (startFresh && !window.confirm('Start a new copy-only ZP ledger archive from the newest record? This resets only the saved browser cursor; existing R2 objects and all Supabase records remain untouched.')) return;
+    if (!startFresh && !archiveCursor && archiveCopied === 0 &&
+        !window.confirm('Start copying the ZP economy ledger to the private R2 archive in verified batches of up to 200 records? No Supabase records will be changed or deleted.')) return;
     setArchiveBusy(true);
     setArchiveError(null);
     setArchiveNotice(null);
@@ -153,15 +171,27 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({ action: 'copy-test', adminUsername: creds.username, adminPassword: creds.password }),
+        body: JSON.stringify({
+          action: 'copy-batch',
+          batchSize: 200,
+          cursor: startFresh ? null : archiveCursor,
+          adminUsername: creds.username,
+          adminPassword: creds.password,
+        }),
       });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.success || !result?.verified) {
-        throw new AdminApiError(typeof result?.error === 'string' ? result.error : `Archive test failed (${response.status}).`);
+        throw new AdminApiError(typeof result?.error === 'string' ? result.error : `Archive batch failed (${response.status}).`);
       }
+      const nextCopied = (startFresh ? 0 : archiveCopied) + Number(result.copied || 0);
+      const nextCursor = result.cursor ?? null;
+      setArchiveCursor(nextCursor);
+      setArchiveCopied(nextCopied);
+      setArchiveDone(result.done === true);
+      localStorage.setItem('zord-zp-ledger-archive-progress-v1', JSON.stringify({ cursor: nextCursor, copied: nextCopied, updatedAt: new Date().toISOString() }));
       setArchiveNotice(result.copied === 0
-        ? 'Verification passed. No ZP ledger records were available to copy.'
-        : `Copied and verified ${result.copied} record(s). SHA-256: ${result.checksum}. R2 object: ${result.objectKey}`);
+        ? 'Archive boundary reached. No more ledger records remain in this run.'
+        : `Copied and read-back verified ${result.copied} records in this batch. ${nextCopied.toLocaleString()} records copied in this run. SHA-256: ${result.checksum}. R2 object: ${result.objectKey}. ${result.done ? 'Archive run complete.' : 'Resume cursor saved on this device.'}`);
     } catch (error) {
       setArchiveError(errorText(error));
     } finally {
@@ -244,11 +274,19 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
         <button type="button" onClick={() => void handleExport()} disabled={exportBusy} className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2.5 text-xs font-semibold text-emerald-200 disabled:opacity-50"><Download size={14} />{exportBusy ? 'Preparing CSV…' : 'Export player summary CSV'}</button>
       </div>
       <div className="min-w-0 rounded-2xl border border-white/10 bg-[#111a14] p-4">
-        <h3 className="mb-3 flex items-center gap-2 border-b border-white/10 pb-3 text-xs font-bold uppercase tracking-widest text-slate-200"><Database size={15} /> R2 History Archive Test</h3>
-        <p className="mb-3 text-[11px] leading-relaxed text-slate-400">Copies up to 10 recent ZP economy ledger records to the private Cloudflare R2 bucket, then downloads the object and checks its SHA-256 checksum and row count. This is copy-only; no Supabase history is changed or deleted.</p>
+        <h3 className="mb-3 flex items-center gap-2 border-b border-white/10 pb-3 text-xs font-bold uppercase tracking-widest text-slate-200"><Database size={15} /> ZP Ledger R2 Archive</h3>
+        <p className="mb-3 text-[11px] leading-relaxed text-slate-400">Copies the ZP economy ledger to the private Cloudflare R2 bucket in batches of up to 200. Every batch is downloaded again and verified by SHA-256 checksum and row count. The resume cursor is saved only in this browser so you can continue after reopening the admin panel. No Supabase history is changed or deleted.</p>
+        <div className="mb-3 rounded-xl border border-white/10 bg-[#0b120e] p-3">
+          <p className="text-xs font-semibold text-white">{archiveDone ? 'Archive run complete' : archiveCursor ? 'Archive can be resumed' : archiveCopied > 0 ? 'Last run reached its boundary' : 'Ready to start'}</p>
+          <p className="mt-1 text-[10px] text-slate-400">Verified records copied in this browser run: {archiveCopied.toLocaleString()}</p>
+          <p className="mt-1 text-[10px] text-slate-500">{archiveCursor ? `Resume after ${archiveCursor.after.created_at} · ${archiveCursor.after.id}` : 'No pending resume cursor saved.'}</p>
+        </div>
         {archiveError && <p role="alert" className="mb-2 break-words text-[11px] text-red-300">{archiveError}</p>}
         {archiveNotice && <p role="status" className="mb-2 break-words text-[11px] text-emerald-300">{archiveNotice}</p>}
-        <button type="button" onClick={() => void handleArchiveTest()} disabled={archiveBusy} className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2.5 text-xs font-semibold text-emerald-200 disabled:opacity-50"><Database size={14} />{archiveBusy ? 'Copying & verifying…' : 'Run 10-record R2 copy test'}</button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => void handleArchiveBatch(false)} disabled={archiveBusy || archiveDone} className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2.5 text-xs font-semibold text-emerald-200 disabled:opacity-50"><Database size={14} />{archiveBusy ? 'Copying & verifying…' : archiveCursor ? 'Copy next 200 records' : 'Start 200-record archive'}</button>
+          <button type="button" onClick={() => void handleArchiveBatch(true)} disabled={archiveBusy} className="rounded-xl border border-white/10 px-3 py-2.5 text-xs text-slate-300 disabled:opacity-50">Start new run</button>
+        </div>
       </div>
 
     </section>
