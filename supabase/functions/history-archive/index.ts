@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { GetObjectCommand, PutObjectCommand, S3Client } from "npm:@aws-sdk/client-s3@3";
+import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "npm:@aws-sdk/client-s3@3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -185,7 +185,7 @@ Deno.serve(async (req: Request) => {
       console.error("History archive rate-limit reset failed:", clearError);
       return json({ error: "Admin authentication temporarily unavailable." }, 503);
     }
-    if (payload?.action !== "copy-test" && payload?.action !== "copy-batch") {
+    if (payload?.action !== "copy-test" && payload?.action !== "copy-batch" && payload?.action !== "audit") {
       return json({ error: "Unsupported archive action." }, 400);
     }
 
@@ -202,6 +202,99 @@ Deno.serve(async (req: Request) => {
       requestChecksumCalculation: "WHEN_REQUIRED",
       credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
     });
+
+    if (payload?.action === "audit") {
+      const prefix = "history/economy-ledger/";
+      const archivedIds = new Set<string>();
+      let archiveObjectCount = 0;
+      let archiveRowCount = 0;
+      let duplicateArchivedIds = 0;
+      let continuationToken: string | undefined;
+      const maxObjects = 5000;
+
+      do {
+        const page = await s3.send(new ListObjectsV2Command({
+          Bucket: R2_BUCKET_NAME,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+          MaxKeys: 1000,
+        }));
+        for (const item of page.Contents ?? []) {
+          if (!item.Key || !item.Key.endsWith(".json.gz")) continue;
+          archiveObjectCount += 1;
+          if (archiveObjectCount > maxObjects) {
+            return json({ error: "Archive audit stopped at the 5,000-object safety limit." }, 413);
+          }
+          const object = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: item.Key }));
+          const compressed = await bodyToBytes(object.Body);
+          const plain = await transform(compressed, "gunzip");
+          const checksum = await sha256(plain);
+          const document = JSON.parse(new TextDecoder().decode(plain));
+          const records = document?.records;
+          const expectedRows = Number(object.Metadata?.["row-count"]);
+          const expectedChecksum = object.Metadata?.["sha256"];
+          if (document?.archive_type !== "zord.zp_economy_ledger" ||
+              !Array.isArray(records) ||
+              document.row_count !== records.length ||
+              expectedRows !== records.length ||
+              !expectedChecksum ||
+              checksum !== expectedChecksum) {
+            return json({ error: "Archive integrity check failed.", object: item.Key }, 409);
+          }
+          archiveRowCount += records.length;
+          for (const row of records) {
+            if (!row || typeof row.id !== "string") {
+              return json({ error: "An archived record has no valid ledger ID.", object: item.Key }, 409);
+            }
+            if (archivedIds.has(row.id)) duplicateArchivedIds += 1;
+            archivedIds.add(row.id);
+          }
+        }
+        continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+      } while (continuationToken);
+
+      const sourceIds = new Set<string>();
+      const pageSize = 1000;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data: rows, error: sourceError } = await admin
+          .from("economy_ledger")
+          .select("id")
+          .order("id", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (sourceError) {
+          console.error("ZP ledger audit source read failed:", sourceError);
+          return json({ error: "Could not read the source ledger for reconciliation." }, 500);
+        }
+        for (const row of rows ?? []) sourceIds.add(String(row.id));
+        if (!rows || rows.length < pageSize) break;
+      }
+
+      let missingFromArchive = 0;
+      let extraInArchive = 0;
+      for (const id of sourceIds) if (!archivedIds.has(id)) missingFromArchive += 1;
+      for (const id of archivedIds) if (!sourceIds.has(id)) extraInArchive += 1;
+      const sourceRowCount = sourceIds.size;
+      const exactMatch = archiveRowCount === sourceRowCount &&
+        archivedIds.size === sourceRowCount &&
+        duplicateArchivedIds === 0 &&
+        missingFromArchive === 0 &&
+        extraInArchive === 0;
+
+      return json({
+        success: true,
+        audit: true,
+        exactMatch,
+        sourceRowCount,
+        archiveObjectCount,
+        archiveRowCount,
+        uniqueArchivedIds: archivedIds.size,
+        duplicateArchivedIds,
+        missingFromArchive,
+        extraInArchive,
+        checkedAt: new Date().toISOString(),
+        note: "Read-only reconciliation. No Supabase records or R2 objects were changed.",
+      });
+    }
 
     if (payload?.action === "copy-test") {
       const { data: rows, error: ledgerError } = await admin
