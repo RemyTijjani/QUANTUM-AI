@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Database, Download, MessageSquare, Pickaxe, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { Database, Download, MessageSquare, Pickaxe, RefreshCw, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import {
   AdminApiError,
   exportAdminPlayerData,
@@ -85,6 +85,14 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
       return JSON.parse(saved ?? '{}')?.done === true;
     } catch { return false; }
   });
+
+  const [auditBusy, setAuditBusy] = useState(false);
+  const [auditResult, setAuditResult] = useState<{
+    exactMatch: boolean; sourceRowCount: number; archiveObjectCount: number;
+    archiveRowCount: number; uniqueArchivedIds: number; duplicateArchivedIds: number;
+    missingFromArchive: number; extraInArchive: number; checkedAt: string;
+  } | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
   const loadMining = useCallback(async () => {
     setMiningError(null);
@@ -204,6 +212,42 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
     }
   };
 
+
+  const handleArchiveAudit = async () => {
+    if (auditBusy || !window.confirm('Run a read-only reconciliation of every ZP ledger archive object against the live Supabase ledger? This verifies SHA-256 checksums and transaction IDs. It does not modify or delete any records or archive objects.')) return;
+    setAuditBusy(true);
+    setAuditError(null);
+    setAuditResult(null);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-archive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          action: 'audit',
+          adminUsername: creds.username,
+          adminPassword: creds.password,
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || result?.success !== true || result?.audit !== true ||
+          typeof result.exactMatch !== 'boolean' || !Number.isInteger(result.sourceRowCount) ||
+          !Number.isInteger(result.archiveObjectCount) || !Number.isInteger(result.archiveRowCount) ||
+          !Number.isInteger(result.uniqueArchivedIds) || !Number.isInteger(result.duplicateArchivedIds) ||
+          !Number.isInteger(result.missingFromArchive) || !Number.isInteger(result.extraInArchive) ||
+          typeof result.checkedAt !== 'string') {
+        throw new AdminApiError(typeof result?.error === 'string' ? result.error : `Archive audit failed (${response.status}).`);
+      }
+      setAuditResult(result);
+    } catch (error) {
+      setAuditError(errorText(error));
+    } finally {
+      setAuditBusy(false);
+    }
+  };
+
   const handleExport = async () => {
     if (exportBusy || !window.confirm('Export player profile and ZP economy summary to CSV? Telegram IDs, wallet addresses, authentication data and transaction secrets are excluded.')) return;
     setExportBusy(true);
@@ -291,6 +335,20 @@ export default function AdminOperations({ creds }: { creds: AdminCredentials }) 
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => void handleArchiveBatch(false)} disabled={archiveBusy || archiveDone} className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2.5 text-xs font-semibold text-emerald-200 disabled:opacity-50"><Database size={14} />{archiveBusy ? 'Copying & verifying…' : archiveCursor ? 'Copy next 200 records' : 'Start 200-record archive'}</button>
           <button type="button" onClick={() => void handleArchiveBatch(true)} disabled={archiveBusy} className="rounded-xl border border-white/10 px-3 py-2.5 text-xs text-slate-300 disabled:opacity-50">Start new run</button>
+        </div>
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <p className="mb-2 text-[10px] leading-relaxed text-slate-400">Reconcile all archived transaction IDs against the live ledger and verify every object's SHA-256 checksum. This is read-only.</p>
+          {auditError && <p role="alert" className="mb-2 break-words text-[11px] text-red-300">{auditError}</p>}
+          {auditResult && (
+            <div role="status" className="mb-3 rounded-xl border border-white/10 bg-[#0b120e] p-3 text-[10px] text-slate-300">
+              <p className={auditResult.exactMatch ? 'font-semibold text-emerald-300' : 'font-semibold text-amber-300'}>{auditResult.exactMatch ? 'Exact match — archive reconciled' : 'Reconciliation differences found'}</p>
+              <p className="mt-2">Live source rows: {auditResult.sourceRowCount.toLocaleString()} · Archived rows: {auditResult.archiveRowCount.toLocaleString()}</p>
+              <p>R2 objects checked: {auditResult.archiveObjectCount.toLocaleString()} · Unique archived IDs: {auditResult.uniqueArchivedIds.toLocaleString()}</p>
+              <p>Duplicates: {auditResult.duplicateArchivedIds} · Missing: {auditResult.missingFromArchive} · Extra: {auditResult.extraInArchive}</p>
+              <p className="mt-2 text-slate-500">Checked {new Date(auditResult.checkedAt).toLocaleString()}. No records or objects changed.</p>
+            </div>
+          )}
+          <button type="button" onClick={() => void handleArchiveAudit()} disabled={auditBusy || archiveBusy} className="flex w-full items-center justify-center gap-2 rounded-xl border border-sky-400/30 bg-sky-400/10 px-3 py-2.5 text-xs font-semibold text-sky-200 disabled:opacity-50"><ShieldCheck size={14} />{auditBusy ? 'Checking archive integrity…' : 'Run read-only integrity audit'}</button>
         </div>
       </div>
 
