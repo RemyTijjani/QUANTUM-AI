@@ -58,11 +58,13 @@ function bytesToHex(bytes: ArrayBuffer): string {
 }
 
 async function sha256(bytes: Uint8Array): Promise<string> {
-  return bytesToHex(await crypto.subtle.digest("SHA-256", bytes));
+  const safeBytes = new Uint8Array(bytes);
+  return bytesToHex(await crypto.subtle.digest("SHA-256", safeBytes.buffer));
 }
 
 async function transform(bytes: Uint8Array, format: "gzip" | "gunzip"): Promise<Uint8Array> {
-  const stream = new Blob([bytes]).stream().pipeThrough(
+  const safeBytes = new Uint8Array(bytes);
+  const stream = new Blob([safeBytes.buffer]).stream().pipeThrough(
     format === "gzip" ? new CompressionStream("gzip") : new DecompressionStream("gzip"),
   );
   return new Uint8Array(await new Response(stream).arrayBuffer());
