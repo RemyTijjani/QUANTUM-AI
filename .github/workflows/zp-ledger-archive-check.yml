@@ -5,13 +5,12 @@ on:
     paths:
       - "supabase/functions/history-archive/**"
       - "supabase/functions/player-history/**"
-      - "supabase/functions/player-history/**"
       - "supabase/config.toml"
       - "src/components/admin/AdminOperations.tsx"
       - ".github/workflows/zp-ledger-archive-check.yml"
   push:
     branches:
-      - feature/zp-ledger-batch-archive
+      - feature/zp-ledger-r2-history-readback
     paths:
       - "supabase/functions/history-archive/**"
       - "supabase/functions/player-history/**"
