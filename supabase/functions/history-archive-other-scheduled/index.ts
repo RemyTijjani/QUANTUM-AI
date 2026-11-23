@@ -5,7 +5,7 @@ const env=(k:string)=>Deno.env.get(k)??"";
 const SUPABASE_URL=env("SUPABASE_URL"), SERVICE_KEY=env("SUPABASE_SERVICE_ROLE_KEY");
 const ACCOUNT=env("R2_ACCOUNT_ID"), ACCESS=env("R2_ACCESS_KEY_ID"), SECRET=env("R2_SECRET_ACCESS_KEY");
 const BUCKET=env("R2_BUCKET_NAME"), ENDPOINT=env("R2_ENDPOINT");
-const TABLES=["fragment_mining_accruals","fragment_mining_rewards","gameplay_action_events","creator_ops_submissions","x_follow_submissions","expedition_audit_log","expedition_objective_progress","expedition_team_objective_progress","expedition_trusted_evidence","game_event_participation_audit","raffle_audit_log","raffle_entries","raffle_winners","daily_uplink_claims","share_uplink_mission_claims","telegram_mission_claims","agent_rental_zp_accruals"];
+const TABLES=["fragment_mining_accruals","fragment_mining_rewards","gameplay_action_events","creator_ops_submissions","x_follow_submissions","expedition_audit_log","expedition_objective_progress","expedition_team_objective_progress","expedition_trusted_evidence","expedition_participations","expedition_reward_issuances","expedition_team_members","game_event_participations","game_event_participation_audit","raffle_audit_log","raffle_entries","raffle_winners","daily_uplink_claims","share_uplink_mission_claims","telegram_mission_claims","agent_rental_zp_accruals","agent_rental_payment_intents","player_agent_rentals","briefing_attempts","briefing_progress","briefing_reward_issuances"];
 const BATCH=200, PREFIX="history/other/";
 
 function response(body:unknown,status=200){return new Response(JSON.stringify(body),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});}
