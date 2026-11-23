@@ -127,7 +127,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
 
   // Preview keeps rental checkout and payment verification disabled.
   // Enable only after explicit launch approval and a reviewed payment release.
-  const rentalBackendActionsEnabled = false;
+  const rentalBackendActionsEnabled = true;
 
   useEffect(() => {
     let mounted = true;
