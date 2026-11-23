@@ -6,6 +6,7 @@ on:
       - "supabase/functions/history-archive/**"
       - "supabase/functions/player-history/**"
       - "supabase/functions/history-archive-scheduled/**"
+      - "supabase/functions/history-archive-other-scheduled/**"
       - "supabase/migrations/**"
       - "supabase/config.toml"
       - "src/components/admin/AdminOperations.tsx"
@@ -17,6 +18,7 @@ on:
       - "supabase/functions/history-archive/**"
       - "supabase/functions/player-history/**"
       - "supabase/functions/history-archive-scheduled/**"
+      - "supabase/functions/history-archive-other-scheduled/**"
       - "supabase/migrations/**"
       - "src/components/admin/AdminOperations.tsx"
       - ".github/workflows/zp-ledger-archive-check.yml"
@@ -33,4 +35,4 @@ jobs:
         with:
           deno-version: v2.x
       - name: Type-check archive, player history, and scheduled archive Edge Functions
-        run: deno check supabase/functions/history-archive/index.ts supabase/functions/player-history/index.ts supabase/functions/history-archive-scheduled/index.ts
+        run: deno check supabase/functions/history-archive/index.ts supabase/functions/player-history/index.ts supabase/functions/history-archive-scheduled/index.ts supabase/functions/history-archive-other-scheduled/index.ts
