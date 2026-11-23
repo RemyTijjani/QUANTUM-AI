@@ -250,37 +250,42 @@ Deno.serve(async (req: Request) => {
     };
     const loadLiveHistory = async (
       table: string,
-      query: PromiseLike<{ data: Record<string, unknown>[] | null; error: { message: string } | null }>,
+      query: { range: (from: number, to: number) => PromiseLike<{ data: Record<string, unknown>[] | null; error: { message: string } | null }> },
     ) => {
-      const { data, error } = await query;
-      if (error) throw new Error(`Live ${table} history lookup failed.`);
-      addHistoryRows(table, data);
+      let offset = 0;
+      while (true) {
+        const { data, error } = await query.range(offset, offset + 999);
+        if (error) throw new Error(`Live ${table} history lookup failed.`);
+        addHistoryRows(table, data);
+        if (!data || data.length < 1000) break;
+        offset += 1000;
+      }
     };
 
     await Promise.all([
-      loadLiveHistory("fragment_mining_accruals", admin.from("fragment_mining_accruals").select("*").eq("player_id", player.id).limit(2000)),
-      loadLiveHistory("fragment_mining_rewards", admin.from("fragment_mining_rewards").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("gameplay_action_events", admin.from("gameplay_action_events").select("*").eq("player_id", player.id).limit(2000)),
-      loadLiveHistory("creator_ops_submissions", admin.from("creator_ops_submissions").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("x_follow_submissions", admin.from("x_follow_submissions").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("game_event_participation_audit", admin.from("game_event_participation_audit").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("raffle_entries", admin.from("raffle_entries").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("raffle_winners", admin.from("raffle_winners").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("daily_uplink_claims", admin.from("daily_uplink_claims").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("share_uplink_mission_claims", admin.from("share_uplink_mission_claims").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("telegram_mission_claims", admin.from("telegram_mission_claims").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("agent_rental_zp_accruals", admin.from("agent_rental_zp_accruals").select("*").eq("player_id", player.id).limit(2000)),
-      loadLiveHistory("agent_rental_payment_intents", admin.from("agent_rental_payment_intents").select("*").eq("player_id", player.id).limit(500)),
-      loadLiveHistory("player_agent_rentals", admin.from("player_agent_rentals").select("*").eq("player_id", player.id).limit(500)),
-      loadLiveHistory("expedition_objective_progress", admin.from("expedition_objective_progress").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("expedition_trusted_evidence", admin.from("expedition_trusted_evidence").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("expedition_participations", admin.from("expedition_participations").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("expedition_reward_issuances", admin.from("expedition_reward_issuances").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("expedition_team_members", admin.from("expedition_team_members").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("game_event_participations", admin.from("game_event_participations").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("briefing_attempts", admin.from("briefing_attempts").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("briefing_progress", admin.from("briefing_progress").select("*").eq("player_id", player.id).limit(1000)),
-      loadLiveHistory("briefing_reward_issuances", admin.from("briefing_reward_issuances").select("*").eq("player_id", player.id).limit(1000)),
+      loadLiveHistory("fragment_mining_accruals", admin.from("fragment_mining_accruals").select("*").eq("player_id", player.id)),
+      loadLiveHistory("fragment_mining_rewards", admin.from("fragment_mining_rewards").select("*").eq("player_id", player.id)),
+      loadLiveHistory("gameplay_action_events", admin.from("gameplay_action_events").select("*").eq("player_id", player.id)),
+      loadLiveHistory("creator_ops_submissions", admin.from("creator_ops_submissions").select("*").eq("player_id", player.id)),
+      loadLiveHistory("x_follow_submissions", admin.from("x_follow_submissions").select("*").eq("player_id", player.id)),
+      loadLiveHistory("game_event_participation_audit", admin.from("game_event_participation_audit").select("*").eq("player_id", player.id)),
+      loadLiveHistory("raffle_entries", admin.from("raffle_entries").select("*").eq("player_id", player.id)),
+      loadLiveHistory("raffle_winners", admin.from("raffle_winners").select("*").eq("player_id", player.id)),
+      loadLiveHistory("daily_uplink_claims", admin.from("daily_uplink_claims").select("*").eq("player_id", player.id)),
+      loadLiveHistory("share_uplink_mission_claims", admin.from("share_uplink_mission_claims").select("*").eq("player_id", player.id)),
+      loadLiveHistory("telegram_mission_claims", admin.from("telegram_mission_claims").select("*").eq("player_id", player.id)),
+      loadLiveHistory("agent_rental_zp_accruals", admin.from("agent_rental_zp_accruals").select("*").eq("player_id", player.id)),
+      loadLiveHistory("agent_rental_payment_intents", admin.from("agent_rental_payment_intents").select("*").eq("player_id", player.id)),
+      loadLiveHistory("player_agent_rentals", admin.from("player_agent_rentals").select("*").eq("player_id", player.id)),
+      loadLiveHistory("expedition_objective_progress", admin.from("expedition_objective_progress").select("*").eq("player_id", player.id)),
+      loadLiveHistory("expedition_trusted_evidence", admin.from("expedition_trusted_evidence").select("*").eq("player_id", player.id)),
+      loadLiveHistory("expedition_participations", admin.from("expedition_participations").select("*").eq("player_id", player.id)),
+      loadLiveHistory("expedition_reward_issuances", admin.from("expedition_reward_issuances").select("*").eq("player_id", player.id)),
+      loadLiveHistory("expedition_team_members", admin.from("expedition_team_members").select("*").eq("player_id", player.id)),
+      loadLiveHistory("game_event_participations", admin.from("game_event_participations").select("*").eq("player_id", player.id)),
+      loadLiveHistory("briefing_attempts", admin.from("briefing_attempts").select("*").eq("player_id", player.id)),
+      loadLiveHistory("briefing_progress", admin.from("briefing_progress").select("*").eq("player_id", player.id)),
+      loadLiveHistory("briefing_reward_issuances", admin.from("briefing_reward_issuances").select("*").eq("player_id", player.id)),
     ]);
 
     let otherContinuationToken: string | undefined;
