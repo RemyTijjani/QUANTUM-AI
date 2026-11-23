@@ -13,7 +13,7 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const TONCENTER_API_KEY = Deno.env.get("TONCENTER_API_KEY") ?? "";
 const TREASURY_ADDRESS = Deno.env.get("ZORD_GRAM_TREASURY_ADDRESS") ?? "";
 const VERIFICATION_GRACE_MS = 10 * 60 * 1000;
-// Hard stop: no new mainnet rental payment requests until live-launch approval.
+// Mainnet agent rental checkout is enabled; payment verification remains server-side.
 const MAINNET_RENTAL_INTENTS_ENABLED = true;
 
 function json(body: unknown, status = 200) {
@@ -285,9 +285,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body.action === "verify_payment") {
-      // Existing-intent reconciliation stays available while new mainnet checkout
-      // creation remains hard-disabled. This prevents already-sent payments from
-      // being stranded without allowing new payment requests during Preview.
+      // Verify only the authenticated player's intent against TON Mainnet.
       if (typeof body.intentId !== "string" ||
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.intentId)) {
         return json({ error: "A valid payment request is required." }, 400);
