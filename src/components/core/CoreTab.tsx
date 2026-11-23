@@ -138,46 +138,77 @@ export default function CoreTab({
 
   return (
     <div className="min-w-0 space-y-5 pb-3">
-      <section className="panel min-w-0 border border-cyan-300/20 bg-black/35 p-3" aria-label="Mining and progression">
-        <div className="grid grid-cols-2 items-center gap-3">
-          <div className="flex flex-col items-center gap-1.5">
-            <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-cyan-200">ZAP</span>
+      <section
+        className="relative isolate min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.13),transparent_58%),linear-gradient(145deg,rgba(8,22,34,0.98),rgba(2,8,16,0.98)_58%,rgba(5,20,20,0.98))] p-3.5 shadow-[0_16px_45px_rgba(0,0,0,0.38)]"
+        aria-label="Mining and progression"
+      >
+        <div className="pointer-events-none absolute -left-12 -top-16 h-36 w-36 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 -right-10 h-36 w-36 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="relative mb-3 flex items-center justify-between gap-2">
+          <div>
+            <p className="font-mono text-[9px] font-bold uppercase tracking-[0.24em] text-slate-400">Core telemetry</p>
+            <p className="mt-0.5 font-display text-xs font-bold uppercase tracking-wider text-slate-100">Live progression</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[8px] uppercase tracking-wider text-slate-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
+            Active
+          </span>
+        </div>
+        <div className="relative grid grid-cols-2 gap-2.5">
+          <div className="group relative flex min-w-0 flex-col items-center overflow-hidden rounded-xl border border-cyan-300/20 bg-gradient-to-b from-cyan-400/[0.09] to-slate-950/70 px-2 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/60 to-transparent" />
+            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.28em] text-cyan-200">ZAP</span>
             <div
-              className="grid h-[4.25rem] w-[4.25rem] place-items-center rounded-full"
-              style={{ background: `conic-gradient(#67ddff ${zapProgress}%, rgba(103,221,255,0.12) 0)` }}
+              className="relative mt-2 grid h-[5.7rem] w-[5.7rem] place-items-center rounded-full p-[5px] shadow-[0_0_25px_rgba(34,211,238,0.16)] transition-transform duration-500 group-hover:scale-[1.04]"
+              style={{ background: `conic-gradient(from -90deg, #a5f3fc 0%, #22d3ee ${zapProgress}%, rgba(34,211,238,0.10) ${zapProgress}%, rgba(34,211,238,0.10) 100%)` }}
               role="img"
               aria-label={`ZAP progress ${zapProgress.toFixed(0)} percent`}
             >
-              <div className="grid h-[3.55rem] w-[3.55rem] place-items-center rounded-full bg-[#07111a]">
-                <span className="font-display text-base font-bold tabular-nums text-cyan-100">
-                  {zapLoading || netZapProgress === null || netZapProgress === undefined ? '—' : formatZp(zapProgress)}
-                </span>
+              <div className="grid h-full w-full place-items-center rounded-full border border-cyan-100/10 bg-[#06131e] shadow-[inset_0_2px_12px_rgba(0,0,0,0.75)]">
+                <div className="text-center">
+                  <span className="block font-display text-lg font-bold leading-none tabular-nums text-cyan-50 drop-shadow-[0_0_8px_rgba(103,221,255,0.55)]">
+                    {zapLoading || netZapProgress === null || netZapProgress === undefined ? '—' : formatZp(zapProgress)}
+                  </span>
+                  <span className="mt-1 block font-mono text-[7px] font-semibold uppercase tracking-[0.2em] text-cyan-400/80">Progress</span>
+                </div>
               </div>
             </div>
+            <p className="mt-2 font-mono text-[8px] uppercase tracking-wider text-cyan-300/70">Core rank score</p>
           </div>
-          <div className="flex flex-col items-center gap-1.5">
-            <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-emerald-200">ZP</span>
+          <div className="group relative flex min-w-0 flex-col items-center overflow-hidden rounded-xl border border-emerald-300/20 bg-gradient-to-b from-emerald-400/[0.09] to-slate-950/70 px-2 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent" />
+            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.28em] text-emerald-200">ZP</span>
             <div
-              className="grid h-[4.25rem] w-[4.25rem] place-items-center rounded-full"
-              style={{ background: `conic-gradient(#7cf7c5 ${miningRateProgress}%, rgba(124,247,197,0.12) 0)` }}
+              className="relative mt-2 grid h-[5.7rem] w-[5.7rem] place-items-center rounded-full p-[5px] shadow-[0_0_25px_rgba(52,211,153,0.15)] transition-transform duration-500 group-hover:scale-[1.04]"
+              style={{ background: `conic-gradient(from -90deg, #bbf7d0 0%, #34d399 ${miningRateProgress}%, rgba(52,211,153,0.10) ${miningRateProgress}%, rgba(52,211,153,0.10) 100%)` }}
               role="img"
               aria-label={verifiedZpBalance === null ? 'ZP mining rate unavailable' : `ZP mining rate ${miningRateLabel} per second`}
             >
-              <div className="grid h-[3.55rem] w-[3.55rem] place-items-center rounded-full bg-[#07110f]">
-                <span className="font-display text-sm font-bold tabular-nums text-neon-100">{miningRateLabel}</span>
+              <div className="grid h-full w-full place-items-center rounded-full border border-emerald-100/10 bg-[#061711] shadow-[inset_0_2px_12px_rgba(0,0,0,0.75)]">
+                <div className="text-center">
+                  <span className="block max-w-[4.7rem] truncate font-display text-sm font-bold leading-none tabular-nums text-emerald-50 drop-shadow-[0_0_8px_rgba(124,247,197,0.5)]">{miningRateLabel}</span>
+                  <span className="mt-1 block font-mono text-[7px] font-semibold uppercase tracking-[0.2em] text-emerald-400/80">ZP / sec</span>
+                </div>
               </div>
             </div>
+            <p className="mt-2 font-mono text-[8px] uppercase tracking-wider text-emerald-300/70">Mining output</p>
           </div>
         </div>
-        <div
-          className="mt-3 h-1.5 overflow-hidden rounded-full bg-cyan-950/90"
-          role="progressbar"
-          aria-label="Core rank progression"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(rankProgress)}
-        >
-          <div className="h-full rounded-full bg-cyan-300 transition-all duration-500" style={{ width: String(rankProgress) + '%' }} />
+        <div className="relative mt-3 rounded-lg border border-white/[0.07] bg-black/30 px-3 py-2">
+          <div className="mb-1.5 flex items-center justify-between gap-2 font-mono text-[8px] uppercase tracking-wider">
+            <span className="text-slate-400">Core rank progression</span>
+            <span className="font-bold tabular-nums text-cyan-200">{Math.round(rankProgress)}%</span>
+          </div>
+          <div
+            className="h-2 overflow-hidden rounded-full border border-cyan-100/10 bg-slate-900"
+            role="progressbar"
+            aria-label="Core rank progression"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(rankProgress)}
+          >
+            <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-sky-300 to-cyan-100 shadow-[0_0_12px_rgba(103,221,255,0.55)] transition-all duration-700" style={{ width: String(rankProgress) + '%' }} />
+          </div>
         </div>
       </section>
 
