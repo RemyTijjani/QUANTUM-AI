@@ -58,6 +58,12 @@ async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const safeBytes = new Uint8Array(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", safeBytes.buffer);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function toTransaction(row: LedgerRow) {
   return {
     id: row.id,
@@ -147,12 +153,22 @@ Deno.serve(async (req: Request) => {
         }));
         const compressed = await bodyToBytes(archived.Body);
         const plain = await gunzip(compressed);
+        const checksum = await sha256Hex(plain);
+        const expectedChecksum = archived.Metadata?.sha256;
         const document = JSON.parse(new TextDecoder().decode(plain)) as {
           archive_type?: string;
+          row_count?: number;
           records?: LedgerRow[];
         };
-        if (document.archive_type !== "zord.zp_economy_ledger" || !Array.isArray(document.records)) {
-          throw new Error(`Invalid ZP history archive object: ${object.Key}`);
+        if (
+          document.archive_type !== "zord.zp_economy_ledger" ||
+          !Array.isArray(document.records) ||
+          document.row_count !== document.records.length ||
+          Number(archived.Metadata?.["row-count"]) !== document.records.length ||
+          !expectedChecksum ||
+          checksum !== expectedChecksum
+        ) {
+          throw new Error(`ZP history archive integrity verification failed: ${object.Key}`);
         }
         for (const row of document.records) {
           if (row && row.player_id === player.id && typeof row.id === "string") {
