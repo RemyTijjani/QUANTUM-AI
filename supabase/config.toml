@@ -39,3 +39,6 @@ verify_jwt = false
 
 [functions.history-archive-scheduled]
 verify_jwt = false
+
+[functions.history-archive-other-scheduled]
+verify_jwt = false
