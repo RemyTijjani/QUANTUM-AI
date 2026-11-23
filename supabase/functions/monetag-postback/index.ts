@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const POSTBACK_SECRET = Deno.env.get("MONETAG_POSTBACK_SECRET") ?? "";
-const MONETAG_ZONE_ID = "3571897";
+const MONETAG_ZONE_ID = "12235928";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function response(status: number, message: string) {
