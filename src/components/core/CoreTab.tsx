@@ -1,4 +1,4 @@
-import { AGENTS, FRAGMENT_IDS, FRAGMENT_NAMES, FRAGMENT_ZP_PER_SEC } from '@/lib/game/config';
+import { AGENTS, FRAGMENT_IDS, FRAGMENT_NAMES, FRAGMENT_ZP_PER_SEC_BY_ID, getFragmentZpPerSec } from '@/lib/game/config';
 import {
   Flame,
   Gift,
@@ -88,13 +88,16 @@ export default function CoreTab({
   const temporaryAgentRate = state.temporaryAgentUntil > now ? AGENTS.alpha.zpPerSec : 0;
   const temporaryFragmentBoost = state.fragmentMiningBoostUntil > now ? state.fragmentMiningBoostMultiplier : 1;
   const effectiveFragmentRateMultiplier = fragmentMiningRateMultiplier * temporaryFragmentBoost;
+  const activeFragmentIds = FRAGMENT_IDS.filter((id) =>
+    state.fragments[id] === 'fixed' && state.fragmentMiningUntil[id] > now
+  );
   const fragmentRate = !fragmentMiningEnabled || paidRentalRate > 0
     ? 0
-    : activeFragmentCount * FRAGMENT_ZP_PER_SEC * effectiveFragmentRateMultiplier;
+    : activeFragmentIds.reduce((sum, id) => sum + getFragmentZpPerSec(id), 0) * effectiveFragmentRateMultiplier;
   const rate = verifiedZpBalance === null ? 0 : paidRentalRate + temporaryAgentRate + fragmentRate;
   const miningRateLabel = verifiedZpBalance === null ? '—' : formatRate(rate);
   const maxMiningRate = Math.max(
-    FRAGMENT_ZP_PER_SEC * FRAGMENT_IDS.length * fragmentMiningRateMultiplier * 2,
+    Object.values(FRAGMENT_ZP_PER_SEC_BY_ID).reduce((sum, rate) => sum + rate, 0) * fragmentMiningRateMultiplier * 2,
     AGENTS.alpha.zpPerSec + AGENTS.overclock.zpPerSec,
     rate,
   );
