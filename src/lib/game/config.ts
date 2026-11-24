@@ -27,7 +27,16 @@ export const FRAGMENT_NAMES: Record<FragmentId, string> = {
 
 export const FRAGMENT_UNLOCK_REWARD = 50;
 export const CORE_BASE_RATE = 0.01;
+// Per-fragment base mining rates (ZP/sec). Capacitor and Atom use the
+// increased rate; Shield and Processor retain the standard rate.
 export const FRAGMENT_ZP_PER_SEC = 0.02;
+export const FRAGMENT_ZP_PER_SEC_BY_ID: Record<FragmentId, number> = {
+  top: 0.02,
+  bottom: 0.05,
+  left: 0.02,
+  right: 0.05,
+};
+export const getFragmentZpPerSec = (id: FragmentId) => FRAGMENT_ZP_PER_SEC_BY_ID[id];
 export const FRAGMENT_COOLDOWN_HOURS = 3;
 export const FRAGMENT_COOLDOWN_MS = FRAGMENT_COOLDOWN_HOURS * 60 * 60 * 1000;
 export const CORE_SESSION_HOURS = 4;
