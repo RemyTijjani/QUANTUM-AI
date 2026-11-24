@@ -364,33 +364,33 @@ function GameApp({
         return;
       }
 
-      if (session.provider === 'adsun') {
-        const adsunWindow = window as Window & {
-          Adsun?: {
+      if (session.provider === 'adsgram') {
+        const adsgramWindow = window as Window & {
+          Adsgram?: {
             init: (options: { blockId: string; debug?: boolean; debugConsole?: boolean }) => {
               show: () => Promise<{ done?: boolean }>;
             };
           };
         };
-        if (typeof adsunWindow.Adsun?.init !== 'function') {
-          throw new Error('Adsun is still loading. Please try again in a moment.');
+        if (typeof adsgramWindow.Adsgram?.init !== 'function') {
+          throw new Error('AdsGram is still loading. Please try again in a moment.');
         }
-        const controller = adsunWindow.Adsun.init({
-          blockId: '50344',
+        const controller = adsgramWindow.Adsgram.init({
+          blockId: '61713',
           debug: false,
           debugConsole: false,
         });
         if (!controller || typeof controller.show !== 'function') {
-          throw new Error('Adsun could not initialize the rewarded ad.');
+          throw new Error('AdsGram could not initialize the rewarded ad.');
         }
         const result = await controller.show();
         if (result?.done !== true) {
           setAdFragment(null);
-          notify('Adsun did not complete the rewarded ad. No Fragment was unlocked.', 'info');
+          notify('AdsGram did not complete the rewarded ad. No Fragment was unlocked.', 'info');
           return;
         }
-        // The SDK only controls the ad experience. Unlocking is decided solely
-        // by Adsun's authenticated server-to-server Reward URL callback.
+        // The SDK completion is only one signal. The backend also requires
+        // AdsGram's Reward URL callback before unlocking the Fragment.
       } else if (session.provider === 'onclicka') {
         const onclickaWindow = window as Window & {
           initCdTma?: (options: { id: number }) => Promise<() => Promise<unknown>>;
@@ -439,14 +439,14 @@ function GameApp({
 
       setAdFragment(null);
       if (completed) {
-        notify(session.provider === 'adsun'
-          ? 'Adsun verified the rewarded ad. Capacitor Fragment unlocked.'
+        notify(session.provider === 'adsgram'
+          ? 'AdsGram verified the rewarded ad. Capacitor Fragment unlocked.'
           : session.provider === 'onclicka'
             ? 'OnClicka verified the rewarded ad. Capacitor Fragment unlocked.'
             : 'Monetag verified the rewarded ad. Atom Fragment unlocked.', 'info');
       } else {
-        notify(session.provider === 'adsun'
-          ? 'Adsun finished the ad. ZORD is waiting for its server callback; no Fragment is unlocked until it arrives.'
+        notify(session.provider === 'adsgram'
+          ? 'AdsGram finished the ad. ZORD is waiting for its server callback; no Fragment is unlocked until it arrives.'
           : session.provider === 'onclicka'
             ? 'OnClicka SDK completed. ZORD is waiting for its server callback; no reward is granted until it arrives.'
             : 'Monetag confirmed the ad. ZORD is waiting for its server postback; the Fragment will unlock after verification.', 'info');
