@@ -215,6 +215,22 @@ Deno.serve(async (req: Request) => {
       return json({ success: true, sessionId: start.sessionId, ymid, provider: "monetag", fragmentId: "right" });
     }
 
+    if (body.action === "confirm_adsgram_fragment_unlock") {
+      if (typeof body.sessionId !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.sessionId)) {
+        return json({ error: "A valid Fragment ad session is required." }, 400);
+      }
+      const { data, error } = await admin.rpc("mark_adsgram_fragment_sdk_completed", {
+        p_player_id: player.id,
+        p_session_id: body.sessionId,
+      });
+      if (error) {
+        console.error("AdsGram SDK completion confirmation failed:", error);
+        return json({ error: "Could not verify the completed AdsGram ad session." }, 500);
+      }
+      return json(data, data?.success === false ? 409 : 200);
+    }
+
     if (body.action === "check_adsgram_fragment_unlock") {
       if (typeof body.sessionId !== "string" ||
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.sessionId)) {
