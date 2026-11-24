@@ -459,7 +459,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         ))}
       </div>
 
-      <div id="agent-rental-checkout" className="rounded-lg border border-cyan-300/15 bg-cyan-300/[0.025] p-2.5">
+      <div className="rounded-lg border border-cyan-300/15 bg-cyan-300/[0.025] p-2.5">
         <div className="flex items-center justify-between gap-2">
           <p className="font-display text-xs font-bold text-cyan-200">Active rentals</p>
           <span className="font-mono text-[8px] text-neon-600">Verified by server</span>
@@ -494,7 +494,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
       </div>
 
       {pendingIntents.slice(0, 1).map((pendingIntent) => (
-        <div key={pendingIntent.id} className="space-y-2 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.04] p-2.5">
+        <div id="agent-rental-checkout" key={pendingIntent.id} className="space-y-2 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.04] p-3 shadow-lg shadow-cyan-950/10">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="font-display text-[10px] font-bold uppercase text-cyan-300">GRAM checkout · {pendingIntent.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</p>
             <span className="font-mono text-[8px] uppercase text-emerald-300">TON Mainnet</span>
