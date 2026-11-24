@@ -1,4 +1,4 @@
-import { CORE_SESSION_HOURS, FRAGMENT_IDS, FRAGMENT_ZP_PER_SEC } from '@/lib/game/config';
+import { CORE_SESSION_HOURS, FRAGMENT_IDS, getFragmentZpPerSec } from '@/lib/game/config';
 import type { FragmentId } from '@/lib/game/config';
 import type { FragmentStatus } from '@/lib/game/state';
 import type { VerifiedAgentRental } from '@/lib/economy/verifiedEconomy';
@@ -19,22 +19,21 @@ export default function ZpMiningProgress({ fragments, miningUntil, miningEnabled
   const cycleFragments = FRAGMENT_IDS.filter((id) =>
     fragments[id] === 'fixed' && miningUntil[id] > 0
   );
-  const cycleRate = FRAGMENT_ZP_PER_SEC * rateMultiplier;
   const runningRentals = activeAgentRentals.filter((rental) => Date.parse(rental.startsAt) <= now && Date.parse(rental.expiresAt) > now);
   const agentTotalZp = runningRentals.reduce((sum, rental) => sum + rental.ratePerSecond * ((Date.parse(rental.expiresAt) - Date.parse(rental.startsAt)) / 1000), 0);
   const agentRemainingZp = runningRentals.reduce((sum, rental) => sum + rental.ratePerSecond * ((Date.parse(rental.expiresAt) - now) / 1000), 0);
   const agentRate = runningRentals.reduce((sum, rental) => sum + rental.ratePerSecond, 0);
   const agentMode = runningRentals.length > 0;
-  const totalCycleZp = agentMode ? agentTotalZp : cycleFragments.length * cycleRate * (miningSessionMs / 1000);
+  const totalCycleZp = agentMode ? agentTotalZp : cycleFragments.reduce((total, id) => total + getFragmentZpPerSec(id) * rateMultiplier * (miningSessionMs / 1000), 0);
   const remainingCycleZp = agentMode
     ? agentRemainingZp
     : miningEnabled
       ? cycleFragments.reduce((total, id) => {
           const remainingMs = Math.max(0, Math.min(miningSessionMs, miningUntil[id] - now));
-          return total + cycleRate * (remainingMs / 1000);
+          return total + getFragmentZpPerSec(id) * rateMultiplier * (remainingMs / 1000);
         }, 0)
       : totalCycleZp;
-  const displayedRate = agentMode ? agentRate : cycleRate;
+  const displayedRate = agentMode ? agentRate : cycleFragments.reduce((total, id) => total + getFragmentZpPerSec(id), 0) * rateMultiplier;
   const cycleProgress = totalCycleZp > 0 ? Math.max(0, Math.min(100, (remainingCycleZp / totalCycleZp) * 100)) : 0;
   const activeMiningCount = cycleFragments.filter((id) => miningUntil[id] > now).length;
   const miningPaused = !miningEnabled || miningPausedByRental;
@@ -73,7 +72,7 @@ export default function ZpMiningProgress({ fragments, miningUntil, miningEnabled
           />
         </div>
         <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[9px] text-emerald-500">
-          <span>{agentMode ? `+${displayedRate.toFixed(2)} ZP/sec · rental agents` : cycleFragments.length > 0 ? `+${cycleRate.toFixed(2)} ZP/sec per fragment` : 'No active mining cycle'}</span>
+          <span>{agentMode ? `+${displayedRate.toFixed(2)} ZP/sec · rental agents` : cycleFragments.length > 0 ? `+${displayedRate.toFixed(2)} ZP/sec total` : 'No active mining cycle'}</span>
           <span>{agentMode || cycleFragments.length > 0 ? `${Math.round(cycleProgress)}% remaining` : '0% loaded'}</span>
         </div>
       </div>
