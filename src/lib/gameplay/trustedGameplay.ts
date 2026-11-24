@@ -18,7 +18,7 @@ export interface TrustedUnlockStart {
   sessionId: string | null;
   ymid: string | null;
   alreadyUnlocked: boolean;
-  provider: 'monetag' | 'onclicka' | 'adsun' | 'free';
+  provider: 'monetag' | 'onclicka' | 'adsgram' | 'free';
 }
 
 export async function beginTrustedUnlock(fragmentId: FragmentId): Promise<TrustedUnlockStart> {
@@ -27,17 +27,17 @@ export async function beginTrustedUnlock(fragmentId: FragmentId): Promise<Truste
   });
   if (error) throw error;
   if (data?.success && data.alreadyUnlocked === true) {
-    return { sessionId: null, ymid: null, alreadyUnlocked: true, provider: fragmentId === 'top' ? 'free' : fragmentId === 'bottom' ? 'adsun' : 'monetag' };
+    return { sessionId: null, ymid: null, alreadyUnlocked: true, provider: fragmentId === 'top' || fragmentId === 'left' ? 'free' : fragmentId === 'bottom' ? 'adsgram' : 'monetag' };
   }
-  if (!data?.success || typeof data.sessionId !== 'string' || (data.provider !== 'onclicka' && data.provider !== 'adsun' && data.provider !== 'free' && typeof data.ymid !== 'string')) {
+  if (!data?.success || typeof data.sessionId !== 'string' || (data.provider !== 'onclicka' && data.provider !== 'adsgram' && data.provider !== 'free' && typeof data.ymid !== 'string')) {
     throw new Error(data?.reason === 'cooldown' ? 'This fragment is still cooling down.' : (data?.error ?? 'Could not start the trusted unlock session.'));
   }
-  return { sessionId: data.sessionId, ymid: typeof data.ymid === 'string' ? data.ymid : null, alreadyUnlocked: false, provider: data.provider === 'free' ? 'free' : data.provider === 'adsun' ? 'adsun' : data.provider === 'onclicka' ? 'onclicka' : 'monetag' };
+  return { sessionId: data.sessionId, ymid: typeof data.ymid === 'string' ? data.ymid : null, alreadyUnlocked: false, provider: data.provider === 'free' ? 'free' : data.provider === 'adsgram' ? 'adsgram' : data.provider === 'onclicka' ? 'onclicka' : 'monetag' };
 }
 
-export async function completeTrustedUnlock(sessionId: string, provider: 'monetag' | 'onclicka' | 'adsun' = 'monetag'): Promise<boolean> {
+export async function completeTrustedUnlock(sessionId: string, provider: 'monetag' | 'onclicka' | 'adsgram' = 'monetag'): Promise<boolean> {
   const { data, error } = await supabase.functions.invoke('gameplay-actions', {
-    body: { action: provider === 'adsun' ? 'check_adsun_fragment_unlock' : provider === 'onclicka' ? 'confirm_onclicka_fragment_unlock' : 'confirm_fragment_unlock', sessionId },
+    body: { action: provider === 'adsgram' ? 'check_adsgram_fragment_unlock' : provider === 'onclicka' ? 'confirm_onclicka_fragment_unlock' : 'confirm_fragment_unlock', sessionId },
   });
   if (error) throw error;
   if (!data?.success) {
