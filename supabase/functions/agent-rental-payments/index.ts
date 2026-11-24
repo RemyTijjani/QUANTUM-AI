@@ -251,6 +251,51 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (body.action === "cancel_intent") {
+      if (typeof body.intentId !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.intentId)) {
+        return json({ error: "A valid payment request is required." }, 400);
+      }
+
+      const { data: intent, error: intentError } = await admin
+        .from("agent_rental_payment_intents")
+        .select("id, player_id, amount_nano, payment_reference, recipient_address, status, created_at, expires_at")
+        .eq("id", body.intentId)
+        .eq("player_id", player.id)
+        .maybeSingle();
+      if (intentError || !intent) return json({ error: "Payment request was not found." }, 404);
+      if (intent.status !== "pending") {
+        return json({ error: "This checkout is no longer pending." }, 409);
+      }
+
+      // Never cancel a request if its matching transfer is already visible on-chain.
+      const payment = await findMainnetPayment(
+        intent.payment_reference,
+        String(intent.amount_nano),
+        intent.created_at,
+        intent.expires_at,
+      );
+      if (payment) {
+        return json({
+          error: "A matching payment was detected. Verify the payment instead of cancelling this checkout.",
+          paymentDetected: true,
+        }, 409);
+      }
+
+      const { data: cancelled, error: cancelError } = await admin
+        .from("agent_rental_payment_intents")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("id", intent.id)
+        .eq("player_id", player.id)
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle();
+      if (cancelError || !cancelled) {
+        return json({ error: "The checkout could not be cancelled. Refresh and try again." }, 409);
+      }
+      return json({ success: true, cancelled: true });
+    }
+
     if (body.action === "create_intent") {
       if (!MAINNET_RENTAL_INTENTS_ENABLED) {
         return json({ error: "Mainnet agent rental payments are disabled until ZORD launch approval." }, 403);
