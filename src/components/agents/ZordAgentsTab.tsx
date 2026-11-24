@@ -415,30 +415,31 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         </div>
       </details>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+      <section className="overflow-hidden rounded-2xl border border-emerald-300/20 bg-gradient-to-b from-emerald-950/30 via-black/45 to-black/60 shadow-[inset_0_1px_0_rgba(110,255,170,0.05)]">
+        <div className="grid grid-cols-2 divide-x divide-emerald-300/15">
         {RENTAL_OPTIONS.map((option) => (
           <article
             key={option.id}
-            className="flex min-w-0 min-h-[250px] flex-col gap-4 rounded-2xl border border-emerald-300/15 bg-gradient-to-b from-emerald-950/25 via-black/45 to-black/60 p-4 shadow-[inset_0_1px_0_rgba(110,255,170,0.04)] transition-colors hover:border-emerald-300/35 sm:p-5"
+            className="flex min-w-0 min-h-[220px] flex-col gap-3 p-3 transition-colors hover:bg-emerald-300/[0.025] sm:min-h-[240px] sm:gap-4 sm:p-5"
           >
-            <div className="flex min-w-0 items-center gap-4">
+            <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
               <span className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border ${option.id === 'alpha_miner' ? 'border-cyan-300/25 bg-cyan-300/[0.07]' : 'border-violet-300/25 bg-violet-300/[0.07]'}`}>
                 {option.id === 'alpha_miner'
                   ? <Pickaxe size={34} strokeWidth={1.7} className="text-cyan-300" />
                   : <Cpu size={34} strokeWidth={1.7} className="text-violet-300" />}
               </span>
               <div className="min-w-0">
-                <h3 className="font-display text-lg font-bold leading-tight text-emerald-200 sm:text-xl">{option.id === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</h3>
-                <p className="mt-2 font-mono text-sm leading-relaxed text-cyan-100">{option.rate}</p>
+                <h3 className="font-display text-sm font-bold leading-tight text-emerald-200 sm:text-xl">{option.id === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</h3>
+                <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-cyan-100 sm:mt-2 sm:text-sm">{option.rate}</p>
               </div>
             </div>
-            <div className="mt-auto flex items-baseline justify-between gap-2 border-t border-emerald-300/10 pt-4">
-              <span className="font-display text-2xl font-bold text-emerald-300 sm:text-3xl">{option.price}</span>
-              <span className="font-mono text-xs text-emerald-400/75">30 days</span>
+            <div className="mt-auto flex flex-col items-start gap-1 border-t border-emerald-300/10 pt-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2 sm:pt-4">
+              <span className="font-display text-lg font-bold text-emerald-300 sm:text-3xl">{option.price}</span>
+              <span className="font-mono text-[9px] text-emerald-400/75 sm:text-xs">30 days</span>
             </div>
             <button
               type="button"
-              className="btn-primary min-h-[68px] w-full rounded-2xl border border-emerald-300/30 bg-emerald-400/[0.06] px-3 py-3 font-display text-sm font-bold tracking-[0.12em] text-emerald-200 shadow-[0_0_22px_rgba(16,185,129,0.12)] hover:bg-emerald-400/[0.12]"
+              className="btn-primary min-h-10 w-full rounded-xl border border-emerald-300/30 bg-emerald-400/[0.06] px-2 py-2 font-display text-[9px] font-bold tracking-[0.08em] text-emerald-200 shadow-[0_0_22px_rgba(16,185,129,0.12)] hover:bg-emerald-400/[0.12] sm:min-h-[58px] sm:rounded-2xl sm:px-3 sm:py-3 sm:text-sm sm:tracking-[0.12em]"
               disabled={!rentalBackendActionsEnabled || busy !== null || (hasActiveIntent && intent?.agentType !== option.id)}
               onClick={() => {
                 if (hasActiveIntent && intent) {
@@ -460,11 +461,11 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
             </button>
           </article>
         ))}
-      </div>
+        </div>
 
-      <div className="rounded-lg border border-cyan-300/15 bg-cyan-300/[0.025] p-2.5">
+      <div className="border-t border-emerald-300/15 bg-black/20 p-3 sm:p-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-display text-xs font-bold text-cyan-200">Active rentals</p>
+          <p className="font-display text-xs font-bold text-cyan-200">Active Mining Agents</p>
           <span className="font-mono text-[8px] text-neon-600">Verified by server</span>
         </div>
         {rentalSummaryLoading ? (
@@ -495,6 +496,7 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
           </div>
         )}
       </div>
+      </section>
 
       {pendingIntents.slice(0, 1).map((pendingIntent) => (
         <div id="agent-rental-checkout" key={pendingIntent.id} className="space-y-2 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.04] p-3 shadow-lg shadow-cyan-950/10">
