@@ -37,7 +37,7 @@ export async function beginTrustedUnlock(fragmentId: FragmentId): Promise<Truste
 
 export async function completeTrustedUnlock(sessionId: string, provider: 'monetag' | 'onclicka' | 'adsgram' = 'monetag'): Promise<boolean> {
   const { data, error } = await supabase.functions.invoke('gameplay-actions', {
-    body: { action: provider === 'adsgram' ? 'check_adsgram_fragment_unlock' : provider === 'onclicka' ? 'confirm_onclicka_fragment_unlock' : 'confirm_fragment_unlock', sessionId },
+    body: { action: provider === 'adsgram' ? 'confirm_adsgram_fragment_unlock' : provider === 'onclicka' ? 'confirm_onclicka_fragment_unlock' : 'confirm_fragment_unlock', sessionId },
   });
   if (error) throw error;
   if (!data?.success) {
