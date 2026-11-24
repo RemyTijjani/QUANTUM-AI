@@ -137,11 +137,12 @@ export function encodeTonCommentPayload(comment: string): string {
   cell.set(commentData, 2);
 
   // Generic BOC header: no index, no CRC32C, one root and one cell.
-  // Header fields after the magic are flags, size_bytes, offset_bytes,
-  // cells_count, roots_count, absent_count, total_cells_size, root_index.
+  // The first byte after the magic packs flags and size_bytes together.
+  // It is followed by offset_bytes, cells_count, roots_count, absent_count,
+  // total_cells_size, and the root cell index.
   const header = new Uint8Array([
     0xb5, 0xee, 0x9c, 0x72,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x00,
+    0x01, 0x01, 0x01, 0x01, 0x00,
     cell.length, 0x00,
   ]);
   const boc = new Uint8Array(header.length + cell.length);
