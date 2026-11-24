@@ -506,19 +506,6 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
           </div>
           <p className="font-display text-lg text-cyan-200">{(Number(pendingIntent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} GRAM</p>
           <p className="font-mono text-[8px] text-neon-600">Secure payment request · expires {new Date(pendingIntent.expiresAt).toLocaleString()}</p>
-          <details className="rounded-md border border-neon/10 bg-black/20 px-2.5 py-2">
-            <summary className="cursor-pointer list-none text-[9px] font-semibold text-neon-300">Show payment details</summary>
-            <div className="mt-2 space-y-2 border-t border-neon/10 pt-2">
-              <div>
-                <p className="text-[8px] uppercase tracking-wide text-neon-600">Treasury destination</p>
-                <p className="mt-1 break-all font-mono text-[9px] text-neon-400">{pendingIntent.recipientAddress}</p>
-              </div>
-              <div>
-                <p className="text-[8px] uppercase tracking-wide text-neon-600">Unique payment reference</p>
-                <p className="mt-1 break-all font-mono text-[9px] text-neon-400">{pendingIntent.paymentReference}</p>
-              </div>
-            </div>
-          </details>
           <button type="button" className="btn-primary min-h-9 w-full text-[10px]" disabled={busy !== null || !walletAddress || !isMainnetWallet || Date.parse(pendingIntent.expiresAt) <= Date.now()} onClick={() => void sendPayment(pendingIntent)}>
             {busy === 'send' ? <LoaderCircle size={13} className="animate-spin" /> : `Pay ${ (Number(pendingIntent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '') } GRAM with TON wallet`}
           </button>
