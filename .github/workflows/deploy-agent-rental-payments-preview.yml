@@ -10,10 +10,10 @@ jobs:
   deploy-agent-rental-payments-preview:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the security development branch
+      - name: Check out the main branch
         uses: actions/checkout@v4
         with:
-          ref: security/trusted-gameplay-migration
+          ref: main
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
