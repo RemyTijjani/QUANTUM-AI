@@ -24,7 +24,7 @@ Deno.serve(async (req: Request) => {
   const blockId = params.get("block") ?? "";
   const secret = params.get("secret") ?? "";
 
-  if (!/^\\d{1,20}$/.test(telegramUserId) || BigInt(telegramUserId) <= 0n) {
+  if (!/^[0-9]{1,20}$/.test(telegramUserId) || BigInt(telegramUserId) <= 0n) {
     return reply(400, "Invalid userid");
   }
   if (blockId !== "61713" || !/^[a-f0-9]{64}$/i.test(secret)) {
