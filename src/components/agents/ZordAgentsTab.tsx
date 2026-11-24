@@ -60,7 +60,7 @@ const RENTAL_OPTIONS: {
 function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEconomy: () => Promise<void> | void }) {
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [pendingIntents, setPendingIntents] = useState<PaymentIntent[]>([]);
-  const [busy, setBusy] = useState<'alpha_miner' | 'overclocked_core' | 'send' | 'verify' | null>(null);
+  const [busy, setBusy] = useState<'alpha_miner' | 'overclocked_core' | 'send' | 'verify' | 'cancel' | null>(null);
   const [notice, setNotice] = useState('');
   const [noticeKind, setNoticeKind] = useState<'info' | 'success' | 'error'>('info');
   const [activeUntil, setActiveUntil] = useState<string | null>(null);
@@ -295,6 +295,29 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
     }
   };
 
+  const cancelIntent = async (targetIntent: PaymentIntent) => {
+    setBusy('cancel');
+    setNotice('');
+    try {
+      const { data, error } = await supabase.functions.invoke('agent-rental-payments', {
+        body: { action: 'cancel_intent', intentId: targetIntent.id },
+      });
+      if (error) throw new Error(error.message || 'Checkout cancellation failed.');
+      if (!data?.success || !data?.cancelled) {
+        throw new Error(data?.error || 'Checkout could not be cancelled.');
+      }
+      setPendingIntents((current) => current.filter((item) => item.id !== targetIntent.id));
+      setIntent((current) => current?.id === targetIntent.id ? null : current);
+      setNotice('Checkout cancelled. You can choose an agent and create a new payment request whenever you are ready.');
+      setNoticeKind('success');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Checkout cancellation failed.');
+      setNoticeKind('error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const verifyIntent = async (targetIntent: PaymentIntent | null = intent) => {
     if (!targetIntent) return;
     setBusy('verify');
@@ -511,6 +534,9 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
           </button>
           <button type="button" className="btn-ghost min-h-9 w-full text-[10px]" disabled={busy !== null} onClick={() => void verifyIntent(pendingIntent)}>
             {busy === 'verify' ? <LoaderCircle size={13} className="animate-spin" /> : 'Verify Mainnet payment'}
+          </button>
+          <button type="button" className="btn-ghost min-h-9 w-full border border-red-400/20 text-[10px] text-red-300 hover:bg-red-400/[0.06]" disabled={busy !== null} onClick={() => void cancelIntent(pendingIntent)}>
+            {busy === 'cancel' ? <LoaderCircle size={13} className="animate-spin" /> : 'Cancel Checkout'}
           </button>
           <p className="font-mono text-[8px] leading-relaxed text-neon-700">Only a matching, confirmed TON Mainnet transaction activates the 30-day rental.</p>
         </div>
