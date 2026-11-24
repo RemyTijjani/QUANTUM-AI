@@ -415,27 +415,30 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         </div>
       </details>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
         {RENTAL_OPTIONS.map((option) => (
-          <article key={option.id} className="flex min-w-0 flex-col gap-2 rounded-lg border border-neon/20 bg-black/35 p-2.5 transition-colors hover:border-neon/35">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${option.id === 'alpha_miner' ? 'border-cyan-300/25 bg-cyan-300/[0.07]' : 'border-violet-300/25 bg-violet-300/[0.07]'}`}>
+          <article
+            key={option.id}
+            className="flex min-w-0 min-h-[250px] flex-col gap-4 rounded-2xl border border-emerald-300/15 bg-gradient-to-b from-emerald-950/25 via-black/45 to-black/60 p-4 shadow-[inset_0_1px_0_rgba(110,255,170,0.04)] transition-colors hover:border-emerald-300/35 sm:p-5"
+          >
+            <div className="flex min-w-0 items-center gap-4">
+              <span className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border ${option.id === 'alpha_miner' ? 'border-cyan-300/25 bg-cyan-300/[0.07]' : 'border-violet-300/25 bg-violet-300/[0.07]'}`}>
                 {option.id === 'alpha_miner'
-                  ? <Pickaxe size={19} strokeWidth={1.8} className="text-cyan-300" />
-                  : <Cpu size={19} strokeWidth={1.8} className="text-violet-300" />}
+                  ? <Pickaxe size={34} strokeWidth={1.7} className="text-cyan-300" />
+                  : <Cpu size={34} strokeWidth={1.7} className="text-violet-300" />}
               </span>
               <div className="min-w-0">
-                <h3 className="font-display text-xs font-bold leading-tight text-neon-200">{option.id === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</h3>
-                <p className="mt-1 font-mono text-[9px] text-cyan-200">{option.rate}</p>
+                <h3 className="font-display text-lg font-bold leading-tight text-emerald-200 sm:text-xl">{option.id === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</h3>
+                <p className="mt-2 font-mono text-sm leading-relaxed text-cyan-100">{option.rate}</p>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-1 border-t border-neon/10 pt-2">
-              <span className="font-display text-sm font-bold text-neon-100">{option.price}</span>
-              <span className="font-mono text-[8px] text-neon-600">30 days</span>
+            <div className="mt-auto flex items-baseline justify-between gap-2 border-t border-emerald-300/10 pt-4">
+              <span className="font-display text-2xl font-bold text-emerald-300 sm:text-3xl">{option.price}</span>
+              <span className="font-mono text-xs text-emerald-400/75">30 days</span>
             </div>
             <button
               type="button"
-              className="btn-primary mt-auto min-h-9 w-full rounded-lg px-2 py-2 text-[9px]"
+              className="btn-primary min-h-[68px] w-full rounded-2xl border border-emerald-300/30 bg-emerald-400/[0.06] px-3 py-3 font-display text-sm font-bold tracking-[0.12em] text-emerald-200 shadow-[0_0_22px_rgba(16,185,129,0.12)] hover:bg-emerald-400/[0.12]"
               disabled={!rentalBackendActionsEnabled || busy !== null || (hasActiveIntent && intent?.agentType !== option.id)}
               onClick={() => {
                 if (hasActiveIntent && intent) {
@@ -450,10 +453,10 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
                 void createIntent(option.id);
               }}
             >
-              {busy === option.id ? <LoaderCircle size={13} className="animate-spin" /> : null}
+              {busy === option.id ? <LoaderCircle size={16} className="animate-spin" /> : null}
               {rentalBackendActionsEnabled
-                ? (hasActiveIntent ? (intent?.agentType === option.id ? 'Continue checkout' : 'Finish current checkout') : 'Rent agent')
-                : 'Preview locked'}
+                ? (hasActiveIntent ? (intent?.agentType === option.id ? 'Current Checkout' : 'Finish Current Checkout') : 'Rent Agent')
+                : 'Preview Locked'}
             </button>
           </article>
         ))}
