@@ -342,6 +342,10 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
     ? walletAddress.slice(0, 6) + '…' + walletAddress.slice(-6)
     : null;
   const isMainnetWallet = walletNetwork === '-239';
+  const hasActiveIntent = Boolean(intent && Date.parse(intent.expiresAt) > Date.now());
+  const scrollToRentalCheckout = () => {
+    document.getElementById('agent-rental-checkout')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   return (
     <section className="panel min-w-0 space-y-3 overflow-hidden rounded-xl border border-neon/25 bg-gradient-to-b from-neon/[0.06] to-black/30 p-2.5 sm:p-3">
@@ -367,7 +371,9 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         </button>
       </div>
 
-      <div className="rounded-lg border border-cyan-300/20 bg-cyan-300/[0.035] p-2.5">
+      <details className="rounded-lg border border-neon/10 bg-black/20 px-2.5 py-2">
+        <summary className="cursor-pointer list-none text-[9px] font-semibold text-neon-500">Advanced connection diagnostics</summary>
+        <div className="mt-2 rounded-lg border border-cyan-300/20 bg-cyan-300/[0.035] p-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="font-display text-[10px] font-bold text-cyan-200">GRAM connection test</p>
@@ -406,9 +412,10 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
             )}
           </div>
         )}
-      </div>
+        </div>
+      </details>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {RENTAL_OPTIONS.map((option) => (
           <article key={option.id} className="flex min-w-0 flex-col gap-2 rounded-lg border border-neon/20 bg-black/35 p-2.5 transition-colors hover:border-neon/35">
             <div className="flex min-w-0 items-center gap-2">
@@ -429,17 +436,30 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
             <button
               type="button"
               className="btn-primary mt-auto min-h-9 w-full rounded-lg px-2 py-2 text-[9px]"
-              disabled={!rentalBackendActionsEnabled || busy !== null || (intent !== null && Date.parse(intent.expiresAt) > Date.now())}
-              onClick={() => void createIntent(option.id)}
+              disabled={!rentalBackendActionsEnabled || busy !== null || (hasActiveIntent && intent?.agentType !== option.id)}
+              onClick={() => {
+                if (hasActiveIntent && intent) {
+                  if (intent.agentType === option.id) {
+                    scrollToRentalCheckout();
+                  } else {
+                    setNotice('Finish your current rental checkout before starting another one.');
+                    setNoticeKind('info');
+                  }
+                  return;
+                }
+                void createIntent(option.id);
+              }}
             >
               {busy === option.id ? <LoaderCircle size={13} className="animate-spin" /> : null}
-              {rentalBackendActionsEnabled ? (intent?.agentType === option.id ? 'Current checkout' : 'Rent agent') : 'Preview locked'}
+              {rentalBackendActionsEnabled
+                ? (hasActiveIntent ? (intent?.agentType === option.id ? 'Continue checkout' : 'Finish current checkout') : 'Rent agent')
+                : 'Preview locked'}
             </button>
           </article>
         ))}
       </div>
 
-      <div className="rounded-lg border border-cyan-300/15 bg-cyan-300/[0.025] p-2.5">
+      <div id="agent-rental-checkout" className="rounded-lg border border-cyan-300/15 bg-cyan-300/[0.025] p-2.5">
         <div className="flex items-center justify-between gap-2">
           <p className="font-display text-xs font-bold text-cyan-200">Active rentals</p>
           <span className="font-mono text-[8px] text-neon-600">Verified by server</span>
@@ -473,16 +493,27 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
         )}
       </div>
 
-      {pendingIntents.map((pendingIntent) => (
+      {pendingIntents.slice(0, 1).map((pendingIntent) => (
         <div key={pendingIntent.id} className="space-y-2 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.04] p-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="font-display text-[10px] font-bold uppercase text-cyan-300">GRAM checkout · {pendingIntent.agentType === 'alpha_miner' ? 'Alpha Miner' : 'Overclocked Core'}</p>
             <span className="font-mono text-[8px] uppercase text-emerald-300">TON Mainnet</span>
           </div>
           <p className="font-display text-lg text-cyan-200">{(Number(pendingIntent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} GRAM</p>
-          <p className="break-all font-mono text-[9px] text-neon-500">Destination: {pendingIntent.recipientAddress}</p>
-          <p className="break-all font-mono text-[9px] text-neon-500">Payment reference: {pendingIntent.paymentReference}</p>
-          <p className="font-mono text-[8px] text-neon-600">Request expires {new Date(pendingIntent.expiresAt).toLocaleString()}</p>
+          <p className="font-mono text-[8px] text-neon-600">Secure payment request · expires {new Date(pendingIntent.expiresAt).toLocaleString()}</p>
+          <details className="rounded-md border border-neon/10 bg-black/20 px-2.5 py-2">
+            <summary className="cursor-pointer list-none text-[9px] font-semibold text-neon-300">Show payment details</summary>
+            <div className="mt-2 space-y-2 border-t border-neon/10 pt-2">
+              <div>
+                <p className="text-[8px] uppercase tracking-wide text-neon-600">Treasury destination</p>
+                <p className="mt-1 break-all font-mono text-[9px] text-neon-400">{pendingIntent.recipientAddress}</p>
+              </div>
+              <div>
+                <p className="text-[8px] uppercase tracking-wide text-neon-600">Unique payment reference</p>
+                <p className="mt-1 break-all font-mono text-[9px] text-neon-400">{pendingIntent.paymentReference}</p>
+              </div>
+            </div>
+          </details>
           <button type="button" className="btn-primary min-h-9 w-full text-[10px]" disabled={busy !== null || !walletAddress || !isMainnetWallet || Date.parse(pendingIntent.expiresAt) <= Date.now()} onClick={() => void sendPayment(pendingIntent)}>
             {busy === 'send' ? <LoaderCircle size={13} className="animate-spin" /> : `Pay ${ (Number(pendingIntent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '') } GRAM with TON wallet`}
           </button>
