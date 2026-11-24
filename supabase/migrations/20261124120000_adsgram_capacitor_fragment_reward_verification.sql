@@ -24,6 +24,9 @@ ALTER TABLE app_private.adsgram_callback_credentials ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON app_private.adsgram_callback_credentials FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON app_private.adsgram_callback_credentials TO service_role;
 
+-- Disable the retired Adsun callback credential so it can no longer unlock Capacitor.
+UPDATE app_private.adsun_callback_credentials SET enabled = false;
+
 INSERT INTO app_private.adsgram_callback_credentials(secret_hash)
 VALUES ('0b9fd3921a352cfffc2b1803c0cf7d03719d97dd8251f94ab052a33d8c5c67ce')
 ON CONFLICT (secret_hash) DO UPDATE SET enabled = true;
