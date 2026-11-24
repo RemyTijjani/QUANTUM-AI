@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
       if (fragmentId !== "top" && fragmentId !== "left" && fragmentId !== "right" && fragmentId !== "bottom") {
         return json({ success: false, reason: "provider_not_configured", error: "This Fragment's assigned ad provider is not connected yet." }, 503);
       }
-      const provider = fragmentId === "top" || fragmentId === "left" ? "free" : fragmentId === "bottom" ? "adsun" : "monetag";
+      const provider = fragmentId === "top" || fragmentId === "left" ? "free" : fragmentId === "bottom" ? "adsgram" : "monetag";
       const { data: start, error: startError } = await admin.rpc("begin_fragment_unlock", {
         p_player_id: player.id,
         p_fragment_id: fragmentId,
@@ -131,7 +131,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: existing, error: lookupError } = await admin
         .from("fragment_unlock_sessions")
-        .select("id, ad_provider, monetag_ymid, adsun_block_id, status")
+        .select("id, ad_provider, monetag_ymid, adsgram_block_id, status")
         .eq("id", start.sessionId)
         .eq("player_id", player.id)
         .maybeSingle();
@@ -149,19 +149,19 @@ Deno.serve(async (req: Request) => {
         return json({ error: "This Fragment session belongs to another ad provider." }, 409);
       }
 
-      if (provider === "adsun") {
+      if (provider === "adsgram") {
         const { error: updateError } = await admin
           .from("fragment_unlock_sessions")
-          .update({ ad_provider: "adsun", adsun_block_id: "50344" })
+          .update({ ad_provider: "adsgram", adsgram_block_id: "61713" })
           .eq("id", start.sessionId)
           .eq("player_id", player.id)
           .eq("status", "pending")
-          .or("ad_provider.is.null,ad_provider.eq.adsun");
+          .or("ad_provider.is.null,ad_provider.eq.adsgram");
         if (updateError) {
-          console.error("Adsun provider assignment failed:", updateError);
-          return json({ error: "Could not prepare the Adsun verification session." }, 500);
+          console.error("AdsGram provider assignment failed:", updateError);
+          return json({ error: "Could not prepare the AdsGram verification session." }, 500);
         }
-        return json({ success: true, sessionId: start.sessionId, provider: "adsun", blockId: "50344", fragmentId: "bottom" });
+        return json({ success: true, sessionId: start.sessionId, provider: "adsgram", blockId: "61713", fragmentId: "bottom" });
       }
 
       if (provider === "onclicka") {
@@ -215,18 +215,18 @@ Deno.serve(async (req: Request) => {
       return json({ success: true, sessionId: start.sessionId, ymid, provider: "monetag", fragmentId: "right" });
     }
 
-    if (body.action === "check_adsun_fragment_unlock") {
+    if (body.action === "check_adsgram_fragment_unlock") {
       if (typeof body.sessionId !== "string" ||
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.sessionId)) {
         return json({ error: "A valid Fragment ad session is required." }, 400);
       }
-      const { data, error } = await admin.rpc("get_adsun_fragment_unlock_status", {
+      const { data, error } = await admin.rpc("get_adsgram_fragment_unlock_status", {
         p_player_id: player.id,
         p_session_id: body.sessionId,
       });
       if (error) {
-        console.error("Adsun unlock status lookup failed:", error);
-        return json({ error: "Could not check the Adsun verification status." }, 500);
+        console.error("AdsGram unlock status lookup failed:", error);
+        return json({ error: "Could not check the AdsGram verification status." }, 500);
       }
       return json(data, data?.success === false ? 409 : 200);
     }
