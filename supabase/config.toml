@@ -42,3 +42,6 @@ verify_jwt = false
 
 [functions.history-archive-other-scheduled]
 verify_jwt = false
+
+[functions.adsgram-postback]
+verify_jwt = false
