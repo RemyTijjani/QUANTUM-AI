@@ -233,41 +233,44 @@ export default function MysteryBoxPanel({
       const { data: session, error: sessionError } = await supabase.functions.invoke('mystery-box-actions', {
         body: { action: 'begin_mystery_box_ad', requestId },
       });
-      if (sessionError || !session?.success || !session.sessionId || !session.ymid) {
-        throw new Error(session?.message || sessionError?.message || 'Monetag could not prepare your rewarded-ad session.');
+      if (sessionError || !session?.success || session.provider !== 'onclicka' ||
+          session.spotId !== 6155605 || typeof session.sessionId !== 'string') {
+        throw new Error(session?.message || sessionError?.message || 'OnClicka could not prepare your rewarded-ad session.');
       }
 
-      const showAd = (window as Window & {
-        show_12235928?: (options: { type: 'end'; ymid: string; requestVar: string }) => Promise<{ reward_event_type?: string } | undefined>;
-      }).show_12235928;
-      if (typeof showAd !== 'function') {
-        throw new Error('Monetag is still loading. Please try again in a moment.');
+      const onclickaWindow = window as Window & {
+        initCdTma?: (options: { id: number }) => Promise<() => Promise<unknown>>;
+      };
+      if (typeof onclickaWindow.initCdTma !== 'function') {
+        throw new Error('OnClicka is still loading. Please try again in a moment.');
+      }
+      const showOnclickaAd = await onclickaWindow.initCdTma({ id: 6155605 });
+      if (typeof showOnclickaAd !== 'function') {
+        throw new Error('OnClicka could not initialize the rewarded ad.');
       }
 
-      const event = await showAd({ type: 'end', ymid: session.ymid, requestVar: 'mystery_box' });
-      if (event?.reward_event_type !== 'valued') {
-        notify('Monetag did not confirm a valued rewarded ad. No Mystery Box was granted.', 'info');
-        return;
-      }
+      // SDK completion is not sufficient to grant a reward. The database
+      // requires both this signal and OnClicka's authenticated USERID postback.
+      await showOnclickaAd();
 
       let result: unknown = null;
       for (let attempt = 0; attempt < 20; attempt += 1) {
         const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
           body: { action: 'confirm_mystery_box_ad', sessionId: session.sessionId },
         });
-        if (error) throw new Error(error.message || 'Could not confirm the Monetag ad session.');
-        if (data?.completed === true && data?.success === true) {
+        if (error) throw new Error(error.message || 'Could not confirm the OnClicka ad session.');
+        if (data?.success === true && data?.completed === true) {
           result = data;
           break;
         }
-        if (data?.reason && data.reason !== 'session_not_pending') {
-          throw new Error('Monetag verification could not complete this Mystery Box opening.');
+        if (data?.reason && !['pending_verification', 'session_not_pending'].includes(data.reason)) {
+          throw new Error('OnClicka verification could not complete this Mystery Box opening.');
         }
         await new Promise((resolve) => window.setTimeout(resolve, 1500));
       }
 
       if (!result) {
-        notify('Monetag reported the ad, but ZORD is still waiting for its verified server postback. No box has been credited yet.', 'info');
+        notify('OnClicka finished the ad. ZORD is still waiting for its verified USERID postback; no reward has been credited yet.', 'info');
         await loadInventory(true);
         return;
       }
@@ -276,11 +279,15 @@ export default function MysteryBoxPanel({
         throw new Error('The verified Mystery Box response was incomplete. Please refresh your inventory.');
       }
       setLastReward(result);
-      notify('Monetag verified your rewarded ad. Your Mystery Box reward has been recorded.');
+      notify('OnClicka verified your rewarded ad. Your Mystery Box reward has been recorded.');
       await loadInventory(true);
-      await onZpReward();
+      try {
+        await onZpReward();
+      } catch {
+        notify('The reward was recorded, but your balance could not refresh. Reopen the Vault or refresh later.', 'error');
+      }
     } catch (requestError) {
-      notify(requestError instanceof Error ? requestError.message : 'The Monetag rewarded ad could not be verified. No box was granted.', 'error');
+      notify(requestError instanceof Error ? requestError.message : 'The OnClicka rewarded ad could not be verified. No box was granted.', 'error');
     } finally {
       setRepeatBusy(false);
       setOpeningId(null);
@@ -399,7 +406,7 @@ export default function MysteryBoxPanel({
           ) : (
             <p className="rounded-lg border border-neon/15 bg-black/20 p-3 font-mono text-[9px] text-neon-700">Repeat opening status is loading. Refresh if this message remains.</p>
           )}
-          <p className="font-mono text-[8px] leading-relaxed text-neon-700">Both repeat options share one server-enforced 2-hour cooldown. Monetag rewards are credited only after its valued server postback and ZORD SDK completion are both recorded.</p>
+          <p className="font-mono text-[8px] leading-relaxed text-neon-700">Both repeat options share one server-enforced 2-hour cooldown. OnClicka rewards are credited only after its USERID server postback and ZORD SDK completion are both recorded.</p>
         </div>
       </div>
       </div>
