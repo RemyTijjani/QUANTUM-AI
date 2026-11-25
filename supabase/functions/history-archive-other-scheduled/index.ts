@@ -42,6 +42,17 @@ Deno.serve(async req=>{
     if(!rows?.length){results.push({table,archived:0});continue;}
     try{
       const saved=await writeVerified(client,table,rows);
+      if (table === "fragment_mining_accruals") {
+        const eligibleTimes = rows.map(row => row.eligible_at).sort();
+        const { error: manifestError } = await db.from("history_archive_manifest").upsert({
+          archive_key: saved.key, table_name: "fragment_mining_accruals",
+          archive_type: "zord.history.fragment_mining_accruals", sha256: saved.checksum,
+          row_count: saved.rowCount, oldest_record_at: eligibleTimes[0],
+          newest_record_at: eligibleTimes[eligibleTimes.length - 1],
+          archived_at: new Date().toISOString(), verified_at: new Date().toISOString(),
+        }, { onConflict: "archive_key" });
+        if (manifestError) throw new Error("R2 verified but fragment archive manifest registration failed; batch will safely retry.");
+      }
       const last=rows[rows.length-1];
       const {error:updateError}=await db.from("history_archive_other_control").update({after_eligible_at:last.eligible_at,after_id:last.id,last_archived_at:new Date().toISOString(),last_batch_count:rows.length}).eq("table_name",table);
       if(updateError)throw new Error(`R2 verified but cursor update failed for ${table}; retry will safely overwrite the same object.`);
