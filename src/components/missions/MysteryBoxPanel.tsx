@@ -46,18 +46,6 @@ interface OpenResult {
   zapAmount: number | null;
 }
 
-const STANDARD_ODDS = [
-  ['100 ZP', '20%'], ['200 ZP', '18%'], ['300 ZP', '15%'], ['400 ZP', '12%'],
-  ['500 ZP', '10%'], ['600 ZP', '8%'], ['700 ZP', '6%'], ['800 ZP', '5%'],
-  ['900 ZP', '3%'], ['1,000 ZP', '3%'],
-];
-const PREMIUM_ODDS = [
-  ['100 ZP', '2%'], ['200 ZP', '3%'], ['300 ZP', '4%'], ['400 ZP', '5%'],
-  ['500 ZP', '6%'], ['600 ZP', '8%'], ['700 ZP', '10%'], ['800 ZP', '12%'],
-  ['900 ZP', '14%'], ['1,000 ZP', '16%'], ['1–10 ZAP', '10% total (1% each)'],
-  ['2× Fragment Mining boost · 6h', '10%'],
-];
-
 function formatDate(value: string) {
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date.toLocaleString() : 'Date unavailable';
@@ -436,19 +424,6 @@ export default function MysteryBoxPanel({
           </article>
         ))}
         <p className="flex items-start gap-2 border-t border-neon/10 pt-3 font-mono text-[8px] leading-relaxed text-neon-700"><ShieldCheck size={13} className="shrink-0" /> Opening a box immediately records and grants its server-selected reward. Please open only when you are ready.</p>
-      </div>
-
-      <div className="panel space-y-3 p-4">
-        <p className="label">Published reward odds</p>
-        <details className="group rounded-lg border border-neon/15 bg-black/20 p-3">
-          <summary className="cursor-pointer list-none font-mono text-[10px] font-bold uppercase text-neon-300">Standard Box · 100% ZP rewards</summary>
-          <div className="mt-3 space-y-2">{STANDARD_ODDS.map(([prize, chance]) => <div key={prize} className="flex justify-between font-mono text-[9px] text-neon-500"><span>{prize}</span><span>{chance}</span></div>)}</div>
-        </details>
-        <details className="group rounded-lg border border-violet-300/20 bg-black/20 p-3">
-          <summary className="cursor-pointer list-none font-mono text-[10px] font-bold uppercase text-violet-200">Premium Box · ZP, ZAP or boost</summary>
-          <div className="mt-3 space-y-2">{PREMIUM_ODDS.map(([prize, chance]) => <div key={prize} className="flex justify-between gap-3 font-mono text-[9px] text-neon-500"><span>{prize}</span><span className="shrink-0 text-right">{chance}</span></div>)}</div>
-        </details>
-        <p className="font-mono text-[8px] leading-relaxed text-neon-700">ZAP amounts 1–10 each have an equal 1% overall chance in a Premium Box. A Premium Box boost appears under ZORD Agents → Temporary Activations. Activate it there; its six-hour timer starts on activation and it affects the in-game mining estimate only.</p>
       </div>
 
       {inventory.recentOpenings.length > 0 && (
