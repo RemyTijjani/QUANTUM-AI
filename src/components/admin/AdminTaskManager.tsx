@@ -67,7 +67,7 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive,
             <span className="mb-1 block text-[10px] font-medium text-slate-400">Category</span>
             <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as typeof kindFilter)} className="admin-field">
               <option value="all">All categories ({tasks.length})</option>
-              {(['daily', 'social', 'creator'] as const).map((kind) => <option key={kind} value={kind}>{kind[0].toUpperCase() + kind.slice(1)} ({tasks.filter((task) => task.kind === kind).length})</option>)}
+              {(['daily', 'social', 'creator', 'sponsored'] as const).map((kind) => <option key={kind} value={kind}>{kind[0].toUpperCase() + kind.slice(1)} ({tasks.filter((task) => task.kind === kind).length})</option>)}
             </select>
           </label>
           <div className="flex items-end justify-between gap-2 text-[10px] text-slate-400 sm:justify-end">
@@ -272,6 +272,7 @@ function TaskFormModal({
               <option value="daily">Daily</option>
               <option value="social">Social</option>
               <option value="creator">Creator</option>
+              <option value="sponsored">Sponsored</option>
             </select>
           </div>
           <div>
