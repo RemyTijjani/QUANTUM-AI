@@ -28,6 +28,7 @@ export interface AdminTask {
   rewardCurrency: 'ZP' | 'ZAP';
   unlockCostZp: number;
   status: 'draft' | 'published' | 'paused' | 'archived';
+  isDeleted: boolean;
   objectives: string[];
   requirements: string[];
 }
@@ -454,15 +455,8 @@ export async function archiveTask(
   });
 }
 
-export async function deleteTask(
-  creds: AdminCredentials,
-  taskId: string,
-): Promise<void> {
-  await callAdminApi(creds, {
-    action: 'delete_task',
-    taskId,
-  });
-}
+export async function deleteTask(creds: AdminCredentials, taskId: string): Promise<void> { await callAdminApi(creds, { action: 'delete_task', taskId }); }
+export async function restoreTask(creds: AdminCredentials, taskId: string): Promise<void> { await callAdminApi(creds, { action: 'restore_task', taskId }); }
 
 export async function saveVaultReserves(
   creds: AdminCredentials,
