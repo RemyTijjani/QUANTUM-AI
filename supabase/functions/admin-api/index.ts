@@ -377,6 +377,7 @@ interface AdminRequestBody {
     | "fetch_dashboard"
     | "save_task"
     | "delete_task"
+    | "restore_task"
     | "archive_task"
     | "save_vault_reserves"
     | "save_event"
@@ -732,7 +733,7 @@ Deno.serve(async (req: Request) => {
         db
           .from("mission_tasks")
           .select(
-            "id, kind, title, description, reward, platform, action_url, telegram_chat_id, reward_currency, unlock_cost_zp, status, objectives, requirements"
+            "id, kind, title, description, reward, platform, action_url, telegram_chat_id, reward_currency, unlock_cost_zp, status, objectives, requirements, deleted_at"
           )
           .order("created_at", { ascending: true }),
 
@@ -800,6 +801,7 @@ Deno.serve(async (req: Request) => {
           rewardCurrency: t.reward_currency ?? "ZP",
           unlockCostZp: t.unlock_cost_zp ?? 0,
           status: t.status ?? "published",
+          isDeleted: t.deleted_at !== null,
           objectives: Array.isArray(t.objectives) ? t.objectives : [],
           requirements: Array.isArray(t.requirements) ? t.requirements : [],
         })),
@@ -2098,57 +2100,17 @@ Deno.serve(async (req: Request) => {
 
     // Permanently delete only missions with no linked player or expedition history.
     // Historical records are never cascade-deleted; use archive_task when history exists.
-    if (body.action === "delete_task") {
+    if (body.action === "delete_task" || body.action === "restore_task") {
       const taskId = typeof body.taskId === "string" ? body.taskId.trim() : "";
-      if (!taskId || taskId.length > 120) {
-        return json({ error: "A valid taskId is required." }, 400);
-      }
-
-      const { data: task, error: lookupError } = await db
-        .from("mission_tasks")
-        .select("id, title")
-        .eq("id", taskId)
-        .maybeSingle();
-
-      if (lookupError || !task) {
-        return json({ error: "Mission task not found." }, 404);
-      }
-
-      const [creatorSubmissions, expeditionActivities, telegramClaims] = await Promise.all([
-        db.from("creator_ops_submissions").select("id", { count: "exact", head: true }).eq("mission_id", taskId),
-        db.from("game_event_activities").select("id", { count: "exact", head: true }).eq("mission_id", taskId),
-        db.from("telegram_mission_claims").select("id", { count: "exact", head: true }).eq("mission_id", taskId),
-      ]);
-
-      const referenceErrors = [creatorSubmissions.error, expeditionActivities.error, telegramClaims.error];
-      if (referenceErrors.some(Boolean)) {
-        console.error("Mission deletion history check failed:", referenceErrors);
-        return json({ error: "Could not verify mission history. Nothing was deleted; try again." }, 500);
-      }
-
-      const linkedHistory = {
-        creatorSubmissions: creatorSubmissions.count ?? 0,
-        expeditionActivities: expeditionActivities.count ?? 0,
-        telegramClaims: telegramClaims.count ?? 0,
-      };
-      if (Object.values(linkedHistory).some((count) => count > 0)) {
-        return json({
-          error: "This mission has linked player or expedition history and cannot be permanently deleted. Archive it instead to preserve those records.",
-          linkedHistory,
-        }, 409);
-      }
-
-      const { error: deleteError } = await db
-        .from("mission_tasks")
-        .delete()
-        .eq("id", taskId);
-
-      if (deleteError) {
-        console.error("Mission task permanent deletion failed:", deleteError);
-        return json({ error: "Could not delete this mission. It may have linked history; archive it instead." }, 409);
-      }
-
-      return json({ success: true, deleted: true, id: taskId });
+      if (!taskId || taskId.length > 120) return json({ error: "A valid taskId is required." }, 400);
+      const { data: task, error: lookupError } = await db.from("mission_tasks").select("id, deleted_at").eq("id", taskId).maybeSingle();
+      if (lookupError || !task) return json({ error: "Mission task not found." }, 404);
+      const deleting = body.action === "delete_task";
+      if (deleting && task.deleted_at) return json({ success: true, deleted: true, alreadyDeleted: true, id: taskId });
+      if (!deleting && !task.deleted_at) return json({ success: true, restored: true, alreadyRestored: true, id: taskId });
+      const { error } = await db.from("mission_tasks").update({ deleted_at: deleting ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq("id", taskId);
+      if (error) { console.error("Mission soft-delete/restore failed:", error); return json({ error: deleting ? "Could not delete this mission from active lists." : "Could not restore this mission." }, 500); }
+      return json({ success: true, deleted: deleting, restored: !deleting, id: taskId });
     }
 
     // Reserve the complete prize pool before any raffle can be published.
