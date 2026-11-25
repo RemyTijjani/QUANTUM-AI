@@ -1,0 +1,1 @@
+GRANT SELECT ON public.agent_rental_zp_accruals TO service_role;
