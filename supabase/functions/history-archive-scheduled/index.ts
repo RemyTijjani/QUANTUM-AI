@@ -150,6 +150,14 @@ Deno.serve(async req => {
     }
 
     const result = await upload(s3, rows as Array<Record<string, unknown>>), last = rows[rows.length - 1];
+    const ledgerTimes = rows.map(row => String(row.created_at)).sort();
+    const { error: manifestError } = await db.from("history_archive_manifest").upsert({
+      archive_key: result.key, table_name: "economy_ledger", archive_type: "zord.zp_economy_ledger",
+      sha256: result.checksum, row_count: result.rowCount,
+      oldest_record_at: ledgerTimes[0], newest_record_at: ledgerTimes[ledgerTimes.length - 1],
+      archived_at: new Date().toISOString(), verified_at: new Date().toISOString(),
+    }, { onConflict: "archive_key" });
+    if (manifestError) throw new Error("R2 verified but archive manifest registration failed; batch will safely retry.");
     const next = rows.length < LIMIT
       ? { checkpoint_created_at: high.created_at, checkpoint_id: high.id, high_water_created_at: null, high_water_id: null, after_created_at: null, after_id: null }
       : { after_created_at: last.created_at, after_id: last.id };
