@@ -9,7 +9,8 @@ import { FRAGMENT_IDS } from '@/lib/game/config';
 
 import {
   beginTrustedUnlock,
-  completeTrustedUnlock,\n  checkTrustedUnlockStatus,
+  completeTrustedUnlock,
+  checkTrustedUnlockStatus,
   completeFreeFragmentUnlock,
   fetchTrustedFragments,
   fixTrustedFragment,
