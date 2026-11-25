@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { Database, Plus, Edit2, Archive, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Database, Plus, Edit2, Archive, Trash2, Loader2, Eye, EyeOff } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { formatZp } from '@/lib/format';
 import { AdminApiError } from '@/lib/admin/adminApi';
@@ -10,9 +10,10 @@ interface AdminTaskManagerProps {
   busyTaskId: string | null;
   onSave: (input: AdminTaskInput) => Promise<void>;
   onArchive: (taskId: string) => Promise<void>;
+  onDelete: (taskId: string) => Promise<void>;
 }
 
-export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive }: AdminTaskManagerProps) {
+export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive, onDelete }: AdminTaskManagerProps) {
   const [editingTask, setEditingTask] = useState<AdminTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | AdminTask['status']>('all');
@@ -153,6 +154,20 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive 
                   className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
                 >
                   {busyTaskId === task.id ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Permanently delete "${task.title}"? This is only possible when no player claims, Creator Ops submissions, or expedition activity are linked. If history exists, the task must be archived instead.`)) {
+                      void onDelete(task.id);
+                    }
+                  }}
+                  disabled={busyTaskId === task.id}
+                  aria-label={`Delete ${task.title}`}
+                  title="Permanently delete task (only if no history is linked)"
+                  className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-red-400/20 bg-red-400/5 text-red-300 transition hover:bg-red-400/10 disabled:opacity-50"
+                >
+                  {busyTaskId === task.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 </button>
               </div>
             </article>
