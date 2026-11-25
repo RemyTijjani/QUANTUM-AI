@@ -37,9 +37,9 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
         {loading ? (
           <p className="mt-2 font-display text-xl text-cyan-200">Loading…</p>
         ) : leaderboard ? (
-          <div className="mt-1 flex items-end justify-between gap-3">
+          <div className="mt-1 flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
             <p className="font-display text-2xl font-bold text-cyan-100">#{leaderboard.me.rank}</p>
-            <p className="font-mono text-xs text-cyan-200">{formatZp(Number(leaderboard.me.rankingEarned))} net ZAP</p>
+            <p className="font-mono text-xs tabular-nums text-cyan-200">{formatZp(Number(leaderboard.me.rankingEarned))} net ZAP</p>
           </div>
         ) : (
           <p className="mt-2 font-mono text-xs text-red-300">Ranking unavailable</p>
@@ -55,19 +55,19 @@ export default function LeaderboardModal({ onClose }: LeaderboardModalProps) {
       {!loading && !error && entries.length > 0 && (
         <ol className="space-y-2">
           {entries.map((entry) => (
-            <li key={entry.rank} className={`flex items-center gap-3 rounded-lg border px-3 py-3 ${entry.isYou ? 'border-cyan-300/60 bg-cyan-300/10 shadow-glow' : 'border-neon/15 bg-black/40'}`}>
-              <span className={`w-7 shrink-0 font-display text-sm font-bold tabular-nums ${RANK_TONE[entry.rank - 1] ?? 'text-neon-600'}`}>
+            <li key={entry.rank} className={`flex min-w-0 items-center gap-2 sm:gap-3 rounded-lg border px-3 py-3 ${entry.isYou ? 'border-cyan-300/60 bg-cyan-300/10 shadow-glow' : 'border-neon/15 bg-black/40'}`}>
+              <span className={`w-12 shrink-0 whitespace-nowrap font-display text-sm font-bold tabular-nums ${RANK_TONE[entry.rank - 1] ?? 'text-neon-600'}`}>
                 {entry.rank <= 3 ? <Trophy size={16} className="inline" /> : `#${entry.rank}`}
               </span>
               <span className="min-w-0 flex-1 truncate font-mono text-xs text-neon-200">{entry.name}</span>
-              <span className="shrink-0 font-mono text-xs tabular-nums text-cyan-200">{formatZp(Number(entry.rankingEarned))} ZAP</span>
+              <span className="shrink-0 whitespace-nowrap font-mono text-xs tabular-nums text-cyan-200">{formatZp(Number(entry.rankingEarned))} ZAP</span>
             </li>
           ))}
           {!meIsListed && leaderboard?.me && (
-            <li className="flex items-center gap-3 rounded-lg border border-cyan-300/60 bg-cyan-300/10 px-3 py-3">
-              <span className="w-7 font-display text-sm font-bold text-cyan-200">#{leaderboard.me.rank}</span>
+            <li className="flex min-w-0 items-center gap-2 sm:gap-3 rounded-lg border border-cyan-300/60 bg-cyan-300/10 px-3 py-3">
+              <span className="w-12 shrink-0 whitespace-nowrap font-display text-sm font-bold tabular-nums text-cyan-200">#{leaderboard.me.rank}</span>
               <span className="min-w-0 flex-1 truncate font-mono text-xs text-cyan-100">{leaderboard.me.name}</span>
-              <span className="font-mono text-xs tabular-nums text-cyan-200">{formatZp(Number(leaderboard.me.rankingEarned))} ZAP</span>
+              <span className="shrink-0 whitespace-nowrap font-mono text-xs tabular-nums text-cyan-200">{formatZp(Number(leaderboard.me.rankingEarned))} ZAP</span>
             </li>
           )}
         </ol>
