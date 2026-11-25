@@ -242,7 +242,7 @@ export default function MysteryBoxPanel({
       await showOnclickaAd();
 
       let result: unknown = null;
-      for (let attempt = 0; attempt < 20; attempt += 1) {
+      for (let attempt = 0; attempt < 12; attempt += 1) {
         const { data, error } = await supabase.functions.invoke('mystery-box-actions', {
           body: { action: 'confirm_mystery_box_ad', sessionId: session.sessionId },
         });
@@ -254,12 +254,12 @@ export default function MysteryBoxPanel({
         if (data?.reason && !['pending_verification', 'session_not_pending'].includes(data.reason)) {
           throw new Error('OnClicka verification could not complete this Mystery Box opening.');
         }
-        await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        if (attempt < 11) await new Promise((resolve) => window.setTimeout(resolve, 1000));
       }
 
       if (!result) {
-        notify('OnClicka finished the video, but ZORD is still waiting for its verified server callback. No Mystery Box has been credited yet.', 'info');
-        await loadInventory(true);
+        notify('The video finished, but OnClicka has not confirmed the view yet. Your box has not been used. Please refresh in a moment; you can retry if the callback does not arrive.', 'info');
+        void loadInventory(true).catch(() => undefined);
         return;
       }
 
