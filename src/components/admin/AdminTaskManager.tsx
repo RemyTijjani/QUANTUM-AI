@@ -11,18 +11,20 @@ interface AdminTaskManagerProps {
   onSave: (input: AdminTaskInput) => Promise<void>;
   onArchive: (taskId: string) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
+  onRestore: (taskId: string) => Promise<void>;
 }
 
-export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive, onDelete }: AdminTaskManagerProps) {
+export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive, onDelete, onRestore }: AdminTaskManagerProps) {
   const [editingTask, setEditingTask] = useState<AdminTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<'all' | AdminTask['status']>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | AdminTask['status'] | 'deleted'>('all');
   const [kindFilter, setKindFilter] = useState<'all' | AdminTask['kind']>('all');
   const [search, setSearch] = useState('');
   const visibleTasks = tasks.filter((task) => {
     const term = search.trim().toLowerCase();
     const matchesSearch = !term || task.title.toLowerCase().includes(term) || task.description.toLowerCase().includes(term) || task.kind.toLowerCase().includes(term);
-    return matchesSearch && (statusFilter === 'all' || task.status === statusFilter) && (kindFilter === 'all' || task.kind === kindFilter);
+    const matchesDeleted = statusFilter === 'deleted' ? task.isDeleted : statusFilter === 'all' ? !task.isDeleted : !task.isDeleted && task.status === statusFilter;
+    return matchesSearch && matchesDeleted && (kindFilter === 'all' || task.kind === kindFilter);
   });
 
   const openModal = (task: AdminTask | null) => {
@@ -57,7 +59,8 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive,
             <span className="mb-1 block text-[10px] font-medium text-slate-400">Visibility</span>
             <select id="admin-mission-status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="admin-field">
               <option value="all">All statuses ({tasks.length})</option>
-              {(['published', 'draft', 'paused', 'archived'] as const).map((status) => <option key={status} value={status}>{status[0].toUpperCase() + status.slice(1)} ({tasks.filter((task) => task.status === status).length})</option>)}
+              {(['published', 'draft', 'paused', 'archived'] as const).map((status) => <option key={status} value={status}>{status[0].toUpperCase() + status.slice(1)} ({tasks.filter((task) => !task.isDeleted && task.status === status).length})</option>)}
+              <option value="deleted">Deleted ({tasks.filter((task) => task.isDeleted).length})</option>
             </select>
           </label>
           <label className="block">
@@ -95,7 +98,7 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive,
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">{task.kind}</span>
-                  <span className={`rounded-md border px-2 py-1 text-[9px] font-semibold capitalize ${task.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : task.status === 'draft' ? 'border-amber-400/25 bg-amber-400/5 text-amber-200' : 'border-white/10 bg-white/5 text-slate-300'}`}>{task.status}</span>
+                  <span className={`rounded-md border px-2 py-1 text-[9px] font-semibold capitalize ${task.isDeleted ? 'border-red-400/25 bg-red-400/5 text-red-200' : task.status === 'published' ? 'border-emerald-400/25 bg-emerald-400/5 text-emerald-200' : task.status === 'draft' ? 'border-amber-400/25 bg-amber-400/5 text-amber-200' : 'border-white/10 bg-white/5 text-slate-300'}`}>{task.isDeleted ? 'Deleted' : task.status}</span>
                 </div>
                 <h3 className="mt-2 break-words text-sm font-semibold text-slate-100">{task.title}</h3>
                 <p className="mt-1 break-words text-[11px] leading-relaxed text-slate-400">{task.description}</p>
@@ -105,6 +108,7 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive,
                 </div>
               </div>
               <div className="flex shrink-0 gap-2 sm:pl-2">
+                {task.isDeleted ? <button type="button" onClick={() => { if (window.confirm(`Restore "${task.title}"?`)) void onRestore(task.id); }} disabled={busyTaskId === task.id} title="Restore deleted mission" className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-emerald-400/20 bg-emerald-400/5 text-emerald-300">{busyTaskId === task.id ? <Loader2 size={13} className="animate-spin" /> : <Database size={13} />}</button> : <>
                 <button
                   onClick={() => openModal(task)}
                   disabled={busyTaskId === task.id}
@@ -158,17 +162,18 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive,
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm(`Permanently delete "${task.title}"? This is only possible when no player claims, Creator Ops submissions, or expedition activity are linked. If history exists, the task must be archived instead.`)) {
+                    if (window.confirm(`Delete "${task.title}" from active missions? It will be hidden from players and the active task list. All claims, rewards and expedition history will be preserved. You can restore it from the Deleted filter.`)) {
                       void onDelete(task.id);
                     }
                   }}
                   disabled={busyTaskId === task.id}
                   aria-label={`Delete ${task.title}`}
-                  title="Permanently delete task (only if no history is linked)"
+                  title="Hide mission from players and active task list; preserve all history"
                   className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-red-400/20 bg-red-400/5 text-red-300 transition hover:bg-red-400/10 disabled:opacity-50"
                 >
                   {busyTaskId === task.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 </button>
+                </>}
               </div>
             </article>
           ))}
