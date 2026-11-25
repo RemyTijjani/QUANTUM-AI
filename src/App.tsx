@@ -469,13 +469,30 @@ function GameApp({
       }
 
       let completed = false;
-      for (let attempt = 0; attempt < 15; attempt += 1) {
-        completed = await trustedGameplay.completeUnlock(session.sessionId, session.provider);
-        if (completed) break;
-        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+      if (session.provider === 'adsgram') {
+        // Record the SDK completion exactly once. Thereafter only read the
+        // server status while AdsGram's independent Reward URL callback arrives.
+        completed = await trustedGameplay.completeUnlock(session.sessionId, 'adsgram');
+        for (let attempt = 0; !completed && attempt < 150; attempt += 1) {
+          await new Promise((resolve) => window.setTimeout(resolve, 2000));
+          try {
+            const status = await trustedGameplay.checkUnlockStatus(session.sessionId);
+            completed = status.completed;
+            if (!status.pending && !completed) break;
+          } catch (statusError) {
+            // A transient network failure must not cancel a valid pending reward.
+            console.warn('AdsGram reward status check failed; retrying:', statusError);
+          }
+        }
+      } else {
+        for (let attempt = 0; attempt < 15; attempt += 1) {
+          completed = await trustedGameplay.completeUnlock(session.sessionId, session.provider);
+          if (completed) break;
+          await new Promise((resolve) => window.setTimeout(resolve, 2000));
+        }
       }
 
-      setAdFragment(null);
+      if (completed || session.provider !== 'adsgram') setAdFragment(null);
       if (completed) {
         notify(session.provider === 'adsgram'
           ? 'AdsGram verified the rewarded ad. Capacitor Fragment unlocked.'
@@ -484,7 +501,7 @@ function GameApp({
             : 'Monetag verified the rewarded ad. Atom Fragment unlocked.', 'info');
       } else {
         notify(session.provider === 'adsgram'
-          ? 'AdsGram finished the ad. ZORD is waiting for its server callback; no Fragment is unlocked until it arrives.'
+          ? 'AdsGram finished the ad, but verification is still pending. Keep ZORD open; it will update automatically when the server callback arrives.'
           : session.provider === 'onclicka'
             ? 'OnClicka SDK completed. ZORD is waiting for its server callback; no reward is granted until it arrives.'
             : 'Monetag confirmed the ad. ZORD is waiting for its server postback; the Fragment will unlock after verification.', 'info');
