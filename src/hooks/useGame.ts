@@ -26,7 +26,8 @@ export function useGame(
   clockNow: number;
   trustedGameplay: {
     beginUnlock: (id: FragmentId) => Promise<{ sessionId: string | null; ymid: string | null; alreadyUnlocked: boolean; provider: 'monetag' | 'onclicka' | 'adsgram' | 'free' }>;
-    completeUnlock: (sessionId: string, provider?: 'monetag' | 'onclicka' | 'adsgram') => Promise<boolean>;\n    checkUnlockStatus: (sessionId: string) => Promise<{ completed: boolean; pending: boolean }>;
+    completeUnlock: (sessionId: string, provider?: 'monetag' | 'onclicka' | 'adsgram') => Promise<boolean>;
+    checkUnlockStatus: (sessionId: string) => Promise<{ completed: boolean; pending: boolean }>;
     completeFreeFragmentUnlock: (sessionId: string) => Promise<boolean>;
     fixFragment: (id: FragmentId) => Promise<void>;
   };
