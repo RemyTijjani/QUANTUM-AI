@@ -529,15 +529,19 @@ function AgentRentalCheckout({ onRefreshVerifiedEconomy }: { onRefreshVerifiedEc
           </div>
           <p className="font-display text-lg text-cyan-200">{(Number(pendingIntent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} GRAM</p>
           <p className="font-mono text-[8px] text-neon-600">Secure payment request · expires {new Date(pendingIntent.expiresAt).toLocaleString()}</p>
-          <button type="button" className="btn-primary min-h-9 w-full text-[10px]" disabled={busy !== null || !walletAddress || !isMainnetWallet || Date.parse(pendingIntent.expiresAt) <= Date.now()} onClick={() => void sendPayment(pendingIntent)}>
-            {busy === 'send' ? <LoaderCircle size={13} className="animate-spin" /> : `Pay ${ (Number(pendingIntent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '') } GRAM with TON wallet`}
-          </button>
-          <button type="button" className="btn-ghost min-h-9 w-full text-[10px]" disabled={busy !== null} onClick={() => void verifyIntent(pendingIntent)}>
-            {busy === 'verify' ? <LoaderCircle size={13} className="animate-spin" /> : 'Verify Mainnet payment'}
-          </button>
-          <button type="button" className="btn-ghost min-h-9 w-full border border-red-400/20 text-[10px] text-red-300 hover:bg-red-400/[0.06]" disabled={busy !== null} onClick={() => void cancelIntent(pendingIntent)}>
-            {busy === 'cancel' ? <LoaderCircle size={13} className="animate-spin" /> : 'Cancel Checkout'}
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className="btn-primary min-h-10 w-full text-[10px]" disabled={busy !== null || !walletAddress || !isMainnetWallet || Date.parse(pendingIntent.expiresAt) <= Date.now()} onClick={() => void sendPayment(pendingIntent)}>
+              {busy === 'send' ? <LoaderCircle size={13} className="animate-spin" /> : `Pay ${(Number(pendingIntent.amountNano) / 1_000_000_000).toFixed(3).replace(/\.?0+$/, '')} Gram`}
+            </button>
+            <button type="button" className="btn-ghost min-h-10 w-full text-[10px]" disabled={busy !== null} onClick={() => void verifyIntent(pendingIntent)}>
+              {busy === 'verify' ? <LoaderCircle size={13} className="animate-spin" /> : 'Verify Payment'}
+            </button>
+          </div>
+          <div className="flex justify-center">
+            <button type="button" className="btn-ghost min-h-9 min-w-36 border border-red-400/20 px-6 text-[10px] text-red-300 hover:bg-red-400/[0.06]" disabled={busy !== null} onClick={() => void cancelIntent(pendingIntent)}>
+              {busy === 'cancel' ? <LoaderCircle size={13} className="animate-spin" /> : 'Cancel Checkout'}
+            </button>
+          </div>
           <p className="font-mono text-[8px] leading-relaxed text-neon-700">Only a matching, confirmed TON Mainnet transaction activates the 30-day rental.</p>
         </div>
       ))}
