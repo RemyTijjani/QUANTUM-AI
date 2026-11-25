@@ -16,7 +16,7 @@ interface MissionTaskRow {
   deleted_at: string | null;
 }
 
-const MISSION_KINDS: MissionKind[] = ['daily', 'social', 'creator'];
+const MISSION_KINDS: MissionKind[] = ['daily', 'social', 'creator', 'sponsored'];
 
 export const FALLBACK_MISSIONS: MissionSpec[] = [
   { id: 'daily-uplink', kind: 'daily', title: 'Daily Uplink', description: 'Check in with ZORD OS for today.', reward: 100, rewardCurrency: 'ZP' },
