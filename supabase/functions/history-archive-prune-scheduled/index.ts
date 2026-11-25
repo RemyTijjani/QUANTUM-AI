@@ -5,7 +5,7 @@ const env = (key: string) => Deno.env.get(key) ?? "";
 const SUPABASE_URL = env("SUPABASE_URL"), SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
 const ACCOUNT = env("R2_ACCOUNT_ID"), ACCESS = env("R2_ACCESS_KEY_ID"), SECRET = env("R2_SECRET_ACCESS_KEY");
 const BUCKET = env("R2_BUCKET_NAME"), ENDPOINT = env("R2_ENDPOINT");
-const RETENTION_DAYS = 90, MAX_DELETE_OBJECTS = 10, INDEX_CONCURRENCY = 20;
+const RETENTION_DAYS = 90, MAX_DELETE_OBJECTS = 10, BACKFILL_PAGE_SIZE = 100, INDEX_CONCURRENCY = 10;
 
 function reply(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -57,41 +57,39 @@ async function readVerified(client: S3Client, key: string, expectedType: string,
   return { records: document.records, checksum, rowCount: document.records.length };
 }
 
-async function indexPrefix(
+async function indexPrefixPage(
   db: ReturnType<typeof createClient>, client: S3Client, prefix: string,
-  table: string, archiveType: string, timeField: string, objectLimit: number,
+  table: string, archiveType: string, timeField: string, cursor: string | null,
 ) {
-  let token: string | undefined, scanned = 0, indexed = 0;
-  do {
-    const page = await client.send(new ListObjectsV2Command({
-      Bucket: BUCKET, Prefix: prefix, ContinuationToken: token, MaxKeys: 1000,
+  const page = await client.send(new ListObjectsV2Command({
+    Bucket: BUCKET, Prefix: prefix, ContinuationToken: cursor ?? undefined, MaxKeys: BACKFILL_PAGE_SIZE,
+  }));
+  const objects = (page.Contents ?? []).filter(object => object.Key?.endsWith(".json.gz"));
+  for (let offset = 0; offset < objects.length; offset += INDEX_CONCURRENCY) {
+    const batch = objects.slice(offset, offset + INDEX_CONCURRENCY);
+    await Promise.all(batch.map(async object => {
+      if (!object.Key) return;
+      const verified = await readVerified(client, object.Key, archiveType);
+      const times = verified.records.map(row => row[timeField]).filter((value): value is string =>
+        typeof value === "string" && Number.isFinite(Date.parse(value)));
+      if (times.length !== verified.rowCount) throw new Error(`Archive has missing/invalid ${timeField}: ${object.Key}`);
+      times.sort();
+      const now = new Date().toISOString();
+      const { error } = await db.from("history_archive_manifest").upsert({
+        archive_key: object.Key, table_name: table, archive_type: archiveType,
+        sha256: verified.checksum, row_count: verified.rowCount,
+        oldest_record_at: times[0], newest_record_at: times[times.length - 1],
+        archived_at: now, verified_at: now,
+      }, { onConflict: "archive_key" });
+      if (error) throw new Error(`Could not index verified R2 object ${object.Key}`);
     }));
-    const objects = (page.Contents ?? []).filter(object => object.Key?.endsWith(".json.gz"));
-    for (let offset = 0; offset < objects.length; offset += INDEX_CONCURRENCY) {
-      const batch = objects.slice(offset, offset + INDEX_CONCURRENCY);
-      if (scanned + batch.length > objectLimit) throw new Error(`R2 ${table} backfill exceeded ${objectLimit} objects; no rows were deleted.`);
-      await Promise.all(batch.map(async object => {
-        if (!object.Key) return;
-        const verified = await readVerified(client, object.Key, archiveType);
-        const times = verified.records.map(row => row[timeField]).filter((value): value is string => typeof value === "string" && Number.isFinite(Date.parse(value)));
-        if (times.length !== verified.rowCount) throw new Error(`Archive has missing/invalid ${timeField}: ${object.Key}`);
-        times.sort();
-        const now = new Date().toISOString();
-        const { error } = await db.from("history_archive_manifest").upsert({
-          archive_key: object.Key, table_name: table, archive_type: archiveType,
-          sha256: verified.checksum, row_count: verified.rowCount,
-          oldest_record_at: times[0], newest_record_at: times[times.length - 1],
-          archived_at: now, verified_at: now,
-        }, { onConflict: "archive_key" });
-        if (error) throw new Error(`Could not index verified R2 object ${object.Key}`);
-      }));
-      scanned += batch.length;
-      indexed += batch.length;
-    }
-    token = page.IsTruncated ? page.NextContinuationToken : undefined;
-    if (page.IsTruncated && !token) throw new Error("R2 returned an incomplete listing cursor.");
-  } while (token);
-  return { scanned, indexed };
+  }
+  if (page.IsTruncated && !page.NextContinuationToken) throw new Error("R2 returned an incomplete backfill cursor.");
+  return {
+    scanned: objects.length,
+    cursor: page.IsTruncated ? page.NextContinuationToken ?? null : null,
+    complete: !page.IsTruncated,
+  };
 }
 
 Deno.serve(async req => {
@@ -125,14 +123,31 @@ Deno.serve(async req => {
 
   try {
     const client = s3Client();
-    let backfill = { scanned: 0, indexed: 0 };
-    if (!control.backfill_completed_at) {
-      const economy = await indexPrefix(db, client, "history/economy-ledger/", "economy_ledger", "zord.zp_economy_ledger", "created_at", 5000);
-      const fragments = await indexPrefix(db, client, "history/other/fragment_mining_accruals/", "fragment_mining_accruals", "zord.history.fragment_mining_accruals", "credited_at", 10000);
-      backfill = { scanned: economy.scanned + fragments.scanned, indexed: economy.indexed + fragments.indexed };
-      const { error } = await db.from("history_archive_prune_control")
-        .update({ backfill_completed_at: new Date().toISOString() }).eq("id", true).eq("lease_token", lease);
-      if (error) throw new Error("Could not persist archive manifest backfill completion.");
+    if (!control.economy_backfill_complete) {
+      const page = await indexPrefixPage(db, client, "history/economy-ledger/", "economy_ledger",
+        "zord.zp_economy_ledger", "created_at", control.economy_backfill_cursor);
+      const { error } = await db.from("history_archive_prune_control").update({
+        economy_backfill_cursor: page.cursor, economy_backfill_complete: page.complete,
+      }).eq("id", true).eq("lease_token", lease);
+      if (error) throw new Error("Could not persist economy archive backfill cursor.");
+      const result = { success: true, backfill: "economy_ledger", ...page, complete: page.complete };
+      await release(result);
+      return reply(result);
+    }
+
+    if (!control.fragment_backfill_complete) {
+      const page = await indexPrefixPage(db, client, "history/other/fragment_mining_accruals/",
+        "fragment_mining_accruals", "zord.history.fragment_mining_accruals", "credited_at",
+        control.fragment_backfill_cursor);
+      const completedAt = page.complete ? new Date().toISOString() : null;
+      const { error } = await db.from("history_archive_prune_control").update({
+        fragment_backfill_cursor: page.cursor, fragment_backfill_complete: page.complete,
+        ...(completedAt ? { backfill_completed_at: completedAt } : {}),
+      }).eq("id", true).eq("lease_token", lease);
+      if (error) throw new Error("Could not persist fragment archive backfill cursor.");
+      const result = { success: true, backfill: "fragment_mining_accruals", ...page, complete: page.complete };
+      await release(result);
+      return reply(result);
     }
 
     const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60_000).toISOString();
@@ -170,7 +185,7 @@ Deno.serve(async req => {
         results.push({ key: manifest.archive_key, status: "blocked", error: message });
       }
     }
-    const result = { success: true, retentionDays: RETENTION_DAYS, cutoff, backfill, manifestsChecked: results.length, results };
+    const result = { success: true, retentionDays: RETENTION_DAYS, cutoff, manifestsChecked: results.length, results };
     await release(result);
     return reply(result);
   } catch (error) {
