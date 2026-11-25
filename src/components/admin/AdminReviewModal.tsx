@@ -36,6 +36,7 @@ import {
   saveTask,
   archiveTask,
   deleteTask,
+  restoreTask,
   saveVaultReserves,
 } from '@/lib/admin/adminApi';
 
@@ -263,13 +264,21 @@ function AdminConsole({
 
     try {
       await deleteTask(creds, taskId);
-      addLog(`[TASK] Permanently deleted mission: ${title}`);
+      addLog(`[TASK] Soft-deleted mission (history preserved): ${title}`);
       await refresh();
     } catch (err) {
       setActionError(errorMessage(err));
     } finally {
       setBusyTaskId(null);
     }
+  };
+
+  const handleRestoreTask = async (taskId: string) => {
+    const title = data.tasks.find((task) => task.id === taskId)?.title ?? taskId;
+    setBusyTaskId(taskId); setActionError(null);
+    try { await restoreTask(creds, taskId); addLog(`[TASK] Restored mission: ${title}`); await refresh(); }
+    catch (err) { setActionError(errorMessage(err)); }
+    finally { setBusyTaskId(null); }
   };
 
   const handleSaveVaultReserves = async (
@@ -744,6 +753,7 @@ function AdminConsole({
           onSave={handleSaveTask}
           onArchive={handleArchiveTask}
           onDelete={handleDeleteTask}
+          onRestore={handleRestoreTask}
         />
       )}
 
