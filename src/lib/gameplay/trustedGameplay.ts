@@ -49,6 +49,25 @@ export async function completeTrustedUnlock(sessionId: string, provider: 'moneta
 }
 
 
+export interface TrustedUnlockStatus {
+  completed: boolean;
+  pending: boolean;
+}
+
+/** Read the server-authoritative status after the SDK signal has been recorded. */
+export async function checkTrustedUnlockStatus(sessionId: string): Promise<TrustedUnlockStatus> {
+  const { data, error } = await supabase.functions.invoke('gameplay-actions', {
+    body: { action: 'check_adsgram_fragment_unlock', sessionId },
+  });
+  if (error) throw error;
+  if (!data?.success) throw new Error('Could not check the AdsGram verification status.');
+  return {
+    completed: data.completed === true,
+    pending: data.pendingVerification === true,
+  };
+}
+
+
 export async function completeFreeFragmentUnlock(sessionId: string): Promise<boolean> {
   const { data, error } = await supabase.functions.invoke('gameplay-actions', {
     body: { action: 'complete_free_fragment_unlock', sessionId },
