@@ -2,48 +2,43 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getTelegramUser } from '@/lib/telegram';
 
-const BOOT_DURATION_MS = 2000;
-const EXIT_DURATION_MS = 600;
 const BOOT_LINES = [
-  'Initializing ZORD OS kernel...',
-  'Establishing Telegram interface handshake...',
-  'Synchronizing operative data & ZP reserves...',
-  'SYSTEM ONLINE. LAUNCHING INTERFACE.',
+  'Initializing ZORD intelligence',
+  'Establishing secure connection',
+  'Synchronizing player data',
+  'Loading gameplay systems',
 ];
-const RING_RADIUS = 52;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-const GLOW_TEXT_SHADOW = '0 0 10px rgba(34,197,94,0.5)';
 
-type Phase = 'booting' | 'exiting' | 'done';
+const EXIT_DURATION_MS = 650;
+const LINE_INTERVAL_MS = 850;
 
-function visibleLineText(line: string, index: number, activeIndex: number, progress: number): string {
-  if (index < activeIndex) return line;
-  const segment = Math.min(Math.max(progress * BOOT_LINES.length - index, 0), 1);
-  return line.slice(0, Math.floor(segment * line.length));
-}
+type Phase = 'booting' | 'flashing' | 'exiting' | 'done';
 
 export default function ZordPreloader({ children }: { children: ReactNode }) {
-  const [progress, setProgress] = useState(0);
+  const [activeLine, setActiveLine] = useState(0);
   const [phase, setPhase] = useState<Phase>('booting');
   const [operativeName] = useState(() => getTelegramUser()?.first_name ?? null);
 
   useEffect(() => {
-    const start = performance.now();
-    let frame = 0;
+    const interval = window.setInterval(() => {
+      setActiveLine((current) => {
+        if (current >= BOOT_LINES.length - 1) {
+          window.clearInterval(interval);
+          setPhase('flashing');
+          return current;
+        }
+        return current + 1;
+      });
+    }, LINE_INTERVAL_MS);
 
-    const tick = (now: number) => {
-      const t = Math.min((now - start) / BOOT_DURATION_MS, 1);
-      setProgress(t);
-      if (t < 1) {
-        frame = requestAnimationFrame(tick);
-      } else {
-        setPhase('exiting');
-      }
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (phase !== 'flashing') return;
+    const timer = window.setTimeout(() => setPhase('exiting'), 420);
+    return () => window.clearTimeout(timer);
+  }, [phase]);
 
   useEffect(() => {
     if (phase !== 'exiting') return;
@@ -53,71 +48,71 @@ export default function ZordPreloader({ children }: { children: ReactNode }) {
 
   if (phase === 'done') return <>{children}</>;
 
-  const percent = Math.round(progress * 100);
-  const activeIndex = Math.min(Math.floor(progress * BOOT_LINES.length), BOOT_LINES.length - 1);
-
   return (
     <>
       {children}
       <div
         role="status"
         aria-live="polite"
-        aria-label="Loading ZORD OS"
-        className={`fixed inset-0 z-[70] flex items-center justify-center overflow-hidden bg-obsidian font-mono ${
-          phase === 'exiting' ? 'zord-preloader-exit' : ''
-        }`}
+        aria-label="Loading ZORD"
+        className={`zord-boot fixed inset-0 z-[70] flex items-center justify-center overflow-hidden bg-obsidian font-mono ${phase === 'exiting' ? 'zord-preloader-exit' : ''} ${phase === 'flashing' ? 'zord-core-flash' : ''}`}
       >
         <div className="crt-overlay" aria-hidden />
 
-        <div className="relative flex w-full max-w-sm flex-col items-center gap-8 px-6">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="font-display text-lg font-bold uppercase tracking-[0.3em] text-neon-400" style={{ textShadow: GLOW_TEXT_SHADOW }}>
-              ZORD OS
-            </h1>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-neon-500">
-              {operativeName ? `Operative ${operativeName}` : 'Operative link pending'}
-            </p>
-          </div>
-
-          <div className="relative h-40 w-40">
-            <div className="zord-radar absolute inset-2 rounded-full opacity-70" style={{ background: 'conic-gradient(from 0deg, rgba(34,197,94,0) 0deg, rgba(34,197,94,0.45) 70deg, rgba(34,197,94,0) 90deg)' }} />
-            <div className="absolute inset-0 rounded-full border border-neon/20" />
-            <svg viewBox="0 0 120 120" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
-              <circle cx="60" cy="60" r={RING_RADIUS} fill="none" stroke="rgba(34,197,94,0.15)" strokeWidth="4" />
-              <circle
-                cx="60"
-                cy="60"
-                r={RING_RADIUS}
-                fill="none"
-                stroke="#22c55e"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeDasharray={RING_CIRCUMFERENCE}
-                strokeDashoffset={RING_CIRCUMFERENCE * (1 - progress)}
-                className="zord-ring-pulse"
-                style={{ filter: 'drop-shadow(0 0 6px rgba(34,197,94,0.8))' }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-3xl font-bold tabular-nums text-neon-300" style={{ textShadow: GLOW_TEXT_SHADOW }}>
-                {percent}%
-              </span>
+        <div className="zord-boot-grid" aria-hidden />
+        <div className="relative z-[1] flex w-full max-w-sm flex-col items-center px-7 text-center">
+          <div className="zord-wordmark-wrap">
+            <div className="zord-wordmark">ZORD</div>
+            <div className="zord-operative">
+              {operativeName ? `OPERATIVE ${operativeName}` : 'AUTONOMOUS INTELLIGENCE NETWORK'}
             </div>
           </div>
 
-          <div className="min-h-[120px] w-full space-y-2 text-[12px] leading-[1.5] text-neon-400" style={{ textShadow: GLOW_TEXT_SHADOW }}>
-            {BOOT_LINES.slice(0, activeIndex + 1).map((line, index) => {
-              const text = visibleLineText(line, index, activeIndex, progress);
-              const isActive = index === activeIndex;
-              return (
-                <p key={line} className={isActive ? 'zord-glitch' : undefined}>
-                  <span className="text-neon-600">&gt; </span>
-                  {text}
-                  {isActive && progress < 1 && <span className="zord-cursor">_</span>}
-                </p>
-              );
-            })}
+          <div className="zord-quantum-core" aria-hidden>
+            <div className="zord-core-orbit zord-core-orbit--outer" />
+            <div className="zord-core-orbit zord-core-orbit--middle" />
+            <div className="zord-core-orbit zord-core-orbit--inner" />
+            <div className="zord-core-particles">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="zord-core-center">
+              <span className="zord-core-glyph">Z</span>
+            </div>
           </div>
+
+          <div className="mt-7 w-full">
+            <p className="zord-main-tagline">Autonomous Intellect. Total Group Dominion.</p>
+            <p className="zord-support-tagline">
+              Powering AI Agents. Automating Communities. Connecting the Bot Economy.
+            </p>
+          </div>
+
+          <div className="zord-boot-console mt-8 w-full" aria-live="off">
+            <div className="mb-3 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-neon-600">
+              <span>System initialization</span>
+              <span className="zord-live-indicator"><i /> LIVE</span>
+            </div>
+            {BOOT_LINES.map((line, index) => (
+              <p
+                key={line}
+                className={`zord-boot-line ${index < activeLine ? 'is-complete' : ''} ${index === activeLine ? 'is-active' : ''} ${index > activeLine ? 'is-pending' : ''}`}
+              >
+                <span className="zord-boot-marker">{index < activeLine ? '✓' : index === activeLine ? '›' : '·'}</span>
+                {line}
+                {index === activeLine && phase === 'booting' && <span className="zord-cursor">_</span>}
+              </p>
+            ))}
+          </div>
+
+          <div className="zord-loading-track mt-6" aria-label="Initializing">
+            <span />
+          </div>
+          <p className="mt-3 text-[10px] uppercase tracking-[0.24em] text-neon-700">
+            {phase === 'flashing' ? 'Core synchronized' : 'Bringing the ecosystem online'}
+          </p>
         </div>
       </div>
     </>
