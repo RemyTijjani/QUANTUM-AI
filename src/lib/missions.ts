@@ -13,6 +13,7 @@ interface MissionTaskRow {
   reward_currency: MissionRewardCurrency;
   unlock_cost_zp: number;
   status: 'draft' | 'published' | 'paused' | 'archived';
+  deleted_at: string | null;
 }
 
 const MISSION_KINDS: MissionKind[] = ['daily', 'social', 'creator'];
@@ -65,6 +66,7 @@ export async function fetchMissions(): Promise<MissionSpec[]> {
     const { data, error } = await supabase
       .from('mission_tasks')
       .select('id, kind, title, description, reward, platform, action_url, telegram_chat_id, reward_currency, unlock_cost_zp, status')
+      .is('deleted_at', null)
       .order('created_at', { ascending: true });
 
     if (error) {
