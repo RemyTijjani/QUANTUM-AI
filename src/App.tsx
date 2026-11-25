@@ -1,5 +1,5 @@
 
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import Header from '@/components/Header';
@@ -259,6 +259,9 @@ function GameApp({
     setGramWalletConnected(connected);
   }, []);
 
+  const submittedAchievementIntents = useRef(new Set<string>());
+  const submittedIntentStorageKey = `zord:achievement-submitted:${playerId}`;
+
   const handleClaimAchievement = useCallback(async (level: number) => {
     try {
       const ui = await loadTonConnectUI();
@@ -278,17 +281,51 @@ function GameApp({
         return;
       }
 
+      const submittedInThisSession = () => {
+        if (submittedAchievementIntents.current.has(intent.intentId)) return true;
+        try {
+          const saved = JSON.parse(sessionStorage.getItem(submittedIntentStorageKey) || '[]');
+          if (Array.isArray(saved) && saved.includes(intent.intentId)) {
+            submittedAchievementIntents.current.add(intent.intentId);
+            return true;
+          }
+        } catch {
+          // Ignore unavailable or malformed session state; server verification remains authoritative.
+        }
+        return false;
+      };
+
+      const markSubmitted = () => {
+        submittedAchievementIntents.current.add(intent.intentId);
+        try {
+          const saved = JSON.parse(sessionStorage.getItem(submittedIntentStorageKey) || '[]');
+          const ids = Array.isArray(saved) ? saved.filter((id): id is string => typeof id === 'string') : [];
+          if (!ids.includes(intent.intentId)) ids.push(intent.intentId);
+          sessionStorage.setItem(submittedIntentStorageKey, JSON.stringify(ids.slice(-30)));
+        } catch {
+          // In-memory tracking still prevents accidental retries for this mounted session.
+        }
+      };
+
       if (intent.reused) {
         const verification = await verifyZapAchievementClaim(intent.intentId);
         if (verification.claimed) {
           const achievements = await fetchZapAchievements();
           setZapAchievements(achievements);
           setZapEarned(achievements.netZap);
-          notify(`Level ${level} badge is permanently stored in your collection.`, 'info');
-        } else {
-          notify('Your previous claim payment is still awaiting network confirmation. Verify again shortly; ZORD will not request a second payment.', 'info');
+          notify(`Level ${level} badge is permanently stored in your collection.`, 'success');
+          return;
         }
-        return;
+        if (verification.pending && submittedInThisSession()) {
+          notify('Your payment was submitted, but the network has not confirmed it yet. Use Claim again later to verify this same payment; do not send another payment.', 'info');
+          return;
+        }
+        if (!verification.pending) {
+          notify('ZORD could not confirm the earlier request. Check your wallet activity before trying again.', 'error');
+          return;
+        }
+        // The previous wallet request did not return successfully in this app session.
+        // Retry the same server intent and memo; never create a second payment reference.
       }
 
       await ui.sendTransaction({
@@ -300,21 +337,22 @@ function GameApp({
           payload: encodeTonCommentPayload(intent.memo),
         }],
       });
+      markSubmitted();
 
       const verification = await verifyZapAchievementClaim(intent.intentId);
       if (verification.pending) {
-        notify('Gram payment submitted. Network confirmation is pending; tap the claim again shortly to verify without paying twice.', 'info');
+        notify('Gram payment was submitted. Network confirmation is pending. Tap Claim again later to verify this same payment; ZORD will not create a new payment request.', 'info');
         return;
       }
 
       const achievements = await fetchZapAchievements();
       setZapAchievements(achievements);
       setZapEarned(achievements.netZap);
-      notify(`Level ${level} badge claimed and permanently stored.`, 'info');
+      notify(`Level ${level} badge claimed and permanently stored.`, 'success');
     } catch (error) {
-      notify(error instanceof Error ? error.message : 'Could not complete the achievement claim.', 'error');
+      notify(error instanceof Error ? error.message : 'The wallet request did not complete. Check your wallet activity, then retry the same claim.', 'error');
     }
-  }, [notify]);
+  }, [notify, playerId]);
 
   const [tab, setTab] = useState<TabId>('core');
   const [missionsInitialView, setMissionsInitialView] = useState<EngagementView>('missions');
