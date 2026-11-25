@@ -5,7 +5,7 @@ const env = (key: string) => Deno.env.get(key) ?? "";
 const SUPABASE_URL = env("SUPABASE_URL"), SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
 const ACCOUNT = env("R2_ACCOUNT_ID"), ACCESS = env("R2_ACCESS_KEY_ID"), SECRET = env("R2_SECRET_ACCESS_KEY");
 const BUCKET = env("R2_BUCKET_NAME"), ENDPOINT = env("R2_ENDPOINT");
-const RETENTION_DAYS = 90, MAX_DELETE_OBJECTS = 10;
+const RETENTION_DAYS = 90, MAX_DELETE_OBJECTS = 10, INDEX_CONCURRENCY = 20;
 
 function reply(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -66,22 +66,27 @@ async function indexPrefix(
     const page = await client.send(new ListObjectsV2Command({
       Bucket: BUCKET, Prefix: prefix, ContinuationToken: token, MaxKeys: 1000,
     }));
-    for (const object of page.Contents ?? []) {
-      if (!object.Key?.endsWith(".json.gz")) continue;
-      if (++scanned > objectLimit) throw new Error(`R2 ${table} backfill exceeded ${objectLimit} objects; no rows were deleted.`);
-      const verified = await readVerified(client, object.Key, archiveType);
-      const times = verified.records.map(row => row[timeField]).filter((value): value is string => typeof value === "string" && Number.isFinite(Date.parse(value)));
-      if (times.length !== verified.rowCount) throw new Error(`Archive has missing/invalid ${timeField}: ${object.Key}`);
-      times.sort();
-      const now = new Date().toISOString();
-      const { error } = await db.from("history_archive_manifest").upsert({
-        archive_key: object.Key, table_name: table, archive_type: archiveType,
-        sha256: verified.checksum, row_count: verified.rowCount,
-        oldest_record_at: times[0], newest_record_at: times[times.length - 1],
-        archived_at: now, verified_at: now,
-      }, { onConflict: "archive_key" });
-      if (error) throw new Error(`Could not index verified R2 object ${object.Key}`);
-      indexed++;
+    const objects = (page.Contents ?? []).filter(object => object.Key?.endsWith(".json.gz"));
+    for (let offset = 0; offset < objects.length; offset += INDEX_CONCURRENCY) {
+      const batch = objects.slice(offset, offset + INDEX_CONCURRENCY);
+      if (scanned + batch.length > objectLimit) throw new Error(`R2 ${table} backfill exceeded ${objectLimit} objects; no rows were deleted.`);
+      await Promise.all(batch.map(async object => {
+        if (!object.Key) return;
+        const verified = await readVerified(client, object.Key, archiveType);
+        const times = verified.records.map(row => row[timeField]).filter((value): value is string => typeof value === "string" && Number.isFinite(Date.parse(value)));
+        if (times.length !== verified.rowCount) throw new Error(`Archive has missing/invalid ${timeField}: ${object.Key}`);
+        times.sort();
+        const now = new Date().toISOString();
+        const { error } = await db.from("history_archive_manifest").upsert({
+          archive_key: object.Key, table_name: table, archive_type: archiveType,
+          sha256: verified.checksum, row_count: verified.rowCount,
+          oldest_record_at: times[0], newest_record_at: times[times.length - 1],
+          archived_at: now, verified_at: now,
+        }, { onConflict: "archive_key" });
+        if (error) throw new Error(`Could not index verified R2 object ${object.Key}`);
+      }));
+      scanned += batch.length;
+      indexed += batch.length;
     }
     token = page.IsTruncated ? page.NextContinuationToken : undefined;
     if (page.IsTruncated && !token) throw new Error("R2 returned an incomplete listing cursor.");
@@ -105,7 +110,7 @@ Deno.serve(async req => {
 
   const lease = crypto.randomUUID(), now = new Date();
   const { data: control, error: claimError } = await db.from("history_archive_prune_control")
-    .update({ lease_token: lease, lease_until: new Date(now.getTime() + 20 * 60_000).toISOString() })
+    .update({ lease_token: lease, lease_until: new Date(now.getTime() + 5 * 60_000).toISOString() })
     .eq("id", true).or(`lease_until.is.null,lease_until.lt.${now.toISOString()}`)
     .select("*").maybeSingle();
   if (claimError) return reply({ error: "Could not claim prune lease." }, 503);
