@@ -20,13 +20,16 @@ Deno.serve(async (req: Request) => {
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return text(503, "Callback service unavailable");
 
   const url = new URL(req.url);
-  const prefix = "/functions/v1/onclicka-mystery-box-postback/";
-  if (!url.pathname.startsWith(prefix)) return text(404, "Not found");
-
-  const suppliedToken = url.pathname.slice(prefix.length).replace(/\/$/, "");
+  // Supabase's gateway may strip the function-name prefix before forwarding
+  // the request. Read the final path segment so both gateway path forms work.
+  const pathSegments = url.pathname.split("/").filter(Boolean);
+  const suppliedToken = pathSegments.at(-1) ?? "";
   if (!/^[a-f0-9]{64}$/i.test(suppliedToken)) return text(403, "Forbidden");
 
-  const telegramUserId = url.searchParams.get("USERID") ?? url.searchParams.get("userId") ?? "";
+  // OnClicka may send USERID, userId, or userid. Query parameter names are
+  // treated case-insensitively while the value remains strictly numeric.
+  const telegramUserId = Array.from(url.searchParams.entries())
+    .find(([key]) => key.toLowerCase() === "userid")?.[1] ?? "";
   if (!/^\d{1,20}$/.test(telegramUserId) || BigInt(telegramUserId) <= 0n) {
     return text(400, "Invalid USERID");
   }
