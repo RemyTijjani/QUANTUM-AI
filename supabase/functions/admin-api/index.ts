@@ -366,7 +366,7 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ADMIN_USERNAME = Deno.env.get("ADMIN_USERNAME") ?? "";
 const ADMIN_PASSWORD = Deno.env.get("ADMIN_PASSWORD") ?? "";
 
-const TASK_KINDS = ["daily", "social", "creator"];
+const TASK_KINDS = ["daily", "social", "creator", "sponsored"];
 const TASK_PLATFORMS = ["tiktok", "youtube"];
 
 interface AdminRequestBody {
