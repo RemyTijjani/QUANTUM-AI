@@ -88,7 +88,7 @@ export const MILESTONES = [
   { threshold: 25, rewardZap: 50 },
 ] as const;
 
-export type MissionKind = 'daily' | 'social' | 'creator';
+export type MissionKind = 'daily' | 'social' | 'creator' | 'sponsored';
 export type MissionRewardCurrency = 'ZP' | 'ZAP';
 
 export interface MissionSpec {
