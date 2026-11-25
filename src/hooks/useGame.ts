@@ -94,7 +94,12 @@ export function useGame(
       if (completed) await applyTrustedFragments();
       return completed;
     },
-    checkUnlockStatus: async (sessionId: string) => {\n      const status = await checkTrustedUnlockStatus(sessionId);\n      if (status.completed) await applyTrustedFragments();\n      return status;\n    },\n    completeFreeFragmentUnlock: async (sessionId: string) => {
+    checkUnlockStatus: async (sessionId: string) => {
+      const status = await checkTrustedUnlockStatus(sessionId);
+      if (status.completed) await applyTrustedFragments();
+      return status;
+    },
+    completeFreeFragmentUnlock: async (sessionId: string) => {
       const completed = await completeFreeFragmentUnlock(sessionId);
       if (completed) await applyTrustedFragments();
       return completed;
