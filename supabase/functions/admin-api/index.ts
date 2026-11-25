@@ -2062,9 +2062,8 @@ Deno.serve(async (req: Request) => {
       return json({ success: true });
     }
 
-    // Archive tasks instead of deleting them so claims and creator evidence remain auditable.
-    // Keep delete_task as a backwards-compatible alias, but never cascade-delete mission history.
-    if (body.action === "archive_task" || body.action === "delete_task") {
+    // Archive tasks to preserve their claims and creator evidence.
+    if (body.action === "archive_task") {
       const taskId = typeof body.taskId === "string" ? body.taskId.trim() : "";
       if (!taskId || taskId.length > 120) {
         return json({ error: "A valid taskId is required." }, 400);
@@ -2095,6 +2094,61 @@ Deno.serve(async (req: Request) => {
       }
 
       return json({ success: true, archived: true, alreadyArchived: false });
+    }
+
+    // Permanently delete only missions with no linked player or expedition history.
+    // Historical records are never cascade-deleted; use archive_task when history exists.
+    if (body.action === "delete_task") {
+      const taskId = typeof body.taskId === "string" ? body.taskId.trim() : "";
+      if (!taskId || taskId.length > 120) {
+        return json({ error: "A valid taskId is required." }, 400);
+      }
+
+      const { data: task, error: lookupError } = await db
+        .from("mission_tasks")
+        .select("id, title")
+        .eq("id", taskId)
+        .maybeSingle();
+
+      if (lookupError || !task) {
+        return json({ error: "Mission task not found." }, 404);
+      }
+
+      const [creatorSubmissions, expeditionActivities, telegramClaims] = await Promise.all([
+        db.from("creator_ops_submissions").select("id", { count: "exact", head: true }).eq("mission_id", taskId),
+        db.from("game_event_activities").select("id", { count: "exact", head: true }).eq("mission_id", taskId),
+        db.from("telegram_mission_claims").select("id", { count: "exact", head: true }).eq("mission_id", taskId),
+      ]);
+
+      const referenceErrors = [creatorSubmissions.error, expeditionActivities.error, telegramClaims.error];
+      if (referenceErrors.some(Boolean)) {
+        console.error("Mission deletion history check failed:", referenceErrors);
+        return json({ error: "Could not verify mission history. Nothing was deleted; try again." }, 500);
+      }
+
+      const linkedHistory = {
+        creatorSubmissions: creatorSubmissions.count ?? 0,
+        expeditionActivities: expeditionActivities.count ?? 0,
+        telegramClaims: telegramClaims.count ?? 0,
+      };
+      if (Object.values(linkedHistory).some((count) => count > 0)) {
+        return json({
+          error: "This mission has linked player or expedition history and cannot be permanently deleted. Archive it instead to preserve those records.",
+          linkedHistory,
+        }, 409);
+      }
+
+      const { error: deleteError } = await db
+        .from("mission_tasks")
+        .delete()
+        .eq("id", taskId);
+
+      if (deleteError) {
+        console.error("Mission task permanent deletion failed:", deleteError);
+        return json({ error: "Could not delete this mission. It may have linked history; archive it instead." }, 409);
+      }
+
+      return json({ success: true, deleted: true, id: taskId });
     }
 
     // Reserve the complete prize pool before any raffle can be published.
