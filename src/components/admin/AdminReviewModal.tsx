@@ -35,6 +35,7 @@ import {
   bulkApproveSubmissions,
   saveTask,
   archiveTask,
+  deleteTask,
   saveVaultReserves,
 } from '@/lib/admin/adminApi';
 
@@ -245,6 +246,24 @@ function AdminConsole({
 
       addLog(`[TASK] Archived task: ${title}`);
 
+      await refresh();
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setBusyTaskId(null);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    const title =
+      data.tasks.find((task) => task.id === taskId)?.title ?? taskId;
+
+    setBusyTaskId(taskId);
+    setActionError(null);
+
+    try {
+      await deleteTask(creds, taskId);
+      addLog(`[TASK] Permanently deleted mission: ${title}`);
       await refresh();
     } catch (err) {
       setActionError(errorMessage(err));
@@ -724,6 +743,7 @@ function AdminConsole({
           busyTaskId={busyTaskId}
           onSave={handleSaveTask}
           onArchive={handleArchiveTask}
+          onDelete={handleDeleteTask}
         />
       )}
 
