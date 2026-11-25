@@ -472,7 +472,16 @@ function GameApp({
       if (session.provider === 'adsgram') {
         // Record the SDK completion exactly once. Thereafter only read the
         // server status while AdsGram's independent Reward URL callback arrives.
-        completed = await trustedGameplay.completeUnlock(session.sessionId, 'adsgram');
+        let sdkSignalRecorded = false;
+        for (let attempt = 0; attempt < 3 && !sdkSignalRecorded; attempt += 1) {
+          try {
+            completed = await trustedGameplay.completeUnlock(session.sessionId, 'adsgram');
+            sdkSignalRecorded = true;
+          } catch (sdkError) {
+            if (attempt === 2) throw sdkError;
+            await new Promise((resolve) => window.setTimeout(resolve, 1000));
+          }
+        }
         for (let attempt = 0; !completed && attempt < 150; attempt += 1) {
           await new Promise((resolve) => window.setTimeout(resolve, 2000));
           try {
