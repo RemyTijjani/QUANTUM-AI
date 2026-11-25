@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { Database, Plus, Edit2, Archive, Loader2 } from 'lucide-react';
+import { Database, Plus, Edit2, Archive, Loader2, Eye, EyeOff } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { formatZp } from '@/lib/format';
 import { AdminApiError } from '@/lib/admin/adminApi';
@@ -108,10 +108,39 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive 
                   onClick={() => openModal(task)}
                   disabled={busyTaskId === task.id}
                   aria-label={`Edit ${task.title}`}
+                  title="Edit task"
                   className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-white/10 bg-emerald-400/10 text-emerald-300 transition hover:bg-emerald-400/15 disabled:opacity-50"
                 >
                   <Edit2 size={13} />
                 </button>
+                {(task.status === 'published' || task.status === 'paused') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void onSave({
+                        id: task.id,
+                        kind: task.kind,
+                        title: task.title,
+                        description: task.description,
+                        reward: task.reward,
+                        platform: task.platform,
+                        actionUrl: task.actionUrl,
+                        telegramChatId: task.telegramChatId,
+                        rewardCurrency: task.rewardCurrency,
+                        unlockCostZp: task.unlockCostZp,
+                        status: task.status === 'published' ? 'paused' : 'published',
+                        objectives: task.objectives,
+                        requirements: task.requirements,
+                      });
+                    }}
+                    disabled={busyTaskId === task.id}
+                    aria-label={`${task.status === 'published' ? 'Hide' : 'Show'} ${task.title}`}
+                    title={task.status === 'published' ? 'Hide from players' : 'Show to players'}
+                    className={`flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-white/10 transition disabled:opacity-50 ${task.status === 'published' ? 'bg-amber-400/10 text-amber-200 hover:bg-amber-400/15' : 'bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/15'}`}
+                  >
+                    {busyTaskId === task.id ? <Loader2 size={13} className="animate-spin" /> : task.status === 'published' ? <EyeOff size={13} /> : <Eye size={13} />}
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     if (window.confirm(`Archive "${task.title}"? It will be hidden from players, while existing submissions and claim history are preserved.`)) {
@@ -120,6 +149,7 @@ export default function AdminTaskManager({ tasks, busyTaskId, onSave, onArchive 
                   }}
                   disabled={busyTaskId === task.id}
                   aria-label={`Archive ${task.title}`}
+                  title="Archive task"
                   className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
                 >
                   {busyTaskId === task.id ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />}
