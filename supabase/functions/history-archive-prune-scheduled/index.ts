@@ -150,6 +150,15 @@ Deno.serve(async req => {
       return reply(result);
     }
 
+    if (!control.retrieval_verified_at) {
+      const result = {
+        success: true, retentionDays: RETENTION_DAYS, deletionPaused: true,
+        reason: "Player-history retrieval must be tested and approved before any Supabase history is removed.",
+      };
+      await release(result);
+      return reply(result);
+    }
+
     const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60_000).toISOString();
     const { data: manifests, error: manifestError } = await db.from("history_archive_manifest")
       .select("archive_key,table_name,archive_type,sha256,row_count")
