@@ -221,7 +221,8 @@ export default function MysteryBoxPanel({
       const { data: session, error: sessionError } = await supabase.functions.invoke('mystery-box-actions', {
         body: { action: 'begin_mystery_box_ad', requestId },
       });
-      if (sessionError || !session?.success || typeof session.sessionId !== 'string' || session.provider !== 'onclicka') {
+      if (sessionError || !session?.success || session.provider !== 'onclicka' ||
+          session.spotId !== 6155605 || typeof session.sessionId !== 'string') {
         throw new Error(session?.message || sessionError?.message || 'OnClicka could not prepare your rewarded-ad session.');
       }
 
@@ -250,8 +251,8 @@ export default function MysteryBoxPanel({
           result = data;
           break;
         }
-        if (data?.reason === 'session_expired') {
-          throw new Error('The OnClicka verification session expired. Please try again.');
+        if (data?.reason && !['pending_verification', 'session_not_pending'].includes(data.reason)) {
+          throw new Error('OnClicka verification could not complete this Mystery Box opening.');
         }
         await new Promise((resolve) => window.setTimeout(resolve, 1500));
       }
