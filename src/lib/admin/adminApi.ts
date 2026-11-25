@@ -18,7 +18,7 @@ export interface AdminSubmission {
 
 export interface AdminTask {
   id: string;
-  kind: 'daily' | 'social' | 'creator';
+  kind: 'daily' | 'social' | 'creator' | 'sponsored';
   title: string;
   description: string;
   reward: number;
