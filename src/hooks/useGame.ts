@@ -9,7 +9,7 @@ import { FRAGMENT_IDS } from '@/lib/game/config';
 
 import {
   beginTrustedUnlock,
-  completeTrustedUnlock,
+  completeTrustedUnlock,\n  checkTrustedUnlockStatus,
   completeFreeFragmentUnlock,
   fetchTrustedFragments,
   fixTrustedFragment,
@@ -25,7 +25,7 @@ export function useGame(
   clockNow: number;
   trustedGameplay: {
     beginUnlock: (id: FragmentId) => Promise<{ sessionId: string | null; ymid: string | null; alreadyUnlocked: boolean; provider: 'monetag' | 'onclicka' | 'adsgram' | 'free' }>;
-    completeUnlock: (sessionId: string, provider?: 'monetag' | 'onclicka' | 'adsgram') => Promise<boolean>;
+    completeUnlock: (sessionId: string, provider?: 'monetag' | 'onclicka' | 'adsgram') => Promise<boolean>;\n    checkUnlockStatus: (sessionId: string) => Promise<{ completed: boolean; pending: boolean }>;
     completeFreeFragmentUnlock: (sessionId: string) => Promise<boolean>;
     fixFragment: (id: FragmentId) => Promise<void>;
   };
@@ -94,7 +94,7 @@ export function useGame(
       if (completed) await applyTrustedFragments();
       return completed;
     },
-    completeFreeFragmentUnlock: async (sessionId: string) => {
+    checkUnlockStatus: async (sessionId: string) => {\n      const status = await checkTrustedUnlockStatus(sessionId);\n      if (status.completed) await applyTrustedFragments();\n      return status;\n    },\n    completeFreeFragmentUnlock: async (sessionId: string) => {
       const completed = await completeFreeFragmentUnlock(sessionId);
       if (completed) await applyTrustedFragments();
       return completed;
