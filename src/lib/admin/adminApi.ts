@@ -454,6 +454,16 @@ export async function archiveTask(
   });
 }
 
+export async function deleteTask(
+  creds: AdminCredentials,
+  taskId: string,
+): Promise<void> {
+  await callAdminApi(creds, {
+    action: 'delete_task',
+    taskId,
+  });
+}
+
 export async function saveVaultReserves(
   creds: AdminCredentials,
   reserves: AdminVaultReserves,
