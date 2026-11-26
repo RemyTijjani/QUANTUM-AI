@@ -21,7 +21,7 @@ export default function CharacterCard({ activeFragments, rate, entityNumber }: C
         </div>
         <div className="min-w-0">
           <p className="label">Entity profile</p>
-          <h3 className="title mt-1 truncate">ZORD Entity {entityNumber === null ? '—' : `#${String(entityNumber).padStart(8, '0')}`}</h3>
+          <h3 className="title mt-1 truncate">ZORD Entity {entityNumber === null ? '—' : `#${entityNumber}`}</h3>
         </div>
       </div>
 
